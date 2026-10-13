@@ -89,7 +89,7 @@ def off(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def on(tmp_path, monkeypatch):
+def on(tmp_path, monkeypatch, pg_schema):
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(_projects(tmp_path)))
     monkeypatch.setenv("PATENT_STUDIO_AUTH", "on")
     monkeypatch.setenv("PATENT_STUDIO_SECRET", SECRET)
@@ -363,8 +363,8 @@ def test_in_process_every_tool_and_resource(off):
 
 
 
-def test_lifecycle_tools_off(off):
-    """批1 生命周期工具面（AUTH=off）：读面 + 写面 + 审计。"""
+def test_lifecycle_tools_off(off, pg_schema):
+    """批1 生命周期工具面（AUTH=off + PostgreSQL）：读面 + 写面 + 审计。"""
     main, projects = off
     from app.mcp.server import server
 
@@ -407,6 +407,28 @@ def test_lifecycle_tools_off(off):
     assert o["tag"]["name"] == "生命周期标签"
     assert o["new_pid"]["pid"] and o["new_pid"]["title"] == "MCP 新建案"
     assert o["err_settings"]["kind"] == "not_found"
+
+
+def test_list_public_links_off_without_database_is_structured_error(off):
+    """AUTH=off 无库时，分享链接读请求返回可识别的 MCP 工具错误。"""
+    _main, projects = off
+    from app.mcp.server import server
+
+    async def run():
+        async with Client(server) as c:
+            return await c.call_tool("list_public_links", {"pid": "method"})
+
+    result = asyncio.run(run())
+    error = _tool_error(result)
+    assert error == {
+        "kind": "unavailable",
+        "message": "免登录分享链接需要 PostgreSQL 数据库，请配置 PATENT_STUDIO_DATABASE_URL",
+        "line": None,
+        "detail": "database",
+    }
+    assert "Traceback" not in result.content[0].text
+    assert audit.tail(str(projects / "method"), 1)[0]["result"] == "error:unavailable"
+
 
 def test_audit_route_reads_project_file(off):
     main, projects = off

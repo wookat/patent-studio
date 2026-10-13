@@ -83,11 +83,11 @@ def apply_default_collab(pid: str) -> None:
 
     在 case.created 的同步订阅者里调用（notify.on_case_created），走 sink 的同步引擎；行已存在（重建同名案）则覆写。
     """
-    from sqlalchemy.dialects.sqlite import insert
+    from sqlalchemy.dialects.postgresql import insert
 
     from app.auth.access import DEFAULT_SETTINGS
-    from app.auth.models import ProjectCollabSettings
     from app.notify import sink
+    from patent_studio.domain.identity import ProjectCollabSettings
 
     values = {**DEFAULT_SETTINGS, "project_id": pid, "allow_comment": load_org().default_collab.allow_viewer_comment}
     stmt = insert(ProjectCollabSettings).values(**values)

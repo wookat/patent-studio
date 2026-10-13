@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""R6 账号地基（docs/plan/07 §3–4.1）。off 模式契约 + on 模式（monkeypatch env + tmp studio.db）。"""
+"""R6 账号地基（docs/plan/07 §3–4.1）。off 模式契约 + on 模式（monkeypatch env + PostgreSQL 夹具）。"""
 import importlib
 import os
 import shutil
@@ -17,7 +17,7 @@ SECRET = "test-secret-not-for-production-32bytes+"
 
 
 def _reload_app():
-    """按依赖顺序重载：config → 丢弃 auth 子模块（on 时由 router 按新 DB_PATH 重新 import）→ auth 包 → router → main。
+    """按依赖顺序重载：config → 丢弃 auth 子模块（on 时由 router 重新 import）→ auth 包 → router → main。
 
     子模块要同时从 sys.modules 与包属性删掉：否则 `from app.auth import acl` 命中旧属性，engine 仍指向上个 tmp 的 db。
     """
@@ -56,8 +56,8 @@ def client(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def on(tmp_path, monkeypatch):
-    """AUTH=on：tmp PROJECTS_DIR + 同级 studio.db；用完恢复 off 状态的模块，后续测试文件不受影响。"""
+def on(tmp_path, monkeypatch, pg_schema):
+    """AUTH=on：tmp PROJECTS_DIR + pg_schema 已迁移空库；用完恢复 off 状态的模块，后续测试文件不受影响。"""
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(_projects(tmp_path)))
     monkeypatch.setenv("PATENT_STUDIO_AUTH", "on")
     monkeypatch.setenv("PATENT_STUDIO_SECRET", SECRET)
@@ -80,10 +80,9 @@ def test_off_is_default_and_creates_no_db(client):
     from app import config
 
     assert config.AUTH_ON is False
-    assert config.DB_PATH == str(tmp / "studio.db")
     assert c.get("/api/health").json()["ok"] is True
     assert c.get("/api/projects/method").status_code == 200
-    assert not os.path.exists(config.DB_PATH)
+    assert not (tmp / "studio.db").exists()  # off 不建库（本地不再有 sqlite 文件）
     assert "fastapi_users" not in sys.modules or "app.auth.db" not in sys.modules
 
 
@@ -168,8 +167,6 @@ def test_on_register_invalid_email_is_chinese_validation_detail(on):
 
 
 def test_on_register_login_me_change_password_logout(on):
-    from app import config
-
     anon = TestClient(on.app)
     assert anon.get("/api/users/me").status_code == 401
     assert anon.get("/api/projects/method").status_code == 401
@@ -179,7 +176,18 @@ def test_on_register_login_me_change_password_logout(on):
     u = _register(anon, "boss@example.com", display_name="老板")
     assert set(u) == {"id", "email", "display_name", "is_superuser", "title", "avatar_color"}  # W4-E E2 加 2 字段
     assert u["is_superuser"] is True  # 第一个用户
-    assert os.path.exists(config.DB_PATH)
+
+    import asyncio
+
+    from sqlalchemy import func, select
+
+    from app.auth.db import SessionLocal, User
+
+    async def _count():
+        async with SessionLocal() as s:
+            return await s.scalar(select(func.count()).select_from(User))
+
+    assert asyncio.run(_count()) == 1  # users 表真落了行
     assert _register(anon, "second@example.com")["is_superuser"] is False
 
     bad = anon.post("/api/auth/cookie/login", data={"username": "boss@example.com", "password": "wrong"})
@@ -399,7 +407,7 @@ def test_on_record_share_accept_duplicate_insert_is_idempotent(on, monkeypatch):
 
     from app.auth import acl
     from app.auth.db import SessionLocal
-    from app.auth.models import ShareAccept
+    from patent_studio.domain.identity import ShareAccept
 
     anon = TestClient(on.app)
     _register(anon, "su@example.com")

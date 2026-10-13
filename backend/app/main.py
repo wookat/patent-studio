@@ -47,8 +47,8 @@ from app.routes.convert import router as convert_router
 from app.routes.deadlines import router as deadlines_router
 from app.routes.deliver import router as deliver_router
 from app.routes.docset import router as docset_router
-from app.routes.figures import router as figures_router
 from app.routes.figlib import router as figlib_router
+from app.routes.figures import router as figures_router
 from app.routes.history import router as history_router
 from app.routes.imports import router as import_router
 from app.routes.notify import router as notify_router
@@ -80,10 +80,10 @@ async def _lifespan(_: FastAPI):
         scanner.cancel()
     # R8（11 §4）：进程退出前把未到去抖点（<0.8s）的协同键入落盘并释放全部房间
     await collab_rooms.shutdown()
-    # R97：收编在飞 aiosqlite 连接——但 AUTH=off 下 app.auth.db 本就不该被引入（test_off 约束），懒取模块
+    # R97：收编在飞连接——但 AUTH=off 下 app.auth.db 本就不该被引入（test_off 约束），懒取模块
     auth_db = sys.modules.get("app.auth.db")
     if auth_db is not None:
-        await auth_db.engine.dispose()
+        await auth_db.dispose_engines()
 
 
 # R6（07 §3）：project_access 是全局依赖，PATENT_STUDIO_AUTH=off 时直接返回，不产生参数、不改 OpenAPI
@@ -196,6 +196,11 @@ async def _security_headers(request: Request, call_next):
 @app.exception_handler(ProjectError)
 async def _project_error(_: Request, exc: ProjectError):
     return JSONResponse(status_code=exc.status, content={"detail": str(exc)})
+
+
+@app.exception_handler(cases.CaseError)
+async def _case_error(_: Request, exc: cases.CaseError):
+    return JSONResponse(status_code=exc.status, content={"detail": error_detail("case", str(exc))})
 
 
 _FIELD_ZH = {

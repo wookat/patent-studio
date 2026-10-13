@@ -77,11 +77,11 @@ async def update_me(body: MeIn, user: CurrentUser):
     if body.password is not None and len(body.password.new) < PASSWORD_MIN:
         raise _validation(f"新密码至少 {PASSWORD_MIN} 位")
 
-    from fastapi_users.db import SQLAlchemyUserDatabase
+    from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 
     from app.auth.db import SessionLocal, UserManager, init_db
-    from app.auth.models import User
     from app.auth.schemas import UserRead
+    from patent_studio.domain.identity import User
 
     await init_db()
     async with SessionLocal() as s:

@@ -273,7 +273,7 @@ def _reload_on(tmp_path, monkeypatch):
     return importlib.reload(main)
 
 
-def test_on_http_acl_and_author(tmp_path, monkeypatch):
+def test_on_http_acl_and_author(tmp_path, monkeypatch, pg_schema):
     main = _reload_on(tmp_path, monkeypatch)
     projects = tmp_path / "projects"
     try:

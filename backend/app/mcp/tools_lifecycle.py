@@ -33,6 +33,7 @@ from app.mcp import audit
 from app.mcp.tools import _allow, _settings, actor, open_project_for, run_audited
 from app.oa import parse as oa_parse_mod
 from app.oa import rounds as oa_rounds_mod
+from patent_studio.settings import get_settings as get_app_settings
 
 # org 级（无案卷）审计落点——与 org.json/tags.json 同目录语义
 ORG_DIR = os.path.join(config.PROJECTS_DIR, ".studio")
@@ -142,7 +143,14 @@ def register(server, store):
     async def list_public_links(pid: str) -> list[dict[str, Any]]:
         """免登录分享链接列表。"""
         await open_project(pid)
-        return await run(pid, "list_public_links", {}, lambda: asyncio.run(public_share.list_links(pid)))
+
+        def body():
+            if not get_app_settings().database_url:
+                raise _err("unavailable", "免登录分享链接需要 PostgreSQL 数据库，请配置 PATENT_STUDIO_DATABASE_URL",
+                           detail="database")
+            return asyncio.run(public_share.list_links(pid))
+
+        return await run(pid, "list_public_links", {}, body)
 
     @server.tool()
     async def get_proposals(pid: str, state: str | None = None) -> list[dict[str, Any]]:

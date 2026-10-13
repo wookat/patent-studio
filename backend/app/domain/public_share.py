@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """客户免登录审阅链接（docs/plan/21 §1.3 A6 / §2.1 R-REV-05 / R-CHK-08）。share-confirm-backend 所有。
 
-- 链接行在 SQLite `public_share_links`（auth/models.PublicShareLink；跨案数据进库，B5）。AUTH=off 无库 ⇒ 不能建链接，
+- 链接行在 `public_share_links`（identity.PublicShareLink；跨案数据进库，B5）。AUTH=off 无库 ⇒ 不能建链接，
   /api/public/* 一律 404 not_found。
 - 有效权限 = 链接 ∧ 案级协作设置（access.get_settings）：allow_download / allow_comment 只能收紧不能放宽；
   allow_copy 现只有案级开关（链接表无此列）。
@@ -84,7 +84,7 @@ async def create_link(pid: str, user, *, scope: str, ttl_days: int | None, allow
                       allow_comment: bool | None = None, baseline: str = "original") -> dict:
     """链接不得放宽案级设置：案级禁下载 ⇒ allow_download=False；案级禁批注或 allow_comment=False ⇒ scope=read。"""
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PublicShareLink
+    from patent_studio.domain.identity import PublicShareLink
 
     st = await effective_settings(pid)
     allow_download = allow_download and bool(st["allow_download"])
@@ -108,7 +108,7 @@ async def create_link(pid: str, user, *, scope: str, ttl_days: int | None, allow
 
 async def list_links(pid: str) -> list[dict]:
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PublicShareLink, User
+    from patent_studio.domain.identity import PublicShareLink, User
 
     await init_db()
     async with SessionLocal() as s:
@@ -120,7 +120,7 @@ async def list_links(pid: str) -> list[dict]:
 
 async def revoke_link(pid: str, token: str, user) -> bool:
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PublicShareLink
+    from patent_studio.domain.identity import PublicShareLink
 
     await init_db()
     async with SessionLocal() as s:
@@ -163,7 +163,7 @@ async def resolve(token: str, *, path: str, ip: str | None, ua: str | None, stor
     if not config.AUTH_ON:
         raise _not_found()
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PublicShareLink
+    from patent_studio.domain.identity import PublicShareLink
 
     await init_db()
     now = datetime.now(UTC)

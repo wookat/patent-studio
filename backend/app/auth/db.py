@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""SQLite（studio.db）引擎、会话与 fastapi-users UserManager。
+"""PostgreSQL 异步引擎、会话与 fastapi-users UserManager。
 
-只在 PATENT_STUDIO_AUTH=on（或 create_user CLI）时被导入。建表在首次取会话时完成（幂等），
-main.py 若有 lifespan 也可直接 `await init_db()`。
+只在 PATENT_STUDIO_AUTH=on（或 create_user CLI）时被导入；off 模式不加载本模块、不碰数据库。
+引擎按解析后的 PATENT_STUDIO_DATABASE_URL 懒建并缓存（测试切库后拿新引擎）；schema 不在这里建——
+init_db() 在首次取会话时跑 alembic upgrade head（幂等），Alembic 是唯一的 schema 拥有者。
 """
 import asyncio
 import uuid
@@ -12,45 +13,74 @@ from typing import Annotated
 
 from fastapi import Depends, Request, Response
 from fastapi_users import BaseUserManager, UUIDIDMixin
-from fastapi_users.db import SQLAlchemyUserDatabase
-from sqlalchemy import func, select, text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
+from sqlalchemy import func, select
+from sqlalchemy.engine import URL
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app import config
-from app.auth.models import PUBLIC_LINK_ADDED_COLUMNS, USER_ADDED_COLUMNS, Base, User
 from app.domain import events
+from patent_studio.domain.identity import User
+from patent_studio.infra.db import database_url, upgrade_head
+from patent_studio.settings import get_settings
 
-# NullPool：TestClient 每个请求换事件循环、aiosqlite 连接不能跨循环复用；生产单循环下开文件极便宜
-engine = create_async_engine(f"sqlite+aiosqlite:///{config.DB_PATH}", poolclass=NullPool, connect_args={"timeout": 15})
-SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-_ready = False
-# R84：并发首调各自跑 create_all 会冒 "table already exists"——临界区串行化 + 双检
+_engines: dict[URL, AsyncEngine] = {}
+_makers: dict[URL, async_sessionmaker[AsyncSession]] = {}
+_ready: set[URL] = set()
+# R84：并发首调各自跑迁移可能互踩——临界区串行化 + 双检（锁内再查一次 _ready）
 _init_lock = asyncio.Lock()
 # R84：首注册用户自动超管的 count→update 亦属 check-then-act，并发注册可能双双见 1
 first_user_lock = asyncio.Lock()
 
 
+def _database_url() -> URL:
+    """postgresql+psycopg 的 URL 对象：引擎直接吃对象，str(URL) 会把密码 mask 成 ***，严禁字符串化。"""
+    url = get_settings().database_url
+    if not url:
+        raise RuntimeError("未配置数据库：设置 PATENT_STUDIO_DATABASE_URL")
+    return database_url(url)
+
+
+def engine() -> AsyncEngine:
+    """当前 database_url 的异步引擎（按 URL 缓存：测试换库后拿到新引擎）。
+
+    NullPool：TestClient 每个请求换事件循环，连接不能跨循环复用。
+    """
+    u = _database_url()
+    eng = _engines.get(u)
+    if eng is None:
+        eng = create_async_engine(u, poolclass=NullPool)
+        _engines[u] = eng
+    return eng
+
+
+def SessionLocal() -> AsyncSession:
+    """当前 database_url 的会话（保持原名与调用形状：`async with SessionLocal() as s`）。"""
+    u = _database_url()
+    maker = _makers.get(u)
+    if maker is None:
+        maker = async_sessionmaker(engine(), expire_on_commit=False)
+        _makers[u] = maker
+    return maker()
+
+
 async def init_db() -> None:
-    global _ready
-    if _ready:
+    """确保库迁移到 head（Alembic 拥有 schema）。已迁移过的 URL 直接返回，不再跑 DDL。"""
+    u = _database_url()
+    if u in _ready:
         return
     async with _init_lock:
-        if _ready:
+        if u in _ready:
             return
-        async with engine.connect() as conn:
-            await conn.execute(text("PRAGMA journal_mode=WAL"))
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-            have = {row[1] for row in await conn.execute(text("PRAGMA table_info(user)"))}
-            for name, ddl in USER_ADDED_COLUMNS:
-                if name not in have:
-                    await conn.execute(text(f"ALTER TABLE user ADD COLUMN {name} {ddl}"))
-            have = {row[1] for row in await conn.execute(text("PRAGMA table_info(public_share_links)"))}
-            for name, ddl in PUBLIC_LINK_ADDED_COLUMNS:
-                if name not in have:
-                    await conn.execute(text(f"ALTER TABLE public_share_links ADD COLUMN {name} {ddl}"))
-        _ready = True
+        await asyncio.to_thread(upgrade_head, u)
+        _ready.add(u)
+
+
+async def dispose_engines() -> None:
+    """lifespan 收尾：关掉全部缓存引擎的连接。"""
+    for eng in _engines.values():
+        await eng.dispose()
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:

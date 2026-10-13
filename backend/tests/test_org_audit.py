@@ -2,7 +2,6 @@
 """W5 notify-audit-backend：机构审计（events "*" → org_audit_events）+ GET /api/admin/audit(.csv) 筛选（超管）。"""
 import csv
 import io
-import os
 import time
 from datetime import UTC, datetime, timedelta
 
@@ -44,7 +43,7 @@ def test_off_mode_writes_nothing_and_routes_501(client):
     c, tmp = client
     org_audit.install()
     events.emit("export.downloaded", pid="method", data={"fmt": "docx"})
-    assert not os.path.exists(os.path.join(tmp, "studio.db"))
+    assert not (tmp / "studio.db").exists()  # off 不建库（本地不再有 sqlite 文件）
     assert c.get("/api/admin/audit").status_code == 501
     assert c.get("/api/admin/audit.csv").status_code == 501
 

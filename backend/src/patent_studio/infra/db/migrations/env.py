@@ -3,8 +3,10 @@
 import asyncio
 
 from alembic import context
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+import patent_studio.domain.identity  # noqa: F401  把全部 ORM 表挂进 Base.metadata
 from patent_studio.infra.db import Base, database_url
 from patent_studio.settings import get_settings
 
@@ -29,9 +31,15 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+# 迁移互斥：多 worker / 多进程同时首迁同一空库时串行化。锁取在迁移事务内部（pg_advisory_xact_lock
+# 生命周期 = 本事务），alembic_version 的读与建与全部 DDL 包在同一连接同一事务里，提交/回滚即释放。
+_MIGRATION_LOCK_SQL = "SELECT pg_advisory_xact_lock(hashtext('patent_studio:migrations'))"
+
+
 def _run_sync(connection) -> None:
     _configure(connection=connection)
     with context.begin_transaction():
+        connection.execute(text(_MIGRATION_LOCK_SQL))
         context.run_migrations()
 
 

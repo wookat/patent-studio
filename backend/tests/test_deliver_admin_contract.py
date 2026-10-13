@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-"""W4-E 骨架锁（docs/plan/17）：E1 递交包 / E2 账户·管理 / E3 MCP 工具三单元的占位路由形状、User 加列迁移、
+"""W4-E 骨架锁（docs/plan/17）：E1 递交包 / E2 账户·管理 / E3 MCP 工具三单元的占位路由形状、init_db 迁移、
 工具名表与注册顺序、理解实验题库与判分器。单元实现后把对应 501 断言改成正式契约测试（各自的 test_*.py）。"""
 import asyncio
 import importlib
 import json
 import os
-import sqlite3
 import sys
 import uuid
 
@@ -72,37 +71,41 @@ def test_e2_user_read_has_profile_fields_and_login_stamps(on):
     assert asyncio.run(stamp()) is not None  # on_after_login 写最近登录
 
 
-def test_e2_init_db_adds_columns_to_legacy_user_table(tmp_path, monkeypatch):
-    """R6 时期的 studio.db（user 表无 title / avatar_color / last_login_at）→ init_db 补列且不动旧行。"""
-    from app.auth.models import USER_ADDED_COLUMNS
+def test_e2_init_db_migrates_empty_database(tmp_path, monkeypatch, pg_database):
+    """init_db = alembic upgrade head：对空库一次调用建全表（users 含 W4-E 加列），再调幂等。"""
+    from sqlalchemy import create_engine, inspect
 
-    db = tmp_path / "studio.db"
-    con = sqlite3.connect(db)
-    con.executescript(
-        "CREATE TABLE user (id CHAR(32) NOT NULL PRIMARY KEY, email VARCHAR(320) NOT NULL UNIQUE,"
-        " hashed_password VARCHAR(1024) NOT NULL, is_active BOOLEAN NOT NULL, is_superuser BOOLEAN NOT NULL,"
-        " is_verified BOOLEAN NOT NULL, display_name VARCHAR(64) NOT NULL);"
-        "INSERT INTO user VALUES ('11111111111111111111111111111111', 'old@example.com', 'h', 1, 1, 0, '老用户');"
-    )
-    con.commit()
-    con.close()
+    from patent_studio.infra.db import database_url
+    from patent_studio.settings import get_settings
+
     (tmp_path / "projects").mkdir()
-    monkeypatch.setenv("PATENT_PROJECTS_DIR", str(tmp_path / "projects"))  # DB_PATH = 同级 studio.db
+    monkeypatch.setenv("PATENT_PROJECTS_DIR", str(tmp_path / "projects"))
     monkeypatch.setenv("PATENT_STUDIO_AUTH", "on")
     monkeypatch.setenv("PATENT_STUDIO_SECRET", test_auth.SECRET)
+    monkeypatch.setenv("PATENT_STUDIO_DATABASE_URL", pg_database)
+    get_settings.cache_clear()
     test_auth._reload_app()
     from app.auth import db as auth_db
 
-    asyncio.run(auth_db.init_db())
-    con = sqlite3.connect(db)
-    cols = {r[1] for r in con.execute("PRAGMA table_info(user)")}
-    assert {n for n, _ in USER_ADDED_COLUMNS} <= cols
-    row = con.execute("SELECT display_name, title, avatar_color, last_login_at FROM user").fetchone()
-    con.close()
-    assert row == ("老用户", "", "", None)
+    eng = create_engine(database_url(pg_database))
+    try:
+        with eng.begin() as conn:
+            conn.exec_driver_sql("DROP SCHEMA public CASCADE")
+            conn.exec_driver_sql("CREATE SCHEMA public")
+        assert inspect(eng).get_table_names() == []
+        asyncio.run(auth_db.init_db())
+        insp = inspect(eng)
+        assert {"users", "notifications", "public_share_links", "org_audit_events",
+                "project_list_state"} <= set(insp.get_table_names())
+        cols = {c["name"] for c in insp.get_columns("users")}
+        assert {"title", "avatar_color", "last_login_at", "password_changed_at"} <= cols
+        asyncio.run(auth_db.init_db())
+    finally:
+        eng.dispose()
     monkeypatch.delenv("PATENT_STUDIO_AUTH")
     monkeypatch.delenv("PATENT_STUDIO_SECRET")
     test_auth._reload_app()
+    get_settings.cache_clear()
 
 
 def test_e2_inactive_user_cannot_login_and_session_dies(on):

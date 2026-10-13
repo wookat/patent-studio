@@ -7,7 +7,6 @@ import hashlib
 import json
 import os
 import re
-import sqlite3
 
 import pytest
 import test_auth
@@ -338,11 +337,14 @@ def test_w5_on_public_is_anonymous_and_tables_exist(on):
     assert r.status_code == 201, r.text
     assert u.get("/api/projects/w5on/timeline").status_code == 200
     assert u.get("/api/notify").json() == {"items": [], "unread": 0, "has_more": False}
-    from app import config
+    from sqlalchemy import inspect
 
-    names = {r[0] for r in sqlite3.connect(config.DB_PATH).execute("select name from sqlite_master where type='table'")}
+    from app.notify import sink
+
+    insp = inspect(sink.engine())
+    names = set(insp.get_table_names())
     assert {"notifications", "public_share_links", "org_audit_events"} <= names
-    idx = {r[0] for r in sqlite3.connect(config.DB_PATH).execute("select name from sqlite_master where type='index'")}
+    idx = {i["name"] for t in names for i in insp.get_indexes(t)}
     assert {"ix_notifications_user_read_created", "ix_public_share_links_project_revoked",
             "ix_org_audit_events_ts_kind"} <= idx
 

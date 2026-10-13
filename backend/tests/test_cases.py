@@ -60,7 +60,7 @@ def client(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def on(tmp_path, monkeypatch):
+def on(tmp_path, monkeypatch, pg_schema):
     projects = _projects(tmp_path)
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("PATENT_STUDIO_AUTH", "on")
@@ -125,7 +125,7 @@ def test_put_case_dates_persist_and_unknown_date_keys_rejected(client):
         assert c.put("/api/projects/method/case", json=bad).status_code == 422, bad
 
 
-def test_status_transitions_write_history_events(client):
+def test_status_transitions_write_history_events(client, pg_schema):
     c, projects = client
     r = c.post("/api/projects/method/case/status", json={"status": "review"})
     assert r.status_code == 200 and r.json()["status"] == "review"
@@ -202,7 +202,7 @@ def test_retag_helpers():
 # ---------------------------------------------------------------- off：列表状态 / 删除 / 退出 ----
 
 
-def test_list_state_delete_and_leave_off(client):
+def test_list_state_delete_and_leave_off(client, pg_schema):
     c, projects = client
     r = c.post("/api/projects/method/list-state", json={"state": "archived"})
     assert r.status_code == 200 and r.json() == {"pid": "method", "list_state": "archived"}
@@ -224,10 +224,31 @@ def test_list_state_delete_and_leave_off(client):
     assert r.status_code == 409 and r.json()["detail"]["kind"] == "conflict"
 
 
+def test_no_db_list_state_write_is_503_and_reads_still_work(client, no_db):
+    """无库部署：归档 / 回收站不得假成功——503 并指明配 PATENT_STUDIO_DATABASE_URL；列表 / 健康 / 详情仍可用。"""
+    c, _ = client
+    for state in ("archived", "trashed"):
+        r = c.post("/api/projects/method/list-state", json={"state": state})
+        assert r.status_code == 503, r.text
+        assert "PATENT_STUDIO_DATABASE_URL" in r.json()["detail"]["message"]
+    assert {r["id"]: r["list_state"] for r in c.get("/api/projects").json()} == {
+        "method": "active", "system": "active"}
+    assert c.get("/api/health").json()["ok"] is True
+    assert c.get("/api/projects/method").status_code == 200
+
+
+def test_no_db_domain_set_state_raises_and_cleanup_noop(client, no_db):
+    with pytest.raises(cases.CaseError) as e:
+        cases.set_state("local", "method", "archived")
+    assert e.value.status == 503
+    assert cases.list_states("local") == {} and cases.get_state("local", "method") == "active"
+    cases.forget_project("method")  # 无库下清理是 no-op，不炸
+
+
 # ---------------------------------------------------------------- off：批量 ----
 
 
-def test_bulk_mixed_results_off(client):
+def test_bulk_mixed_results_off(client, pg_schema):
     c, projects = client
     r = c.post("/api/projects/bulk", json={"pids": ["method", "nope", "system"], "action": "status",
                                           "status": "review"})

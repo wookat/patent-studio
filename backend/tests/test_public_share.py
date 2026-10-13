@@ -229,7 +229,7 @@ def test_expired_410_unknown_404(on):
     anon, su = _team(on)
     link = _link(su, ttl_days=1)
     from app.auth.db import SessionLocal
-    from app.auth.models import PublicShareLink
+    from patent_studio.domain.identity import PublicShareLink
 
     async def expire():
         async with SessionLocal() as s:

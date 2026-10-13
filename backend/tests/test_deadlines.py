@@ -255,7 +255,7 @@ def client(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def on(tmp_path, monkeypatch):
+def on(tmp_path, monkeypatch, pg_schema):
     projects = _projects(tmp_path)
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("PATENT_STUDIO_AUTH", "on")
@@ -316,7 +316,7 @@ def test_list_deadlines_groups_counts_and_filters(client):
     assert c.get("/api/deadlines?kind=filing").status_code == 422
 
 
-def test_target_filing_exposed_on_projects_and_deadlines(client):
+def test_target_filing_exposed_on_projects_and_deadlines(client, pg_schema):
     """ux-04：GET /api/projects 每行 case.target_filing_days_left；GET /api/deadlines.target_filings 只读列表，
     不进 items / counts（rules.json 语义不变），受 range / client 筛选，已递交（dates.filed）不列。"""
     c, projects = client

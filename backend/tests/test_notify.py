@@ -51,7 +51,7 @@ def test_off_mode_lists_empty_and_writes_nothing(client):
     assert c.post("/api/notify/read-all").json() == {"updated": 0}
     assert c.post("/api/notify/x/read").status_code == 404
     events.emit("deadline.due", pid="method", data={"due": "2026-10-01", "days_left": 6})
-    assert not os.path.exists(os.path.join(tmp, "studio.db"))  # off 不建库
+    assert not (tmp / "studio.db").exists()  # off 不建库（本地不再有 sqlite 文件）
     assert c.post("/api/projects/method/nudge", json={}).json() == {"notified": 0}
 
 

@@ -4,8 +4,8 @@
 <project>/case.json            案件台账字段（Case）；旧案首次被列出时按 default_case 生成并落盘
                                （不碰 project.json / studio.json / content.md）
 <projects_dir>/.studio/tags.json  机构级标签字典 {version, tags:[{name,color}]}
-studio.db  project_list_state    用户视角的 归档 / 回收站（Overleaf 语义），(user_id, project_id, state)；
-                               stdlib sqlite3，auth=off 时 user_id="local"
+PostgreSQL project_list_state  用户视角的 归档 / 回收站（Overleaf 语义），(user_id, project_id, state)；
+                               同步 SQLAlchemy 走共享引擎（notify.sink），auth=off 时 user_id="local"
 
 prep 已落地：schema / 默认值 / 读写 / 期限倒计时 / 标签文件 / 列表状态表；路由见 routes/cases.py（A1 补齐）。
 
@@ -17,10 +17,8 @@ W5 R-CASE-02 扩展（旧 case.json 缺字段照常加载，normalize_case 补�
               legal_basis}。
 期限规则与自动重算见 app/deadlines（本模块不依赖它）。
 """
-import contextlib
 import json
 import os
-import sqlite3
 import uuid
 from datetime import date, datetime
 from typing import Literal
@@ -519,50 +517,69 @@ def user_key(user) -> str:
     return LOCAL_USER if user is None else str(user.id)
 
 
-def _db_path() -> str:
-    return config.DB_PATH
+def _engine():
+    """共享同步引擎（app.notify.sink 的 PostgreSQL engine；off 模式连同一个库）。"""
+    from app.notify import sink
+
+    return sink.engine()
 
 
-def _connect(path: str | None = None) -> sqlite3.Connection:
-    con = sqlite3.connect(path or _db_path(), timeout=15)
-    con.execute(
-        "CREATE TABLE IF NOT EXISTS project_list_state ("
-        " user_id TEXT NOT NULL, project_id TEXT NOT NULL, state TEXT NOT NULL,"
-        " updated_at TEXT NOT NULL DEFAULT (datetime('now')),"
-        " PRIMARY KEY (user_id, project_id))"
-    )
-    return con
+def _db_available() -> bool:
+    """未配置 PATENT_STUDIO_DATABASE_URL ⇒ False：off 单机无库部署里列表状态降级为全 active。"""
+    from app.notify import sink
+
+    return sink.available()
 
 
-def list_states(user_id: str, db_path: str | None = None) -> dict[str, str]:
+def list_states(user_id: str) -> dict[str, str]:
     """{pid: 'archived'|'trashed'}；未出现的案子即 active。"""
-    with contextlib.closing(_connect(db_path)) as con:
-        rows = con.execute("SELECT project_id, state FROM project_list_state WHERE user_id = ?", (user_id,)).fetchall()
-    return {pid: state for pid, state in rows}
+    if not _db_available():
+        return {}
+    from sqlalchemy import select
+
+    from patent_studio.domain.identity import ProjectListState
+
+    with _engine().begin() as conn:
+        rows = conn.execute(
+            select(ProjectListState.project_id, ProjectListState.state)
+            .where(ProjectListState.user_id == user_id))
+        return {pid: state for pid, state in rows}
 
 
-def get_state(user_id: str, pid: str, db_path: str | None = None) -> str:
-    return list_states(user_id, db_path).get(pid, "active")
+def get_state(user_id: str, pid: str) -> str:
+    return list_states(user_id).get(pid, "active")
 
 
-def set_state(user_id: str, pid: str, state: str, db_path: str | None = None) -> str:
+def set_state(user_id: str, pid: str, state: str) -> str:
     if state not in LIST_STATES:
         raise CaseError(f"非法列表状态：{state}", 422)
-    with contextlib.closing(_connect(db_path)) as con, con:
+    if not _db_available():
+        # 无库不落行——绝不能回报已存：列表状态只有库里才有持久性
+        raise CaseError("归档 / 回收站需要数据库：请配置 PATENT_STUDIO_DATABASE_URL（PostgreSQL）后重试", 503)
+    from sqlalchemy import delete, func
+    from sqlalchemy.dialects.postgresql import insert
+
+    from patent_studio.domain.identity import ProjectListState
+
+    with _engine().begin() as conn:
         if state == "active":
-            con.execute("DELETE FROM project_list_state WHERE user_id = ? AND project_id = ?", (user_id, pid))
+            conn.execute(delete(ProjectListState).where(
+                ProjectListState.user_id == user_id, ProjectListState.project_id == pid))
         else:
-            con.execute(
-                "INSERT INTO project_list_state (user_id, project_id, state, updated_at)"
-                " VALUES (?, ?, ?, datetime('now'))"
-                " ON CONFLICT(user_id, project_id) DO UPDATE SET state = excluded.state,"
-                " updated_at = excluded.updated_at",
-                (user_id, pid, state),
-            )
+            stmt = insert(ProjectListState).values(user_id=user_id, project_id=pid, state=state)
+            conn.execute(stmt.on_conflict_do_update(
+                index_elements=["user_id", "project_id"],
+                set_={"state": stmt.excluded.state, "updated_at": func.now()}))
     return state
 
 
-def forget_project(pid: str, db_path: str | None = None) -> None:
+def forget_project(pid: str) -> None:
     """永久删除案子后清掉所有人的列表状态行。"""
-    with contextlib.closing(_connect(db_path)) as con, con:
-        con.execute("DELETE FROM project_list_state WHERE project_id = ?", (pid,))
+    if not _db_available():
+        return
+    from sqlalchemy import delete
+
+    from patent_studio.domain.identity import ProjectListState
+
+    with _engine().begin() as conn:
+        conn.execute(delete(ProjectListState).where(ProjectListState.project_id == pid))

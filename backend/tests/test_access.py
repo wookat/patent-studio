@@ -94,7 +94,7 @@ def test_access_viewed_not_viewed_and_share_accept(on):
 
     # 待接受邀请（pending_invites 由 B2 写入；这里直接落行）
     from app.auth.db import SessionLocal
-    from app.auth.models import PendingInvite
+    from patent_studio.domain.identity import PendingInvite
 
     async def _invite():
         async with SessionLocal() as s:
@@ -132,7 +132,7 @@ def test_access_viewed_not_viewed_and_share_accept(on):
     gid = top["user"]["user_id"]
     assert su.delete(f"/api/projects/method/members/{gid}").status_code == 200
     assert _viewed(su)["viewed"][0]["user"]["role"] is None
-    from app.auth.models import ProjectAccess
+    from patent_studio.domain.identity import ProjectAccess
 
     async def _forget():
         async with SessionLocal() as s:
@@ -205,9 +205,10 @@ def test_concurrent_first_write_no_integrity_error(on):
     """R84：并发首写同一 PK（touch/collab-settings/邀请）——插入撞 UNIQUE 时回滚重取而非冒 500。"""
     from app.auth import invites
 
+    uid = uuid.UUID(_register(TestClient(on.app), "race@example.com")["id"])  # FK 要真用户
+    user = type("U", (), {"id": uid})()
+
     async def go():
-        uid = uuid.uuid4()
-        user = type("U", (), {"id": uid})()
         await asyncio.gather(access.touch("race", user), access.touch("race", user),
                              invites.create_pending("race", "a@b.co", "viewer", uid),
                              invites.create_pending("race", "a@b.co", "editor", uid),
