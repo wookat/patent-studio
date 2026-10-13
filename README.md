@@ -1,114 +1,183 @@
-# 知撰 · Patent Studio
+<div align="center">
+  <img src="frontend/public/logo-mark.svg" alt="知撰 · Patent Studio Logo" width="88" />
+  <h1>知撰 · Patent Studio</h1>
+  <p><strong>面向中国发明专利的 AI 撰写与审阅工作台</strong></p>
+  <p>AI 提出建议，人决定采纳。让技术材料、三书、附图与交付文件保持可追溯。</p>
+  <p>A self-hosted AI workspace for drafting and reviewing Chinese invention patents.</p>
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-166534" alt="License: Apache-2.0" /></a>
+    <a href="backend/pyproject.toml"><img src="https://img.shields.io/badge/Python-3.11%2B-3776AB" alt="Python 3.11+" /></a>
+    <a href="frontend/package.json"><img src="https://img.shields.io/badge/React-19-149ECA" alt="React 19" /></a>
+  </p>
+  <p>
+    <a href="#快速开始">快速开始</a> ·
+    <a href="#产品预览">产品预览</a> ·
+    <a href="docs/user-manual.md">使用手册</a> ·
+    <a href="docs/mcp.md">MCP 接入</a> ·
+    <a href="CONTRIBUTING.md">参与贡献</a>
+  </p>
+</div>
 
-**面向中国发明专利的 AI 撰写与审阅工作台。**
+![知撰工作台：公开示例的三书源码、文档预览与附图管理](frontend/public/lp/workbench.png)
 
-把技术交底、三书、附图、审阅建议与可交付文件放在同一条可追溯的工作流中。
-AI 提出修改，人决定是否采纳；Markdown 保存真源，DOCX 与 PDF 用于交付。
+## 为什么是知撰
 
-> **项目状态：Apache-2.0 开源。** 许可证见 [LICENSE](LICENSE)，署名与第三方声明见 [NOTICE](NOTICE)。
-> 语料/图库数据包不随本仓分发，来源与重建方式见 `docs/text-corpus/`、`docs/figure-library/`。
+专利撰写不只是让 AI 生成文字。权利要求、说明书、摘要与附图需要相互对应，术语和标记号需要一致，每次修改需要能复核，最终还要交付可编辑的正式文档。
 
-## 为什么做这个项目
+知撰将 **AI 建议、确定性检查、人工审阅与文档构建** 放在同一个工作台，面向专利代理人员、企业知识产权团队和科研人员：
 
-专利材料的难点不只是“写出一段话”：权利要求、说明书与附图需要对应，术语和标记号需要一致，修改需要能复核，最后还要形成可编辑、可审阅的正式文件。
+- **以文稿为中心**：Markdown 是真源，三书、版面与导出文件由同一份材料组织。
+- **把决定权留给人**：AI 修改以建议呈现，由作者接受或拒绝，不静默覆盖原稿。
+- **让问题可定位**：将权项引用、术语、图号与附图标记等检查带回撰写过程。
+- **不止聊天回答**：从材料整理、案件管理到 DOCX / PDF 导出，衔接实际交付流程。
 
-知撰将 AI 生成、确定性检查、人工审阅与文档构建结合，面向专利代理人员、企业知识产权团队和科研人员，辅助整理中国发明专利申请材料。
+## 产品预览
+
+### 案件台账
+
+在同一入口管理案卷，查看撰写状态、负责人、审阅与期限信息。
+
+![案件台账：两个基于已公开专利重建的演示案卷](frontend/public/lp/dashboard.png)
+
+### 附图与图文对应
+
+将附图资源、图号、题注与正文引用放在一起核对；支持附图绘制与编辑，不让图和文字各自成为孤岛。
+
+![公开专利示例的附图管理：图号、资源与引用信息](docs/assets/figures.png)
+
+> 上述图片来自本地运行的公开版，使用 [CN109840487A](https://patents.google.com/patent/CN109840487A/zh) 重建案例；台账同时展示 [CN109002879B](https://patents.google.com/patent/CN109002879B/zh) 重建案例。截图仅展示界面，不代表真实 AI 生成效果或完整质量验收。语料与完整附图库为可选数据，不随代码仓分发。
 
 ## 核心能力
 
-| 工作环节 | 能力 | 使用边界 |
-| --- | --- | --- |
-| 材料整理 | 从技术交底、论文等材料辅助生成三书初稿，支持 PDF 文本提取及 OCR 相关流程 | 初稿必须人工复核；复杂扫描件与公式可能需要校正 |
-| 撰写与审阅 | 三书编辑、AI 修改建议、批注、术语与引用检查、版本历史 | AI 建议不等同于事实、法律意见或授权结论 |
-| 附图与图文对应 | 附图管理与绘制、图号与标记号相关检查 | 图文关系和技术结构仍需专业人员确认 |
-| 排版与交付 | Markdown → DOCX → LibreOffice → 真 PDF；源码、版面与 PDF 视图协同 | 字体及 LibreOffice 版本可能影响分页，不承诺与 Word 完全一致 |
-| 案件工作流 | 案件台账、材料与权限、审阅协作、审查意见相关辅助流程 | 不代替官方提交系统，不自动完成法定申请 |
-| 外部集成 | MCP 工具接口，供外部 agent 读取、检查、构建或提出建议 | 按账号与案件权限访问；不要将访问令牌放入仓库 |
+| 环节 | 可以做什么 |
+| --- | --- |
+| 材料整理 | 导入技术交底、论文等材料；PDF 文本提取与 OCR 辅助；AI 起草三书初稿 |
+| 撰写与审阅 | 三书编辑、AI 修改建议、批注与修订、版本历史；源码 / 版面 / PDF 视图 |
+| 一致性检查 | 术语、权项引用、摘要、图号与标记号检查；递交前体检 |
+| 附图处理 | 附图资源管理、绘制与编辑；图号声明、题注与正文引用核对 |
+| 排版与交付 | Markdown → DOCX → LibreOffice → PDF；文档导出与递交材料辅助 |
+| 案件与协作 | 案件台账、期限、多人协同、审阅与客户确认流程 |
+| Agent 集成 | 通过 MCP 读取案件、检查文稿、构建文档或提出建议，遵循账号与案件权限 |
 
-## 一条完整体验路径
-
-1. 打开经授权或完全合成的示例案件，了解三书和附图结构。
-2. 导入技术材料，生成初稿或对已有内容提出 AI 修改建议。
-3. 检查术语、权项引用、摘要与附图相关诊断。
-4. 在源码、版面和 PDF 中定位问题，人工选择接受或拒绝修改。
-5. 构建并导出 DOCX / PDF，查看版本变化。
-
-公开 Release 应附一组许可清楚的示例、完整演示视频及输入/输出对照。当前页面不将历史截图或测试数量作为最新版本的完整验收证明。
+**推荐体验路径**：打开示例 → 编辑三书 → 查看术语 / 图文诊断 → 人工审阅建议 → 构建并导出 DOCX / PDF。
 
 ## 快速开始
 
-以下是**当前私有研发版**已有的启动入口；不能据此分发当前 Docker 镜像或宣称公开版已验收。
+### Docker 部署
+
+需要 Git、Docker 及 Docker Compose 插件。
 
 ```bash
+git clone https://github.com/wookat/patent-studio.git
+cd patent-studio
 docker compose up --build -d
 ```
 
-浏览器打开 `http://localhost:8000`。空数据卷由容器入口初始化示例案件；数据写入命名卷 `patent-data`，不应将用户案卷作为开源素材发布。
+浏览器打开 **http://localhost:8000**。首次启动时，空数据卷会初始化 `method`、`system` 两个公开演示案例。案件和构建结果保存在命名卷 `patent-data` 中；**不要用 `docker compose down -v` 清理需要保留的案件数据**。
 
-默认配置 `PATENT_STUDIO_AUTH=off`，不应直接暴露到公网。对外部署需启用应用鉴权并设置会话密钥；HTTPS 反代下还需配置安全 cookie。不要根据历史部署记录判断当前线上权限状态。
+```bash
+docker compose logs -f patent-studio  # 查看日志
+docker compose down                 # 停止服务，保留数据卷
+```
 
-正式公开前必须将 Docker 构建中的受限字体和未授权样例改为可分发资源，再在全新环境中验证构建、初次使用、保存和导出。
+> **安全提醒**：默认未启用鉴权，Compose 默认发布 8000 端口。本配置仅用于受信任的本机开发环境，不要直接暴露到公网或共享网络。对外部署前需限制端口访问、配置 HTTPS、启用 `PATENT_STUDIO_AUTH=on` 并设置 `PATENT_STUDIO_SECRET`；HTTPS 下还需配置 `PATENT_STUDIO_COOKIE_SECURE=on`。
 
-### AI 配置与数据边界
+### AI 配置
 
-- 真实 AI 功能需要有效的模型服务凭证，可能产生费用。当前实现具有 OpenAI 兼容协议调用层，但默认 provider 为 `aicdks`，**并非已经验证任意模型服务均可即插即用**。
-- 服务端从 `PATENT_STUDIO_AI_KEY` 读取密钥。当前 compose 文件未直接透传该变量，部署时需显式配置，不能只在宿主机设置后假定容器已获得它。
-- `PATENT_STUDIO_AI_PROVIDER=mock` 是离线测试 provider，不应将 mock 输出当成真实 AI 效果或质量证明。
-- 使用远端模型或检索服务时，相关材料可能被发送给所配置服务商；私有部署不自动意味着数据不出网。请核对服务商的数据政策，并对未公开技术材料谨慎授权。
-- 开源发布前应补齐 AI 配置示例、错误排查、费用与出站说明，禁止在示例配置中包含真实凭证。
+没有模型密钥也可以使用编辑、检查与文档构建；真实 AI 功能需另行配置模型服务凭证，可能产生费用。
+
+当前默认 provider 为 `aicdks`，服务地址与模型路由见 [调用层实现](backend/app/ai/client.py)。实现使用 OpenAI 兼容协议，但**尚不支持通过环境变量任意切换服务地址，也不承诺所有兼容服务即插即用**。
+
+Compose 不会自动透传宿主机的 AI 密钥。可在本地新建 `docker-compose.override.yml`，添加以下环境映射，并在运行 Compose 的终端安全设置 `PATENT_STUDIO_AI_KEY` 后重新执行启动命令：
+
+```yaml
+services:
+  patent-studio:
+    environment:
+      PATENT_STUDIO_AI_PROVIDER: aicdks
+      PATENT_STUDIO_AI_KEY: ${PATENT_STUDIO_AI_KEY:?请先设置模型服务密钥}
+```
+
+不要将真实密钥写入文件或提交到 Git。`PATENT_STUDIO_AI_PROVIDER=mock` 仅用于离线开发和测试，不能作为真实 AI 效果证明。
+
+**数据边界**：远端模型与检索服务可能接收你提供的技术材料。私有部署不自动意味着数据不出网；处理未公开发明或客户资料前，请核对服务商政策及材料授权。
+
+<details>
+<summary><strong>本地开发与检查命令</strong></summary>
+
+准备 Python 3.11+、uv、Node.js 22.12+、pnpm、LibreOffice 及可用的中文字体。Linux 下可使用 fontconfig 配置字体别名，字体说明见 [fonts/README.md](fonts/README.md)。
+
+```bash
+# 安装依赖
+cd backend && uv sync && cd ..
+cd frontend && pnpm install --frozen-lockfile && cd ..
+
+# 开发模式：后端 :8000，前端 :5173
+make dev
+
+# 前端构建 / 后端托管
+make build
+make serve
+```
+
+LibreOffice 未在 PATH 中时可通过 `SOFFICE_BIN` 指定可执行文件。不同系统的字体及 LibreOffice 版本可能影响分页，不保证与 Microsoft Word 完全一致。
+
+```bash
+make lint           # 后端 ruff + 前端 lint
+make typecheck      # TypeScript
+make test           # 后端 pytest
+make test-frontend  # 前端 Vitest
+make roundtrip      # 三书拆合检查
+```
+
+**质量状态**：当前仍有已知 lint / 测试基线问题，部分检查还依赖字体、LibreOffice 或数据资源；不承诺全量检查全绿。提交贡献时请记录环境、命令与结果，不新增已有告警。历史测试数量不作为当前版本的验收结论。
+
+</details>
 
 ## 技术结构
 
 ```text
-React / TypeScript 工作台
-        │
-FastAPI ── AI 工具与任务 / MCP / 案件与审阅
-        │
+技术材料 / 已有文稿
+        ↓
+React + TypeScript 工作台
+        ↓
+FastAPI ── AI 建议 / 确定性检查 / 案件协作 / MCP
+        ↓
 Markdown 真源 → patent_docx → DOCX → LibreOffice → PDF
-        │
-可选的本地语料与附图库（独立审核数据来源和再分发许可）
+        ↑
+可选的本地语料与附图库（独立审核来源与使用许可）
 ```
 
-- 前端：React、TypeScript、Vite、CodeMirror、PDF 预览与附图编辑组件。
-- 后端：FastAPI、Python、文档排版与确定性检查。
-- 文档真源：案件目录中的三书与附图 Markdown，避免多个输出文件各自成为权威版本。
+前端使用 React、Vite、CodeMirror、PDF 预览与附图编辑组件；后端使用 FastAPI 和 Python 文档构建工具。技术细节见 [系统设计](docs/design.md)。
 
-实现细节请查阅 [设计文档](docs/design.md)、[用户手册](docs/user-manual.md) 和 [MCP 说明](docs/mcp.md)。
+## 文档与公开示例
 
-原 README 的全部参数、API、字体度量、构建测速及历史部署记录已原样保留为 [技术参考快照](docs/archive/readme-before-zhizhuan-2026-10-12.md)。快照中的旧分支策略、工具数量、线上状态和“全绿”表述是历史记录，不作为当前事实；使用时以本页、现行代码及实际验收结果为准。
+| 入口 | 内容 |
+| --- | --- |
+| [使用手册](docs/user-manual.md) | 工作台操作、撰写、审阅与交付流程 |
+| [系统设计](docs/design.md) | 数据结构、文档管线与实现约定 |
+| [MCP 接入](docs/mcp.md) | 外部 Agent 的接入与权限边界 |
+| [method 案例](examples/method) | 基于已公开 CN109840487A 重建：10 项权利要求、3 张附图 |
+| [system 案例](examples/system) | 基于已公开 CN109002879B 重建：3 项权利要求、6 张附图 |
+| [语料来源与重建](docs/text-corpus/README.md) | 数据来源、使用边界与构建工具 |
+| [附图库来源与重建](docs/figure-library/README.md) | 分类 manifest、图像提取工具与使用边界 |
+| [字体说明](fonts/README.md) | 开源替代字体、别名与用户自装字体 |
 
-## 开发与质量
+公开案例用于演示和回归测试，并非原申请文件的无损复刻或可直接套用的法律模板。案例与数据相关权利归相应权利人所有，不因代码采用 Apache-2.0 而自动转授；公开可访问不等于可任意再分发。
 
-日常开发以 `main` 为主线，后续 PR 以 `main` 为目标。旧 `develop` 已删除；`archive/patent-branches-2026-10-12` 保全旧分支历史，不作为开发分支，也不直接作为公开发布源。请勿删除该归档分支。
+## 参与贡献
 
-现有检查入口：
+开发主线为 `main`，所有 PR 以 `main` 为目标。欢迎从可复现的问题、文档和小范围改进开始：
 
-```bash
-make lint
-make typecheck
-make test
-make test-frontend
-make build
-make zero-drift
-make roundtrip
-```
+- **报告问题**：通过 [Issues](https://github.com/wookat/patent-studio/issues) 提供复现步骤、环境与脱敏材料。
+- **提交改进**：阅读 [贡献指南](CONTRIBUTING.md)，优先补充确定性规则测试、模型适配、版式验证与公开示例。
+- **安全问题**：按 [安全政策](SECURITY.md) 私下报告，不在公开 Issue 中贴密钥、客户案件或未公开技术信息。
+- **协作约定**：遵循 [行为准则](CODE_OF_CONDUCT.md)，保持讨论具体、尊重与可复核。
 
-**当前并非全绿。**此前核对记录包括既有 lint 问题、部分全量测试失败或环境依赖缺失；不得将“历史测试数”“单文件重跑通过”替换为发布版本的完整验收结论。正式 Release 应公开环境、复现命令、通过/失败结果与已知限制。
+近期重点是公开版的全新环境复现、完整案例验收、模型配置易用性，以及可校验的权项结构约束。欢迎用实际使用反馈帮助确定优先级。
 
-## 开源与贡献
+## 许可证与使用声明
 
-本项目按 [Apache-2.0](LICENSE) 许可发布；署名与第三方声明见 [NOTICE](NOTICE)，
-贡献流程见 [CONTRIBUTING](CONTRIBUTING.md)，安全问题见 [SECURITY](SECURITY.md)。
+代码采用 **[Apache-2.0](LICENSE)**；署名与第三方声明见 [NOTICE](NOTICE)。本仓库不分发受限字体、完整语料 / 图库数据包或未公开申请稿。
 
-发布前需完成：
-
-- 公开样例替换为许可清楚或合成的案例材料；历史私有样例不进入公开发布包。
-- 语料与图库以独立数据包（附来源与许可声明）提供，不随代码仓分发。
-- 增加贡献指南、问题报告与 PR 模板、安全问题报告机制及可执行路线图。
-- 为对外示例标注来源、许可、是否合成及是否脱敏。公开可访问的专利或图片不自动等同于可随代码任意再分发。
-
-建议首批贡献聚焦可复现示例、文档、确定性规则回归测试、模型适配与版式验证，暂不以未经证明的社区规模或客户数量作宣传。
-
-## 使用声明
-
-本项目用于辅助专利材料撰写与审阅，不提供法律意见，不承诺新颖性、创造性、申请受理或授权结果。材料递交前应由具备相应能力的专业人员复核；未公开发明信息的保密责任不能由工具替代。
+知撰用于辅助专利材料撰写与审阅，**不提供法律意见，不承诺新颖性、创造性、受理或授权结果**。初稿、扫描件识别、图文关系与最终交付材料均需专业人员复核；工具不能替代未公开发明信息的保密责任，也不替代官方申请系统。
