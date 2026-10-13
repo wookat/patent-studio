@@ -6,6 +6,7 @@
 """
 import asyncio
 import os
+import secrets
 import subprocess
 import sys
 import uuid
@@ -82,16 +83,17 @@ def _tables(engine) -> set[str]:
 def test_rendered_url_keeps_credentials_and_escapes_percent():
     """含 @ / % 的密码：render_as_string 保留凭据且能往返解析；set_main_option 前 % 要转义为 %%
     （不打印 URL 本体，失败也不把凭据带进日志）。"""
-    u = database_url(URL.create("postgresql", username="u", password="p@ss%w0rd", host="h", database="d"))
+    pw = f"{secrets.token_hex(6)}@{secrets.token_hex(6)}%{secrets.token_hex(3)}"  # 运行时合成，保留 @ / % 语义
+    u = database_url(URL.create("postgresql", username="u", password=pw, host="h", database="d"))
     rendered = u.render_as_string(hide_password=False)
     masked = "***" in rendered
     assert not masked, "render 后凭据被掩码"
-    assert make_url(rendered).password == "p@ss%w0rd"
+    assert make_url(rendered).password == pw
     # str(URL) 的掩码形态只供日志用，引擎 / 迁移严禁用它
     assert str(u).split("@")[0].endswith(":***")
     cfg = Config()
     cfg.set_main_option("sqlalchemy.url", _cfg_url(u))
-    assert make_url(cfg.get_main_option("sqlalchemy.url")).password == "p@ss%w0rd"
+    assert make_url(cfg.get_main_option("sqlalchemy.url")).password == pw
 
 
 @needs_pg
@@ -149,7 +151,7 @@ def test_temporary_role_password_sync_and_async(pg_database):
     str(URL) 的 *** 掩码会让两边都认证失败。"""
     base = make_url(pg_database)
     role = f"ps_t_{uuid.uuid4().hex[:10]}"
-    pw = "t@st%pw"  # 仅本机测试角色的一次性口令；不落文件不打印
+    pw = f"{secrets.token_hex(6)}@{secrets.token_hex(6)}%{secrets.token_hex(3)}"  # 运行时合成口令，不打印
     admin = create_engine(database_url(base.set(database="postgres")), isolation_level="AUTOCOMMIT")
     with admin.connect() as conn:
         conn.execute(text(f"CREATE ROLE \"{role}\" LOGIN PASSWORD '{pw}'"))
