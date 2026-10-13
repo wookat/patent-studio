@@ -1,0 +1,48 @@
+# -*- coding: utf-8 -*-
+"""Alembic 环境：URL 优先取 alembic.ini / -x 覆盖，其次 PATENT_STUDIO_DATABASE_URL。"""
+import asyncio
+
+from alembic import context
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from patent_studio.infra.db import Base, database_url
+from patent_studio.settings import get_settings
+
+config = context.config
+target_metadata = Base.metadata
+
+
+def _url():
+    url = config.get_main_option("sqlalchemy.url") or get_settings().database_url
+    if not url:
+        raise RuntimeError("未配置数据库：设置 PATENT_STUDIO_DATABASE_URL")
+    return database_url(url)
+
+
+def _configure(**kw) -> None:
+    context.configure(target_metadata=target_metadata, compare_type=True, **kw)
+
+
+def run_migrations_offline() -> None:
+    _configure(url=_url(), literal_binds=True, dialect_opts={"paramstyle": "named"})
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def _run_sync(connection) -> None:
+    _configure(connection=connection)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+async def run_migrations_online() -> None:
+    engine = create_async_engine(_url())
+    async with engine.connect() as connection:
+        await connection.run_sync(_run_sync)
+    await engine.dispose()
+
+
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    asyncio.run(run_migrations_online())

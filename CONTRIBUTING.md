@@ -9,6 +9,8 @@
   不接受 PR，也请勿删除。
 - 提交前本地跑：`make lint`（ruff + 前端 lint）、`make typecheck`、
   `make test`（后端 pytest）、`make test-frontend`（Vitest）。
+  数据库与对象存储用例需要真实服务，未配置时跳过：`PATENT_STUDIO_TEST_DATABASE_URL`
+  指向可清空的 PostgreSQL 空库，`PATENT_STUDIO_TEST_S3_ENDPOINT` 指向 S3 兼容服务（如 SeaweedFS）。
   目前存在少量既有 lint/测试基线问题，改动应保持不新增告警。
 
 ## 专利内容契约
