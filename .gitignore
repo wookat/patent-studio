@@ -1,0 +1,31 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+# node
+node_modules/
+frontend/dist/
+# studio artifacts
+examples/*/.studio/
+examples/*/*.docx
+examples/*/*.pdf
+examples/*/content.md.bak-*
+# docs/{abstract,claims,description}.md 是 content.md 的镜像；docs/figures.md 是附图真源，纳入版本
+examples/*/docs/abstract.md
+examples/*/docs/claims.md
+examples/*/docs/description.md
+examples/*/project.json
+examples/*/case.json
+examples/.studio/
+examples/*/reviews/
+studio.db*
+data/
+.lo_profile/
+# secrets
+.env
+deploy/**/.env
+.venv-cache/venv/
+docs/text-corpus/pdfs/

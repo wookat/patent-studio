@@ -1,0 +1,11 @@
+{"seq": 0, "kind": "plan", "ts": 1767225600.0, "data": {"scenario": "s2", "steps": ["读取权利要求书", "对照说明书检索支持段落", "生成 critic 提案"]}}
+{"seq": 1, "kind": "tool_call", "ts": 1767225600.4, "data": {"tool": "read_book", "args": {"book": "claims"}}}
+{"seq": 2, "kind": "tool_result", "ts": 1767225600.9, "data": {"tool": "read_book", "chars": 2310, "clipped": false}}
+{"seq": 3, "kind": "tool_call", "ts": 1767225601.0, "data": {"tool": "find_support", "args": {"claim": 1, "feature": "第一阈值"}}}
+{"seq": 4, "kind": "tool_result", "ts": 1767225601.8, "data": {"tool": "find_support", "hits": [{"block_id": "desc-p-0012", "score": 0.83}]}}
+{"seq": 5, "kind": "gen_delta", "ts": 1767225602.1, "data": {"text": "权利要求 1 中的"}}
+{"seq": 6, "kind": "gen_delta", "ts": 1767225602.3, "data": {"text": "「第一阈值」在说明书 [0012] 有支持，"}}
+{"seq": 7, "kind": "gen_delta", "ts": 1767225602.5, "data": {"text": "但「动态调整」缺少实施例。"}}
+{"seq": 8, "kind": "check", "ts": 1767225603.0, "data": {"name": "lint", "ok": true, "issues": 0}}
+{"seq": 9, "kind": "proposal", "ts": 1767225603.2, "data": {"id": "prop_s2_0001", "kind": "critic", "anchor": {"book": "claims", "block_id": "claim-1"}, "summary": "权利要求 1「动态调整」缺少说明书支持"}}
+{"seq": 10, "kind": "done", "ts": 1767225603.3, "data": {"proposals": 1, "usage": {"prompt_tokens": 3120, "completion_tokens": 410}}}

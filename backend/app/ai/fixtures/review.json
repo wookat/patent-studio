@@ -1,0 +1,1 @@
+{"items": [{"rule": "A26.4", "severity": "warning", "block_id": "claims/1", "quote": "其特征在于", "message": "mock：权利要求中的术语在说明书中缺少对应记载", "suggestion": "在具体实施方式中补充该术语的定义与实施例"}, {"rule": "term", "severity": "info", "block_id": "", "quote": "", "message": "mock：无效锚点（用于验证丢弃计数）", "suggestion": null}]}

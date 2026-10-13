@@ -1,0 +1,299 @@
+# Web Search Results for "patents.google.com patent CN 输电线路 故障 监测 方法"
+
+## 1. CN116644361A - 一种架空输电线路故障诊断方法及计算机可读介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN116644361A/zh
+
+CN116644361A - 一种架空输电线路故障诊断方法及计算机可读介质 - Google Patents
+...
+patent/CN11 ... 1B/zh ... patent/CN11
+...
+本发明提出了一种架空输电线路故障诊断方法及计算机可读介质。本发明收集历史记录的分布式故障录波样本；通过TOPSIS法确定不同录波器记录数据的可信度；根据录波器记录数据的可信度分配不同权值；通过数据融合处理得到历史记录的融合波形数据；提取由历史记录样本数据所得到的融合波形数据的故障特征量；利用随机森林的方法构建故障特征量与输电线路故障类型之间的诊断模型；根据实时故障根据行波折反射网络图确定不同分布式故障录波器距离故障点的距离；结合故障特征量与输电线路故障类型之间的诊断模型确定故障类型。本发明解决了传统故障诊断需要消耗大量人力资源和时间成本且准确度较低的问题，提高了故障诊断的效率和准确率。
+...
+关于输电线路故障的诊断方法，国内外均进行了大量的研究工作。按照数据源的不同，步骤9分为集中式故障诊断和分布式故障诊断。集中式故障诊断是指取电力系统中靠近故障线路点的单个单元监测点的数据，将数据进行处理分析，进行线路故障类型的诊断，即该单元的所有数据和度量均可作为判断故障的标准。分布式故障诊断是指，基于双端行波定位原理，每隔20-30km分布安装1个监测终端将线路分成若干区段，监测终端具备工频电流与高频行波电流采集的功能，线路发生故障时，首先利用工频故障电流判断故障相别和故障区间；然后选取该故障区间所接近的多台监测终端采集到的高频行波电流进行同步分析，再以高频行波电流的波形特征进行故障类型识别。
+...
+本发明要解决的问题是，克服原有的技术缺陷，本发明提出了一种架空输电线路故障诊断方法及计算机可读介质。
+
+为解决上述技术问题，本发明方法采用的技术方案为一种架空输电线路故障诊断方法，其特征在于，包括以下步骤：
+
+步骤1：收集历史记录的分布式故障录波样本；
+
+步骤2：通过TOPSIS法确定不同录波器记录数据的可信度；
+
+步骤3：根据录波器记录数据的可信度分配不同权值；
+
+步骤4：基于已分配的权值将历史记录的分布式故障录波数据进行数据融合处理得到历史记录的融合波形数据；
+
+步骤5：提取由历史记录样本数据所得到的融合波形数据的故障特征量；
+
+步骤6：将大量历史样本按照步骤2至步骤5处理，建立数据库，利用随机森林的方法构建故障特征量与输电线路故障类型之间的诊断模型；
+
+步骤7：根据实时故障根据行波折反射网络图确定不同分布式故障录波器距离故障点的距离；
+
+步骤8：实时故障录波数据经过步骤2至步骤5相同的方法进行数据处理，并结合故障特征量与输电线路故障类型之间的诊断模型，故障类型；
+...
+步骤6中，利用随机森林算法构建故障特征量与输电线路故障类型之间的诊断模型，诊断模型里体现了不同类型故障的故障特征量集合Γ与故障类型label的映射关系，k条不同类型故障的故障特征量集合与故障类型构成有源数据矩阵：
+...
+本发明还提供了一种计算机可读介质，所述计算机可读介质存储电子设备执行的计算机程序，当所述计算机程序在电子设备上运行时，执行所述架空输电线路故障诊断方法的步骤。
+
+本发明的有益效果：克服原有的技术缺陷，基于机器学习提供一种办法解决分布式故障录波数据架空输电线路故障诊断问题。当故障发生时，通过对多台分布式故障录波器的数据进行可信度判定，剔除不可靠数据后进行数据融合处理得到融合波形，由融合波形提取故障特征量，并由机器学习算法由已通过历史样本建立的数据库及数学模型诊断出故障类型，并进一步实现机器学习算法的自适应功能，解决了传统故障诊断需要消耗大量人力资源和时间成本且准确度较低的问题，将由人工经验判断故障类型转化通过机器学习的模型判断故障类型，提高故障诊断的效率和准确率。
+...
+如图1所示，本发明公开一种利用分布式故障录波数据架空输电线路故障诊断方法，包括以下步骤：
+...
+步骤2，通过TOPSIS法确定不同录波器记录数据的可信度。具体方式如下：
+...
+步骤3，根据录波器记录数据的可信度分配不同权值。具体地，分配的不同权值可表示为：
+...
+步骤4，基于已分配的权值将历史记录的分布式故障录波数据进行加权处理得到历史记录的融合波形数据，具体实现方式为：
+...
+步骤6，将大量历史样本按照步骤2至步骤5处理，建立数据库，利用随机森林的方法构建故障特征量与输电线路故障类型之间的诊断模型。
+...
+步骤7，根据实时故障根据行波折反射网络图确定不同分布式故障录波器距离故障点的距离。
+...
+步骤8，实时故障录波数据经过步骤2至步骤5相同的方法进行数据处理，并由建立好的诊断模型确定故障类型。
+...
+1.一种架空输电线路故障诊断方法，其特征在于：
+
+基于已分配的权值将...
+
+## 2. CN106556766A - 一种基于配电线路动态信息的配电网故障监测系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN106556766A/zh
+
+CN106556766A - 一种基于配电线路动态信息的配电网故障监测系统 - Google Patents
+...
+一种基于配电线路动态信息的配电网故障监测系统，属检测领域。其在配电网架空线路杆塔的三相线路上分别对应设置一个线路状态波形检测器；在配电网架空线路的杆塔上设置一个太阳能供电监测终端；每个线路状态波形检测器与一个太阳能供电监测终端，成对地设置成一组配电网故障现场监测单元；在每条从变配电所至用户之间的架空线路上，设置有多组配电网故障现场监测单元。通过线路状态波形检测器，实时监测线路的电流和对地电场，就地检测短路故障，并在线路电流或电压异常变化时触发录波，通过太阳能供电监测终端，将短路故障遥信信号和录波波形上传给监控主站，根据遥信信号进行短路故障定位，并根据录波波形进行接地故障检测定位。
+...
+本发明所要解决的技术问题是提供一种基于配电线路动态信息的配电网故障监测系统，其在配电网架空线路杆塔的A、B、C三相线路上，分别对应设置线路状态波形检测器；在配电网架空线路的杆塔上设置太阳能供电监测终端；通过安装在A、B、C三相线路上的线路状态波形检测器，实时监测线路的电流和对地电场，就地检测短路故障，并在线路电流或电压异常变化时触发录波，通过安装在杆塔上的太阳能供电监测终端，将短路故障遥信信号和录波波形以遥信信号的形式上传给系统主站，系统主站软件根据遥信信号进行短路故障定位，并根据录波波形对配电网架空线路进行接地故障检测定位。
+
+本发明的技术方案是：提供一种基于配电线路动态信息的配电网故障监测系统，包括安装在配电网架空线路各个监测点上的监测设备和设置在监控主站中的主站软件，其特征是：
+...
+所述的太阳能供电监测终端包括汇集单元，汇集单元依据交流采样的三相电流、电场相互合成电流、电场信号，可实现接地故障就地精准检测、定位故障波形上传至主站系统，用于线路故障分析、反演及溯源；进行遥信信号的合并；
+
+当有单相线路故障时，触发故障相线路的采集单元进行故障录波，采集故障时标和实时
+...
+位于监控主站中的主站软件，依托大数据综合处理系统，将高精度、高采样率的电流录波数据和负荷电流检测数据，进行软件处理和分析，得到转供、线路拓扑调整的谐波电流监测曲线，进而分析故障发生、演变的过程，进行故障溯源反馈，准确识别短路、接地故障，精确定位故障区段；监控主站将处理好的故障信息和定位故障区段通过GPRS通信方式，下发给巡线工作人员，指导故障巡线、运维检修工作，以提高供电可靠性；
+...
+图1中，本技术方案包括安装在配电网架空线路各个监测点上的监测设备和设置在监控主站中的主站软件，其发明点在于：
+...
+通过安装在A、B、C三相线路上的线路状态波形检测器，实时监测线路的电流和对地电场，就地检测短路故障，并在线路电流或电压异常变化时触发录波，通过安装在杆塔上的太阳能供电监测终端，将短路故障遥信信号和录波波形以遥信信号的形式上传给系统主站，系统主站软件根据遥信信号进行短路故障定位，并根据录波波形对配电网架空线路进行接地故障检测定位，指导运维检修工作，提高电网的可靠性。
+...
+位于监控主站中的主站软件，依托大数据综合处理系统，将高精度、高采样率的电流录波数据和负荷电流检测数据，进行软件处理和分析，得到转供、线路拓扑调整的谐波电流监测曲线，进而分析故障发生、演变的过程，进行故障溯源馈，准确识别短路、接地故障，精确定位故障区段。监控主站将处理好的故障信息和定位故障区段通过GPRS通信方式，上发给巡线工作人员，指导故障巡线、运维检修工作，以提高供电可靠性。
+...
+汇集单元能依据交流采样的三相电流、电场相互合成电流、电场信号，可实现接地故障就地精准检测、定位故障波形上传至主站系统，用于线路故障分析、反演及溯源；能进行遥信信号的合并等简单计算。
+...
+线路状态波形检测器将监测的短路，接地、停电、送电、电流和温度等信息通过短距离射频信号传输到汇集单元，再经由汇集单元通过GSM/GPRS将信息发送到工作主站，主站通过线路颜色的变化闪烁直观显示确定故障所在区段，同时弹出对话框提示报警，并以短信息的形式发送故障点信息到巡检员手机。
+...
+在本技术方案中，配电网架空线路智能采集单元就地检测短路故障，巡线定位，配网自动化主站根据短路故障遥信定位。短路故障定位如图6中所示。
+...
+在接地故障处理过程，发生接地故障线路的短路故障录波结果如图8中所示，可见在架空线路发生接地故障的那一相线路(称之为故障相)的零序电流存在一个高频暂态过程，采集单元捕获这个高频暂态零序电流信号，配合零序电场信号，即可实现就地检测小电流接地故障的功能。
+...
+本技术方案包括电源信号采集、故障检测、故障录波、信息远传、始终同步、超低功耗控制等功能模块，可实现故障录波与数据远传功能。其基于装置的在线...
+
+## 3. CN110907748A - 一种配电线路行波故障采集分析装置及故障定位系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN110907748A/zh
+
+CN110907748A - 一种配电线路行波故障采集分析装置及故障定位系统 - Google Patents
+...
+本发明公开了一种配电线路行波故障采集分析装置及故障定位系统，该系统包括行波故障定位装置和互联网服务器的配电线路故障定位平台。所述行波故障定位装置由ADC模数转换器、GPS/北斗卫星授时模块、DSP+FPGA实现的实时数据采集与信号处理系统以及无线调制解调器组成。行波故障定位装置采用10kV电压互感器监测配电线路上的三相电压信号实现故障检测，并将故障数据通过无线网络传输到互联网服务器上的配电线路故障定位平台。该系统利用了FPGA的高速并行特性，由FPGA进行高速同步采样、FIR滤波和小波变换等计算，由DSP对FPGA处理之后的数据进行处理，实现了高达每周波高达40次的动作判断，具有很高的故障检测灵敏度，从而能够保证实际设备的实时性要求。
+...
+本发明属于电力线缆故障在线监测领域，具体说是一种配电网供电电缆线路故障定位系统。
+...
+随着自动化技术的发展，配电网自动化运行已经越来越重要。配电网自动化是运用各种技术及配电设备,对配电网进行监控管理,使配电网处于安全、可靠、优质、经济、高效的运行状态。故障定位是配电自动化的关键技术之一，它要求故障发生时能够快速定位故障点，并及时通知电力部门检修人员，为电力部门检修人员排查故障和恢复供电节约时间。常用的输电线路故障定位方法主要有阻抗法和行波法以及电压分布法，阻抗法由于原理上的缺陷，很难保证定位精度；电压分布法由于受过渡电阻以及线路参数的影响，也难以保证测距结果的精度；随着计算机、通信及测量技术的不断进步，行波法得到了迅速发展，并逐步进入实用化阶段。行波法受外界因素影响小，测距精度高，被广泛应用在220k V及重要110k V输电线路中。而目前的现有技术中，缺少即可以安装在环境较为恶劣的户外环境中，又具备满足实时性要求的故障定位设备。
+...
+本发明的目的就是为了解决上述问题，创新性地提出了一种配电线路行波故障采集分析装置及故障定位系统。配电线路行波故障定位系统包括安装在配电线路电线杆上的配电线路行波故障采集分析装置和互联网服务器上的配电线路故障定位平台。
+...
+DSP模块：DSP通过uPP接口从FPGA模块接收采样数据，并进行动作检测；如检测到动作时间的发生，则由任务调度器生成一个分析任务将故障数据交给数据分析模块进行故障类型的判断和行波信号的提取，生成XML格式的数据文件存入RAM文件系统。DSP模块进一步包括数据传输服务，数据传输服务使用4G LTE调制解调器通过无线网络将故障数据发送到监控中心的配电线路故障定位平台。
+
+所述故障定位平台收到行波故障定位装置发送的故障数据后，将故障线路上的多个行波故障定位装置发送的当前故障时刻的故障数据进行汇总分析，使用电压行波选线算法和电压行波故障定位算法确定故障分支和故障点位置，最终生成故障定位报告，通过短信和电子邮件通知到用户。
+...
+所述行波故障采集分析装置1安装在配电线路电线杆3上，采用10kV电压互感器监测配电线路上的三相电压信号，并使用PT供电绕组进行供电。
+...
+进一步的，所述FPGA模块使用Intel公司的FPGA Cyclone IV EP4CE115F23。使用242个I/O管脚用于连接ADC数据总线，DSP、uPP数据总线等，EP4CE115F23有足够的I/O管脚，可用满足3通道AD采样数据的采集写入，uPP高速并行数据总线的读取，并有足够大的内部存储缓存足够长时间的AD采样数据，并对采集的数据进行数字滤波和傅里叶变换，给DSP留出足够的实时处理时间。FPGA接入THS1408ADC的信号，使用有限状态机读取ADC的采样值。采样值经过数据格式化后，和滤波器值，采样值一起格式化成采样数据包存入FIFO中，ADC采样数据、FIR滤波结果和傅里叶变换结果存入FIFO后，会通过uPP控制器的DMA直接存入DSP的内存中进行进一步处理。由于数据包内已经具有FIR滤波和傅里叶变换计算的基波有效值，DSP无需再重新进行计算，直接使用FPGA提供的计算结果即可判断是否有故障事件发生。采样数据包含原始的全频电压信号，有利于故障信号的回放和再次分析，稳态故障量和暂态行波信号均可通过相应的数字滤波算法进行提取。
+...
+数据分析模块，获取动作元件触发启动通知，即故障事件；从采样缓冲区获取动作前后各一个周波的所有采样数据节点；使用工频电压计算故障类型，使用多层小波变换提取故障行波首波头到达时间，产生分析结果；
+...
+所述配电线路故障定位平台2收到行波故障采集分析装置发送的故障数据后，将故障线路上的多个行波故障采集分析装置发送的当前故障时刻的故障数据进行汇总分析，使用电压行波选线算法和电压行波故障定位算法确定故障分支和故障...
+
+## 4. CN201984132U - 配电线路故障定位及在线监测系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN201984132U/zh
+
+CN201984132U - 配电线路故障定位及在线监测系统 - Google Patents
+
+# CN201984132U - 配电线路故障定位及在线监测系统 - Google Patents
+...
+Publication number CN201984132U CN201984132U CN2010206920550U CN201020692055U CN201984132U CN 201984132 U CN201984132 U CN 201984132U CN 2010206920550 U CN2010206920550 U CN 2010206920550U CN 201020692055 U CN201020692055 U CN 201020692055U CN 201984132 U CN201984132 U CN 201984132U Authority CN China Prior art keywords monitoring system power consumption digital micro fault location Prior art date 2010-12-22 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Expired - Fee Related Application number CN2010206920550U Other languages English (en) Inventor 王炳革 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) North China Electric Power University Original Assignee North China Electric Power University Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2010-12-22 Filing date 2010-12-22 Publication date 2011-09-21 2010-12-22 Application filed by North China Electric Power University filed Critical North China Electric Power University 2010-12-22 Priority to CN2010206920550U priority Critical patent/CN201984132U/zh 2011-09-21 Application granted granted Critical 2011-09-21 Publication of CN201984132U publication Critical patent/CN201984132U/zh 2020-12-22 Anticipated expiration legal-status Critical Status Expired - Fee Related legal-status Critical Current
+...
+本实用新型公开了配电线路故障定位技术领域中的一种配电线路故障定位及在线监测系统。技术方案是，该系统包括数字采集器、数字式线路终端和故障定位及监测系统；数字式线路终端和数字采集器连接，数字采集器和故障定位及监测系统连接。本实用新型能够在很短时间内将故障点确定在一定区段，从而缩短故障点排查时间，提高供电可靠性。
+...
+本实用新型属于配电线路故障定位技术领域，尤其涉及一种配电线路故障定位及在线监测系统。
+...
+配电线路发生的故障主要有相...
+
+## 5. CN105262641A - 输电线路状态监测代理 
+        - Google Patents
+URL: https://patents.google.com/patent/CN105262641A/zh
+
+CN105262641A - 输电线路状态监测代理 - Google Patents
+...
+Publication number CN105262641A CN105262641A CN201510621419.3A CN201510621419A CN105262641A CN 105262641 A CN105262641 A CN 105262641A CN 201510621419 A CN201510621419 A CN 201510621419A CN 105262641 A CN105262641 A CN 105262641A Authority CN China Prior art keywords transmission line state monitoring power transmission status monitoring status Prior art date 2015-09-25 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN201510621419.3A Other languages English (en) Other versions CN105262641B (zh Inventor 高强 程大伟 耿宝虹 韩月 于淼 郭劲松 李艳丹 信守业 刘天远 钟川 袁放 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Electric Power Research Institute of State Grid Liaoning Electric Power Co Ltd Liaoning Dongke Electric Power Co Ltd State Grid Corp of China SGCC Original Assignee Electric Power Research Institute of State Grid Liaoning Electric Power Co Ltd Liaoning Dongke Electric Power Co Ltd State Grid Corp of China SGCC Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2015-09-25 Filing date 2015-09-25 Publication date 2016-01-20 2015-09-25 Application filed by Electric Power Research Institute of State Grid Liaoning Electric Power Co Ltd, Liaoning Dongke Electric Power Co Ltd, State Grid Corp of China SGCC filed Critical Electric Power Research Institute of State Grid Liaoning Electric Power Co Ltd 2015-09-25 Priority to CN201510621419.3A priority Critical patent/CN105262641B/zh 2016-01-20 Publication of CN105262641A publication Critical patent/CN105262641A/zh 2019-03-29 Application granted granted Critical 2019-03-2...
+
+## 6. CN114720820A - 配电网馈线故障定位方法、装置、终端设备及存储介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114720820A/zh
+
+CN114720820A - 配电网馈线故障定位方法、装置、终端设备及存储介质 - Google Patents
+...
+本发明涉及配电网技术领域，公开了一种配电网馈线故障定位方法、装置、终端设备及存储介质，方法包括当判定配电网馈线区域存在故障时，根据预设的信息采集节点构建配电网馈线区域的树状拓扑结构；获取所述树状拓扑结构中每一节点的节点电流信息，并对所述树状拓扑结构进行遍历，得到所有Y型树枝首节点和末节点的节点电流信息；其中，每一所述Y型树枝包括一个首节点、两个支路和两个末节点；将首节点流过故障电流且两个末节点均未流过故障电流的Y型树枝判定为故障Y型树枝；对所述故障Y型树枝中的节点进行搜索并确定故障点的位置。本方法能避免因网络拓扑结构复杂导致存储量过大，同时简化判断过程，能够快速的搜索出故障点位置。
+...
+本发明提供了一种配电网馈线故障定位方法、装置、终端设备及存储介质，以解决现有技术因网络拓扑结构复杂导致存储量过大的技术问题，既能简化判断过程，又能够快速有效的搜索确定故障点的位置。
+
+第一方面，为了解决上述技术问题，本发明提供了一种配电网馈线故障定位方法，包括以下步骤：
+
+当判定配电网馈线区域存在故障时，根据预设的信息采集节点构建配电网馈线区域的树状拓扑结构；
+
+获取所述树状拓扑结构中每一节点的节点电流信息，并对所述树状拓扑结构进行遍历，得到所有Y型树枝首节点和末节点的节点电流信息；其中，每一所述Y型树枝包括一个首节点、两个支路和两个末节点；
+
+将首节点流过故障电流且两个末节点均未流过故障电流的Y型树枝判定为故障Y型树枝；
+
+对所述故障Y型树枝中的节点进行搜索并确定故障点的位置。
+...
+获取配电网馈线的运行状态数据，并根据所述运行状态数据进行故障判断；其中，所述运行状态数据包括馈线电流数据；
+...
+第二方面，本发明提供了一种配电网馈线故障定位装置，包括：
+...
+在步骤S12中，首先需要获取所述树状拓扑结构中每一节点的节点电流信息，再对所述树状拓扑结构进行遍历，得到所有Y型树枝首节点和末节点的节点电流信息。具体地，通过配电网馈线上各个FTU获取节点电流信息。节点电流信息包括流过节点的电流状态，通过节点电流信息可以判断节点是否流过故障电流。
+...
+在步骤S13中，将首节点流过故障电流且两个末节点均未流过故障电流的Y型树枝判定为故障Y型树枝。需要说明的是，基于配电网馈线电流连续性的原理，若某Y型树枝首节点流过故障电流，而该树枝所有末节点均未流过故障电流，则可判断故障点在该Y型树枝的范围内。在本实施例中，故障电流为过流信号，可以通过FTU采集。
+...
+在本实施例中，由于每一Y型树枝包括一个首节点、两个支路和两个末节点，故障Y型树枝包含的范围较大。为了进一步缩小故障判定的范围, 从而可以快速准确地实现故障定位，需要在初次判断之后进行故障二次定位，即对所述故障Y型树枝中的节点进行搜索并确定故障点的位置，也是步骤S14的内容，具体包括：
+...
+判断所述第一支路搜索个数是否大于1，若是，则判定故障点位于所述正常节点与其父节点确定的区段内；若否，则判定故障点位于所述故障Y型树枝的第二支路所在区段或位于所述故障Y型树枝的T接点区域；其中，所述T接点区域为配电站和配电站母线所在区域。
+...
+在实际应用中，配电网通常包含T接点区域，即配电站和配电站母线所在区域。若故障点位于T接点区域，会对配电网的正常运行造成重大影响，因此对T接点区域的故障判定具有重要意义。进一步地，由于Y型树枝包含了T接点区域，在故障定位时还需考虑两条支路与T接点区域之间的配合。因此，在所述判定故障点位于所述故障Y型树枝的第二支路所在区段或位于所述故障Y型树枝的T接点区域的步骤之后，所述方法还包括：
+...
+如图5所示，本发明第二实施例提供了一种配电网馈线故障定位装置，包括：
+...
+故障判定模块，用于将首节点流过故障电流且两个末节点均未流过故障电流的Y型树枝判定为故障Y型树枝；
+
+故障点确定模块，用于对所述故障Y型树枝中的节点进行搜索并确定故障点的位置。
+...
+第一判断单元，用于判断所述第一支路搜索个数是否大于1，若是，则判定故障点位于所述正常节点与其父节点确定的区段内；若否，则判定故障点位于所述故障Y型树枝的第二支路所在区段或位于所述故障Y型树枝的T接点区域；其中，所述T接点区域为配电站和配电站母线所在区域。
+...
+1.一种配电网馈线故障定位方法，其特征在于，包括以下步骤：
+...
+获取所述树状拓扑结构中每一节点的节点电流信息，并对所述树状拓扑结构进行遍历，得到所有Y型树枝首节点和末节点的节点电流信息；其中，每一所述Y型树枝包括一个首节点、两个支路和两个末节点；
+
+将首节点流过故障电流且两个末节点均未流过故障电流的Y型树枝判定为故障Y型树枝；
+
+对所述故...
+
+## 7. CN111880044B - 一种含分布式电源配电网在线故障定位方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN111880044B/zh
+
+CN111880044B - 一种含分布式电源配电网在线故障定位方法 - Google Patents
+...
+本发明公开了一种含分布式电源配电网在线故障定位方法。本发明包括步骤：构建配电网系统拓扑结构，并对节点和支路进行标号；根据不同配电网位置故障，获取历史故障数据，包括物理特征、空间特征及标签特征；对不同类型的数据进行数据预处理和特征提取；构建LSTM神经网络模型，利用该模型对历史数据进行训练，得到合适的网络参数；在线获取实时故障数据，对其进行预处理后送入模型中，得到对应的故障位置结果，并用该组数据对神经网络模型进行更新。本发明所述方法定位高效准确，配置成本低，且对故障数据的容错率高，同时能够克服接入分布式电源给配电网带来的不稳定。
+...
+随着电力的普及与发展，人们对电力的依赖日益增加，对可靠的电力输送的要求也越来越高，与此同时，电网还需要兼顾减少中断时间和运营成本。配电网作为电力系统的重要组成部分，它主要连接用户侧，具有地域分布广、设备种类多、连接复杂、运行方式多变等特点。当配电网发生故障时，电网需要及时确定故障位置并安排人员检修，如果不定位故障部分，则无法尝试消除故障并恢复电源，因此，配电网故障定位在生产生活中具有相当重要的意义。配电网在线故障定位要求通过识别网络中的故障总线或故障线路部分来快速准确定位故障位置，进而进行检修，在最短时间内回复供电。
+
+随着电网技术的不断更新和发展，配电网的形式与规模逐渐扩大和复杂化。配电网的安全运行能够保证用户的用电体验，一方面，由于智能电表的应用与接入，并进行实时数据采集，从配电网内可以获取更加多样和海量的信息；另一方面，随着分布式能源DG，如：光伏发电、风力发电等发电方式的发展和利用，含分布式电源配电网的形式与传统配电网之间存在较大差异。传统配电网故障定位方法是在线路上对故障进行直观识别，向线路中发送脉冲信号，并对反射波进行分析，或通过停电管理系统来识别电路中断，这些故障定位方式不能够与包含大量数据且改变结构的配电网相适应。因此，含分布式电源的配电网需要具备大数据处理能力的配电网故障定位方法对故障位置进行在线定位。
+...
+本发明所要解决的技术问题是克服上述现有技术存在的缺陷，提供一种含分布式电源配电网在线故障定位方法，其采用长短期记忆神经网络的结构，对配电网故障数据进行训练学习，得到对应的故障位置，从而实现故障定位的功能。
+
+为此，本发明的目的是通过以下的技术方案来实现：一种含分布式电源配电网在线故障定位方法，其根据历史故障数据得到故障定位模型，再将实时故障数据送入该模型，得到故障位置结果；所述方法包括步骤：
+...
+S2，获取历史数据集：根据配电网故障位置的不同，利用相位测量单元得到对应的各个网络节点的电压、电流和相位，这些物理特征与空间特征及标签特征一起构成历史数据集(标签特征即故障节点标号，空间特征即节点间连接关系)；
+
+S3，对历史数据集中的数据进行预处理和特征提取：节点电压、电流和相位作为特征数据，对其进行mean-std标准化，而故障节点标号作为标签数据，进行one-hot编码；
+
+S4，构建LSTM神经网络模型，利用基于tensorflow的keras API进行LSTM神经网络模型的搭建，LSTM神经网络模型引入LSTM层、全连接Dense层、Dropout层和Input层；通过引入输入数据，对LSTM神经网络模型进行训练和优化，得到最优的各层参数，即神经元个数；
+
+S5，实时在线故障定位及模型更新：在线获取包含电压、电流和相位特征的实时故障数据，对其进行步骤S3中同样的预处理和特征提取，通过步骤S4中构建好的LSTM神经网络模型，得到对应的故障位置结果，并用该组数据对LSTM神经网络模型进行更新。
+...
+本发明所述方法实现了对配电网系统实时故障在线进行故障定位，进而指导配电网线路维修工作，确保整个电网稳定、安全地运行，提高用户用电舒适度。
+...
+S2：收集历史数据集。根据配电网故障位置的不同，利用PMU单元得到对应的各个网络节点的电压、电流、相位的历史数据，形成数据集，其中节点电压、电流、相位等数据作为特征，故障节点的标号作为标签；此外，为根据趋势排除异常数据，需要按照10％的比例对数据进行随机丢弃。
+
+S3：数据预处理和特征提取。为得到良好的训练结果，需要对数据集中的数据进行预处理和特征提取：电压、电流等数据作为特征数据，需要对其进行mean-std标准化，而故障节点标号作为标签数据，需要进行one-hot编码。
+
+S4：构建LSTM神经网络。利用基于tensorflow的keras API进行神经网络模型的搭建。LSTM神经网络模型主要引入LSTM层、全连接Dense层、Dropout层、Input层。通过引入输入数据，对模型进行训练和优化，得到最优的...
+
+## 8. CN107064728B - 高压输电线路单端全息频域故障定位方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN107064728B/zh
+
+CN107064728B - 高压输电线路单端全息频域故障定位方法 - Google Patents
+
+# CN107064728B - 高压输电线路单端全息频域故障定位方法 - Google Patents
+...
+Publication number CN107064728B CN107064728B CN201610851981.XA CN201610851981A CN107064728B CN 107064728 B CN107064728 B CN 107064728B CN 201610851981 A CN201610851981 A CN 201610851981A CN 107064728 B CN107064728 B CN 107064728B Authority CN China Prior art keywords fault current phase voltage measurement point Prior art date 2016-09-26 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN201610851981.XA Other languages English (en) Other versions CN107064728A (zh Inventor 姚旭 康小宁 程蓉 智勇 崔力心 倪赛赛 陈新 赵杰 拜润卿 赵毅 王春光 梅姚 张坤贤 张大伟 郭文科 王永年 刘巍 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Xian Jiaotong University State Grid Gansu Electric Power Co Ltd Electric Power Research Institute of State Grid Gansu Electric Power Co Ltd State Grid Corp of China SGCC Original Assignee Xian Jiaotong University State Grid Gansu Electric Power Co Ltd Electric Power Research Institute of State Grid Gansu Electric Power Co Ltd State Grid Corp of China SGCC Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2016-09-26 Filing date 2016-09-26 Publication date 2019-10-25 2016-09-26 Application filed by Xian Jiaotong University, State Grid Gansu Electric Power Co Ltd, Electric Power Research Institute of State Grid Gansu Electric Power Co Ltd, State Grid Corp of China SGCC filed Critical Xian Jiaotong University 2016-09-26 Priority to CN201610851981.XA priority Critical patent/CN107064728B/zh 2017-08-18 Publication of CN107064728A publication Critical patent/CN107064...
+
+## 9. CN118691795B - 基于图像识别和深度学习技术的输电线路智能巡检方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN118691795B/zh
+
+CN118691795B - 基于图像识别和深度学习技术的输电线路智能巡检方法 - Google Patents
+
+# CN118691795B - 基于图像识别和深度学习技术的输电线路智能巡检方法 - Google Patents
+
+基于图像识别和深度学习技术的输电线路智能巡检方法
+...
+Publication number CN118691795B CN118691795B CN202410753811.2A CN202410753811A CN118691795B CN 118691795 B CN118691795 B CN 118691795B CN 202410753811 A CN202410753811 A CN 202410753811A CN 118691795 B CN118691795 B CN 118691795B Authority CN China Prior art keywords inspection points power transmission transmission line model Prior art date 2024-06-12 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202410753811.2A Other languages English (en) Other versions CN118691795A (zh Inventor 张劲波 林宇彬 颜琰 黄晓予 龚建新 王鹏飞 阮筱菲 曹乐萱 廖华东 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Economic and Technological Research Institute of State Grid Fujian Electric Power Co Ltd Original Assignee Economic and Technological Research Institute of State Grid Fujian Electric Power Co Ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2024-06-12 Filing date 2024-06-12 Publication date 2025-10-28 2024-06-12 Application filed by Economic and Technological Research Institute of State Grid Fujian Electric Power Co Ltd filed Critical Economic and Technological Research Institute of State Grid Fujian Electric Power Co Ltd 2024-06-12 Priority to CN202410753811.2A priority Critical patent/CN118691795B/zh 2024-09-24 Publication of CN118691795A publication Critical patent/CN118691795A/zh 2025-10-28 Application granted granted Critical 2025-10-28 Publication of CN118691795B publication Critical patent/CN118691795B/zh Status Active l...
+
+## 10. CN109975653B - 一种10千伏配电线路故障测距方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN109975653B/zh
+
+CN109975653B - 一种10千伏配电线路故障测距方法 - Google Patents
+...
+一种10千伏配电线路故障测距方法，步骤如下：（1）确定故障类型为两相短路还是三相短路；（2）若为三相短路故障，则计算故障状态电压滞后正常运行状态电压的相角差；（3）若为相间短路故障，则计算故障状态下电流电压相角差；（4）根据故障电流的采样信息，分别求得三相短路故障电流有效值或两相短路故障电流有效值；（5）综合配电线路信息，计算三相或两相短路故障点与线路始端之间的距离。本发明方法充分利用了配电线路故障信息，在不增加设备的条件下，能提供较为精确的故障测距结果，提高配电线路运维效率，降低运维成本。
+...
+目前，电力系统故障测距技术广泛应用于110kV及以上电压等级线路保护中，对于10kV配电线路，故障测距和定位需要借助线路上额外安装开关、故障指示器或其他专用检测装置等，增加了线路的复杂程度，提高了故障测距代价，而且，这些方法仍限于确定故障区间，无法较为精确地给出故障距离，使配电线路永久性故障点的查找，仍需要花费大量人工巡视，从而限制了配电线路的故障处理和故障恢复速度。与此同时，配电线路故障信息，在运维实践中被关注得不够，使故障信息中本身所包含的故障特征未被充分利用。
+...
+本发明的目的是，根据现有10kV配电线路故障测距和定位需要借助线路上额外安装开关、故障指示器或其他专用检测装置，增加了线路的复杂程度，提高了故障测距代价，且这些方法仍限于确定故障区间，无法较为精确地给出故障距离，针对上述存在的问题，本发明提出一种10千伏配电线路故障测距方法。
+
+本发明实现的技术方案如下：一种10千伏配电线路故障测距方法，步骤如下：
+
+(1)确定故障类型是两相短路还是三相短路；
+
+(2)若为三相短路故障，则计算故障状态电压滞后正常运行状态电压的相角差；
+
+(3)若为相间短路故障，则计算故障状态下电流电压相角差；
+
+(4)根据故障电流的采样信息，分别求得三相短路故障电流有效值或两相短路故障电流有效值；
+
+(5)综合配电线路信息，计算三相短路故障点与线路始端之间的距离或两相短路故障点与线路始端之间的距离。
+...
+所述三相短路故障点与线路始端之间的距离的计算方法如下：
+...
+本发明的有益效果是，本发明提出的一种10千伏配电线路故障测距方法，是基于配电线路自身结构和参数信息，根据采样信息判断故障类别，对于三相短路故障，计算故障电压与正常运行电压的相角差和故障电流大小；对于相间短路故障，计算故障电流和故障电压之间的相角差和故障电流大小；再利用配电线路故障距离计算算法计算得到故障点距离线路始端的距离，由于配电线路存在分支线，此时再借助于下游停电信息，即可确定故障点准确位置。
+...
+本实施例一种10千伏配电线路故障测距方法，步骤如下：
+...
+(5)综合配电线路信息，计算短路故障点与线路始端之间的距离。
+...
+2、三相短路故障的故障测距方法
+
+I、计算故障状态电压滞后正常运行状态电压的相角差
+
+配电线路发生相间或三相短路故障时，电压会发生短暂畸变并过渡到稳定的故障状态，由于配电线路短路容量相对于主网容量而言很小，因此配电线路故障对系统影响极小，配电线路故障状态稳定时，电压波形呈现为正弦波。正常运行状态与故障状态下，电压波形之间的初始相角不同，表现在波形上，就是正常运行状态时电压波形过零点与故障稳定时电压波形的过零点之间的时间差，不等于交流电压周期的整数倍，如图2所示。该时间差对应的相位角就是故障状态电压滞后正常运行状态电压的相角差。
+...
+II、根据故障电流的采样信息，求故障电流有效值
+
+本实施例计算所需的故障电流有效值，不是引发保护装置跳闸时的电流值，而是故障稳定状态下，一个完整交流周期内的电流有效值。为了获取该值，需要对各相采样电流进行计算分析，首先确定进入故障状态的时刻，对采样数据按照半个周期的窗口实时进行有效值计算，并不断与半周期之前的数据进行比较，若二者之间的比值超出限值，则表明当下时刻电流已处于故障状态。然后对进入故障状态到时刻之后的电流采样数据，继续按照半个周期的窗口实时进行有效值计算，并不断与半周期之前的数据进行比较，若二者之间的比值在限值以内，则表明当下时刻电流已处于故障状态，计算此时的电流有效值，就得到三相故障电流有效值。
+...
+III、求算三相短路故障点与线路始端之间的距离
+
+在求得故障前后电压基波的相角差和故障电流有效值后，即可求算线路始端至故障点之间的距离以及导线电阻分量、电抗分量和过渡电阻大小。求算原理和方法如下。
+
+本实施例提出，配电线路三相短路故障时，故障状态电压滞后正常运行状态电压的相角差σ与相关参数之间的关系，满足下式：
+...
+3、相间短路故障的故障测距方法
+
+I、求算故障状态下电流电压相角差
+
+配电线路...

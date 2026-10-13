@@ -1,0 +1,570 @@
+{
+  "title": {
+    "text": "一种时间序列预测模型部署期可信自适应控制方法及装置",
+    "line": 1
+  },
+  "abstract": {
+    "line": 3,
+    "end": 6
+  },
+  "claims": {
+    "line": 7,
+    "end": 44,
+    "items": [
+      {
+        "id": "claims/1",
+        "num": 1,
+        "text": "一种时间序列预测模型部署期可信自适应控制方法，其…",
+        "full": "一种时间序列预测模型部署期可信自适应控制方法，其特征在于，所述方法包括以下步骤：",
+        "dependent": false,
+        "refs": [],
+        "badRefs": [],
+        "line": 9,
+        "end": 13
+      },
+      {
+        "id": "claims/2",
+        "num": 2,
+        "text": "根据权利要求1所述的方法，其特征在于，所述自适应…",
+        "full": "根据权利要求1所述的方法，其特征在于，所述自适应修正分支为检索记忆分支：对目标序列每个通道以滑动窗口从训练段构建键与未来片段对的记忆库，其中键为形状归一化的上下文窗口，未来片段经末值锚定与尺度归一化；在每个预测起点对每个通道以归一化查询上下文从所述记忆库检索前k个相似片段，加权重构得到检索预测与检索置信度；所述信任系数为双因子门控权重，如下式所示：",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 15,
+        "end": 17
+      },
+      {
+        "id": "claims/3",
+        "num": 3,
+        "text": "根据权利要求2所述的方法，其特征在于，还包括对所…",
+        "full": "根据权利要求2所述的方法，其特征在于，还包括对所述检索预测施加以所述骨干预测为参照的包络裁剪，所述包络裁剪为将所述检索预测裁剪到以所述骨干预测为中心的包络内，包络半宽如下式所示：",
+        "dependent": true,
+        "refs": [
+          2
+        ],
+        "badRefs": [],
+        "line": 19,
+        "end": 21
+      },
+      {
+        "id": "claims/4",
+        "num": 4,
+        "text": "根据权利要求2所述的方法，其特征在于，还包括部署…",
+        "full": "根据权利要求2所述的方法，其特征在于，还包括部署前诊断步骤：在验证集上计算检索效用得分，如下式所示：",
+        "dependent": true,
+        "refs": [
+          2
+        ],
+        "badRefs": [],
+        "line": 23,
+        "end": 25
+      },
+      {
+        "id": "claims/5",
+        "num": 5,
+        "text": "根据权利要求1所述的方法，其特征在于，所述自适应…",
+        "full": "根据权利要求1所述的方法，其特征在于，所述自适应修正分支为外生协变量分支：离线训练并冻结仅以目标序列历史为输入的内生分支与以历史及未来外生协变量为输入的协变量分支，所述内生分支的预测输出为所述安全锚输出，所述协变量分支训练时施加随机置零协变量通道的外生随机丢弃（dropout）；所述信任系数包括作为门控分量的分支融合权重与作为收缩分量的通道修复权重两级：对分支融合权重 w∈[0,1] 在每个成熟记录上执行区间投影的在线梯度下降更新，步长为 η_0/√n，其中η_0为预设初始步长，n为成熟更新计数，所述梯度仅对以融合权重为变量的一维凸融合损失求取，且更新所使用的协变量分支输出为未经通道修复的原始输出；对每个成熟记录计算各协变量通道的留一保留探针损失，即仅保留该通道、其余通道置零时协变量分支的预测损失，维护各探针损失与内生分支损失的指数滑动平均，以通道修复权重对各协变量通道进行连续收缩，所述通道修复权重如下式所示：",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 27,
+        "end": 31
+      },
+      {
+        "id": "claims/6",
+        "num": 6,
+        "text": "根据权利要求5所述的方法，其特征在于，所述探针损…",
+        "full": "根据权利要求5所述的方法，其特征在于，所述探针损失计算与融合预测均在不计算梯度的前向推理中完成，每个预测起点对所述协变量分支共执行K+2次前向，K为协变量通道数；所述指数滑动平均在成熟更新计数不足预设值时以1初始化，此时全部通道修复权重为1且分支融合权重保持初值。",
+        "dependent": true,
+        "refs": [
+          5
+        ],
+        "badRefs": [],
+        "line": 33,
+        "end": 33
+      },
+      {
+        "id": "claims/7",
+        "num": 7,
+        "text": "根据权利要求1所述的方法，其特征在于，所述信任系…",
+        "full": "根据权利要求1所述的方法，其特征在于，所述信任系数由投注财富过程读出：对每个成熟记录，以安全锚输出的成熟损失与修正分支输出的成熟损失构造自归一化超额收益，对所述超额收益的序列运行投注器并维护投注财富过程，将财富的对数经裁剪映射为所述信任系数；所述投注器的投注比例由基于历史超额收益的KT分数（Krichevsky-Trofimov分数）确定；所述财富的初值为1，在无成熟证据时所述信任系数为零，随成熟证据的累积而开启。",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 35,
+        "end": 35
+      },
+      {
+        "id": "claims/8",
+        "num": 8,
+        "text": "根据权利要求2至6任一项所述的方法，其特征在于，…",
+        "full": "根据权利要求2至6任一项所述的方法，其特征在于，冷启动阶段的控制为：所述指数滑动平均以1初始化，并将所述信任系数乘以预热斜坡 min(1, n/n_0)，其中n为已成熟更新计数，n_0为预设预热长度。",
+        "dependent": true,
+        "refs": [
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "badRefs": [],
+        "line": 37,
+        "end": 37
+      },
+      {
+        "id": "claims/9",
+        "num": 9,
+        "text": "根据权利要求1至8任一项所述的方法，其特征在于，…",
+        "full": "根据权利要求1至8任一项所述的方法，其特征在于，所述基础预测模型为线性模型、多层感知机、编码器-解码器、Transformer类模型或冻结的零样本时序基础模型中的任一种。",
+        "dependent": true,
+        "refs": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "badRefs": [],
+        "line": 39,
+        "end": 39
+      },
+      {
+        "id": "claims/10",
+        "num": 10,
+        "text": "一种时间序列预测模型部署期可信自适应控制装置，其…",
+        "full": "一种时间序列预测模型部署期可信自适应控制装置，其特征在于，包括存储器与处理器，所述存储器存储有计算机程序，所述处理器执行所述计算机程序时实现权利要求1至9任一项所述的方法。",
+        "dependent": false,
+        "refs": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "badRefs": [],
+        "line": 41,
+        "end": 41
+      },
+      {
+        "id": "claims/11",
+        "num": 11,
+        "text": "一种计算机可读存储介质，其上存储有计算机程序，其…",
+        "full": "一种计算机可读存储介质，其上存储有计算机程序，其特征在于，所述程序被处理器执行时实现权利要求1至9任一项所述的方法。",
+        "dependent": false,
+        "refs": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "badRefs": [],
+        "line": 43,
+        "end": 43
+      }
+    ]
+  },
+  "description": {
+    "line": 45,
+    "end": 289,
+    "sections": [
+      {
+        "id": "description/技术领域",
+        "name": "技术领域",
+        "part": "technical-field",
+        "line": 47,
+        "end": 50,
+        "firstPara": 1,
+        "lastPara": 1,
+        "subsections": [],
+        "leaves": []
+      },
+      {
+        "id": "description/背景技术",
+        "name": "背景技术",
+        "part": "background-art",
+        "line": 51,
+        "end": 68,
+        "firstPara": 2,
+        "lastPara": 9,
+        "subsections": [],
+        "leaves": []
+      },
+      {
+        "id": "description/发明内容",
+        "name": "发明内容",
+        "part": "disclosure",
+        "line": 69,
+        "end": 156,
+        "firstPara": 10,
+        "lastPara": 39,
+        "subsections": [
+          {
+            "id": "description/发明内容/要解决的技术问题",
+            "name": "要解决的技术问题",
+            "line": 71,
+            "end": 74,
+            "leaves": []
+          },
+          {
+            "id": "description/发明内容/技术方案",
+            "name": "技术方案",
+            "line": 75,
+            "end": 140,
+            "leaves": [
+              {
+                "id": "description/发明内容/技术方案/eq1",
+                "kind": "equation",
+                "line": 83,
+                "label": "公式 （1）",
+                "tag": "（1）",
+                "paraNo": 13
+              },
+              {
+                "id": "description/发明内容/技术方案/eq2",
+                "kind": "equation",
+                "line": 89,
+                "label": "公式 （2）",
+                "tag": "（2）",
+                "paraNo": 15
+              },
+              {
+                "id": "description/发明内容/技术方案/eq3",
+                "kind": "equation",
+                "line": 95,
+                "label": "公式 （3）",
+                "tag": "（3）",
+                "paraNo": 17
+              },
+              {
+                "id": "description/发明内容/技术方案/eq4",
+                "kind": "equation",
+                "line": 105,
+                "label": "公式 （4）",
+                "tag": "（4）",
+                "paraNo": 21
+              },
+              {
+                "id": "description/发明内容/技术方案/eq5",
+                "kind": "equation",
+                "line": 109,
+                "label": "公式 （5）",
+                "tag": "（5）",
+                "paraNo": 22
+              },
+              {
+                "id": "description/发明内容/技术方案/eq6",
+                "kind": "equation",
+                "line": 113,
+                "label": "公式 （6）",
+                "tag": "（6）",
+                "paraNo": 23
+              },
+              {
+                "id": "description/发明内容/技术方案/eq7",
+                "kind": "equation",
+                "line": 117,
+                "label": "公式 （7）",
+                "tag": "（7）",
+                "paraNo": 24
+              },
+              {
+                "id": "description/发明内容/技术方案/eq8",
+                "kind": "equation",
+                "line": 123,
+                "label": "公式 （8）",
+                "tag": "（8）",
+                "paraNo": 26
+              },
+              {
+                "id": "description/发明内容/技术方案/eq9",
+                "kind": "equation",
+                "line": 127,
+                "label": "公式 （9）",
+                "tag": "（9）",
+                "paraNo": 27
+              },
+              {
+                "id": "description/发明内容/技术方案/eq10",
+                "kind": "equation",
+                "line": 131,
+                "label": "公式 （10）",
+                "tag": "（10）",
+                "paraNo": 28
+              }
+            ]
+          },
+          {
+            "id": "description/发明内容/有益效果",
+            "name": "有益效果",
+            "line": 141,
+            "end": 156,
+            "leaves": []
+          }
+        ],
+        "leaves": []
+      },
+      {
+        "id": "description/附图说明",
+        "name": "附图说明",
+        "part": "description-of-drawings",
+        "line": 157,
+        "end": 174,
+        "firstPara": 40,
+        "lastPara": 47,
+        "subsections": [],
+        "leaves": [
+          {
+            "id": "figures/1",
+            "kind": "figure",
+            "line": 161,
+            "label": "图1 本发明实施例的信任协议闭环总体流程图",
+            "tag": "fig1.emf",
+            "paraNo": null
+          },
+          {
+            "id": "figures/2",
+            "kind": "figure",
+            "line": 163,
+            "label": "图2 本发明实施例的成熟反馈时间轴图",
+            "tag": "fig2.emf",
+            "paraNo": null
+          },
+          {
+            "id": "figures/3",
+            "kind": "figure",
+            "line": 165,
+            "label": "图3 本发明实施例的控制器实例结构框图",
+            "tag": "fig3.emf",
+            "paraNo": null
+          },
+          {
+            "id": "figures/4",
+            "kind": "figure",
+            "line": 167,
+            "label": "图4 本发明实施例的e过程监控与告警自动回退状态机的状…",
+            "tag": "fig4.emf",
+            "paraNo": null
+          },
+          {
+            "id": "figures/5",
+            "kind": "figure",
+            "line": 169,
+            "label": "图5 本发明实施例一中检索安全门控与纯检索预测器最差劣…",
+            "tag": "fig5.emf",
+            "paraNo": null
+          },
+          {
+            "id": "figures/6",
+            "kind": "figure",
+            "line": 171,
+            "label": "图6 本发明实施例二中协变量信任收缩在三个应用域相对内…",
+            "tag": "fig6.emf",
+            "paraNo": null
+          }
+        ]
+      },
+      {
+        "id": "description/具体实施方式",
+        "name": "具体实施方式",
+        "part": "mode-for-invention",
+        "line": 175,
+        "end": 289,
+        "firstPara": 48,
+        "lastPara": 98,
+        "subsections": [],
+        "leaves": [
+          {
+            "id": "description/具体实施方式/p0064",
+            "kind": "table",
+            "line": 209,
+            "label": "表1 检索安全门控部署结果汇总（均方误差相对冻结…",
+            "tag": "[0064]",
+            "paraNo": 64
+          },
+          {
+            "id": "description/具体实施方式/p0075",
+            "kind": "table",
+            "line": 235,
+            "label": "表2 协变量信任收缩三域确证结果（腐蚀协议下相对…",
+            "tag": "[0075]",
+            "paraNo": 75
+          },
+          {
+            "id": "description/具体实施方式/eq1",
+            "kind": "equation",
+            "line": 255,
+            "label": "公式 （11）",
+            "tag": "（11）",
+            "paraNo": 82
+          },
+          {
+            "id": "description/具体实施方式/eq2",
+            "kind": "equation",
+            "line": 259,
+            "label": "公式 （12）",
+            "tag": "（12）",
+            "paraNo": 83
+          }
+        ]
+      }
+    ],
+    "paragraphs": 98,
+    "leaves": []
+  },
+  "nodeOfBlock": {
+    "abstract": "abstract",
+    "abstract/p1": "abstract",
+    "claims/1": "claims/1",
+    "claims/2": "claims/2",
+    "claims/3": "claims/3",
+    "claims/4": "claims/4",
+    "claims/5": "claims/5",
+    "claims/6": "claims/6",
+    "claims/7": "claims/7",
+    "claims/8": "claims/8",
+    "claims/9": "claims/9",
+    "claims/10": "claims/10",
+    "claims/11": "claims/11",
+    "description/技术领域": "description/技术领域",
+    "description/技术领域/p0001": "description/技术领域",
+    "description/背景技术": "description/背景技术",
+    "description/背景技术/p0002": "description/背景技术",
+    "description/背景技术/p0003": "description/背景技术",
+    "description/背景技术/p0004": "description/背景技术",
+    "description/背景技术/p0005": "description/背景技术",
+    "description/背景技术/p0006": "description/背景技术",
+    "description/背景技术/p0007": "description/背景技术",
+    "description/背景技术/p0008": "description/背景技术",
+    "description/背景技术/p0009": "description/背景技术",
+    "description/发明内容": "description/发明内容",
+    "description/发明内容/要解决的技术问题": "description/发明内容/要解决的技术问题",
+    "description/发明内容/要解决的技术问题/p0010": "description/发明内容/要解决的技术问题",
+    "description/发明内容/技术方案": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0011": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0012": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0013": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq1": "description/发明内容/技术方案/eq1",
+    "description/发明内容/技术方案/p0014": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0015": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq2": "description/发明内容/技术方案/eq2",
+    "description/发明内容/技术方案/p0016": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0017": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq3": "description/发明内容/技术方案/eq3",
+    "description/发明内容/技术方案/p0018": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0019": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0020": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0021": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq4": "description/发明内容/技术方案/eq4",
+    "description/发明内容/技术方案/p0022": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq5": "description/发明内容/技术方案/eq5",
+    "description/发明内容/技术方案/p0023": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq6": "description/发明内容/技术方案/eq6",
+    "description/发明内容/技术方案/p0024": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq7": "description/发明内容/技术方案/eq7",
+    "description/发明内容/技术方案/p0025": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0026": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq8": "description/发明内容/技术方案/eq8",
+    "description/发明内容/技术方案/p0027": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq9": "description/发明内容/技术方案/eq9",
+    "description/发明内容/技术方案/p0028": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq10": "description/发明内容/技术方案/eq10",
+    "description/发明内容/技术方案/p0029": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0030": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0031": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0032": "description/发明内容/技术方案",
+    "description/发明内容/有益效果": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0033": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0034": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0035": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0036": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0037": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0038": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0039": "description/发明内容/有益效果",
+    "description/附图说明": "description/附图说明",
+    "description/附图说明/p0040": "description/附图说明",
+    "description/附图说明/p0041": "figures/1",
+    "description/附图说明/p0042": "figures/2",
+    "description/附图说明/p0043": "figures/3",
+    "description/附图说明/p0044": "figures/4",
+    "description/附图说明/p0045": "figures/5",
+    "description/附图说明/p0046": "figures/6",
+    "description/附图说明/p0047": "description/附图说明",
+    "description/具体实施方式": "description/具体实施方式",
+    "description/具体实施方式/p0048": "description/具体实施方式",
+    "description/具体实施方式/p0049": "description/具体实施方式",
+    "description/具体实施方式/p0050": "description/具体实施方式",
+    "description/具体实施方式/p0051": "description/具体实施方式",
+    "description/具体实施方式/p0052": "description/具体实施方式",
+    "description/具体实施方式/p0053": "description/具体实施方式",
+    "description/具体实施方式/p0054": "description/具体实施方式",
+    "description/具体实施方式/p0055": "description/具体实施方式",
+    "description/具体实施方式/p0056": "description/具体实施方式",
+    "description/具体实施方式/p0057": "description/具体实施方式",
+    "description/具体实施方式/p0058": "description/具体实施方式",
+    "description/具体实施方式/p0059": "description/具体实施方式",
+    "description/具体实施方式/p0060": "description/具体实施方式",
+    "description/具体实施方式/p0061": "description/具体实施方式",
+    "description/具体实施方式/p0062": "description/具体实施方式",
+    "description/具体实施方式/p0063": "description/具体实施方式",
+    "description/具体实施方式/p0064": "description/具体实施方式/p0064",
+    "description/具体实施方式/p0065": "description/具体实施方式",
+    "description/具体实施方式/p0066": "description/具体实施方式",
+    "description/具体实施方式/p0067": "description/具体实施方式",
+    "description/具体实施方式/p0068": "description/具体实施方式",
+    "description/具体实施方式/p0069": "description/具体实施方式",
+    "description/具体实施方式/p0070": "description/具体实施方式",
+    "description/具体实施方式/p0071": "description/具体实施方式",
+    "description/具体实施方式/p0072": "description/具体实施方式",
+    "description/具体实施方式/p0073": "description/具体实施方式",
+    "description/具体实施方式/p0074": "description/具体实施方式",
+    "description/具体实施方式/p0075": "description/具体实施方式/p0075",
+    "description/具体实施方式/p0077": "description/具体实施方式",
+    "description/具体实施方式/p0078": "description/具体实施方式",
+    "description/具体实施方式/p0079": "description/具体实施方式",
+    "description/具体实施方式/p0080": "description/具体实施方式",
+    "description/具体实施方式/p0081": "description/具体实施方式",
+    "description/具体实施方式/p0082": "description/具体实施方式",
+    "description/具体实施方式/eq1": "description/具体实施方式/eq1",
+    "description/具体实施方式/p0083": "description/具体实施方式",
+    "description/具体实施方式/eq2": "description/具体实施方式/eq2",
+    "description/具体实施方式/p0084": "description/具体实施方式",
+    "description/具体实施方式/p0085": "description/具体实施方式",
+    "description/具体实施方式/p0086": "description/具体实施方式",
+    "description/具体实施方式/p0087": "description/具体实施方式",
+    "description/具体实施方式/p0088": "description/具体实施方式",
+    "description/具体实施方式/p0089": "description/具体实施方式",
+    "description/具体实施方式/p0090": "description/具体实施方式",
+    "description/具体实施方式/p0091": "description/具体实施方式",
+    "description/具体实施方式/p0092": "description/具体实施方式",
+    "description/具体实施方式/p0093": "description/具体实施方式",
+    "description/具体实施方式/p0094": "description/具体实施方式",
+    "description/具体实施方式/p0095": "description/具体实施方式",
+    "description/具体实施方式/p0096": "description/具体实施方式",
+    "description/具体实施方式/p0097": "description/具体实施方式",
+    "description/具体实施方式/p0098": "description/具体实施方式",
+    "figures/1": "figures/1",
+    "figures/2": "figures/2",
+    "figures/3": "figures/3",
+    "figures/4": "figures/4",
+    "figures/5": "figures/5",
+    "figures/6": "figures/6"
+  }
+}

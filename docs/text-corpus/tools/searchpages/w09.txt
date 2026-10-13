@@ -1,0 +1,169 @@
+# Web Search Results for "patents.google.com patent CN 负荷预测 用电 电力 方法"
+
+## 1. CN111985701A - 一种基于供电企业大数据模型库的用电预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN111985701A/zh
+
+CN111985701A - 一种基于供电企业大数据模型库的用电预测方法 - Google Patents
+...
+Publication number CN111985701A CN111985701A CN202010756694.7A CN202010756694A CN111985701A CN 111985701 A CN111985701 A CN 111985701A CN 202010756694 A CN202010756694 A CN 202010756694A CN 111985701 A CN111985701 A CN 111985701A Authority CN China Prior art keywords data model load forecasting electricity consumption Prior art date 2020-07-31 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202010756694.7A Other languages English (en) Other versions CN111985701B (zh Inventor 郭乃网 解梁军 宋岩 沈泉江 吴裔 王彬彬 杨栋 陈开能 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) State Grid Shanghai Electric Power Co Ltd East China Power Test and Research Institute Co Ltd Transwarp Technology Shanghai Co Ltd Original Assignee State Grid Shanghai Electric Power Co Ltd East China Power Test and Research Institute Co Ltd Transwarp Technology Shanghai Co Ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2020-07-31 Filing date 2020-07-31 Publication date 2020-11-24 2020-07-31 Application filed by State Grid Shanghai Electric Power Co Ltd, East China Power Test and Research Institute Co Ltd, Transwarp Technology Shanghai Co Ltd filed Critical State Grid Shanghai Electric Power Co Ltd 2020-07-31 Priority to CN202010756694.7A priority Critical patent/CN111985701B/zh 2020-11-24 Publication of CN111985701A publication Critical patent/CN111985701A/zh 2024-03-01 Application granted granted Critical 2024-03-01 Publication of CN111985701B publication Critical patent/CN111985701B/zh Status Active legal-status Critical C...
+
+## 2. CN117592595A - 一种配电网负荷预测模型建立、预测方法及装置 
+        - Google Patents
+URL: https://patents.google.com/patent/CN117592595A/zh
+
+CN117592595A - 一种配电网负荷预测模型建立、预测方法及装置 - Google Patents
+
+# CN117592595A - 一种配电网负荷预测模型建立、预测方法及装置 - Google Patents
+...
+Publication number CN117592595A CN117592595A CN202311418658.XA CN202311418658A CN117592595A CN 117592595 A CN117592595 A CN 117592595A CN 202311418658 A CN202311418658 A CN 202311418658A CN 117592595 A CN117592595 A CN 117592595A Authority CN China Prior art keywords data set electricity neural network network model load Prior art date 2023-10-30 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Pending Application number CN202311418658.XA Other languages English (en) Inventor 赵轩 董少峤 周毅 聂文海 李顺昕 杨金刚 岳云力 赵一男 杨敏 赵敏 全璐瑶 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) State Grid Jibei Electric Power Co Ltd Economic and Technological Research Institute of State Grid Hebei Electric Power Co Ltd State Grid Corp of China SGCC Original Assignee State Grid Jibei Electric Power Co Ltd Economic and Technological Research Institute of State Grid Hebei Electric Power Co Ltd State Grid Corp of China SGCC Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2023-10-30 Filing date 2023-10-30 Publication date 2024-02-23 2023-10-30 Application filed by State Grid Jibei Electric Power Co Ltd, Economic and Technological Research Institute of State Grid Hebei Electric Power Co Ltd, State Grid Corp of China SGCC filed Critical State Grid Jibei Electric Power Co Ltd 2023-10-30 Priority to CN202311418658.XA priority Critical patent/CN117592595A/zh 2024-02-23 Publication of CN117592595A publication Critical patent/CN117592595A/zh Status Pending legal-status Critical Current
+...
+本说明书涉...
+
+## 3. WO2025092993A1 - 基于时空相关性的用电负荷预测方法及装置 
+        - Google Patents
+URL: https://patents.google.com/patent/WO2025092993A1/zh
+
+WO2025092993A1 - 基于时空相关性的用电负荷预测方法及装置 - Google Patents
+...
+Publication number WO2025092993A1 WO2025092993A1 PCT/CN2024/129425 CN2024129425W WO2025092993A1 WO 2025092993 A1 WO2025092993 A1 WO 2025092993A1 CN 2024129425 W CN2024129425 W CN 2024129425W WO 2025092993 A1 WO2025092993 A1 WO 2025092993A1 Authority WO WIPO (PCT) Prior art keywords spatiotemporal spatial data model power load Prior art date 2023-11-03 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Pending Application number PCT/CN2024/129425 Other languages English (en) French (fr) Inventor 杨勇 彭浩 王昕洋 董韬 翟志华 王君 王仕亮 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Handan Xinhe Power Construction Co Ltd Handan Power Supply Co of State Grid Hebei Electric Power Co Ltd Original Assignee Handan Xinhe Power Construction Co Ltd Handan Power Supply Co of State Grid Hebei Electric Power Co Ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2023-11-03 Filing date 2024-11-01 Publication date 2025-05-08 2024-11-01 Application filed by Handan Xinhe Power Construction Co Ltd, Handan Power Supply Co of State Grid Hebei Electric Power Co Ltd filed Critical Handan Xinhe Power Construction Co Ltd 2025-05-08 Publication of WO2025092993A1 publication Critical patent/WO2025092993A1/zh 2026-05-03 Anticipated expiration legal-status Critical Status Pending legal-status Critical Current
+...
+- the present application relates to the technical field of load forecasting, and in particular to a method and device for forecasting power load based on time-space correlation.
+...
+- the embodiments of the present application provide a metho...
+
+## 4. CN108197773A - 电力负荷预测方法、电力负荷预测装置及终端设备 
+        - Google Patents
+URL: https://patents.google.com/patent/CN108197773A/zh
+
+CN108197773A - 电力负荷预测方法、电力负荷预测装置及终端设备 - Google Patents
+
+# CN108197773A - 电力负荷预测方法、电力负荷预测装置及终端设备 - Google Patents
+...
+Publication number CN108197773A CN108197773A CN201711293517.4A CN201711293517A CN108197773A CN 108197773 A CN108197773 A CN 108197773A CN 201711293517 A CN201711293517 A CN 201711293517A CN 108197773 A CN108197773 A CN 108197773A Authority CN China Prior art keywords data neural network training network model historical Prior art date 2017-12-08 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Pending Application number CN201711293517.4A Other languages English (en) Inventor 孙路 潘瑾 陈志勇 刘宏亮 赵军 邢超 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Electric Power Research Institute of State Grid Hebei Electric Power Co Ltd State Grid Hebei Energy Technology Service Co Ltd State Grid Corp of China SGCC Original Assignee Electric Power Research Institute of State Grid Hebei Electric Power Co Ltd State Grid Hebei Energy Technology Service Co Ltd State Grid Corp of China SGCC Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2017-12-08 Filing date 2017-12-08 Publication date 2018-06-22 2017-12-08 Application filed by Electric Power Research Institute of State Grid Hebei Electric Power Co Ltd, State Grid Hebei Energy Technology Service Co Ltd, State Grid Corp of China SGCC filed Critical Electric Power Research Institute of State Grid Hebei Electric Power Co Ltd 2017-12-08 Priority to CN201711293517.4A priority Critical patent/CN108197773A/zh 2018-06-22 Publication of CN108197773A publication Critical patent/CN108197773A/zh Status Pending legal-status Critical Cu...
+
+## 5. CN109858728A - 基于分行业用电特性分析的负荷预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN109858728A/zh
+
+CN109858728A - 基于分行业用电特性分析的负荷预测方法 - Google Patents
+...
+109858728A CN201811463678.8A CN201811463678A CN109858728A CN 109858728 A CN109858728 A CN 109858728A CN 201811463678 A CN201811463678 A CN 201811463678A CN 109858728 A CN109858728 A CN 109858728A Authority CN China Prior art keywords load growth industry typical user Prior art date 2018-12-03 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN201811463678.8A Other languages English (en) Other versions CN109858728B (zh Inventor 朱涛 陈翔 汤易 钟磊 陈轶玮 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Taizhou Power Supply Co of State Grid Zhejiang Electric Power Co Ltd State Grid Corp of China SGCC Original Assignee Taizhou Power Supply Co of State Grid Zhejiang Electric Power Co Ltd State Grid Corp of China SGCC Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2018-12-03 Filing date 2018-12-03 Publication date 2019-06-07 2018-12-03 Application filed by Taizhou Power Supply Co of State Grid Zhejiang Electric Power Co Ltd, State Grid Corp of China SGCC filed Critical Taizhou Power Supply Co of State Grid Zhejiang Electric Power Co Ltd 2018-12-03 Priority to CN201811463678.8A priority Critical patent/CN109858728B/zh
+...
+本发明公开了一种基于分行业用电特性分析的负荷预测方法，包括以下步骤：S1：将电力用户分成行业用电用户、居民用电用户，居民用电用户又分为住宅小区用户、小容量公变；S2：利用负荷饱和识别技术识别行业用电用户、住宅小区用户中的已饱和用户、未饱和用户；S3：对已饱和用户按照近三年的负荷均值作为未来预测值；对未饱和用户和报装用户进行典型增长模式分析；S4：对小容量公变汇总统计自然增长率；S5：分别计算行业内、行业间同时率；S6：将所有类别负荷进行汇总，得到全区负荷预测结果。本发明在海量用户负荷数据的用电增长特性分析基础上进行分类预测，再应用各层级同时率进行汇总计算区域的总体负荷预测结果。
+...
+本发明涉及电力负荷特性研究领域，特别是涉及一种基于分行业用电特性分析的负荷预测方法。
+...
+本发明所要解决的技术问题是提供一种基于分行业用电特性分析的负荷预测方法，在海量用户...
+
+## 6. CN119377809A - 基于多元数据融合的电力系统负荷预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN119377809A/zh
+
+CN119377809A - 基于多元数据融合的电力系统负荷预测方法 - Google Patents
+
+# CN119377809A - 基于多元数据融合的电力系统负荷预测方法 - Google Patents
+...
+Publication number CN119377809A CN119377809A CN202411903539.8A CN202411903539A CN119377809A CN 119377809 A CN119377809 A CN 119377809A CN 202411903539 A CN202411903539 A CN 202411903539A CN 119377809 A CN119377809 A CN 119377809A Authority CN China Prior art keywords load data time coefficient prediction Prior art date 2024-12-23 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202411903539.8A Other languages English (en) Other versions CN119377809B (zh Inventor 汤小可 刘涛 杨丹丹 江新天 卢思佳 刘春桥 刘军 田贺 周政东 张明程 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Jiangsu Donggang Energy Investment Co ltd Original Assignee Jiangsu Donggang Energy Investment Co ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2024-12-23 Filing date 2024-12-23 Publication date 2025-01-28 2024-12-23 Application filed by Jiangsu Donggang Energy Investment Co ltd filed Critical Jiangsu Donggang Energy Investment Co ltd 2024-12-23 Priority to CN202411903539.8A priority Critical patent/CN119377809B/zh 2025-01-28 Publication of CN119377809A publication Critical patent/CN119377809A/zh 2025-06-03 Application granted granted Critical 2025-06-03 Publication of CN119377809B publication Critical patent/CN119377809B/zh Status Active legal-status Critical Current 2044-12-23 Anticipated expiration legal-status Critical
+...
+本发明公开了基于多元数据融合的电力系统负荷预测方法，涉及电力系统技术领域。为了解决现有技术中的多源数据融合处理复杂，其时效性和处理效率不足，且在复杂工况下，对短期突发事件的响应能力较弱的问题；本发明通过实时采集和预处理多源数据，能够综合考虑多种影响负荷变化的因素，增强了对复杂工况与突发事件的响应能力，动态调整...
+
+## 7. CN115358437A - 基于卷积神经网络的供电负荷预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN115358437A/zh
+
+CN115358437A - 基于卷积神经网络的供电负荷预测方法 - Google Patents
+...
+本申请提供了一种基于卷积神经网络的供电负荷预测方法。所述基于卷积神经网络的供电负荷预测方法，包括以下步骤：S1.获取某地区的电力系统历史负荷数据，对历史负荷数据中的异常数据进行预处理；S2.对影响电力负荷的因素进行分析与量化，将修正后的负荷数据进行标准归一化，具体操作为：使用归一化公式将负荷数据归一化为[0，1]，使其负荷数据处于同一数量级别，从而加快神经网络的收敛速度。该方法按照电量、温度、节假日等三类数据，构建了卷积神经网络电量预测算法，提高了电量预测过程中海量数据处理效率、综合考虑温度等关联信息，并克服了预测过程过分依赖个人经验等问题。
+...
+本发明涉及智能电网负荷预测分析技术领域，具体为基于卷积神经网络 的供电负荷预测方法。
+...
+针对现有技术的不足，本发明提供了基于卷积神经网络的供电负荷预测 方法，构建了卷积神经网络电量预测算法，提高了电量预测过程中海量数据 处理效率、综合考虑温度等关联信息，并克服了预测过程过分依赖个人经验 等问题，进而能够降低人员要求、简化操作过程，使用更加的方便。
+...
+为实现以上目的，本发明通过以下技术方案予以实现：基于卷积神经网 络的供电负荷预测方法，包括以下步骤：
+
+S1.获取预设地区的电力系统历史负荷数据，对历史负荷数据中的异常数 据进行预处理；
+
+S2.对影响电力负荷的因素进行分析与量化，将修正后的负荷数据进行标 准归一化，具体操作为：使用归一化公式将负荷数据归一化为[0，1]，使其 负荷数据处于同一数量级别，从而加快神经网络的收敛速度；
+...
+S4.选取固定长度的训练集向量序列作为模型输入，以输入向量之后固定 时间的实际负荷作为模型输出的训练目标，通过多次迭代训练模型至收敛， 使用验证集验证训练好的模型，通过对比测试集和验证集的精度和误差，调 整模型参数，通过多次训练，选择验证集表现最好的模型作为训练结果；
+...
+S6.利用卷积神经网络模型，针对小时电量、日电量、周电量与气温、节 假日的外部数据之间的多变量复杂非线性映射关系，提取电量临近性、周期 性、趋势性特征，构建电量预测卷积神经网络；
+
+S7.将输入层电量、气温、节假日数据进行预处理，通过归一化处理将上 述三类数据转化为无量纲相对量后，将海量数据输入步骤S6的电量预测卷积 神经网络，初始化多通道卷积神经网络权值和偏置；
+
+S8.将输入数据通过卷积神经网络逐层计算，基于误差梯度的反向传播算 法调整每层网络的权值和偏置，达到设定迭代次数后停止训练，输入测试样 本集得到预测结果。
+...
+2、本发明提供了基于卷积神经网络的供电负荷预测方法，该方法针对小 时电量、日电量、周电量与气温、节假日等外部数据之间的多变量复杂非线 性映射关系，提取电量临近性、周期性、趋势性特征，构建电量预测卷积神 经网络，再通过归一化处理将三类数据转化为无量纲相对量，将海量数据输 入卷积神经网络进行逐层计算，利用误差梯度反向传播算法调整每层网络中 的权值和偏置，达到训练迭代次数后停止训练输出电量预测结果。
+...
+如图1所示，本发明实施例提供基于卷积神经网络的供电负荷预测方法， 包括以下步骤：
+...
+S2.对影响电力负荷的因素进行分析与量化，将修正后的负荷数据进行标 准归一化，具体操作为：使用归一化公式将负荷数据归一化为[0，1]，使其 负荷数据处于同一数量级别，从而加快神经网络的收敛速度；
+...
+1.基于卷积神经网络的供电负荷预测方法，其特征在于：包括以下步骤：
+...
+S2.对影响电力负荷的因素进行分析与量化，将修正后的负荷数据进行标准归一化，具体操作为：使用归一化公式将负荷数据归一化为[0，1]，使其负荷数据处于同一数量级别，从而加快神经网络的收敛速度；
+
+S3.构造多尺度信息融合卷积神经网络模型，并将获得的数据集分割为两个部分：训练集和验证集，训练集用来训练模型，验证集用来验证训练结果；
+
+S4.选取固定长度的训练集向量序列作为模型输入，以输入向量之后固定时间的实际负荷作为模型输出的训练目标，通过多次迭代训练模型至收敛，使用验证集验证训练好的模型，通过对比测试集和验证集的精度和误差，调整模型参数，通过多次训练，选择验证集表现最好的模型作为训练结果；
+
+S5.在实际环境中运行模型，当预测值和实际值出现较大偏差时，将最新数据加入训练集再次训练模型，从而获得最新实用的电量预测卷积
+...
+S6.利用卷积神经网络模型，针对小时电量、日电量、周电量与气温、节假日的外部数据之间的多变量复杂非线性映射关系，提取电量临近性、周期性、趋势性特征，构建电量预测卷积神经网络；
+
+S7.将输入层电量、气温、节假日数据进行预处理，通过归一化处理将上述三类数据转...
+
+## 8. CN116995673B - 电力负荷预测方法、电力负荷预测模型训练方法和装置 
+        - Google Patents
+URL: https://patents.google.com/patent/CN116995673B/zh
+
+CN116995673B - 电力负荷预测方法、电力负荷预测模型训练方法和装置 - Google Patents
+
+# CN116995673B - 电力负荷预测方法、电力负荷预测模型训练方法和装置 - Google Patents
+...
+Publication number CN116995673B CN116995673B CN202311245125.6A CN202311245125A CN116995673B CN 116995673 B CN116995673 B CN 116995673B CN 202311245125 A CN202311245125 A CN 202311245125A CN 116995673 B CN116995673 B CN 116995673B Authority CN China Prior art keywords time sequence feature power load data training Prior art date 2023-09-26 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202311245125.6A Other languages English (en) Other versions CN116995673A (zh Inventor 夏伟 成勇 范晓云 钟博宇 吴文彬 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Contemporary Amperex Technology Co Ltd Original Assignee Contemporary Amperex Technology Co Ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2023-09-26 Filing date 2023-09-26 Publication date 2024-02-20 2023-09-26 Application filed by Contemporary Amperex Technology Co Ltd filed Critical Contemporary Amperex Technology Co Ltd 2023-09-26 Priority to CN202311245125.6A priority Critical patent/CN116995673B/zh 2023-11-03 Publication of CN116995673A publication Critical patent/CN116995673A/zh 2024-02-20 Application granted granted Critical 2024-02-20 Publication of CN116995673B publication Critical patent/CN116995673B/zh Status Active legal-status Critical Current 2043-09-26 Anticipated expiration legal-status Critical
+...
+本申请涉及一种电力负荷预测方法、电力负荷预测模型训练方法和装置，方法包括：通过获取与目标地区的电力负荷相关的时序数据，并将时序数据输入至预设电力负荷预测模型中。进一步地，通过预设电力负荷预测模型提取时序数据的多个时序特征，并对多个时序特征进行融合处理，以输出目标地区的多种时间长度类型的电力负荷预测数据。相对于相关技术中的预测模型，本申...
+
+## 9. CN119401452B - 基于多源异构数据特征融合的电力负荷预测方法、系统设备及介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN119401452B/zh
+
+CN119401452B - 基于多源异构数据特征融合的电力负荷预测方法、系统设备及介质 - Google Patents
+...
+多源异构数据特征融合的电力负荷预测方法、系统设备及介
+...
+Publication number CN119401452B CN119401452B CN202510013998.7A CN202510013998A CN119401452B CN 119401452 B CN119401452 B CN 119401452B CN 202510013998 A CN202510013998 A CN 202510013998A CN 119401452 B CN119401452 B CN 119401452B Authority CN China Prior art keywords data model load prediction feature Prior art date 2025-01-06 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202510013998.7A Other languages English (en) Other versions CN119401452A (zh Inventor 魏小庆 袁存发 康建辉 陈志凯 欧阳永子 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Luculent Smart Technologies Co ltd Original Assignee Luculent Smart Technologies Co ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2025-01-06 Filing date 2025-01-06 Publication date 2025-07-18 2025-01-06 Application filed by Luculent Smart Technologies Co ltd filed Critical Luculent Smart Technologies Co ltd 2025-01-06 Priority to CN202510013998.7A priority Critical patent/CN119401452B/zh 2025-02-07 Publication of CN119401452A publication Critical patent/CN119401452A/zh 2025-07-18 Application granted granted Critical 2025-07-18 Publication of CN119401452B publication Critical patent/CN119401452B/zh Status Active legal-status Critical Current 2045-01-06 Anticipated expiration legal-status Critical
+...
+本发明公开了基于多源异构数据特征融合的电力负荷预测方法、系统设备及介质，涉及电力系统负荷预测技术领域，包括获取电力负荷预测数据集进行预处理；基于多层感知机、图卷积网络、门控循环单元网络分别对静态数据、图数据和时序数据进行输入特征处理，基于特征拼接的方法对处理后特征进行融合得到全面特征信息；基于全连接神经网络构建以综合特征为输入，将训练集数据输入模型并根据模型效果进行迭代优化调整模型参数和超参数；基于参数优化调整模型，使用评估的最优...
+
+## 10. CN121303468B - 基于物理-语义双通路调制的电力消耗动态预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN121303468B/zh
+
+CN121303468B - 基于物理-语义双通路调制的电力消耗动态预测方法 - Google Patents
+...
+基于物理-语义双通路调制的电力消耗动态预测方法
+...
+CN121303468B CN121303468B CN202511851328.9A CN202511851328A CN121303468B CN 121303468 B CN121303468 B CN 121303468B CN 202511851328 A CN202511851328 A CN 202511851328A CN 121303468 B CN121303468 B CN 121303468B Authority CN China Prior art keywords power consumption physical semantic path modulation Prior art date 2025-12-10 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.)
+...
+本发明涉及人工智能和电网管理技术领域，尤其是一种基于物理‑语义双通路调制的电力消耗动态预测方法。本发明训练电力消耗预测模型，基于电力负荷时序数据预测电力消耗；电力消耗预测模型包括：物理感知通路、语义感知通路、融合模块和液态核心计算架构。本发明中物理感知通路赋予模型对负荷突变等瞬态模式的快速响应能力，而语义感知通路则确保了对长期周期性规律的深度挖掘，二者通过门控融合实现自适应协同，从而全面提升了对复杂非平稳电力负荷序列的建模与预测精度。
+...
+电力负荷预测是电力系统调度、能源管理与市场交易的核心环节。随着智能电表的普及，高频、多用户的电力消耗数据呈现出强非平稳性、多时间尺度特征与用户行为异质性，传统时序模型（如LSTM、RNN）难以同时捕捉其局部突变模式与长期语义依赖。
+...
+为了克服上述现有技术中电力负荷预测动态适应能力不足的缺陷，本发明提出了一种基于物理-语义双通路调制的电力消耗动态预测方法，能够融合物理先验与语义理解，具备动态自适应能力，实现对非平稳电力负荷数据的高精度、高鲁棒性预测。
+
+本发明提出的一种基于物理-语义双通路调制的电力消耗动态预测方法，首先训练电力消耗预测模型，基于电力负荷时序数据预测电力消耗；
+
+电力消耗预测模型包括：物理感知通路、语义感知通路、融合模块和液态核心计算架构；物理感知通路基于小波变换提取输入序列的时频特征，生成物理调制信号；语义感知通路基于注意力机制对信号进行处理，生成语义调制信号；物理调制信号和语义调制信号经融合模块融合后，再通过液态核心计算架构处理，得到电力消耗预测结果；
+
+然后令电力消耗预测模型遍历t={t0,t0+1,……,t0+C}，基于{xt-w+1,x t-w+2,…,xt}预测xt+1，得到电力消耗预测序列{ xt0+1, xt0+2, …, xt0+C}；其中，t0为当前时间步，C为设置的预测总步数；w为窗口宽度；xt-w+1、x t-w+2、xt、xt+1、xt0+1、xt0+2和xt0+C分别表示时间步t-w+1、 t-w+2、t、t+1、t0+1、t0+2和t0+C上的电力消耗。
+...
+（1）本发明提出的一种基于物理-语义双通路调制的电力消耗动态预测方法，构建了物理-语义双通路调制的液态神经网络架构，将非平稳电力负荷序列的时频物理特征与上下文语义特征进行并行提取与动态融合。物理感知通路赋予模型对负荷突变等瞬态模式的快速响应能力，而语义感知通路则确保了对长期周期性规律的深度挖掘，二者通过门控融合实现自适应协同，从而全面提升了对复杂非平稳电力负荷序列的建模与预测精度。
+...
+如图1所示，本发明提出了一种电力消耗预测模型，其基于电力负荷时序数据预测电力消耗。和分别为时间步t-+1、t-+2、t和t+1上的电力消耗。
+
+电力消耗预测模型包括：物理感知通路、语义感知通路、融合模块和液态核心计算架构；物理感知通路基于小波变换提取输入序列的时频特征，生成物理调制信号；语义感知通路基于注意力机制提取信号的上下文语义重要性，生成语义调制信号；物理调制信号和语义调制信号经融合模块融合后，再通过液态核心计算架构处理，得到电力消耗预测结果。
+...
+语义动态参数生成器：将多头注意力模块输出的上下文感知表示通过一个可学习的映射函数 进行变换，生成语义调制信号 。该映射函数通常由一个双层的多...

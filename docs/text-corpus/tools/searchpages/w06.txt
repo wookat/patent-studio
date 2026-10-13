@@ -1,0 +1,285 @@
+# Web Search Results for "patents.google.com patent CN 资源调度 容器 集群 负载均衡 方法"
+
+## 1. CN111522639A - Kubernetes集群架构系统下多维资源调度方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN111522639A/zh
+
+CN111522639A - Kubernetes集群架构系统下多维资源调度方法 - Google Patents
+...
+Publication number CN111522639A CN111522639A CN202010300356.2A CN202010300356A CN111522639A CN 111522639 A CN111522639 A CN 111522639A CN 202010300356 A CN202010300356 A CN 202010300356A CN 111522639 A CN111522639 A CN 111522639A Authority CN China Prior art keywords pod resource server scheduling node Prior art date 2020-04-16 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202010300356.2A Other languages English (en) Other versions CN111522639B (zh Inventor 张登银 朱琳 李俊江 刘子捷 艾成万 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Nanjing University of Posts and Telecommunications Original Assignee Nanjing University of Posts and Telecommunications Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2020-04-16 Filing date 2020-04-16 Publication date 2020-08-11 2020-04-16 Application filed by Nanjing University of Posts and Telecommunications filed Critical Nanjing University of Posts and Telecommunications 2020-04-16 Priority to CN202010300356.2A priority Critical patent/CN111522639B/zh 2020-08-11 Publication of CN111522639A publication Critical patent/CN111522639A/zh 2021-01-18 Priority to PCT/CN2021/072398 priority patent/WO2021208546A1/zh 2021-08-06 Priority to US17/395,728 priority patent/US11983562B2/en 2022-11-01 Application granted granted Critical 2022-11-01 Publication of CN111522639B publication Critical patent/CN111522639B/zh Status Active legal-status Critical Current 2040-04-16 Anticipated expiration legal-status Critical
+...
+本发明提供一种Kubernetes集群架构系统下多维资源调度方法，对于计算密集型服务根据资...
+
+## 2. CN114064296A - 一种Kubernetes调度方法、装置和存储介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114064296A/zh
+
+CN114064296A - 一种Kubernetes调度方法、装置和存储介质 - Google Patents
+...
+本发明提供一种Kubernetes调度方法、装置和存储介质，按预选算法过滤掉不满足要求的Node节点；为每个Node节点按照资源类型设置队列；为待调度的Pod划分优先级；分析待调度Pod状态；集群资源满足时的Pod按照第一规则计算相似度，寻找第一Node节点进行调度；集群资源不满足时进入抢占调度，设置第一规则计算相似度和第二规则优先级抢占规则，寻找Node节点进行抢占调度；为无法调度的Pod设定最大循环次数,达到最大则优先调度。本发明解决了忽略集群资源实际情况设置优先级，抢占过程中资源不能合理安排，一直无法完成调度的问题。本发明提高了任务运行整体性和整个集群的负载均衡性，减少了资源碎片的产生，提高了调度的时效性，增强了集群管理系统中的资源调度效率。
+...
+本发明涉及容器编排技术领域，具体为一种实现Kubernetes调度策略方法。
+...
+Kubernetes是一个开源的系统，主要用于集群中跨主机的集成应用的管理。Kubernetes的一个核心的特性是它动态地管理着容器来保证集群的状态是满足用户需求的。Pod是集群当中调度和管理的最小单元，所有的容器都在Pod里面运行，每个Pod里可以运行一到多个容器。每个集群都由控制节点Master和Node节点所组成（图1）。Scheduler（调度器）的核心是如何从集群中选择合适的Node节点分配给待调度Pod（图2）。
+
+当前kubernetes的资源调度算法大多对Node节点进行评分划分优先级，如内置的LeastRequested、Priority算法，不考虑Node节点的实际资源使用情况，也没有考虑不同业务对资源需求的差异性；Kubernetes内置的优先级抢占的调度策略可能会导致某些Pod永远无法被成功调度，且抢占过程中资源安排不合理。这都会导致Node节点的其他纬度的资源不能被充分的使用，从而产生大量的资源碎片，造成资源的浪费。
+...
+为解决现有技术中的调度策略存在的忽略集群资源实际情况设置优先级，以及抢占过程中资源不能合理安排的问题，本发明提供一种Kubernetes调度方法，包括：
+...
+S2：为每个Node节点按照资源类型设置相应队列；
+
+S3：对待调度的Pod进行优先级划分；
+
+S4：分析待调度的Pod状态,A状态为：集群资源满足调度的Pod，B状态为：集群资源不满足调度的Pod；
+
+S5：若待调度的Pod为A状态，按照第一规则，计算相似度，为其寻找第一Node节点进行调度，调度成功；
+
+S6：若待调度的Pod为B状态，进入抢占调度，按照第一规则，计算相似度，为其寻找第一Node节点进行调度；
+
+S7：分析S6中待调度Pod状态，B1状态为：S6中寻找的第一Node节点满足调度，B2状态为：S6中寻找的第一Node节点不满足调度；
+
+S8：若为B1状态，调度成功；若为B2状态，按照设置的第二规则优先级规则进行调度；
+
+S9：分析S9中B2状态中待调度的Pod状态，B21状态为：满足调度；B22状态为：不满足调度；
+
+S10：若为B21状态，调度成功；若为B22状态，返回S4循环；
+
+S11：设定最大循环次数，达到最大循环次数的Pod进行优先调度。
+...
+一种Kubernetes调度的装置，包括：一个或多个处理器；存储器，用于存储一个或多个程序，当所述一个或多个程序被所述一个或多个处理器执行时，使得所述一个或多个处理器实现如上所述的Kubernetes调度方法。
+...
+本发明提供了一种优化的基于kubernetes的资源调度方法，综合Node节点的各个维度的资源实际使用情况、Pod各个维度资源需求量和比重，对调度的优先级和对Node节点选择过程进行优化处理，保证了各个纬度的资源充分均衡的使用，提高了任务运行整体性和整个集群的负载均衡性。对抢占调度设置了第一层的相似度规则和第二层的优先级抢占规则，使抢占的Node节点从整体上更加适合待调度的Pod，减少了资源碎片的产生；设置了最大循环次数解决了一直无法调度的问题，提高了调度的时效性，增强了调度器对基于Kubernetes容器集群管理系统中的资源调度效率。
+...
+本实施例提供一种实现Kubernetes调度策略方法，如图3所示，具体包括以下步骤：
+...
+利用率，为Pod设置优先级顺序做准备，解析待调度的Pod，获取各
+...
+S5分析待调度的Pod状态,A状态为：集群资源满足调度的Pod，B状态为：集群资源不满足调度的Pod；
+
+S6若待调度的Pod为A状态，按照第一规则，计算相似度，计算相似度公式，比较Pod与各个Node节点之间的相似度得分，将Pod调度到得分高的Node节点。
+...
+N...
+
+## 3. CN106027643A - Resource scheduling method based on Kubernetes container cluster management system 
+        - Google Patents
+URL: https://patents.google.com/patent/CN106027643A/en
+
+CN106027643A - Resource scheduling method based on Kubernetes container cluster management system - Google Patents
+...
+本发明提供了一种基于Kubernetes容器集群管理系统的资源调度方法，包括以下步骤S1、遍历所有可用Node，并计算每个可用Node的计算资源得分；S2、通过日志系统采集每个可用Node的网络存储平均传输速率与所有可用Node的网络存储平均传输速率总和；S3、计算每个可用Node的网络存储平均传输速率得分；S4、根据步骤S1中的每个可用Node的计算资源得分与步骤S3中的网络存储平均传输速率得分，计算出可用Node的优先级，并在优先级最高的Node上创建并运行Pod。在本发明中，调度器加入了网络存储平均传输速率得分，并结合可用Node的计算资源得分计算得到可用Node的优先级，将新Pod调度到具有最高优先级的可用Node上，从而提高了新建Pod的速率并提高了容器运行的效率与稳定性。
+...
+本发明的目的在于公开一种基于Kubernetes容器集群管理系统的资源调度方法，用以完善Kubernetes容器集群管理系统的资源调度策略，加速Pod的建立，使Pod中的一个或者多个容器能够高效、稳定的运行。The purpose of the present invention is to disclose a resource scheduling method based on the Kubernetes container cluster management system, which is used to improve the resource scheduling strategy of the Kubernetes container cluster management system, accelerate the establishment of Pods, and enable one or more containers in the Pod to be efficient and stable running.
+...
+Priorities阶段包括三个调度策略：LeastRequestedPriority(最少请求资源优先调度策略)、ServiceSpreadingPriority(最小相同服务优先调度策略)和EqualPriority(平等优先调度策略)。即按照LeastRequestedPriority、ServiceSpreadingPriority和EqualPriority三个调度策略，给Predicates阶段筛选出来的所有Node打分，并评出优先级，优先级最高的Node作为Pod被调度的目的节点。The Priorities phase includes three scheduling strategies: LeastRequestedPriority (least requested resource priority scheduling strategy), ServiceSpreadingPriority (minimum same service priority scheduling strategy) and EqualPriority (equal priority scheduling strategy). That is, according to the three scheduling strategies of LeastRequestedPriority, ServiceSpreadingPriority, and EqualPriority, all Nodes screened out in the Predicates stage are scored, and the priority is evaluated. The Node with the highest priority is used as the destination node for the Pod to be scheduled.
+...
+的计算原则是尽量将需要新创建的Pod调度到计算资源占用比较小的Node上，这里的“计算资源”指
+...
+1.一种基于Kubernetes容器集群管理系统的资源调度方法，所述Kubernetes容器集群管理系统加载并运行有若干个Node，其特征在于，包括以下步骤：1. a kind of resource scheduling method based on Kubernetes container cluster m...
+
+## 4. CN114443249A - 一种基于深度强化学习的容器集群资源调度方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114443249A/zh
+
+CN114443249A - 一种基于深度强化学习的容器集群资源调度方法及系统 - Google Patents
+...
+本发明提出一种基于深度强化学习的容器集群资源调度方法及系统，包括：S1：建立深度强化学习智能体。S2：当存在某一容器集群节点的可分配资源满足任务队列中某一待调度任务的资源请求时，将容器集群节点的资源使用状态和待调度任务的特征值输入深度强化学习智能体，得到任务调度的行动概率分布。S3：根据任务调度的行动概率分布，将待调度任务调度到容器集群节点中执行，并计算奖励，根据奖励更新智能体的网络参数。S4：重复S2至S3，训练深度强化学习智能体，使智能体持续地学习并进行调整。通过建立深度强化学习智能体，并对智能体持续地进行学习和训练，智能体能够自动生成相应的调度策略，将任务调度到相应的容器集群节点上。
+...
+容器是一种操作系统虚拟化形式，在实践中，可以使用一个容器来运行小型微服务或软件进程大大型应用程序的所有内容。容器集群中不同的容器任务具有不同的性质。为了能更好地针对容器任务的特性以缩短任务平均完成时间且实现节点资源间的负载均衡，需要设计一种考虑了当前的节点资源占用情况的同时也考虑节点未来的资源占用情况对资源争用影响的调度策略方法。
+
+现有一种容器集群的调度方法，包括在预设的时间间隔，获取容器集群中所有终端的信息以及负载数据，所述负载数据包括所述终端的CPU利用率、内存占用率以及容器占用的传输速率；根据所述终端标识以及所述负载数据计算终端的综合负载率；当所述终端的综合负载率超过50％时，对容器集群进行调度。然而，上述调度方法为专家编制规则方法，当集群结构或任务状态发生变化时，需要重新人工调整调度算法，从而浪费大量的人力物力，降低集群资源的调度效率。
+...
+本发明为克服现有技术存在的当集群结构或任务状态发生变化时，需要重新调整人工调度算法的缺陷，对容器任务的多维度特征进行建模提供一种基于深度强化学习的容器集群资源调度方法及系统。
+...
+第一个方面，本发明提出一种基于深度强化学习的容器集群资源调度方法，包括以下步骤：
+...
+S2：当存在某一容器集群节点的可分配资源满足任务队列中某一待调度任务的资源请求时，将容器集群节点的资源使用状态和待调度任务的特征值输入深度强化学习智能体，得到任务调度的行动概率分布；
+
+S3：容器集群调度器根据任务调度的行动概率分布，将待调度任务调度到容器集群节点中执行，并计算奖励，根据奖励更新深度强化学习智能体的网络参数；
+
+S4：重复S2至S3，训练深度强化学习智能体，使深度强化学习智能体持续地学习并进行调整。
+
+本技术方案中，通过建立深度强化学习智能体，并将容器集群节点的资源使用状态和待调度任务的特征值输入深度强化学习智能体中，得到任务调度的行动概率分布，容器集群调度器根据行动概率分布将待调度任务调度到相应的容器集群节点中，并计算奖励，根据奖励更新深度强化学习智能体的网络参数以持续地进行学习和训练，使得深度强化学习智能体能够根据容器集群节点或任务状态信息发生变化时进行自动调整，最终深度强化学习智能体能够生成相应的调度策略，指示容器集群调度器将待调度任务调度到相应的容器集群节点上。
+...
+第二个方面，本发明还提出一种基于深度强化学习的容器集群资源调度系统，包括：
+
+深度强化学习智能体，用于当存在某一容器集群节点的可分配资源满足任务队列中某一待调度任务的资源请求时，根据容器集群节点的资源使用状态和待调度任务的特征值，得到任务调度的行动概率分布；
+
+容器集群调度器，用于根据深度强化学习智能体输出的行动概率分布将待调度任务调度到容器集群节点中执行；
+
+优化模块，用于计算奖励，根据奖励更新深度强化学习智能体的网络参数，持续优化深度强化学习智能体。
+
+与现有技术相比，本发明技术方案的有益效果是：本发明通过建立深度强化学习智能体，将容器集群节点的资源使用状态和待调度任务的特征值输入深度强化学习智能体中，得到任务调度的行动概率分布，容器集群调度器根据行动概率分布将待调度任务调度到相应的容器集群节点中，并计算奖励，根据奖励更新深度强化学习智能体的网络参数以持续地进行学习和训练，使得深度强化学习智能体能够根据容器集群节点或任务状态信息发生变化时进行自动调整，最终深度强化学习智能体能够生成相应的调度策略，指示容器集群调度器将待调度任务调度到相应的容器集群节点上。
+...
+如图2所示，图2为本实施例的基于深度强化学习的容器集群资源调度方法的系统架构图，假设任务Tj在Kubernetes集群中以容器的形式离散地到达，进入容器集群维护的固定长度为m的任务队列中。这些任务请求一定的系统资源，包括CPU、内存和GPU，
+...
+S3：容器集群调度器根据任务调度的行动概率分布，将待调度任务调度到容器集群节点中执行，并计...
+
+## 5. CN113918270A - 基于Kubernetes的云资源调度方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN113918270A/zh
+
+本发明提供了一种基于Kubernetes的云资源调度方法及系统，其中，该方法包括：根据资源对象创建请求创建Pod，以将资源对象创建请求中的所需调度器类型记录至创建的Pod的配置文件中；监听到创建的Pod后，从预先部署的所需调度器类型的调度器组中选择调度器，并将选择的调度器的标识更新至Pod的配置文件中；调度器组包含多个同类型的调度器；选择的调度器监听到自己的标识后，确定分配给Pod的集群节点并发送绑定请求；通过准入控制器接收绑定请求后验证资源仍能满足所需资源的信息的要求，将集群节点的标识记录至Pod；对应的集群节点监听到Pod记录了集群节点的标识后，启动Pod，创建相应的容器。通过上述方案能够实现让更多调度器并行调度云资源，提高资源调度效率。
+...
+有鉴于此，本发明提供了一种基于Kubernetes的云资源调度方法及系统，以实现更多调度器并行调度云资源，进一步提高资源调度效率。
+...
+监听到创建的Pod后，从预先部署的且属于所述所需调度器类型的调度器组中选择调度器，并将选择的调度器的标识更新至创建的Pod的配置文件中；所述调度器组包含多个同一类型的调度器；
+
+选择的调度器监听到创建的Pod的配置文件中记录了自己的标识后，根据创建的Pod的配置文件中的所需资源的信息确定分配给创建的Pod的集群节点，并发送相应的绑定Pod和集群节点的请求；
+
+通过准入控制器接收到所述绑定Pod和集群节点的请求后验证确定的分配给创建的Pod的集群节点的资源仍能满足所述所需资源的信息的要求的情况下，将确定的分配给创建的Pod的集群节点的标识记录至创建的Pod；
+
+确定的分配给创建的Pod的集群节点监听到创建的Pod记录了确定的分配给创建的Pod的集群节点的标识后，启动创建的Pod，以创建相应的容器。
+...
+原生Kubernetes的多调度器功能虽然可以让多个调度器同时工作，但其调度器的数量和类型是固定的，而且每种类型的调度器只有一个。对此，为了进一步提高资源调度效率，本发明提供了一种基于Kubernetes的云资源调度方法，可以基于多调度器组中多个调度器进行并行资源调度，且能够解决多个调度器之间可能存在的调度资源冲突的问题，从而能够进一步提高资源调度效率。
+...
+步骤S140：通过准入控制器接收到所述绑定Pod和集群节点的请求后验证确定的分配给创建的Pod的集群节点的资源仍能满足所述所需资源的信息的要求的情况下，将确定的分配给创建的Pod的集群节点的标识记录至创建的Pod。
+...
+上述步骤S120～步骤S150，通过针对不同调度器类型设置不同调度器组，且一个调度器组可以有多个调度器，可以有同种类型的调度器并行进行调度，从而可以允许更多调度器并行调度资源。而且，通过在绑定Pod和集群节点之前验证资源充足情况，从而可以避免调度器调度资源发生冲突而导致调度失败的问题，从而可以使更多调度器并行调度资源的效率更高。
+...
+示例性地，上述步骤S180，即，根据集群节点数量及吞吐量情况和调度器组中各调度器的吞吐量情况，自动调整相应调度器组中的调度器的数量，具体可包括：通过APIServer聚合层获取集群节点数量及吞吐量情况和调度器组中各调度器的吞吐量情况提供给HPA访问；通过HPA判断调度器组中所有调度器的总吞吐量情况低于第一期望条件且集群节点数量及负载情况低于第二期望条件的情况下，增加相应调度器组中的调度器的数量，判断调度器组中所有调度器的总吞吐量情况高于第一期望条件且集群节点数量及负载情况高于第二期望条件的情况下，减少相应调度器组中的调度器的数量。
+...
+其中，基于Kubernetes中的Admission controller编写代码，以实现对资源调度冲突的验证。调度器组与原有Kubernetes的多调度器不同，不仅每个调度器组对应一种类型，n个调度器组一一对应n种类型(type1～typen)，而且，每个调度器组中可以有多个调度器，进一步，每个调度器组中调度器的数量是可伸缩的。调度控制器的功能类似于Kubernetes的默认调度器，但经过改进后能够调整本发明的调度器组中的调度器。集群节点可以利用Kubernetes中原有的集群节点实现。ETCD数据库可以利用Kubernetes中原有的ETCD数据库实现，用来存放Pod的各种相关信息，可以通过监听数据库数据的变化来得知调度流程的进展变化。基于Kubernetes中的Prometheus进行改进，使得Prometheus能够从集群节点获取集群规模及节点监控数据，以及从各调度器获取metrics数据，并根据设定的规则，可以根据得到的这些数据转换成能够衡量调度器情况的数据和能够反映集群节点情况的指标。该些指标经由Kubernetes中的k8s-promethus-adapter可以传送至暴露至API...
+
+## 6. CN115543577A - 基于协变量的Kubernetes资源调度优化方法、存储介质及设备 
+        - Google Patents
+URL: https://patents.google.com/patent/CN115543577A/zh
+
+CN115543577A - 基于协变量的Kubernetes资源调度优化方法、存储介质及设备 - Google Patents
+...
+本申请涉及一种基于协变量的Kubernetes资源调度优化方法、存储介质及设备，方法包括：选用预选策略对节点过滤；采集过滤出的节点的指标时序数据，分析容器任务的通用卷积神经网络，得到分析数据，将分析数据输入CNN执行时间及性能消耗预测模型，得到待调度任务的预计执行时间、预计性能；将得到的指标时序数据、预计执行时间、预计性能输入给预测模型进行训练；根据预测模型得出结果对节点打分，将容器任务调度到得分最高的Node节点上完成任务调度。本申请通过将集群节点性能指标时序数据、待调度任务的预计执行时间、预计性能消耗传入预测模型进行训练，预测未来一段时间内最适合的调度目标节点，实现对节点进行动态分析，提高了Kubernetes集群的资源利用率。
+...
+Kubernetes由于其稳健性、成熟性和丰富的功能，已经成为容器编排技术的标准。Kubernetes是一个管理容器化工作负载和服务的开源平台，主要目的是帮助用户自动化工作负载协调计算、网络和存储等操作。它已被广泛用于工业生产系统。许多深度学习服务平台，包括Kubeflow、RiseML、微软OpenPAI、IBM FfDL，也都建立在Kubernetes之上，帮助用户在Kubernetes上轻松部署和启动深度学习作业。Kubernetes采用微服务架构，由多个独立的模块组成，而调度模块则是平台资源调度的核心。
+
+默认的调度策略虽然考虑到了节点CPU和内存的资源使用率的均衡情况等问题，但该算法的CPU和内存利用率是根据调度策略打分时刻的性能数据来衡量调度优先级的，并不能很好地反应节点的实际资源使用情况，导致节点的CPU和内存资源的均衡性有待提高。其次，由于不同的应用实际上对资源的消耗程度是不一样的，有的应用对CPU比较敏感，有的应用对内存比较敏感，有的应用对IO比较敏感，有的应用对网络带宽比较敏感。从以上对调度策略的分析可以看出，不管是预选阶段还是优选阶段的所有策略都是静态的过滤操作，都只是针对调度时刻当下的节点资源情况作为决策因素，然而节点是动态的实时的，现有默认的调度策略并不能够对节点进行动态分析，也无法估测节点未来一段时间的性能。所以我们有必要对调度决策进行动态分析，把任务调度到更合适的节点上，从而使得任务执行更高效，计算资源的利用率更高。
+...
+为了克服上述技术缺陷，本发明提供一种基于协变量的Kubernetes资源调度优化方法，其能对调度决策进行动态分析，提高资源的利用率。
+...
+第一方面，本发明提供一种基于协变量的Kubernetes资源调度优化方法，包括步骤：
+
+选择合适的预选策略给调度器对Node节点进行过滤得到集群节点；
+
+对过滤得到的集群节点进行性能指标时序数据采集，对容器任务中的通用卷积神经网络进行分析，得到分析数据，将分析数据输入CNN执行时间及性能消耗预测模型，以得到待调度任务的预计执行时间、预计性能；
+
+将集群节点采集的性能指标时序数据作为数据输入，待调度任务的预计执行时间、预计性能消耗作为未来已知的协变量，并传入性能指标时序数据预测模型进行训练，以得出各个节点的性能指标预测数据；
+
+根据各个节点的性能指标预测数据对Node节点打分，将容器任务调度到得分最高的 Node节点上完成任务调度。
+
+进一步的，所述预选策略包括：HostName策略、PodFitsHostPorts策略、MatchNodeSeletctor策略、PodFitsResources策略和NoDiskConfict策略。
+...
+在本实施例中，如图3所示，为基于协变量的Kubernetes资源调度优化方法的流程图。当主控节点Kubernetes Master获取到kubectl任务调度指令时，由API Server进行组件间的调度任务指令传送，API Server将任务调度指令发送到Scheduler，由Scheduler负责资源的调度。Scheduler调度器监视Pod，并根据预选策略对Node节点进行一个预选。预选策略调度决策考虑的因素包括单个Pod和Pod集合的资源需求、硬件/软件/策略约束、亲和性和反亲和性规范、数据位置、工作负载间的干扰等；
+
+接着，会通过开发脚本对预选策略筛选得到节点进行性能指标时序数据采集，同时对预选得到的Node节点中，容器任务通用的卷积神经网络进行分析，会的得到容器的分析数据，通过将分析数据输入至CNN执行时间及性能消耗预测模型，由预测模型进行模拟训练会输出一个待调度任务的预计执行时间以及待调度任务的预计性能；
+
+然后，将集群中节点采集的性能指标时序数据作为输入，待调度任务的预计执行时间、预计性能消耗作为未来已知的协变量...
+
+## 7. CN114356543B - 一种基于Kubernetes的多租户机器学习任务资源调度方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114356543B/zh
+
+CN114356543B - 一种基于Kubernetes的多租户机器学习任务资源调度方法 - Google Patents
+...
+本发明公开了一种基于Kubernetes的多租户机器学习任务资源调度方法，对不同用户可使用的算力资源进行配额管理，同时监测Kubernetes平台中各Node节点资源状态信息，考虑节点所在宿主机的资源利用率的问题，避免出现调度结果不准确的问题，同时通过监测实时调度和预调度request需求信息，根据调度任务需求信息对各Node节点进行优先级排序，获取最优节点的主机标签，根据标签对各类机器学习模型训练与预测任务的资源需求进行合理分配。本发明有效的预防和减少Kubernetes平台中节点资源使用的倾斜问题，实现多节点负载均衡，提高节点资源的利用率。
+...
+目的：为了克服现有技术中存在的不足，本发明提供一种基于Kubernetes的多租户机器学习任务资源调度方法，采用Kubernetes与容器技术对IaaS层CPU、GPU与内存资源进行统一调控，构建多租户机器学习模型训练与预测的应用程序标准化运行环境，提高电网调控系统的可控性、弹性扩展能力与资源隔离能力。
+...
+一种基于Kubernetes的多租户机器学习任务资源调度方法，包括如下步骤：
+
+计算集群中Node节点已使用资源与已创建容器使用资源的差值，得到Node节点操作系统自身所有进程占用的资源信息。
+
+调用Kubernetes API获取Node节点上所有机器学习模型训练与预测任务容器申请的资源信息。
+
+将Node节点固有资源容量减去Node节点操作系统自身所有进程占用的资源信息和Node节点上所有机器学习模型训练与预测任务容器申请的资源信息，计算出Node节点实时可用资源信息。
+
+根据Node节点实时可用资源信息和Node节点固有资源容量，计算Node节点CPU、GPU和内存的可用率。
+
+系统集群资源管控服务预设资源阈值百分比，Node节点CPU、GPU和内存的可用率不低于预设资源阈值百分比的Node节点为机器学习模型训练与预测任务分配算力资源。
+
+机器学习任务调度服务将不同用户的机器学习模型训练与预测任务申请的CPU、GPU和内存资源数量发送至系统集群资源管控服务。
+
+系统集群资源管控服务通过计算多租户资源配额表、用户资源使用情况表的资源差值得到用户可申请剩余资源，并校验机器学习模型训练与预测任务申请的CPU、GPU和内存数量是否超过用户可申请剩余资源。
+
+选择未超过用户可申请剩余资源的Node节点，系统集群资源管控服务将Node节点实时可用资源信息与申请的CPU、GPU和内存数量计算差值，除以Node节点固有资源容量，得到分配出资源后CPU、GPU和内存所剩资源的百分比。
+
+选择分配出资源后CPU、GPU和内存所剩资源的百分比大于预设的资源阈值百分比的Node节点，将每个Node节点的分配出资源后CPU、GPU和内存所剩资源的百分比进行评分计算，并按评分从大到小进行排序。
+
+系统集群资源管控服务从序列中排序在前的Node节点为最优节点，并将最优节点的节点名返回给机器学习任务调度服务，并在用户资源使用情况表中进行持久化存储。
+
+机器学习任务调度服务动态生成Kubernetes yaml文件，调用Kubernetes API在最优节点中创建容器运行机器学习模型训练与预测任务。
+...
+有益效果：本发明提供的一种基于Kubernetes的多租户机器学习任务资源调度方法，对不同用户可使用的算力资源进行配额管理，同时监测Kubernetes平台中各Node节点资源状态信息，考虑节点所在宿主机的资源利用率的问题，避免出现调度结果不准确的问题，同时通过监测实时调度和预调度request需求信息，根据调度任务需求信息对各Node节点进行优先级排序，获取最优节点的主机标签，根据标签对各类机器学习模型训练与预测任务的资源需求进行合理分配，有效的预防和减少Kubernetes平台中节点资源使用的倾斜问题，实现多节点负载均衡，提高节点资源的利用率。
+...
+一种基于Kubernetes的多租户机器学习任务资源调度方法，包括如下步骤：
+...
+如图2所示为本实施例Kubernetes集群资源管理架构示意图，本实施例中Kubernetes集群由2个Master节点和6个Node节点构成。Master节点是集群的主要控制单元，主要对集群进行调度管理，防止项目需求增大，访问量增多，因此本实施例构建双Master节点的高可用模式；Node节点是工作负载节点，主要用于运行业务应用的容器，包括CPU和GPU两个集群，CPU集群主要用于创建常规pod任务，而GPU集群主要用于创建涉及图像运算的pod任务，双Node集群的模式将使得部署于其中的应用运行得更加合理、高效。
+
+Kub...
+
+## 8. CN114629906B - 
+        A reliable cloud container cluster resource scheduling method and device based on deep reinforcement learning
+       
+        - Google Patents
+URL: https://patents.google.com/patent/CN114629906B/en
+
+The invention discloses a reliable cloud container cluster resource scheduling method and device based on deep reinforcement learning, which comprises the steps that firstly, a stability target of a cloud container cluster is required to be determined; the target to be scheduled declares the minimum resource requirement and the maximum resource requirement required and is placed in a task queue to be scheduled; when a target to be scheduled executes scheduling, firstly taking the target to be scheduled out of a queue, and filtering cluster nodes which do not meet the minimum resource requirement of the target to be scheduled; using a deep reinforcement learning method to make a decision to select a scheduled target node in the cluster; detecting whether the obtained target node is available, and if so, directly dispatching the target node to the corresponding node; if not, adopting a protective heuristic algorithm to make a new decision, and scheduling the new decision to the corresponding node. The invention can be directly put into use without adverse consequences when the deep neural network is not sufficiently trained or even untrained. Nodes are added and deleted without stopping halfway and changing parameters of the model.
+...
+The aim of the invention is realized by the following technical scheme: the invention provides a reliable cloud container cluster resource scheduling method based on deep reinforcement learning, which comprises the following steps:
+...
+steps: (1)确定云容器集群的稳定性目标；满足如下要求：(1) Determine the stability goals of the cloud container cluster; meet the following requirements: M+ita×V<＝100％M+ita×V<=100% 其中，M和V表示为节点的目标利用率和标准差，ita表示不超过节点容量的使用置信度；Among them, M and V represent the target utilization and standard deviation of the node, and ita represents the usage confidence that the node capacity is not exceeded; (2)待调度目标声明需要的最少资源需求和最大资源需求，并被放置待调度任务队列中；(2) The target to be scheduled declares the minimum resource requirements and the maximum resource requ...
+
+## 9. CN109783218B - 一种基于Kubernetes容器集群的与时间相关联的容器调度方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN109783218B/zh
+
+CN109783218B - 一种基于Kubernetes容器集群的与时间相关联的容器调度方法 - Google Patents
+...
+本发明公开了一种基于Kubernetes容器集群的与时间相关联的容器调度方法，属于云计算技术领域。本发明在Kubernetes集群的调度器的预选策略和优选策略这两个阶段之间加入是否在时间范围内的判断，并通过对预选过后的可使用的Node进行平均负载得分的计算，将其与预设定得分进行比对，可以决定是否进行进一步的调度操作，这不仅保证了现有业务应用的正常运行，也使得某些具有时间相关性的任务能够更好的利用集群内的资源。例如在深夜凌晨时段，是大部分业务应用负载不那么重的时段，这时是很适合一些大数据离线计算任务的，在这个时段内将这些任务分配到前述业务应用所在Node上，将会有助于提升大数据任务的运行效率，还能提高集群内的硬件资源利用率。
+...
+一种基于Kubernetes容器集群的与时间相关联的容器调度 方法
+...
+本发明涉及一种软件资源调度方法，特别是一种基于Kubernetes容器集群的与时间相关联的容器调度方法，属于云计算技术领域。
+...
+Kubernetes，简称K8s，是用8代替8个字符“ubernete”而成的缩写，是一个基于容器技术的分布式架构平台。Kubernetes为容器应用提供了服务注册、负载均衡、服务部署和运行、服务滚动升级、在线扩容和缩容、资源调度、资源配额管理等功能，可以说Kubernetes具备完备的集群管理能力，贯串分布式系统开发、测试、部署、运维监控各个环节。
+...
+本发明的发明目的是，针对上述问题，提供一种基于Kubernetes容器集群的与时间相关联的容器调度方法，该调度方法能够根据软件应用的具体业务特性和软件性能与时间相关性来自动进行硬件资源的控制，以使硬件资源能够得到充分利用。
+...
+一种基于Kubernetes容器集群的与时间相关联的容器调度方法，所述Kubernetes包括应用程序接口服务器、控制器管理控制中心、调度器、节点管理进程和分布式数据库，在所述Kubernetes加载并运行有若干个Node，容器调度方法包括如下步骤：
+
+S1、在预设定的时间段内，先从Kubernetes集群获得调度器经过预选策略后剩下的Node的负载情况，然后计算出每个Node的平均负载得分；
+
+S2、将步骤S1中计算得到的平均负载得分与预设目标得分进行比对，若低于预设目标得分，则不对资源进行调度，退出调度流程且间隔预定时间后执行步骤S1；反之，对资源进行调度，并执行步骤S3；
+
+S3、通过执行Kubernetes集群内调度器默认的优选策略，以对该应用的pod进行调度，直至达到预设定的目标pod数；
+
+S4、在执行步骤S1～S3过程，若超出步骤S1预定的时间时，对该应用的pod进行缩容操作，且将步骤S3中新增的pod进行销毁并回收资源。
+...
+1.本发明在Kubernetes集群的调度器的预选策略(Predicates)和优选策略(Priorities)这两个阶段之间加入是否在时间范围内的判断，并通过对预选过后的可使用的Node进行平均负载得分的计算，将其与预设定得分进行比对，可以决定是否进行进一步的调度操作，这不仅保证了现有业务应用的正常运行，也使得某些具有时间相关性的任务能够更好的利用集群内的资源。例如在深夜凌晨时段，是
+...
+2.本发明在步骤S1中预设定的时间段的设置，使系统在调度过程可根据自身业务应用情况规划一些定时任务的运行时间，步骤S2预设目标得分的设置能够保证现有正在运行的业务应用有足够资源运行，步骤S3预设定的目标pod数设置，即Kubernetes集群在调度时，只有满足步骤S1和步骤S2这两个设置条件后，应用pod才会自动扩展数量并调度到集群内。这样使得Kubernetes集群能自动根据软件应用的具体业务特性和软件性能与时间关联性来对pod资源进行有效地调度，避免浪费资源的情况。
+...
+执行步骤S1，在预设定的时间段内，从Kubernetes集群获得调度器(Scheduler)经过预选策略(Predicates)后剩下的Node的负载情况，计算得到每个Node的平均负载得分。其中预设定的时间段是从deployment配置里的annotations的timeRange字段获得的一个时间范围。
+...
+执行步骤S2，将步骤S1中计算得到的平均负载得分与预设目标得分进行比对，若低于目标得分，则不对资源进行调度，并退出调度流程且间隔预定时间后执行上述步骤S1。反之，对资源进行调度，并执行如下步骤S3。
+
+步骤S2和步骤S3中的预设目标得分具体是从deployment配置里的annotations的targetScore字段获得的一个数字。调度器(Schedul...
+
+## 10. CN113806018A - 基于神经网络和分布式缓存的Kubernetes集群资源混合调度方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN113806018A/zh
+
+CN113806018A - 基于神经网络和分布式缓存的Kubernetes集群资源混合调度方法 - Google Patents
+...
+number CN113806018A CN113806018A CN202111070586.5A CN202111070586A CN113806018A CN 113806018 A CN113806018 A CN 113806018A CN 202111070586 A CN202111070586 A CN 202111070586A CN 113806018 A CN113806018 A CN 113806018A Authority CN China Prior art keywords resource scheduling resources neural network instance Prior art date 2021-09-13 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202111070586.5A Other languages English (en) Other versions CN113806018B (zh Inventor 杨飞 钟生海 吴江 丁晓东 平笑柔 苏醒 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Beijing Institute of
+...
+本发明涉及一种基于神经网络和分布式缓存的Kubernetes集群资源混合调度方法，属于资源调度领域。本发明通过采集应用历史运行情况相关信息，训练BP神经网络，构建基于kubernetes的资源预测模型；对应用当前所需要使用的资源进行预测，并将相应预测结果输入到分布式缓存系统；资源调度算法从分布式缓存系统获取预测结果，针对不同种类的资源，资源动态调度算法会生成一系列资源借贷决策，并将决策响应到容器组的请求资源限制中。本发明使用预测模型预测未来一段时间内应用的负载情况，根据资源预测结果帮助Kubernetes集群在应用由于资源不足出现性能瓶颈之前预先触发资源的动态调度和实例的自动伸缩，从而减少服务的实际响应时间。
+...
+随着云平台中的业务日益复杂，资源调度逐渐成为了云平台中的一项关键技术。资源调度过程是在一定的规则下对各种虚拟化的资源进行合理的分配和调节，从而满足用户需求的过程。云平台通过合理的资源调度，可以为应用程序提供充足的资源保障，降低服务的响应时间，从而提高系统的服务质量。对于Kubernetes系统，资源调度机制同样发挥着非常重要的作用，是集群管理不可或缺的重要组成部分。但是由于发展时间较短，Kubernetes在资源调度和弹性伸缩等方面还存在着很大的不足。
+
+在Kubernetes系统中主要由调度器组件负责资源调度的工作。首次调度应用时，调度器组件根据应用的资源配置情况，通过调度策略在集群内所有的节点上选择一个最适合的节点来进行部署。这种调度策略属于静态调度策略，该调度机制虽然复杂度低，但却缺少灵活性。Kubernetes通过周期性地检查容器组中的应用负载状态，动态地调整容器组副本数量。Kubernetes中现有的资源调度策略存在一定的缺陷，不足之处主要表现在以下两个方面。
+...
+(二)在对容器组进行调度时，资源调度器根据当前容器组的资源配置情况，在集群的所有节点中选择一个合适的节点来部署容器组。然而，默认的资源调度策略没有考虑不同类型的容器组对资源的消耗情况，容易导致容器组运行过程中对不同资源使用不均衡的情况，从而造成节点上单一资源的性能瓶颈。
+...
+本发明要解决的技术问题是如何提供一种基于神经网络和分布式缓存的Kubernetes集群资源混合调度方法，以解决Kubernetes在资源调度和弹性伸缩等方面还存在着很大的不足的问题。
+...
+为了解决上述技术问题，本发明提出一种基于神经网络和分布式缓存的Kubernetes集群资源混合调度方法，该方法包括如下步骤：
+
+S1、通过采集应用历...

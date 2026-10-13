@@ -1,0 +1,70 @@
+/* 表格工具条 + prosemirror-tables 选区样式（D2）。颜色 / 圆角全部用主题 token。 */
+.ps-table-toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--color-popover);
+  color: var(--color-popover-foreground);
+  box-shadow: var(--sh-popover, 0 4px 16px rgb(0 0 0 / 0.08));
+}
+.ps-table-toolbar__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.ps-table-toolbar__group + .ps-table-toolbar__group {
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid var(--color-border);
+}
+.ps-table-toolbar [data-state='on'] {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+}
+.ps-table-toolbar__widths {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+}
+
+/* 375：底部工具栏二级行，横向滚动，按钮 ≥40px（Button size=icon 36px + 内边距补到 44） */
+.ps-table-toolbar--mobile {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 0;
+  border-width: 1px 0 0;
+  box-shadow: none;
+  padding: 4px 8px;
+  gap: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.ps-table-toolbar--mobile button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.ps-table-toolbar--mobile .ps-table-toolbar__widths {
+  flex: 1 0 auto;
+}
+
+/* prosemirror-tables：单元格选区 + 合并单元格 */
+.ProseMirror .selectedCell {
+  position: relative;
+}
+.ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, var(--color-primary) 18%, transparent);
+  pointer-events: none;
+}
+.ProseMirror th.ps-cell {
+  font-weight: 600;
+  text-align: center;
+}

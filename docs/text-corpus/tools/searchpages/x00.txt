@@ -1,0 +1,173 @@
+# Web Search Results for "patents.google.com patent CN 风力发电 功率预测 方法"
+
+## 1. CN120454061A - 风电功率预测方法、装置、设备和存储介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN120454061A/zh
+
+CN120454061A - 风电功率预测方法、装置、设备和存储介质 - Google Patents
+...
+Publication number CN120454061A CN120454061A CN202510955807.9A CN202510955807A CN120454061A CN 120454061 A CN120454061 A CN 120454061A CN 202510955807 A CN202510955807 A CN 202510955807A CN 120454061 A CN120454061 A CN 120454061A Authority CN China Prior art keywords wind power training large model array target Prior art date 2025-07-11 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202510955807.9A Other languages English (en) Other versions CN120454061B (zh Inventor 阎洁 李宇佳 韩爽 王函 刘永前 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) North China Electric Power University Original Assignee North China Electric Power University Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2025-07-11 Filing date 2025-07-11 Publication date 2025-08-08 2025-07-11 Application filed by North China Electric Power University filed Critical North China Electric Power University 2025-07-11 Priority to CN202510955807.9A priority Critical patent/CN120454061B/zh 2025-08-08 Publication of CN120454061A publication Critical patent/CN120454061A/zh 2025-10-17 Application granted granted Critical 2025-10-17 Publication of CN120454061B publication Critical patent/CN120454061B/zh Status Active legal-status Critical Current 2045-07-11 Anticipated expiration legal-status Critical
+...
+本发明涉及一种基于时间序列大模型的风电功率预测方法、装置、设备和存储介质。风电功率预测方法，包括：获取时间序列大模型和多个源风电场的第一训练数据集；利用第一训练数据集对时间序列大模型进行训练，得到用于风电功率预测的基础大模型；获取目标风电场的历史风电功率数组和未来天气预报数组，多个源风电场不包括目标风电场；将历史风电功率数组和未来天气预报数组作为目标大模型的输入，预测目标风电场的未来风电功率数组。本申请在一定程度上减少了模型训练对训练数据量的依赖性，同时有效解决了模型参数在...
+
+## 2. CN114841077A - 一种风电功率预测方法、装置、介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114841077A/zh
+
+CN114841077A - 一种风电功率预测方法、装置、介质 - Google Patents
+...
+本申请涉及风力发电领域，公开了一种风电功率预测方法、装置、介质，包括：获取预测风电功率所需的测量数据，为风电功率预测提供数据支持。对测量数据进行空间降尺度处理，以获取各风机轮彀高度处的第一气象预报数据；对第一气象预报数据进行时间降尺度处理，以获取时间分辨率更高的第二气象预报数据，从而提高风电功率预测的时间空间精确度。并利用功率预测模型对第二气象预报数据进行处理，以确定风电功率预测值。由此可见，本申请所提供的技术方案通过对测量数据进行时间降尺度和空间降尺度操作，提高数据的分辨率，从而准确预测复杂地形和复杂风况下各风力发电机的输出功率，以提高风电场风电功率预测的准确度和可靠性。
+...
+本申请的目的是提供一种风电功率预测方法、装置、介质，以提高风力发电机组输出功率的预测精度。
+
+为解决上述技术问题，本申请提供了一种风电功率预测方法，包括
+
+获取预测风电功率所需的测量数据；
+
+对所述测量数据进行空间降尺度处理，以获取各风机轮彀高度处的第一气象预报数据；
+
+对所述第一气象预报数据进行时间降尺度处理，以获取第二气象预报数据，所述第二气象预报数据的数据时间间隔小于所述第一气象预报数据的数据时间间隔；
+
+利用功率预测模型对所述第二气象预报数据进行处理，以确定风电功率预测值。
+...
+为了解决上述技术问题，本申请还提供了一种风电功率预测装置，该装置包括：
+...
+在风力发电场景中，由于风的强度和风的方向时刻在变化，导致风力发电装置的输出功率不稳定且无规律，影响电力系统的安全性。为了更精确的预测风力发电装置的输出功率，本申请提供了一种中长期风电功率预测方法，通过获取风力发电厂所在区域的气象数据和风力发电机的设备信息，并对测量数据进行时间降尺度处理和空间降尺度处理，以获取指定区域时间分辨率更高的气象测量数据，并将上述气象测量数据输入至功率预测模型中以预测风力发电装置的输出功率，从而提高风电功率预测的时间空间精确度。此外，在降尺度处理前还通过神经网络模型对测量数据进行预处理，并对获取的气象测量数据进行误差修正，从而提高风电功率预测系统的准确性和可靠性。
+...
+S12：对第一气象预报数据进行时间降尺度处理，以获取第二气象预报数据，第二气象预报数据的数据时间间隔小于第一气象预报数据的数据时间间隔。
+...
+在具体实施中，由于风力数据变化较快，常用的中尺度数据无法很好的反应各个时刻的风的强度和风向，以及一些持续时间较短的气象数据。因此，需要对能够反应风机轮彀处风力数据的第一气象预报数据进行时间降尺度处理。可以理解的是，由于气象数据为非线性数据，为了获取更准确的第二气象预报数据，采用差分自回归移动平均模型对第一气象预报数据进行降尺度处理。
+...
+在具体实施中，将测量数据输入功率预测模型，从而获取风电功率预测值。由于输入数据集相比于输出数据集拥有更多维度的信息，且从SCADA系统导出的风机历史功率数据可能含有大量噪声，因此采用SDAE-NARX人工神经网络模型作为风机功率的功率预测模型。其中，SDAE是栈式去噪自编码器，作为数据前处理器其擅于学习高维数据中复杂的内在特征，得到数据的降维表示，还可以对数据去噪，提高功率预测模型的鲁棒性。NARX是带有外源输入的非线性回归神经网络，具有丰富的历史状态信息和优秀的动态特性，因带有外源输入可以使用与预期数据相对应的更多信息，适合用来描述气象预报和历史功率组成的多维度输入数据与预测功率数据间的非线性关系。
+...
+在本实施例中，提供了一种风电功率预测方法，该方法包括：获取预测风电功率所需的测量数据，以为风电功率预测提供数据支持。对测量数据进行空间降尺度处理，以获取各风机轮彀高度处的第一气象预报数据；对第一气象预报数据进行时间降尺度处理，以获取第二气象预报数据，以获取时间分辨率更高的气象测量数据，从而提高风电功率预测的时间空间精确度。并利用功率预测模型对第二气象预报数据进行处理，以确定风电功率预测值。由此可见，本申请所提供的技术方案通过对测量数据进行时间降尺度和空间降尺度操作，提高数据的分辨率，从而准确预测复杂地形和复杂风况下各风力发电机的输出功率，以提高风电场风电功率预测的准确度和可靠性。
+...
+Meteodyn WT
+...
+本实施例中提供了一种风电功率预测装置，该装置包括：获取预测风电功率所需的测量数据，以为风电功率预测提供数据支持。对测量数据进行空间降尺度处理，以获取各风机轮彀高度处的第一气象预报数据；对第一气象预报数据进行时间降尺度处理，以获取第二气象预报数据，以获取时间分辨率更高的气象测量数据，从而提高风电功率预测的时间空间精确度。并利用功率预测模型对第二气象预报数据进行处理，以确定风电功率预测值。...
+
+## 3. CN113935512A - 风电功率预测方法、装置、计算机设备和存储介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN113935512A/zh
+
+CN113935512A - 风电功率预测方法、装置、计算机设备和存储介质 - Google Patents
+...
+Publication number CN113935512A CN113935512A CN202110992638.8A CN202110992638A CN113935512A CN 113935512 A CN113935512 A CN 113935512A CN 202110992638 A CN202110992638 A CN 202110992638A CN 113935512 A CN113935512 A CN 113935512A Authority CN China Prior art keywords wind power value historical target interval Prior art date 2021-08-27 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Pending Application number CN202110992638.8A Other languages English (en) Inventor 乔颖 鲁宗相 李佳明 王楠 袁帅 程艳 张兴友 张元鹏 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Tsinghua University Electric Power Research Institute of State Grid Shandong Electric Power Co Ltd Original Assignee Tsinghua University Electric Power Research Institute of State Grid Shandong Electric Power Co Ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2021-08-27 Filing date 2021-08-27 Publication date 2022-01-14 2021-08-27 Application filed by Tsinghua University, Electric Power Research Institute of State Grid Shandong Electric Power Co Ltd filed Critical Tsinghua University 2021-08-27 Priority to CN202110992638.8A priority Critical patent/CN113935512A/zh 2022-01-14 Publication of CN113935512A publication Critical patent/CN113935512A/zh Status Pending legal-status Critical Current
+...
+本申请涉及一种风电功率预测方法、装置、计算机设备和存储介质。该方法包括：获取目标预测时间对应的气象预报数据，并将气象预报数据输入至风电功率预测模型中，得到目标预测时间对应的风电功率预测值；根据预设的功率区间划分条件，确定风电功率预测值所属的目标风电功率区间，并获取目标风电功率区间对应的风电功率修正值，风电功率修正值是根据目标风电功率区间对应的历史风电功率预测值和历史风电功率测量值确定的；利用风电功率修正值对风电功率预测值进行修正，得到目标预测时间对应的目标风电功率预测值。采用本方法能够提高风电功率预测的准确性。
+...
+基于此，有必要针对上述技术问题...
+
+## 4. CN119561047B - 一种基于多模型融合的风电功率预测方法、系统及设备 
+        - Google Patents
+URL: https://patents.google.com/patent/CN119561047B/zh
+
+CN119561047B - 一种基于多模型融合的风电功率预测方法、系统及设备 - Google Patents
+...
+Publication number CN119561047B CN119561047B CN202510095801.9A CN202510095801A CN119561047B CN 119561047 B CN119561047 B CN 119561047B CN 202510095801 A CN202510095801 A CN 202510095801A CN 119561047 B CN119561047 B CN 119561047B Authority CN China Prior art keywords model wind power data feature prediction Prior art date 2025-01-22 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202510095801.9A Other languages English (en) Other versions CN119561047A (zh Inventor 彭峰 常馨 张国煜 崔晓军 吴冰 梁墩友 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) University of Jinan Original Assignee University of Jinan Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2025-01-22 Filing date 2025-01-22 Publication date 2025-05-23 2025-01-22 Application filed by University of Jinan filed Critical University of Jinan 2025-01-22 Priority to CN202510095801.9A priority Critical patent/CN119561047B/zh 2025-03-04 Publication of CN119561047A publication Critical patent/CN119561047A/zh 2025-05-23 Application granted granted Critical 2025-05-23 Publication of CN119561047B publication Critical patent/CN119561047B/zh Status Active legal-status Critical Current 2045-01-22 Anticipated expiration legal-status Critical
+...
+本申请公开了一种基于多模型融合的风电功率预测方法、系统及设备，涉及风电预测技术领域，通过结合皮尔逊相关系数、冰霜优化算法优化变分模态分解模型、CNN‑ASSA‑Informer模型和分位数回归，实现了短期风电功率预测的非参数化概率预测，通过优化算法处理复杂的时序数据，解决了时序数据中不同频率成分与风电功率之间的复杂关系。并构建相应的预测区间，提高了风电功率预测的精度和置信度，能够为区域风电调度、可再生能源集成与电力市场提供更加可靠的风电功率预测结果。
+...
+风力发电作为可再生能源的主力，已被广泛应用于全球范围内。然而，风力发电的输出具有较大的不确定性，主要受到气象条件的影响，风力发电的特点是间歇性和波动性...
+
+## 5. CN118249319B - 基于对比学习的Transformer模型的风电功率短期预测方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN118249319B/zh
+
+CN118249319B - 基于对比学习的Transformer模型的风电功率短期预测方法及系统 - Google Patents
+...
+本申请提出基于对比学习的Transformer模型的风电功率短期预测方法及系统，所述方法包括：获取待预测时段各时刻的数值天气预报数据及所述待测时段前第一预设时长中各时刻的风电功率实测值；对所述风电功率实测值进行增强处理，得到待预测时段各时刻的数值天气预报数据对应的正样本和负样本；将所述待预测时段各时刻的数值天气预报数据对应的正样本和负样本、待预测时段各时刻的数值天气预报数据输入到预先训练好的风电功率短期预测模型中，得到所述待预测时段各时刻的风电功率数据。本申请提出的技术方案，结合对比学习以及Transformer在风电功率预测上的各自优势，大大提高了风电功率短期预测的精确度。
+...
+随着风力发电技术日臻成熟，风电单机规模容量和并网型风电场不断扩大，风电占电力系统发电总量的比例也逐年增加。风电场穿透功率不断增长加大，其并网后给电力系统带来的安全运行和消纳利用一系列问题日益突出，高比例风电接入的功率预测准确性愈发严重要。风威胁电功率预测在平衡系统电力供应和负荷需求之间发挥了至关重要的作用；安全、稳定、经济、可靠运行。对风电短期和超短期功率进行及时准确的预测在备用市场、现货市场及辅助服务市场中发挥着重要作用，显著增强电参与市场交易力系统的重要支撑手段安全性、稳定性、经济性和可控性。但是，现有的风能数据是长程相关性的时间序列且该序列存在多种长度的复杂依存关系。传统的循环结构的神经网络，比如：循环神经网络(Recursive Neural Network，RNN)，长短期记忆网络(Long Short-Term Memory，LSTM)和门控循环单元(Gated Recurrent Unit，GRU)在处理该复杂的时间序列时存在困难，且无法进行并行运算使得模型训练时间过长。基于深度学习的方法以LSTM,GRU,Seq to Seq，Transformer等方法为主，这些方法并没有结合对比学习的思想来提高预测的精确度，使得风电功率的预测精度低，因此，亟需提出一种基于对比学习的思想来提高预测的精确度。
+...
+本申请提供基于对比学习的Transformer模型的风电功率短期预测方法及系统，以至少解决风电功率预测较低的技术问题。
+
+本申请第一方面实施例提出一种基于对比学习的Transformer模型的风电功率短期预测方法，所述方法包括：
+
+获取待预测时段各时刻的数值天气预报数据及所述待测时段前第一预设时长中各时刻的风电功率实测值；
+
+对所述风电功率实测值进行增强处理，得到待预测时段各时刻的数值天气预报数据对应的正样本和负样本；
+
+将所述待预测时段各时刻的数值天气预报数据对应的正样本和负样本、待预测时段各时刻的数值天气预报数据输入到预先训练好的风电功率短期预测模型中，得到所述待预测时段各时刻的风电功率数据；
+
+其中，所述风电功率短期预测模型是基于历史时段内各时刻的数值天气预报数据及所述各时刻对应的第一预设时长中各时刻的风电功率实测值对预初始的风电功率短期预测模型进行训练得到的。
+...
+本申请第二方面实施例提出一种基于对比学习的Transformer模型的风电功率短期预测系统，包括：
+...
+预测模块，用于将所述待预测时段各时刻的数值天气预报数据对应的正样本和负样本、待预测时段各时刻的数值天气预报数据输入到预先训练好的风电功率短期预测模型中，得到所述待预测时段各时刻的风电功率数据；
+...
+本申请提出了基于对比学习的Transformer模型的风电功率短期预测方法及系统，其中所述方法包括：获取待预测时段各时刻的数值天气预报数据及所述待测时段前第一预设时长中各时刻的风电功率实测值；对所述风电功率实测值进行增强处理，得到待预测时段各时刻的数值天气预报数据对应的正样本和负样本；将所述待预测时段各时刻的数值天气预报数据对应的正样本和负样本、待预测时段各时刻的数值天气预报数据输入到预先训练好的风电功率短期预测模型中，得到所述待预测时段各时刻的风电功率数据；其中，所述风电功率短期预测模型是基于历史时段内各时刻的数值天气预报数据及所述各时刻对应的第一预设时长中各时刻的风电功率实测值对预初始的风电功率短期预测模型进行训练得到的本申请提出的技术方案，大大提高了风电功率的预测精度。
+...
+本申请提出的基于对比学习的Transformer模型的风电功率短期预测方法及系统，其中所述方法包括：获取待预测时段各时刻的数值天气预报数据及所述待测时段前第一预设时长中各时刻的风电功率实测值；对所述风电功率实测值进行增强处理，得到待预测时段各时刻的数值天气预报数据对应的正样本和负样本；将所述待预测时段各时刻的数值天气预报数据对应的正样本...
+
+## 6. CN119204347B - 一种风电功率预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN119204347B/zh
+
+CN119204347B - 一种风电功率预测方法 - Google Patents
+
+# CN119204347B - 一种风电功率预测方法 - Google Patents
+...
+Publication number CN119204347B CN119204347B CN202411688020.2A CN202411688020A CN119204347B CN 119204347 B CN119204347 B CN 119204347B CN 202411688020 A CN202411688020 A CN 202411688020A CN 119204347 B CN119204347 B CN 119204347B Authority CN China Prior art keywords model mamba wind power function data set Prior art date 2024-11-25 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202411688020.2A Other languages English (en) Other versions CN119204347A (zh Inventor 余勇祥 匡相宇 邓芳明 李泽文 于小四 林圣� 冷勇林 王建华 耿英三 王光照 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) East China Jiaotong University Original Assignee East China Jiaotong University Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2024-11-25 Filing date 2024-11-25 Publication date 2025-06-06 2024-11-25 Application filed by East China Jiaotong University filed Critical East China Jiaotong University 2024-11-25 Priority to CN202411688020.2A priority Critical patent/CN119204347B/zh 2024-12-27 Publication of CN119204347A publication Critical patent/CN119204347A/zh 2025-06-06 Application granted granted Critical 2025-06-06 Publication of CN119204347B publication Critical patent/CN119204347B/zh Status Active legal-status Critical Current 2044-11-25 Anticipated expiration legal-status Critical
+...
+本发明提供一种风电功率预测方法，包括：获取实际风电功率数据集，然后得到处理后的数据集；将处理后的数据集进行自适应噪声的完备经验模态分解，将数据分解为若干固有模态函数分量；利用贝叶斯优化算法对基于物理约束的Mamba模型的超参数进行全局搜索，得到最优超参数；将固有模态函数分量作为基于物理约束的Mamba模型的输入特征，并结合最优超参数，整合至基于物理约束的Mamba模型中进行训练，得到经过训练的基于物理约束的Mamba模型...
+
+## 7. CN113657662B - 一种基于数据融合的降尺度风电功率预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN113657662B/zh
+
+CN113657662B - 一种基于数据融合的降尺度风电功率预测方法 - Google Patents
+
+# CN113657662B - 一种基于数据融合的降尺度风电功率预测方法 - Google Patents
+...
+Publication number CN113657662B CN113657662B CN202110930069.4A CN202110930069A CN113657662B CN 113657662 B CN113657662 B CN 113657662B CN 202110930069 A CN202110930069 A CN 202110930069A CN 113657662 B CN113657662 B CN 113657662B Authority CN China Prior art keywords data wind power fan wind power Prior art date 2021-08-13 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202110930069.4A Other languages English (en) Other versions CN113657662A (zh Inventor 齐冬莲 王雪琪 杨心宜 王震宇 梅竞成 叶振豪 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Zhejiang University ZJU Original Assignee Zhejiang University ZJU Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2021-08-13 Filing date 2021-08-13 Publication date 2022-06-28 2021-08-13 Application filed by Zhejiang University ZJU filed Critical Zhejiang University ZJU 2021-08-13 Priority to CN202110930069.4A priority Critical patent/CN113657662B/zh 2021-11-16 Publication of CN113657662A publication Critical patent/CN113657662A/zh 2022-06-28 Application granted granted Critical 2022-06-28 Publication of CN113657662B publication Critical patent/CN113657662B/zh Status Active legal-status Critical Current 2041-08-13 Anticipated expiration legal-status Critical
+...
+本发明公开了一种基于数据融合的降尺度风电功率预测方法，包括：获取风电场及其附近位置近地层的数值天气预报数据；获取场站侧的实时测风数据；获取单台风机的实时运行数据；根据场站侧实时测风数据对数值天气预报数据进行修正，并对修正后的数值天气预报数据进行降尺度处理；利用精细化的组合分析和处理手段对单台风机的运行数据进行数据治理；将降尺度后的数值天气预报数据与治理后的单台风机的运行数据进行数据融合，基于多输入预测模型预测单台风机的超短期风电功率。本发明在综合多项数据治理、数据融合技术的基础上，对风电...
+
+## 8. CN117154680A - 一种基于非平稳Transformer模型的风电功率预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN117154680A/zh
+
+CN117154680A - 一种基于非平稳Transformer模型的风电功率预测方法 - Google Patents
+...
+本发明公开一种基于非平稳Transformer模型的风电功率预测方法。该方法包括：获取多个历史时刻的天气信息和风电功率序列数据；以所述多个历史时刻的天气信息和风电功率序列数据作为输入，利用经训练的风电功率预测模型，预测出未来时刻的风电功率。所述风电功率预测模型基于Transformer模型构建，包含位置编码模块、编码器和解码器，所述位置编码模块用于将经标准化处理和嵌入层处理的输入时间序列数据添加位置编码向量后传递至所述编码器；所述解码器的输出经反标准化处理后，作为所述风电功率预测模型的预测输出；所述编码器设有非平稳注意力机制层，用于将从输入数据中计算出的非平稳信息引入到注意力机制的计算。本发明能够提供风电功率的预测准确性和效率。
+...
+本发明的目的是克服上述现有技术的缺陷，提供一种基于非平稳Transformer模型的风电功率预测方法。该方法包括以下步骤：
+...
+以所述多个历史时刻的天气信息和对应的风电功率序列数据作为输入，利用经训练的风电功率预测模型，预测出未来时刻的风电功率；
+
+其中，所述风电功率预测模型基于Transformer模型构建，包含位置编码模块、编码器和解码器，所述位置编码模块用于将经标准化处理和嵌入层处理的输入时间序列数据添加位置编码向量后传递至所述编码器；所述解码器的输出经反标准化处理后，作为所述风电功率预测模型的预测输出；所述编码器设有非平稳注意力机制层，用于将从输入数据中计算出的非平稳信息引入到注意力机制的计算。
+
+与现有技术相比，本发明的优点在于，提出了一种非平稳Transformer的风电功率预测模型，尤其适用于海上风电功率预测，相比于已有的Transformer模型，所述风电功率预测模型增加了三个模块，分别是序列标准化模块、序列反标准化模块以及去平稳化注意力机制模块，其中序列标准化模块和序列反标准化模块能够有效提高预测精度，而去平稳化注意力机制能够提高Transformer模型对过平稳化序列的学习能力。此外，为了提升数据集的准确性，在训练非平稳Transformer的海上风电功率预测模型之前，对海上风电功率相关数据进行预处理，进一步提升了预测的准确性和效率。
+...
+总体而言，本发明提出了一种基于非平稳Transformer模型的风电功率预测方法，通过对数据进行预处理(例如去除异常数据、重采样、补全缺失数据以及降噪等)并将数据序列中的非平稳信息重新引入风电功率预测模型的注意力机制计算中，提升了预测准确性和效率。这种方法尤其适用于海上的风电功率预测，但也可以应用于其他目标区域。在下文中，将以海上风电功率预测为例进行描述。
+...
+步骤S130，利用训练集训练风电功率预测模型，该风电功率预测模型基于Transformer模型构建，包含数据标准化、反标准化和去平稳化注意力机制。
+
+首先，基于非平稳Transformer模型构建风电功率预测模型，利用非平稳Transformer模型对天气信息和海上风电功率进行特征提取，构建天气信息和海上风电功率之间的关系，以提高海上风电功率预测的准确性。非平稳Transformer模型具有较强全局上下文特征提取能力、训练效率较高、可进行并行化处理、对数据噪声具有较强鲁棒性、并且能够有效处理过平稳数据。
+
+参见图3所示，基于非平稳Transformer构建的风电功率预测模型包含多头注意力机制，采用seq2seq模型中的编码器-解码器架构，相比于RNN更擅长于学习长期依赖关系，且更容易并行化。该模型主要包括位置编码模块、编码器结构和解码器结构。编码器包含非平稳注意力机制层、残差连接和层标准化、前馈神经网络。解码器包含掩码多头注意力机制层、残差连接和层标准化，以及与编码器结构相对应的结构。其中非平稳注意力机制层用于从输入数据中近似出非平稳信息，并将该非平稳信息重新引入注意力机制的计算。
+...
+相比于已有的Transformer模型，本发明设计的非平稳Transformer模型新增加了三个部分，分别数据标准化、反标准化和去平稳化注意力机制。数据标准化作用于原始数据，反标准化用于模型的输出，这样对数据进行处理有利于提高模型的准确度。而去平稳化注意力机制有助于Transformer模型更好地从过平稳序列中学习到输入和输出的关系。
+...
+步骤S140，对于实时采集的多个历史时刻的天气数据和对应的风电功率序列数据，利用经训练的风电功率预测模型预测未来时刻的风电功率。
+...
+综上所述，本发明提出了基于非平稳Transformer模型的风电功率预测方法，其中采用隔离森林和离散小波变换能够有效去除数据集中的异常值点和噪声，从而有效提升了风电功率预测的准确...
+
+## 9. CN107992970A - 风力发电机组的输出功率预测方法和设备 
+        - Google Patents
+URL: https://patents.google.com/patent/CN107992970A/zh
+
+CN107992970A - 风力发电机组的输出功率预测方法和设备 - Google Patents
+...
+Publication number CN107992970A CN107992970A CN201711276230.0A CN201711276230A CN107992970A CN 107992970 A CN107992970 A CN 107992970A CN 201711276230 A CN201711276230 A CN 201711276230A CN 107992970 A CN107992970 A CN 107992970A Authority CN China Prior art keywords wind month wind speed output power predetermined amount Prior art date 2017-12-06 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN201711276230.0A Other languages English (en) Other versions CN107992970B (zh Inventor 孙静茹 左丽叶 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Beijing Gold Wind Technology Co Ltd Huineng Original Assignee Beijing Gold Wind Technology Co Ltd Huineng Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2017-12-06 Filing date 2017-12-06 Publication date 2018-05-04 2017-12-06 Application filed by Beijing Gold Wind Technology Co Ltd Huineng filed Critical Beijing Gold Wind Technology Co Ltd Huineng 2017-12-06 Priority to CN201711276230.0A priority Critical patent/CN107992970B/zh 2018-05-04 Publication of CN107992970A publication Critical patent/CN107992970A/zh 2021-10-26 Application granted granted Critical 2021-10-26 Publication of CN107992970B publication Critical patent/CN107992970B/zh Status Active legal-status Critical Current 2037-12-06 Anticipated expiration legal-status Critical
+...
+提供一种风力发电机组的输出功率预测方法和设备，所述输出功率预测方法包括：获取预定时间段的预测风速数据；确定所述预定时间段所对应的风力月份类型；获取与确定的风力月份类型对应的输出功率预测模型；通过将所述预定时间段的预测风速数据输入到获取的输出功率预测模型，获得所述预定时间段内风力发电机组的预测输出功率。采用本发明示例性实施例的风力发电机组的输出功率预测方法和设备，能够基于待预测时间段所对应的风力月份类型，来通过与风力月份类型对...
+
+## 10. CN110705768B - 用于风电场的风力发电功率预测优化方法和装置 
+        - Google Patents
+URL: https://patents.google.com/patent/CN110705768B/zh
+
+CN110705768B - 用于风电场的风力发电功率预测优化方法和装置 - Google Patents
+...
+Publication number CN110705768B CN110705768B CN201910916121.3A CN201910916121A CN110705768B CN 110705768 B CN110705768 B CN 110705768B CN 201910916121 A CN201910916121 A CN 201910916121A CN 110705768 B CN110705768 B CN 110705768B Authority CN China Prior art keywords wind prediction power capacity data Prior art date 2019-09-26 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN201910916121.3A Other languages English (en) Other versions CN110705768A (zh Inventor 杨健 江长明 牛四清 柳玉 李丹 陈之栩 史沛然 陈水平 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) North China Electric Power Research Institute Co Ltd North China Branch of State Grid Corp of China State Grid Corp of China SGCC Original Assignee North China Electric Power Research Institute Co Ltd North China Branch of State Grid Corp of China State Grid Corp of China SGCC Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2019-09-26 Filing date 2019-09-26 Publication date 2022-10-21 2019-09-26 Application filed by North China Electric Power Research Institute Co Ltd, North China Branch of State Grid Corp of China, State Grid Corp of China SGCC filed Critical North China Electric Power Research Institute Co Ltd 2019-09-26 Priority to CN201910916121.3A priority Critical patent/CN110705768B/zh 2020-01-17 Publication of CN110705768A publication Critical patent/CN110705768A/zh 2022-10-21 Application granted granted Critical 2022-10-21 Publication of CN110705768B publication Critical patent/CN110705768B/zh Status Active legal-status Critical Current 20...

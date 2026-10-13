@@ -1,0 +1,13 @@
+.git
+.lo_profile
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+frontend/dist
+examples/*/.studio
+examples/*/*.docx
+examples/*/*.pdf
+examples/*/content.md.bak-*
+docs/media

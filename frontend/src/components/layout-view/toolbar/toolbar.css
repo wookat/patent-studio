@@ -1,0 +1,94 @@
+/* W9 格式工具条（决策 2）：常驻 FormatBar 粘在纸面容器顶部；SelectionPopover 桌面浮出 / 375 底部条。全部取 tokens。 */
+.ps-format-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky, 10);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+.ps-format-bar__group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.ps-format-bar__group + .ps-format-bar__group {
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid var(--color-border);
+}
+.ps-format-bar__hint {
+  padding: 4px 8px;
+  font-size: var(--text-xs, 0.75rem);
+  color: var(--color-muted-foreground);
+}
+
+/* 选区浮条：桌面绝对定位在编辑器容器内（选区上方 / 放不下则下方） */
+.ps-selection-popover {
+  position: absolute;
+  z-index: var(--z-popover, 50);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--color-popover);
+  color: var(--color-popover-foreground);
+  box-shadow: var(--sh-md);
+  transform: translateX(-50%);
+}
+.ps-selection-popover__sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 4px;
+  background: var(--color-border);
+}
+.ps-selection-popover__form {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+
+/* 375：软键盘上方的底部条，44 高，横向滚动 */
+.ps-selection-popover--mobile {
+  position: fixed;
+  left: 0;
+  right: 0;
+  transform: none;
+  border-radius: 0;
+  border-width: 1px 0 0;
+  box-shadow: none;
+  min-height: 44px;
+  padding: 0 8px;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ps-selection-popover--mobile button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.ps-selection-popover--mobile .ps-selection-popover__form {
+  flex: 1 0 auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ps-selection-popover {
+    animation: ps-selection-popover-in 120ms ease-out;
+  }
+}
+@keyframes ps-selection-popover-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

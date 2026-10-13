@@ -1,0 +1,7 @@
+{
+  "abstract_figure": ["fig1.png", 14.5],
+  "spec_figures": [["fig1.png", 15.0], ["fig2.png", 15.0]],
+  "sub_except": [],
+  "abstract_limit": 300,
+  "style": {}
+}

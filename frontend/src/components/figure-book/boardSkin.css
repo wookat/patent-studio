@@ -1,0 +1,102 @@
+/* W17 画板皮肤：Excalidraw 主题变量接管到平台设计 token。
+   画布本体恒白底（CNIPA 线稿=导出所得），此表只管工具条/岛面/弹层/控件 chrome；
+   变量全部走语义层——.dark 下 chrome 自动跟随，画布仍锁 light。 */
+.board-skin .excalidraw {
+  --ui-font: var(--font-ui);
+
+  /* 岛面/弹层/侧栏底 */
+  --island-bg-color: var(--bg-elevated);
+  --popup-bg-color: var(--bg-elevated);
+  --popup-secondary-bg-color: var(--bg-sunken);
+  --popup-text-color: var(--fg);
+  --popup-text-inverted-color: var(--fg-inverse);
+  --sidebar-bg-color: var(--bg-panel);
+  --sidebar-border-color: var(--border);
+  --sidebar-shadow: var(--sh-lg);
+  --modal-shadow: var(--sh-lg);
+  --library-dropdown-shadow: var(--sh-lg);
+  --shadow-island: var(--sh-md);
+
+  /* 线/图标/中性色 */
+  --default-border-color: var(--border-strong);
+  --icon-fill-color: var(--fg-icon);
+  --color-muted: var(--fg-muted);
+  --color-muted-darker: var(--fg-strong);
+  --color-muted-darkest: var(--fg-strong);
+  --color-muted-background: var(--bg-sunken);
+  --color-muted-background-darker: var(--bg-active);
+  --keybinding-color: var(--fg-subtle);
+  --scrollbar-thumb: var(--g4);
+  --scrollbar-thumb-hover: var(--g5);
+
+  /* 钮面 */
+  --button-hover-bg: var(--bg-hover);
+  --button-selected-bg: var(--bg-selected);
+  --button-selected-hover-bg: var(--bg-active);
+  --button-selected-border: var(--brand-600);
+  --button-destructive-bg-color: var(--danger-bg);
+  --button-destructive-color: var(--danger-fg);
+
+  /* 品牌/主色族（选中工具、确认钮、焦点环、画布选区） */
+  --color-primary: var(--brand-600);
+  --color-primary-darker: var(--brand-700);
+  --color-primary-darkest: var(--brand-800);
+  --color-primary-light: var(--brand-100);
+  --color-primary-light-darker: var(--brand-300);
+  --color-primary-hover: var(--brand-700);
+  --color-brand-hover: var(--brand-700);
+  --color-brand-active: var(--brand-800);
+  --color-surface-primary-container: var(--primary-soft);
+  --color-on-primary-container: var(--fg-strong);
+  --link-color: var(--link);
+  --focus-highlight-color: var(--ring);
+  --select-highlight-color: var(--brand-600);
+
+  /* 状态色族 */
+  --color-danger: var(--danger-solid);
+  --color-danger-darker: var(--danger-solid-hover);
+  --color-danger-darkest: var(--danger-solid-hover);
+  --color-danger-color: var(--danger-fg);
+  --color-danger-background: var(--danger-bg);
+  --color-danger-icon-color: var(--danger-fg);
+  --color-danger-icon-background: var(--danger-bg);
+  --color-danger-text: var(--danger-fg);
+  --color-warning: var(--warn-fg);
+  --color-warning-darker: var(--warn-fg);
+  --color-warning-darkest: var(--warn-fg);
+  --color-warning-color: var(--warn-fg);
+  --color-warning-background: var(--warn-bg);
+  --color-warning-icon-color: var(--warn-fg);
+  --color-warning-icon-background: var(--warn-bg);
+  --color-text-warning: var(--warn-fg);
+  --color-success: var(--ok-fg);
+  --color-success-darker: var(--ok-fg);
+  --color-success-darkest: var(--ok-fg);
+  --color-success-contrast: var(--ok-fg);
+  --color-success-contrast-hover: var(--ok-fg);
+  --color-success-contrast-active: var(--ok-fg);
+  --color-success-text: var(--ok-fg);
+
+  /* 输入件 */
+  --input-bg-color: var(--bg-panel);
+  --input-border-color: var(--border-strong);
+  --input-hover-bg-color: var(--bg-hover);
+  --input-label-color: var(--fg-muted);
+  --ExcTextField--background: var(--bg-panel);
+  --ExcTextField--border: var(--border-strong);
+  --ExcTextField--border-hover: var(--g5);
+  --ExcTextField--border-active: var(--ring);
+  --ExcTextField--color: var(--fg);
+  --ExcTextField--label-color: var(--fg-muted);
+  --ExcTextField--placeholder: var(--fg-subtle);
+
+  /* 圆角/尺规收敛到平台（Excalidraw 默认大圆角偏小工具感） */
+  --border-radius-lg: var(--r-lg);
+  --border-radius-md: var(--r-md);
+  --radius: var(--r-sm);
+}
+
+/* 岛面补描边——平台面是「边框+浅影」而非 Excalidraw 原生大投影浮岛 */
+.board-skin .excalidraw .Island {
+  border: 1px solid var(--border);
+}

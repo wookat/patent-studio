@@ -1,0 +1,187 @@
+# Web Search Results for "patents.google.com patent CN 电池 SOC 估计 储能 方法"
+
+## 1. CN116908703A - 一种针对电网储能锂电池的soc和soh联合估计方法及装置 
+        - Google Patents
+URL: https://patents.google.com/patent/CN116908703A/zh
+
+CN116908703A - 一种针对电网储能锂电池的soc和soh联合估计方法及装置 - Google Patents
+
+# CN116908703A - 一种针对电网储能锂电池的soc和soh联合估计方法及装置 - Google Patents
+...
+Publication number CN116908703A CN116908703A CN202311014341.XA CN202311014341A CN116908703A CN 116908703 A CN116908703 A CN 116908703A CN 202311014341 A CN202311014341 A CN 202311014341A CN 116908703 A CN116908703 A CN 116908703A Authority CN China Prior art keywords soc soh battery algorithm value Prior art date 2023-08-14 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Pending Application number CN202311014341.XA Other languages English (en) Inventor 许伟 陈智强 郭新毅 李波 匡亚洲 邓炜 梁波 李永利 常金芸 孔维超 祝长旗 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Beijing Zhong Bao Net Shield Technology Co ltd CGN Wind Energy Ltd Original Assignee Beijing Zhong Bao Net Shield Technology Co ltd CGN Wind Energy Ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2023-08-14 Filing date 2023-08-14 Publication date 2023-10-20 2023-08-14 Application filed by Beijing Zhong Bao Net Shield Technology Co ltd, CGN Wind Energy Ltd filed Critical Beijing Zhong Bao Net Shield Technology Co ltd 2023-08-14 Priority to CN202311014341.XA priority Critical patent/CN116908703A/zh 2023-10-20 Publication of CN116908703A publication Critical patent/CN116908703A/zh Status Pending legal-status Critical Current
+...
+本发明公开了一种针对电网储能锂电池的SOC和SOH联合估计方法及装置，包括五个步骤。本发明与现有技术相比的优点在于：1)算法优化：此方法通过引入一个波动值，把真实SOC限制在一个更为精确的小区间内，采用区间均值的思想降低外界噪声和系统误差带来的影响，得到一个相对更准确的SOC值；2)解决了SOH难以估算的问题；3)针对电网储能的工况，通过修正策略将两个状态估算模块串联了起来形成耦合算法模型，提高了算法的稳定性，保证了电池在整个寿命周期计算结果的准确性；4)通过在线辨识与老化更新参数的方法替代了前期花费大量时间对电池进行交叉标定试验，实现了电池参数随...
+
+## 2. CN116359742A - 基于深度学习组合扩展卡尔曼滤波的储能电池荷电状态在线估计方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN116359742A/zh
+
+CN116359742A - 基于深度学习组合扩展卡尔曼滤波的储能电池荷电状态在线估计方法及系统 - Google Patents
+
+# CN116359742A - 基于深度学习组合扩展卡尔曼滤波的储能电池荷电状态在线估计方法及系统 - Google Patents
+...
+Publication number CN116359742A CN116359742A CN202310312415.1A CN202310312415A CN116359742A CN 116359742 A CN116359742 A CN 116359742A CN 202310312415 A CN202310312415 A CN 202310312415A CN 116359742 A CN116359742 A CN 116359742A Authority CN China Prior art keywords energy storage storage battery learning neural network data Prior art date 2023-03-28 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202310312415.1A Other languages English (en) Other versions CN116359742B (zh Inventor 朱立位 伏祥运 李相俊 牛萌 岳付昌 董立志 李红 宋家康 修晓青 马会萌 李光熹 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) China Electric Power Research Institute Co Ltd CEPRI Lianyungang Power Supply Co of State Grid Jiangsu Electric Power Co Ltd Original Assignee China Electric Power Research Institute Co Ltd CEPRI Lianyungang Power Supply Co of State Grid Jiangsu Electric Power Co Ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2023-03-28 Filing date 2023-03-28 Publication date 2023-06-30 2023-03-28 Application filed by China Electric Power Research Institute Co Ltd CEPRI, Lianyungang Power Supply Co of State Grid Jiangsu Electric Power Co Ltd filed Critical China Electric Power Research Institute Co Ltd CEPRI 2023-03-28 Priority to CN202310312415.1A priority Critical patent/CN116359742B/zh 2023-06-30 Publication of CN116359742A publication Critical patent/CN116359742A/zh 2024-09-13 Application granted granted Critical 2024-09-13 Publication of ...
+
+## 3. CN103499794B - 一种储能电池剩余容量估算方法及装置 
+        - Google Patents
+URL: https://patents.google.com/patent/CN103499794B/zh
+
+CN103499794B - 一种储能电池剩余容量估算方法及装置 - Google Patents
+
+# CN103499794B - 一种储能电池剩余容量估算方法及装置 - Google Patents
+...
+Publication number CN103499794B CN103499794B CN201310477613.XA CN201310477613A CN103499794B CN 103499794 B CN103499794 B CN 103499794B CN 201310477613 A CN201310477613 A CN 201310477613A CN 103499794 B CN103499794 B CN 103499794B Authority CN China Prior art keywords battery current ampere battery pack soc Prior art date 2013-10-14 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN201310477613.XA Other languages English (en) Other versions CN103499794A (zh Inventor 余康 董德鑫 裴丽娜 黄哲 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Guoneng Information Control Technology Co ltd Original Assignee Beijing Huadian Tianren Power Controlling Technology Co Ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2013-10-14 Filing date 2013-10-14 Publication date 2016-05-11 2013-10-14 Application filed by Beijing Huadian Tianren Power Controlling Technology Co Ltd filed Critical Beijing Huadian Tianren Power Controlling Technology Co Ltd 2013-10-14 Priority to CN201310477613.XA priority Critical patent/CN103499794B/zh 2014-01-08 Publication of CN103499794A publication Critical patent/CN103499794A/zh 2016-05-11 Application granted granted Critical 2016-05-11 Publication of CN103499794B publication Critical patent/CN103499794B/zh Status Active legal-status Critical Current 2033-10-14 Anticipated expiration legal-status Critical
+...
+一种储能电池剩余容量估算方法及装置。该方法及装置实时估算储能电池的SOC(剩余容量)，主要包括以下步骤：获取电池单体电压、电池温度、电池组电流等参数；通过电流的安时积分实时估算SOCi(基于电流的剩余容量)、历史充放电安时数据；以及在特定条件下通...
+
+## 4. CN116008811B - 电池剩余容量、soc及自放电量在线联合估计方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN116008811B/zh
+
+CN116008811B - 电池剩余容量、soc及自放电量在线联合估计方法及系统 - Google Patents
+...
+本发明公开了一种电池剩余容量、SOC及自放电量在线联合估计方法及系统，涉及电化学储能电站管控技术领域，本发明以锂电池脱/嵌锂相变造成的电压曲线特征点为参考点，通过特征点识别、特征点间充放电容量计算、OCV‑SOC曲线映射三个步骤在线估计电池容量及SOC。通过特征点识别方法对电压‑时间曲线进行特征提取，获得特征点对应的电压值和时刻；基于安时积分方法获得各特征点之间的充放电容量，通过将特征点间容量映射到OCV‑SOC曲线，并根据比例关系计算获得电池剩余容量；进一步在运行过程中以特征点SOC为参考点，根据某时刻与特征点时刻间的充放电容量增量，获得该时刻的SOC值。
+...
+本发明涉及涉及电化学储能电站管控技术领域，特别涉及一种应用于锂电池储能系统的电池剩余容量、SOC及自放电量的在线联合估计方法。
+...
+针对现有技术中的估算误差较大的不足，本发明提供一种电池剩余容量、SOC及自放电量在线联合估计方法，能够更准确的实现对电池容量和SOC的在线识别，提升系统整体安全性。
+...
+一种在线联合估计方法，用于锂电池储能系统，其包括如下步骤：
+
+在设定实验条件下，对待测试电池进行充放电测试，进而获得所述待测试电池的OCV-SOC曲线和电压-时间曲线；
+
+对所述OCV-SOC曲线中因负极脱锂相变或负极嵌锂相变产生的多个特征点进行标记，并获得所述多个特征点对应的SOC值；
+
+在所述电压-时间曲线上获得所述多个特征点对应的电压值和时刻，采用电流安时积分法获得各特征点间的充放电容量；
+
+将所述特征点间的充放电容量映射到所述OCV-SOC曲线，并根据比例关系获得所述待测试电池的剩余容量。
+...
+根据所述待测试电池的剩余容量和所述充放电容量增量，获得所述待测试电池在单次充电或放电过程中该时刻的SOC估计值。
+...
+采用电流安时积分法获取所述待测试电池在一定循环周期后的某一电池单体的SOC理论值；
+
+对特征点对应的SOC值进行校正，并利用所述电池单体的SOC理论值与校正后的SOC值求差获得SOC偏差值；
+
+根据所述SOC偏差值和所述电池单体的剩余容量获得该循环周期内的自放电量。
+...
+一种线联合估计系统，其包括电池系统、电池管理系统BMS、能量管理系统EMS，其中所述电池系统的电压、电流、温度数据由所述电池管理系统BMS实时采集并上传至所述能量管理系统EMS，所述储能系统能量管理系统EMS储存电池历史数据，所述能量管理系统EMS实时执行如上所述的在线联合估计方法。
+...
+1、现有技术仅以电流安时积分结合电压、OCV曲线对电池状态进行估计。然而在应用于磷酸铁锂电池时，由于存在工作平台电压、迟滞效应等问题，微小的电压偏差可能存在较大SOC差异，从而造成这类方法具有较大估算误差。本发明基于磷酸铁锂电池负极脱嵌锂相变点体现在电压曲线中的特征点，建立了电池内部状态与外部参数的关联。以特征点为参考点，不受磷酸铁锂电池迟滞效应和平台电压影响，能够更准确的实现对电池容量和SOC的在线识别。
+
+2、现有技术针对电池异常自放电的识别通常采用电压离群特征来判断，然而电池在经历一定运行老化后将存在剩余容量、内阻等参数的不一致性，直接影响各电芯的电压分布，从而难以真实获取电芯异常自放电量。本发明通过特征点标定SOC与安时积分SOC的偏差值来判断电池循环周期内的漏损电量，不受电池剩余容量及内阻差异影响，更有效的识别异常自放电特征。
+...
+本发明基于磷酸铁锂电池负极脱嵌锂相变点体现在电压曲线中的特征点，建立了电池内部状态与外部参数的关联，以特征点为参考点，不受磷酸铁锂电池迟滞效应和平台电压影响，能够更准确的实现对电池容量和SOC的在线识别。进一步的，本发明通过特征点标定SOC与安时积分SOC的偏差值来判断电池循环周期内的漏损电量，不受电池剩余容量及内阻差异影响，更有效的识别异常自放电特征。
+...
+参见图1，本发明提出一种可估计电池容量的在线联合估计方法，其具体可以包括以下步骤：
+...
+具体的，将特征点间容量映射到OCV-SOC曲线，并根据比例关系计算获得电池剩余容量。例如时刻C 1 与C 3 映射至OCV-SOC曲线后可获得对应的SOC分别为SOC 1 及SOC 3 ，则电池剩余容量Q 总 ＝Q 1-3 /(SOC 3 -SOC 1)。所述剩余容量估计方法可在每次系统维护期间进行，以0.5C以下倍率进行充电或放电，充/放电SOC区间尽可能包含所有特征点。由于部分老化路径会造成S 3 特征点轻微偏移，以S 1 和S 4 点位间的容量进行电池剩余容量的估计能够显著提高估计精度。
+...
+参见图1，本发明提出一种可估计电池自放电量的在线联合估计方法，其...
+
+## 5. CN121522487B - 一种锂离子电池荷电状态估计方法、电池管理系统和存储介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN121522487B/zh
+
+CN121522487B - 一种锂离子电池荷电状态估计方法、电池管理系统和存储介质 - Google Patents
+
+# CN121522487B - 一种锂离子电池荷电状态估计方法、电池管理系统和存储介质 - Google Patents
+
+一种锂离子电池荷电状态估计方法、电池管理系统和存储介质
+...
+Publication number CN121522487B CN121522487B CN202610050508.5A CN202610050508A CN121522487B CN 121522487 B CN121522487 B CN 121522487B CN 202610050508 A CN202610050508 A CN 202610050508A CN 121522487 B CN121522487 B CN 121522487B Authority CN China Prior art keywords battery model soc charge state Prior art date 2026-01-15 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202610050508.5A Other languages English (en) Other versions CN121522487A (zh Inventor 唐春明 韦博达 黄振杰 温继康 王心涛 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Guangxi University Original Assignee Guangxi University Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2026-01-15 Filing date 2026-01-15 Publication date 2026-04-07 2026-01-15 Application filed by Guangxi University filed Critical Guangxi University 2026-01-15 Priority to CN202610050508.5A priority Critical patent/CN121522487B/zh 2026-02-13 Publication of CN121522487A publication Critical patent/CN121522487A/zh 2026-04-07 Application granted granted Critical 2026-04-07 Publication of CN121522487B publication Critical patent/CN121522487B/zh Status Active legal-status Critical Current 2046-01-15 Anticipated expiration legal-status Critical
+...
+本发明公开了一种锂离子电池荷电状态估计方法、电池管理系统和存储介质，属于电池管理系统技术领域。本发明首先对电池进行脉冲放电实验，采集充放电数据；然后建立三阶RC等效电路模型，充分考虑欧姆内阻、电化学极化和浓度差极化现象；接着采用改进的I‑LM算法对模型参数进行优化拟合，其中I‑LM算法通过多因素协同决策机制自适应更新阻尼系数；最后基于拟合参数和安时积分法实时估计电池SOC。与现有技术相比，本发明不仅提高了电池模型的预测精度，还显著加快了参数提取的收敛...
+
+## 6. CN118671624A - 一种磷酸铁锂储能电池的soc误差校准方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN118671624A/zh
+
+CN118671624A - 一种磷酸铁锂储能电池的soc误差校准方法及系统 - Google Patents
+...
+本发明涉及一种磷酸铁锂储能电池的SOC误差校准方法及系统，通过获取待测电池的单体电压、循环次数、电芯膨胀力和当前SOC；在当前SOC的值位于电压平台区时，基于循环次数、电芯膨胀力以及预先构建的膨胀力‑SOC关系曲线确定待测电池的SOC修正值，其中，循环膨胀力‑SOC关系曲线表征了电池在多种循环次数时，电芯膨胀力与SOC值的对应关系；在SOC修正值与当前SOC的值的差值大于预设阈值时，基于SOC修正值对当前SOC进行校准。本申请在待测电池的当前SOC的值位于电压平台区时，利用电芯膨胀力、循环次数以及循环膨胀力‑SOC关系曲线确定SOC修正值，从而对待测电池的SOC值进行修正，本发明可以弥补磷酸铁锂电池SOC开路电压的计算方法在电压平坦区修正误差大的缺陷。
+...
+本发明涉及电池检测技术领域，具体是一种磷酸铁锂储能电池的SOC误差校准方法及系统。
+...
+在电池管理系统的各种参数中，SOC(State ofCharge，电池充电状态)用于反映电池的剩余电量情况，其准确估计极其重要。精确在线实时估计不仅可以保护电池，防止过充电和过放电现象的发生，延长其使用寿命，还可以提升储能系统的能量利用率。
+...
+有鉴于此，本发明的目的是提供一种磷酸铁锂储能电池的SOC误差校准方法及系统，能够解决现有技术中磷酸铁锂电池在电压平台区SOC估计误差较大的问题。
+...
+本发明的一种磷酸铁锂储能电池的SOC误差校准方法，包括步骤：
+
+获取待测电池的单体电压、循环次数、电芯膨胀力和当前SOC；
+
+在所述当前SOC的值位于电压平台区时，基于所述单体电压、所述循环次数、所述电芯膨胀力以及预先构建的膨胀力-SOC关系曲线确定所述待测电池的SOC修正值，其中，所述循环膨胀力-SOC关系曲线表征了电池在多种循环次数时，电芯膨胀力与SOC值的对应关系；
+
+在所述SOC修正值与所述当前SOC的值的差值大于预设阈值时，基于所述SOC修正值对所述当前SOC进行校准。
+...
+本申请还提供一种磷酸铁锂储能电池的SOC误差校准系统，包括：
+...
+第一计算模块，用于在所述当前SOC的值位于电压平台区时，基于所述单体电压、所述循环次数、所述电芯膨胀力以及预先构建的膨胀力-SOC关系曲线确定所述待测电池的SOC修正值，其中，所述循环膨胀力-SOC关系曲线表征了电池在多种循环次数时，电芯膨胀力与SOC值的对应关系；
+
+第一校准模块，用于在所述SOC修正值与所述当前SOC的值的差值大于预设阈值时，基于所述SOC修正值对所述当前SOC进行校准。
+...
+本发明的有益效果是：本发明的一种磷酸铁锂储能电池的SOC误差校准方法及系统，通过获取待测电池的单体电压、循环次数、电芯膨胀力和当前SOC；在当前SOC的值位于电压平台区时，基于循环次数、电芯膨胀力以及预先构建的膨胀力-SOC关系曲线确定待测电池的SOC修正值，其中，循环膨胀力-SOC关系曲线表征了电池在多种循环次数时，电芯膨胀力与SOC值的对应关系；在SOC修正值与当前SOC的值的差值大于预设阈值时，基于SOC修正值对当前SOC进行校准。本申请在待测电池的当前SOC的值位于电压平台区时，利用电芯膨胀力、循环次数以及循环膨胀力-SOC关系曲线确定SOC修正值，从而对待测电池的SOC值进行修正，本申请弥补开路电压法的在电压平坦区修正误差大的缺陷。
+...
+本发明通过引入电芯膨胀力的辅助测量信息，构建以开路电压法为基础，膨胀力修正为补充的综合修正方法，解决在储能系统运行中累计误差逐步增加，不能及时修正SOC误差的问题。
+...
+S220，在所述当前SOC的值位于电压平台区时，基于所述单体电压、所述循环次数、所述电芯膨胀力以及预先构建的膨胀力-SOC关系曲线确定所述待测电池的SOC修正值，其中，所述循环膨胀力-SOC关系曲线表征了电池在多种循环次数时，电芯膨胀力与SOC值的对应关系；
+...
+S230，在所述当前SOC的值位于充电末期时，获取所述待测电池单体电压，并基于所述待测电池单体电压执行开路电压法，得到SOC修正值；
+...
+S250，在所述SOC修正值与所述当前SOC的值的差值大于预设阈值时，基于所述SOC修正值对所述当前SOC进行校准。
+...
+本申请中的SOC校准，采用开路电压法和膨胀力测量校准的相结合。在电芯的单体电压的平坦区，依据膨胀力实时计算SOC的修正值，在充放电末期，电芯电压的陡峭区，采用开路电压实时计算SOC的修正值。通过综合的SOC修正算法，就可以弥补开路电压法的在电压平坦区修正误差大的缺陷。避免实际运行过程中，在SOC误差较大的时候，需要充满或者放空操作，从而启动SOC修正的操作，减少现场运维的工...
+
+## 7. CN115291113A - 一种统一的锂离子电池soc、soh和rul的联合估计方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN115291113A/zh
+
+CN115291113A - 一种统一的锂离子电池soc、soh和rul的联合估计方法及系统 - Google Patents
+...
+Publication number CN115291113A CN115291113A CN202210976942.8A CN202210976942A CN115291113A CN 115291113 A CN115291113 A CN 115291113A CN 202210976942 A CN202210976942 A CN 202210976942A CN 115291113 A CN115291113 A CN 115291113A Authority CN China Prior art keywords soh rul soc battery ion battery Prior art date 2022-08-15 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Pending Application number CN202210976942.8A Other languages English (en) Inventor 陈欣 蔡宁波 巩素梅 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Xian Jiaotong University Original Assignee Xian Jiaotong University Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2022-08-15 Filing date 2022-08-15 Publication date 2022-11-04 2022-08-15 Application filed by Xian Jiaotong University filed Critical Xian Jiaotong University 2022-08-15 Priority to CN202210976942.8A priority Critical patent/CN115291113A/zh 2022-11-04 Publication of CN115291113A publication Critical patent/CN115291113A/zh Status Pending legal-status Critical Current
+...
+本发明公开了一种统一的锂离子电池SOC、SOH和RUL的联合估计方法及系统，包括：获取电池充放电期间电压、电流及温度信息；获取电池的瞬时电压、电流及温度信息；将电池充放电期间电压、电流及温度信息和电池的瞬时电压、电流及温度信息输入至训练后的锂离子电池SOC、SOH和RUL的预测模型中，得锂离子电池的SOC、SOH和RUL，该方法及系统能够利用统一的数据驱动模型预测电池的SOC、SOH及RUL。
+...
+电池储能系统在可再生能源发电、智能电网技术和电动汽车等方面迅速发展。准确的电池荷电状态(SOC)、健康状态(SOH)和剩余使用寿命(RUL)估计是BMS中的关键模块，用于确保电池的可靠性、耐久性和性能。
+...
+本发明的目的在于克服上述现有技术的缺点，提供了一种统一的锂离子电池SOC、SOH和RUL的联合估计方法及系统，该方法及系统能够利用统一的数据驱动模型预测电池的SOC、SOH及RUL。
+...
+本发明所述统一的锂离子电池SOC、SOH和RUL的联合估计方法包括：
+
+获取电池历史循环周期充放电期间电压、电流及温度信息；
+...
+分别将电池历史循环周期充放电期间电压、电流及温度信息和电池运行期间的瞬时电压、电流及温度...
+
+## 8. CN120121994A - 
+        A battery state of charge estimation method integrating deep learning and Kalman filtering
+       
+        - Google Patents
+URL: https://patents.google.com/patent/CN120121994A/en
+
+CN120121994A - A battery state of charge estimation method integrating deep learning and Kalman filtering - Google Patents
+...
+Publication number CN120121994A CN120121994A CN202510500912.3A CN202510500912A CN120121994A CN 120121994 A CN120121994 A CN 120121994A CN 202510500912 A CN202510500912 A CN 202510500912A CN 120121994 A CN120121994 A CN 120121994A Authority CN China Prior art keywords battery state charge value dimensional Prior art date 2025-04-21 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Pending Application number CN202510500912.3A Other languages Chinese (zh) Inventor 徐康康 张博学 孟献兵 王嗣铮 符康峰 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Guangdong University of Technology Original Assignee Guangdong University of Technology Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2025-04-21 Filing date 2025-04-21 Publication date 2025-06-10 2025-04-21 Application filed by Guangdong University of Technology filed Critical Guangdong University of Technology 2025-04-21 Priority to CN202510500912.3A priority Critical patent/CN120121994A/en 2025-06-10 Publication of CN120121994A publication Critical patent/CN120121994A/en Status Pending legal-status Critical Current
+...
+本发明涉及一种融合深度学习与卡尔曼滤波的电池荷电状态(SOC)估计方法，包括：生成21维动态特征向量，通过动态滑动窗口获取多模态信号的四维统计特征，经加权处理、零值补偿后与原始信号特征融合；将特征向量输入轻量级联合架构，经单层卷积自编码器提取时序特征、浅层深度神经网络处理，输出SOC第一估计值，该架构采用端到端协同训练策略与量化部署；构建四维状态空间的自适应无迹卡尔曼滤波(AUKF)，以第一估计值为观测输入，经状态预测、观测更新，输出修正后的SOC估计值，过程中在线动态调整噪声参数、施加容量约束。本发明提升复杂工况下特征提取精度与抗干扰能力，建立长期稳定的SOC估计体系，实现轻量化设计与嵌入式实时部署。
+...
+Therefore, the invention provides a battery state of charge estimation method integrating d...
+
+## 9. CN110596604B - 一种基于安时积分法的锂电池soc估计方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN110596604B/zh
+
+CN110596604B - 一种基于安时积分法的锂电池soc估计方法 - Google Patents
+...
+Publication number CN110596604B CN110596604B CN201910918620.6A CN201910918620A CN110596604B CN 110596604 B CN110596604 B CN 110596604B CN 201910918620 A CN201910918620 A CN 201910918620A CN 110596604 B CN110596604 B CN 110596604B Authority CN China Prior art keywords battery soc ampere discharge capacity Prior art date 2019-09-26 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN201910918620.6A Other languages English (en) Other versions CN110596604A (zh Inventor 魏千翔 刘春波 张诗军 顾志东 冯建伟 王联智 王鹏 胡微 王信科 谢敏 王保强 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Southern Power Grid Digital Grid Group Hainan Co ltd Original Assignee Hainan Digital Power Grid Research Institute of China Southern Power Grid Co Ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2019-09-26 Filing date 2019-09-26 Publication date 2022-03-11 2019-09-26 Application filed by Hainan Digital Power Grid Research Institute of China Southern Power Grid Co Ltd filed Critical Hainan Digital Power Grid Research Institute of China Southern Power Grid Co Ltd 2019-09-26 Priority to CN201910918620.6A priority Critical patent/CN110596604B/zh 2019-12-20 Publication of CN110596604A publication Critical patent/CN110596604A/zh 2022-03-11 Application granted granted Critical 2022-03-11 Publication of CN110596604B publication Critical patent/CN110596604B/zh Status Active legal-status Critical Current 2039-09-26 Anticipated expiration legal-status
+...
+本发明提供一种基于安时积分法的锂电池SOC估计方法，采用安时积分法对锂电池SOC状态进行估计，其中对于安时积分法当中所使用到的充放电初始状态、电池容量、库伦效率值进行校正，校...
+
+## 10. CN115219907A - 一种锂电池soc估计方法、系统、介质、设备及终端 
+        - Google Patents
+URL: https://patents.google.com/patent/CN115219907A/zh
+
+CN115219907A - 一种锂电池soc估计方法、系统、介质、设备及终端 - Google Patents
+...
+Publication number CN115219907A CN115219907A CN202210803315.4A CN202210803315A CN115219907A CN 115219907 A CN115219907 A CN 115219907A CN 202210803315 A CN202210803315 A CN 202210803315A CN 115219907 A CN115219907 A CN 115219907A Authority CN China Prior art keywords lithium battery battery data soc estimation time Prior art date 2022-07-09 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202210803315.4A Other languages English (en) Other versions CN115219907B (zh Inventor 刘尧 张文进 常建涛 李祥宇 李磊 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Xian University of Posts and Telecommunications Original Assignee Xian University of Posts and Telecommunications Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2022-07-09 Filing date 2022-07-09 Publication date 2022-10-21 2022-07-09 Application filed by Xian University of Posts and Telecommunications filed Critical Xian University of Posts and Telecommunications 2022-07-09 Priority to CN202210803315.4A priority Critical patent/CN115219907B/zh 2022-10-21 Publication of CN115219907A publication Critical patent/CN115219907A/zh 2025-09-05 Application granted granted Critical 2025-09-05 Publication of CN115219907B publication Critical patent/CN115219907B/zh Status Active legal-status Critical Current 2042-07-09 Anticipated expiration legal-status Critical
+...
+本发明属于锂电池监测技术领域，公开了一种锂电池SOC估计方法、系统、介质、设备及终端，使用传感器采集锂电池充电周期和放电周期中的电压、电流、温度、循环时间向量以及电池容量数据，基于特征工程和Pearson相关性分析提取电池容量退化相关的特征；利用所选的特征通过构建的CNN网络模型拟合锂电池SOC的退化轨迹，构建粒子滤波算法的状态空间模型，最后基于粒子滤波算法更新和修正SOC估...

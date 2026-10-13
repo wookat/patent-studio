@@ -1,0 +1,309 @@
+# Web Search Results for "patents.google.com patent CN 分类器 训练 样本不平衡 方法"
+
+## 1. CN109086412A - 一种基于自适应加权Bagging-GBDT的不平衡数据分类方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN109086412A/zh
+
+CN109086412A - 一种基于自适应加权Bagging-GBDT的不平衡数据分类方法 - Google Patents
+...
+本发明实施例提出了一种基于自适应加权Bagging‑GBDT的不平衡数据分类方法，包括：根据k‑means算法将多数类样本聚成多个簇，对每个簇样本进行多次分层欠采样；将每次采样后的多数类样本与全部少数类样本组合得到多个样本子集，根据这些子集训练多个预测精度较高的GBDT子分类模型；根据测试点邻域样本类别自适应地确定各子模型权重，据此通过加权硬投票方式集成最终的分类模型。本发明实施例提供的技术方案，可以有效解决正负样本不平衡的分类问题，能针对每一个数据样本实现分类模型的自适应加权集成，提高分类模型的综合指标。
+...
+有鉴于此，本发明实施例提出了一种基于自适应加权Bagging-GBDT的不平衡数据分类方法，以提高分类模型对正负样本整体的识别率。
+
+本发明实施例提出的一种基于自适应加权Bagging-GBDT的不平衡数据分类方法，包括：
+
+根据k-means算法将多数类样本聚成多个簇，对每个簇样本进行多次分层欠采样；
+
+将每次采样后的多数类样本与全部少数类样本组合得到多个样本子集，根据这些子集训练多个预测精度较高的GBDT子分类模型；
+
+根据测试点邻域样本类别自适应地确定各子模型权重，据此通过加权硬投票方式集成最终的分类模型。
+
+上述方法中，根据k-means聚类算法对多数类样本进行多次分层欠采样，解决随机欠采样方法易丢弃潜在有用样本的问题的方法为：假定数据集中正负样本的不平衡比率为Ratio，设定聚类中心点个数k为{Ratio,3,5,10}中的某个值，训练集少数类样本总数为num，根据k-means算法将多数类训练样本聚成k簇，对每个簇根据其包含的样本总数进行分层抽样且满足抽样总数等于num，重复不放回抽样T次；
+
+上述方法中，将每次采样后的多数类样本与全部少数类训练样本组合得到多个样本子集，根据这些子集训练多个预测精度较高的GBDT子分类模型的方法为：通过组合采样后的多数类样本与全部少数类训练样本得到T份训练集，假定表示第t份训练子集，其中，t＝1:T，(xi,yi)表示该子集中的第i个样本，xi为样本输入特征，yi为样本真实类别，yi∈(0,1)，N为训练集样本总数，初始化对应的子模型h0(x)，如下所示：
+...
+上述方法中，根据测试点邻域样本类别自适应地确定各子模型权重，据此通过加权硬投票方式集成最终的分类模型的方法为：当测试样本xte进入分类模型时，计算欧氏距离dist：
+
+其中，b代表样本特征总数，xtea与xtra分别为测试点与训练集内某一样本点在属性a上的取值，统计在训练样本集内最近n个邻居点少数类样本的数目count，计算少数类权重系数w+＝count×1/n+1，多数类权重系数w-默认设置为1；分别通过各个子分类模型进行测试得到预测样本类别；根据加权投票法得到最终的分类模型H(x)：
+...
+本发明实施例给出基于自适应加权Bagging-GBDT的不平衡数据分类方法，请参考图1，其为本发明实施例所提出的基于自适应加权Bagging-GBDT的不平衡数据分类方法的流程示意图，如图1所示，该方法包括以下步骤：
+
+步骤101，根据k-means算法将多数类样本聚
+...
+步骤102，将每次采样后的多数类样本与全部少数类样本组合得到多个样本子集，根据这些子集训练多个预测精度较高的GBDT子分类模型。
+...
+步骤103，根据测试点邻域样本类别自适应地确定各子模型权重，据此通过加权硬投票方式集成最终的分类模型。
+...
+图2是本发明实施例所提出的基于自适应加权Bagging-GBDT的不平衡数据分类方法训练阶段与测试阶段算法框架流程图，提出的方法主要包括训练阶段与测试阶段。在训练阶段，首先将训练数据集划分为多数类与少数类，对多数类样本进行k-means聚类，得到k个样本簇。根据分层抽样法从k个样本簇中随机抽取与少数类样本相同数量的多数类样本，重复抽样T次。将T份多数类样本集分别与全部少数类样本组合得到T份训练样本子集，对全部子集进行训练建立T个GBDT分类子模型。在测试阶段，在训练集中选取离测试点最近的n个点，统计n个点中属于少数类的样本个数count，根据count计算权重系数w+、w-，根据权重系数对各个子模型进行加权投票集成最终的分类模型。
+...
+本发明实施的技术方案中，根据k-means聚类算法对多数类样本进行多次欠采样，解决随机欠采样方法易丢弃潜在有用样本的问题；将每次采样后的多数类样本与全部少数类样本组合得到多个样本子集，根据这些子集训练多个预测精度较高的GBDT子分类模型；根据测试点邻域样本类别自适应地确定各子模型权重，据此通过加权硬投票方式集成最终的分类模型。根据...
+
+## 2. CN108647727A - 不平衡数据分类欠采样方法、装置、设备及介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN108647727A/zh
+
+CN108647727A - 不平衡数据分类欠采样方法、装置、设备及介质 - Google Patents
+...
+number CN108647727A CN108647727A CN201810453103.1A CN201810453103A CN108647727A CN 108647727 A CN108647727 A CN 108647727A CN 201810453103 A CN201810453103 A CN 201810453103A CN 108647727 A CN108647727 A CN 108647727A Authority CN China Prior art keywords samples sample classification majority unbalanced data Prior art date 2018-05-10 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) ... 12 Publication of CN108647727A publication Critical patent/CN108647727A/zh Status Pending legal-status Critical Current
+...
+本发明公开了一种不平衡数据分类欠采样方法，包括：获取待处理不平衡数据中的所有多数样例；根据K近邻算法获取每一所述多数样例最近邻的k个样例中少数样例的个数；根据所述少数样例的个数确定对应多数样例的类别；根据每一所述多数样例的类别进行与所述类别对应的操作。解决不平衡大数据分类过程中多数类样例过多和少数样例过少导致的分类学习算法精度低的问题，提高不平衡大数据的分类准确性。
+...
+已有的不平衡大数据预处理方法主要包括针对少数类的过采样和针对多数类的欠采样。欠采样是指采用一定的方法和技术减少多数类样本，通过对样本集的调整减少大数据集的不平衡度，增加分类算法的准确性。
+...
+针对上述问题，本发明的目的在于提供一种不平衡数据分类欠采样方法， 能解决不平衡大数据分类过程中多数类样例过多和少数样例过少导致的分类学习算法精度低的问题，提高不平衡大数据的分类准确性。
+
+第一方面，本发明提供了一种不平衡数据分类欠采样方法，包括：
+...
+根据K近邻算法获取每一所述多数样例最近邻的k个样例中少数样例的个数；
+
+根据所述少数样例的个数确定对应多数样例的类别；
+
+根据每一所述多数样例的类别进行与所述类别对应的操作。
+...
+第二方面，本发明还提供了不平衡数据分类欠采样装置，包括：
+...
+上述技术方案具有如下优点：获取待处理不平衡数据中的若干个多数样例，根据K近邻算法获取每一所述多数样例最近邻的k个样例中少数样例的个数，根据所述少数样例的个数确定对应多数样例的类别，通过根据每一所述多数样例的类别进行与所述类别对应的操作，解决了在大数据集中多数类样例远远大 于少数样例时，能进行选择删除的多数样例少，由此引发的分类学习算法精度低的问题，以根据所述类别进行选择多样例进删除，一方面删除了所有噪音样例，保留了更有价值的边界样例，另一方面对稳定样例进行删除时，分布紧密的稳定样例被删除的可能性更大，分布稀疏的稳定样例尽量保存下来，使得欠采样以后的样例集更多的保留了原来样例集的特性，有效解决了删除不该删除的样本的问题，并使得最终得到的样本数据更符合现实规律。
+...
+所述不平衡数据分类欠采样方法的具体步骤如下：
+...
+S12、根据K近邻算法获取每一所述多数样例最近邻的k个样例中少数样例的个数。
+...
+S13、根据所述少数样例的个数确定对应多数样例的类别。
+
+在本发明实施例中，根据所述多数样例的个数确定对应少数样例的类别，其中，所述类别包括噪音样例、边界样例和稳定样例。
+...
+S14、根据每一所述多数样例的类别进行与所述类别对应的操作。
+
+需要说明的是，在本发明实施例中，对所述待处理不平衡数据中的多数样例进行欠采样，以减少所述多数样例的个数为主要目的，在进行欠采样过程中，在本实施例中，是根据每一所述多数样例的不同类别进行不同操作，而不是现有技术中依靠边界样例中进行选择多数样例删除，从而实现了删除更多的多数样例，其中，所述操作包括删除、保留和选择性删除，其中，选择性删除就是这个多数样例可能会被删除也可能不被删除。
+...
+获取待处理不平衡数据中的若干个多数样例，根据...
+
+## 3. CN112052900B - 机器学习样本权重调整方法和装置、存储介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN112052900B/zh
+
+本公开涉及一种机器学习样本权重调整方法和装置、存储介质。该机器学习样本权重调整方法包括：对于不同类型样本数量不均衡的场景，在机器学习模型的多轮迭代训练过程的每一轮模型训练后，确定每一个样本的样本预测值与样本标签值的误差；根据样本预测值与样本标签值间的误差，对模型训练后的每一个样本的当前样本权重进行动态调整，并作为下轮模型训练的样本权重。本公开可以通过启发式迭代思路实现对学习样本权重的动态、精细调节。
+...
+为了解决样本不均衡问题，相关技术主流解决方案是调节样本比例或权重(Sample_weigth)，如通过上采样(Over-sampling)、下采样(Under-sampling)直接调整各标签样本数量，或通过增大少数类样本的权重使得模型加大对少数类样本的学习偏重。为了解决错误标签造成的干扰，相关技术主要通过人工排除或通过在模型损失函数降低异常难拟合样本(Hard Negative，即模型预测值Prediction与样本标签Label间差距过大的样本)权重，减少此类样本对模型的干扰。
+...
+鉴于以上技术问题中的至少一项，本公开提供了一种机器学习样本权重调整方法和装置、存储介质，可以基于启发式迭代思路实现对学习样本权重的动态、精细调节。
+...
+对于不同类型样本数量不均衡的场景，在机器学习模型的多轮迭代训练过程的每一轮模型训练后，确定每一个样本的样本预测值与样本标签值的误差；
+
+根据样本预测值与样本标签值间的误差，对模型训练后的每一个样本的当前样本权重进行动态调整，并作为下轮模型训练的样本权重。
+...
+步骤11，对于不同类型样本数量不均衡的场景，在机器学习模型的多轮迭代训练过程的每一轮模型训练后，确定每一个样本的样本预测值与样本标签值的误差。
+...
+步骤12，根据样本预测值与样本标签值间的误差，对模型训练后的每一个样本的当前样本权重进行动态调整，并作为下轮模型训练的样本权重(Sample weight)。
+...
+本公开一些实施例中，机器学习模型训练时会基于多组参数进行交叉验证(CrossValidation)或多轮训练或对比，选取效果最优的模型或参数进行输出。因此本公开种机器学习样本权重调整方法可以包括：第一、训练前，对同一类型样本根据样本数初始化设置统一权重Wr1；第二、模型迭代时，使用上轮权重(或初始化权重)参数进行训练，当前训练结束后根据当前轮模型效果微调样本的权重，定义loss＝|label-prediction|，即预测值与真实标签间的差距，根据样本loss增加被误判样本的权重，将更新后的权重参数用于下一轮模型训练，使得下一轮训练时侧重loss较大的误判样本；第三、如果存在样本经多轮调节后权重过大(当超过预定权重阈值θ时即认为累计误判次数过多，可认为标签错误)则降低样本权重(或修正样本标签、剔除样本)。第四、如果模型效果达到预期或完成指定轮数迭代，则终止训练。
+
+基于本公开上述实施例提供的机器学习样本权重调整方法，针对有监督机器学习中的样本不均衡、样本标签错误问题，提出了一种基于启发式迭代思路实现对学习样本权重的动态、精细调节。本公开上述实施例可以通过初始化少数类样本权重，在模型训练过程中不断细粒度调整样本权重；本公开上述实施例可以通过多轮训练方法检测误判样本，进而实现对错误标签样本的权重调节或标签转化，最终实现对模型训练效果的提升。
+...
+步骤22，在机器学习模型的多轮迭代训练过程的每一轮模型训练后，确定每一个样本的样本预测值label与样本标签值prediction的误差。
+...
+步骤24，判断每个样本的权重是否大于预定权重阈值θ。若一个样本的权重大于预定权重阈值θ，则将权重大于预定权重阈值θ的样本作为难分负样本，之后执行步骤26；否则，若一个样本的权重不大于预定权重阈值θ，则将权重不大于预定权重阈值θ的样本作为正常样本，之后执行步骤25。
+
+步骤25，对于正常样本，根据样本预测值与标签值间的误差，对模型训练的当前样本权重进行动态调整，之后执行步骤27。
+...
+步骤26，对于难分负样本(Hard Negative)，降低样本权重到于定值(例如0)，或修正样本标签。
+...
+步骤27，融合难分负样本和正常样本的调整后的权重值，作为下轮模型训练的全局样本权重；之后执行步骤22。
+...
+样本权重调整模块32，用于根据样本预测值与样本标签值间的误差，对模型训练后的每一个样本的当前样本权重进行动态调整，并作为下轮模型训练的样本权重。
+
+在本公开的一些实施例中，样本权重调整模块32可以用于针对每个样本，根据样本预测值与样本标签值的误差确定调节因子；根据每个样本的调节因子，对模型训练中所述样本的当前样本权重进行动态调整。
+...
+在本公开的一些实施例中，样本权重调整模块32还可以用于在每一轮模型训练后确定样本预...
+
+## 4. CN116304919B – A method and system for improving imbalanced classification models. | Patsnap Eureka
+URL: https://eureka.patsnap.com/patent/CN116304919B
+Published: 2026-04-21T00:00:00.000Z
+
+In imbalanced multi-class classification problems, existing technologies are prone to overfitting and over-reliance on a minority of samples, resulting in unsatisfactory classification performance and poor robustness and generalization ability.
+...
+A hierarchical classification model is adopted, which combines and groups categories through data analysis. The group classification model and the sub-category classification model are used for layer-by-layer training and prediction to improve the robustness and generalization ability of the model.
+...
+This invention proposes a method and system for improving a classification model for imbalanced multi-class samples, comprising: a training step, which involves analyzing the acquired training data, combining and grouping categories according to the data volume of each category and preset data grouping and partitioning rules, and further using the group classification model and the sub-category classification model of each group in a hierarchical classification model for layer-by-layer classification training; and a prediction step, which involves first loading the group classification model and the sub-category classification model of each group, then inputting the prediction data into the group classification model for classification prediction to determine the group label of each group, and then selecting the corresponding sub-category classification model according to the group label for final sub-category prediction. By improving the framework structure of the classification model, the classification effect is improved, solving the multi-class problem under imbalanced samples, improving classification effect and accuracy, and simultaneously enhancing the robustness and generalization ability of the model.
+...
+[0008] In a first aspect, the present invention proposes a method for improving a classification model with imbalanced multi-class samples, the method comprising the following steps:
+
+ [0009] The training steps in...
+
+## 5. CN112966767B - 一种特征提取和分类任务分离的数据不均衡处理方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN112966767B/zh
+
+CN112966767B - 一种特征提取和分类任务分离的数据不均衡处理方法 - Google Patents
+...
+本发明公开了一种特征提取和分类任务分离的数据不均衡处理方法，其特征在于，包括步骤一：准备用于模型训练的分类数据集，判定数据是否存在长尾分布；步骤二：利用深度神经网络训练一个包含两个分支网络的模型，模型将表征特征与分类特征动态融合，并进行分类；步骤三：通过测试数据集对模型评估分析，在测试数据集上计算模型的准确率和召回率，通过准确率和召回率的值来判定模型的性能；步骤四：对验证测试好的模型进行部署测试，在真实的场景中，对抓取的类别图片进行分析，统计分析分类的效果。达到在不改变原始数据分布的情况下，很好的解决分类任务中长尾分布的问题的效果。
+...
+本发明的一种特征提取和分类任务分离的数据不均衡处理方法，针对数据集中存在的长尾问题进行了分析和方法的设计，通过对训练数据集中样本数量的统计分析，利用神经网络训练出一个表征学习和分类学习分离的模型。这个模型可以在不改变原始数据分布的情况下，很好的解决分类任务中长尾分布的问题。模型在特征提取部分共享权重，然后针对表征任务和分类任务设计不同的网络结构来抽象特征，最后将两部分特征进行融合，提升模型最后的性能。
+...
+步骤一：准备用于模型训练的分类数据集，对分类数据集统计分析，可视化数据的分布，判定数据是否存在长尾分布；对于采集均衡的数据集可以按着一般的分类模型定义思路来训练模型，如果可视化的分布结果有着明显的倾斜呈长尾分布可以按第二步的思路来做。
+
+步骤二：利用深度神经网络训练一个包含两个分支网络的模型，其中，分支网络一用于学习图片的表征特征，分支网络二用于学习图片的分类特征，整个模型的后半部分将表征特征与分类特征动态融合，并进行分类；在两个分支网络的训练过程中，分支网络一接受原始采样分布的数据作为输入，分支网络二接受原始数据反比的采样分布作为输入；
+...
+步骤2-3：分类特征的提取，分支网络二按照样本个数的反比例对图片进行采样学习，这部分主要是为了得到数据的分类特征，因为正常情况下模型会更倾向于预测样本比较多的数据，所以这部分用来训练分类特征，
+...
+步骤2-4，将提取的表征特征与分类特征进行融合，所述融合按比例系数α来进行，这样进行最后分类的特征，既拥有按正常数据采样训练的表征特征，又拥有按着呈反比的方式采样训练的分类特征，得到组后的模型分类的特征
+...
+步骤11：准备模型训练的分类数据集，并对数据进行标注获得标注信息。
+
+所述步骤11中，针对特定的场景采集模型训练所需要的数据集，经过人工筛选得到按照类别文件夹存放的训练数据集，每个类别目录下的图片数据最少5张，数据类别根据实际的情况来决定，如果数据量太少训练的模型稳定性存在问题，所以在数据收集的时候应该尽可能多的收集数据。对收集到的数据进行统计分析得到数据的分布，如果数据并没有存在长尾分布可以按照正常的训练策略，在预训练好的模型上微调得到泛化好的模型。如果数据中存在比较明显的长尾分布可以按着此方法来进行模型的训练。
+
+步骤12：根据准备的标注好的分类数据集，利用神经网络来训练分类模型，模型的backbone作为公共的特征提取模块，在此基础之上构建表征特征提取模块和分类特征提取模块，最后动态的将这两部分特征融合得到最终的分类特征。通过上述方式训练出一个可以有效解决长尾分布的模型。
+
+所述步骤12中：利用表征提取的模块提取表征特征，表征模块的输入数据是按着正常的采样方式进行采样的，采样的个数与数据量的大小成正比；利用分类提取模块提取分类特征处理长尾分布中存在的不均衡问题，分类模块输入数据的采样方式与训练数据的数量成反比；特征融合模块将产生的表征特征和分类特征进行动态融合得到模型分类所需要的特征，特征的融合过程是动态的，在训练初期表征特征会占据融合特征的绝大部分，在训练后期表征特征的权重逐渐减少，分类特征会占据主要的部分，动态融合使得提取出的特征更加具有稳定性，更能表征数据；最后将上述融合的特征进行模型训练，得到最后的分类模型，整个训练过程是端到端的。
+
+步骤13：对按着正常的微调方式训练的模型和按着上述方式训练的模型进行对比，在测试集上测试模型的准确率和召回率，判定模型的泛化性和稳定性，选择出最优的模型。理论上模型训练的准确率和召回率越高越好，但是经过实践当准确率和召回率达到0.9时，模型的性能满足应用需求，且继续优化已经不能显著提升性能，达到最佳的投入产出比。
+...
+所述的模型训练模块22，主要是训练模型中的两个分支，一个分支用来进行表征特征的提取，另外一个分支用来进行模型分类的均衡。然后对两个分支提取的特征进行动态的融合做模型的分类。
+...
+本发明主要提出了一种特征表征和分类表征分离的分类方法，该方法主要是用来解...
+
+## 6. CN107644057A - 一种基于迁移学习的绝对不平衡文本分类方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN107644057A/zh
+
+CN107644057A - 一种基于迁移学习的绝对不平衡文本分类方法 - Google Patents
+...
+本发明涉及一种基于迁移学习的绝对不平衡文本分类方法，包括：文本数据预处理：划分目标领域数据与辅助领域数据，其中辅助领域数据与目标领域数据分布不同,但是相关；文本向量化；级联结构各节点分类模型训练：采用改进的Tradaboost算法，用辅助领域数据平衡训练集，并通过级联结构逐渐平衡领域间权重以及不同类别样本权重，对于不同领域不同类别的样本采取不同的权重更新方式；最终分类结果由所有节点的分类器加权投票得出。
+...
+随着web文本的海量增长，文本信息呈爆炸式增长趋势，已有的样本不足以训练一个可靠的模型，而新样本数据的标注费时费力。现实数据往往存在数据不平衡现象，目前针对不平衡问题研究，主要包含两种方法，一种是从数据层面平衡数据集,另一种是设计或改进学习算法，降低算法对类别不平衡度的敏感度，从而增强算法的鲁棒性。但是当训练数据绝对不平衡，少数类样本包含的信息不足以训练一个分类器，利用传统的不平衡学习方法，如直接训练分类器或者利用抽样方法平衡训练集都不能达到理想的分类效果。因此可以利用迁移学习在训练数据中引入辅助领域数据，帮助训练分类模型。
+...
+迁移学习是机器学习的一个重要分支，其打破了传统机器学习算法中训练数据与测试数据独立同分布的假设条件，使得可以有效利用过期数据进行学习。迁移学习主要包括实例迁移，特征迁移，参数迁移。TrAdaBoost算法是基于boosting技术的实例迁移算法，算法将辅助领域与目标领域数据直接组合作为训练集训练分类器模型。采用boosting技术可以将弱分类器算法通过组合提升为强学习算法，从而有效提升学习效果。但是该方法容易加重类别不平衡问题，目前针对上述问题提出了许多解决方案，但是这些方案没能同时考虑辅助领域类别不平衡条件下的样本选择问题和领域间类别不平衡度不一致问题。
+...
+本发明针对目标领域样本绝对不平衡问题，提供一种同时考虑辅助领域类别不平衡条件下的样本选择问题和领域间类别不平衡度不一致问题的绝对不平衡文本分类方法。本发明融合级联模型与集成迁移学习思想，提出基于级联模型的集成迁移学习算法，可以有效提高分类模型对目标领域少数类样本的识别率，从而实现更准确的文本分类。技术方案如下：
+...
+划分目标领域数据与辅助领域数据，其中辅助领域数据与目标领域数据分布不同,但是相关，辅助领域中存在更为适合训练目标领域分类模型的样本；经过数据清洗后在目标领域数据中随机选择80％的数据作为目标领域训练数据，剩余20％作为分类模型性能评估的测试数据，辅助领域全部数据均参与分类器训练；
+...
+采用改进的Tradaboost算法，用辅助领域数据平衡训练集，并通过级联结构逐渐平衡领域间权重以及不同类别样本权重，对于不同领域不同类别的样本采取不同的权重更新方式，改进如下：
+...
+Adaboost算法的权重更新方法，权重更新因子大于1，将错分样本视为对分类模型训练有益样本，增加权重；
+...
+对不平衡学习，目标领域数据中负类样本数量远多于正类样本数量，权重更新因子小于1，错分样本权重降低；
+...
+对于辅助领域正类样本，引入权重恢复因子σ动态调整权重更新因子，σ与目标领域正负类样本分类准确率相关，当目标领域正负类分类准确率一致时，σ趋近于1，此时权重更新因子趋近于β src ，其中ns为辅助领域样本数量，m为迭代次数；当目标领域正类样本的准确率高于负类样本的准确率时，σ<1,此时权重更新因子降低，降低正类错分样本权重；当目标领域正类样本准确率低于负类样本准确率时，σ>1,此时权重更新因子增加，提高正类错分样本权重；
+...
+除第一个节点外，每个节点都要利用上一节点训练的分类器和样本权重对辅助领域样本进行筛选，对于权重小于阈值的辅助领域数据，将其视为不相关样本进行删除；对于正确分类的辅助领域样本，将其视为冗余样本进行删除；
+...
+1.本发明提出了一种基于级联结构的集成迁移学习文本分类算法。解决了Tradaboost算法中辅助领域样本权重不可恢复问题。同时利用级联结构逐步删除辅助领域中噪声样本与冗余样本，在保证目标领域主导作用的同时充分利用辅助领域数据。可以在一定程度上解决数据绝对不平衡问题，并预防负迁移的发生。
+...
+本发明的基本思想：通过对TrAdaBoost算法引入权重恢复因子，动态调整辅助领域样本权重，解决了算法中辅助领域样本权重不可恢复问题。随后，将改进的算法作为级联结构各节点分类器基分类器，并利用级联结构对辅助领域数据进行样本选择。最终集成各节点分类器作为最终分类器。通过该模型，可以有效提高分类模型对目标领域少数类样本的识别率，从而实现更准确的文本分类。本发明的程序流程如图1所示。采用的文本分类模型...
+
+## 7. CN113705215A - 一种基于元学习的大规模多标签文本分类方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN113705215A/zh
+
+CN113705215A -
+...
+本发明公开了一种基于元学习的大规模多标签文本分类方法，主要包括：使用采样策略从训练集中采样获得若干样本，形成若干子任务，基于采样获得的若干子任务让模型进行元学习，元学习后的模型在原始数据集上使用监督学习方法进行微调，使得模型的性能进一步提升。本方法将大规模多标签文本分类问题转化为一个元学习问题，通过构造大量含有少样本和零样本标签的多标签文本分类子任务并优化模型在这些任务上的泛化误差，让模型能够显式的学习如何更好的预测那些少样本和零样本标签。
+...
+专利CN113076426A公开了一种多标签文本分类及模型训练方法、装置、设备及存储介质，该发明在训练多标签文本分类模型的过程中，会基于该模型输出的各标签的预测特征，来训练能够捕获标签间相关性的分类器，通过同步训练该分类器和多标签文本分类模型，使得训练出的多标签文本分类模型也能够更为精准的捕获标签间的相关性。但是由于没有利用到标签的先验信息，从而不能很好地预测那些少样本和零样本的标签。
+...
+发明目的：本发明所要解决的技术问题是针对现有技术中模型对于少样本和零样本标签的预测准确率较低的问题，提供一种基于元学习的大规模多标签文本分类方法。
+
+为了解决上述技术问题，本发明公开了一种基于元学习的大规模多标签文本分类方法，包括：
+
+步骤S1：获取数据集，并将数据集按比例划分为训练集、验证集和测试集；所述数据集为样本的集合，所述样本由一段自然语言文本及其相关的标签组成；
+...
+步骤S3：使用采样策略从训练集中采样获得若干样本，作为子任务的样本集合；基于采样获得的若干子任务由模型进行元学习；
+...
+进一步地，所述步骤S3中，采样策略包括基于样本的采样策略和基于标签的采样策略。
+
+进一步地，所述步骤S3中，使用基于样本的采样策略，即从样本集合中无放回的均匀采样出若干样本作为子任务的样本集合。
+
+进一步地，所述步骤S3中，使用基于标签的采样策略，即从样本集合中均匀采样出若干标签，从标注每个标签的样本集合中均随机选取一个样本，作为子任务的样本集合。
+...
+进一步地，所述步骤S3中，将使用基于样本的采样策略采样获得的样本集合以及使用基于标签的采样策略采样获得的样本集合，分别按比例划分为支撑集和查询集。
+
+优选地，基于样本的采样策略采样获得的样本集合按2:1的比例划分为支撑集和查询集；基于标签的采样策略采样获得的样本集合按2:1的比例划分为支撑集和查询集。
+
+进一步地，所述步骤S3中，将基于样本采样获得的若干子任务以及基于标签采样获得的若干子任务按照一定比例混合，使模型基于若干子任务进行元学习。
+...
+步骤S42：利用前向算法计算训练集中的样本，即根据自然语言文本预测出每个标签为正的概率；
+...
+本发明提出了一种基于元学习的大规模多标签文本分类方法，将大规模多标签文本分类问题转化为一个元学习问题，通过构造大量含有少样本和零样本的多标签文本分类子任务并优化模型在这些任务上的泛化误差，让模型能够显式的学习如何更好的预测那些少样本和零样本标签。
+...
+步骤S3：如图2所示，使用采样策略从训练集中采样获得若干样本，形成若干子任务，基于采样获得的若干子任务由模型进行元学习；
+
+所述采样策略包括基于样本的采样策略和基于标签的采样策略；其中，使用基于样本的采样策略，即从样本集合中无放回的均匀采样出若干样本作为子任务的样本集合；本发明均匀地采样出192个样本；
+
+使用基于标签的采样策略，即从标注文本集合中均匀采样出若干标签，从标注每个标签的样本集合中均随机选取一个样本，作为子任务的样本集合；本发明均匀地采样出192个标签；
+...
+将使用基于样本的采样策略采样获得的样本集合以及使用基于标签的采样策略采样获得的样本集合，均按2:1的比例划分为支撑集和查询集；
+
+将基于样本采样获得的若干子任务以及基于标签采样获得的若干子任务按照1:1的比例混合，使模型基于若干子任务进行元学习；具体实现中采样了300个子任务进行元学习。
+...
+步骤S31：使用二元交叉熵损失函数计算模型在支撑集上的损失函数值；元学习收敛后模型在支持集上损失函数值大约为2.0；
+
+步骤S32：根据步骤S31计算的损失函数值，使用梯度下降算法更新模型参数若干步；此过程中考虑时间效率，更新模型参数的步数为1；
+
+步骤S33：使用二元交叉熵损失函数计算经步骤S32更新后的模型在查询集上的损失函数值；元学习收敛后模型在查询集上损失函数值大约为0.8；
+
+步骤S34：初始的模型根据步骤S32中查询集上的损失函数值选择使用特定的优化器进行学习；本发明使用了Adam优化器进行元学习。
+
+步骤S4：如图3所示，元学习后的模型在原始数据集上使用监督学习方法进行微调，包括；
+...
+步骤S42：利用前向算法计算训练集中的样本，...
+
+## 8. CN114881096B – Multi-label class balancing method and apparatus thereof | Patsnap Eureka
+URL: https://eureka.patsnap.com/patent/CN114881096B
+Published: 2026-04-24T00:00:00.000Z
+
+Existing object detection datasets suffer from a long-tail effect, which can lead to scene loss or indirectly increase the number of other categories, and existing sampling techniques cannot effectively solve this problem.
+...
+By establishing a weight model, the target sampling weight of each instance in each category is calculated, and the instances of the sub-categories are sampled with weight. New instances are added to increase the amount of data in the sub-categories, while the original instances are retained to avoid scene loss and indirect addition of other categories.
+...
+A multi-label class balancing method, the method comprising: obtaining a sample set comprising a plurality of instances, each instance comprising one or more class labels; classifying the instances in the sample set according to the class labels to form a plurality of classes, each instance being assigned to one or more classes, each class corresponding to a class label; determining a target sampling weight of each instance in each sub-class according to a number of target class labels in each instance and a number of all class labels in each instance, wherein the sub-class is a class in the plurality of classes and the number of the class is less than a first threshold, the target class label is a class label corresponding to the sub-class in each instance, and the target sampling weight is a sampling weight corresponding to the sub-class in each instance; and performing weighted sampling on the instances in each sub-class according to the target sampling weight of each instance in the sub-class. The present case also provides a device, which can avoid scene loss and indirectly increase the number of other classes.
+...
+[0002] Object detection is an important research area in computer vision and image processing, and it is currently widely used in fields such as live video streaming, security monitoring, robotics, and human-computer interaction. However, most object detection data in real-w...
+
+## 9. CN114818891B - 小样本多标签文本分类模型训练方法及文本分类方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114818891B/zh
+
+本发明公开了一种小样本多标签文本分类模型训练方法、小样本多标签文本分类方法、装置、计算设备及计算机存储介质。该方法通过从文本标签对应的标注样本文本中提取关键短语，根据关键短语实现提示模板的扩充，并基于提示模板来实现数据增广，从而实现了基于小样本的标注样本文本进行模型训练，克服了大规模有标注的文本不可得的缺陷，而且提升了文本分类模型的训练效率，无需人工花费较长时间进行标注，降低了人工成本以及时间成本。
+...
+根据本发明的一个方面，提供了一种小样本多标签文本分类模型训练方 法，包括：
+...
+针对每个标注样本文本，将标注样本文本与存在标注关系的至少一个文 本标签对应的第一提示模板集合内的每个提示模板进行组合，得到训练文本 对正样本集合；将标注样本文本与从标签集合中选取的至少一个不存在标注 关系的文本标签对应的第一提示模板集合内的每个提示模板进行组合，得到 训练文本对负样本集合；
+
+根据训练文本对正样本集合内的各个训练文本对正样本及训练文本对负 样本集合内的各个训练文本对负样本对分类网络进行训练，得到文本分类模 型。
+...
+本发明的发明人发现，现有技术可以通过数据增广来扩充数据，而现有 的数据增广方法一般为使用同义词替换、颠倒词序、回译等技术对原始数据 进行修改得到语义不变的新数据，修改对象均为标注的原数据。由于回译、 同义词替换得到的句子向量表示在向量空间中距离非常近，所以修改后的新 数据与原始数据比较不能涵盖较多新的语言现象，价值不大，颠倒原文本的 词序还可能会改变文本的语义。而这三种方法对于小样本数据集来说还有一 个很大的缺陷，即生成的新数据数量非常有限。
+...
+为了解决现有文本分类技术存在的问题和不足，发明人提供了一种小样 本多标签文本分类模型训练方案及小样本多标签文本分类方案，基于少量有 标注的文本可以训练处使用的文本分类模型，并基于训练的文本分类模型进 行文本分类，具体参见如下实施例：
+...
+为了能够训练得到更为精准地文本分类模型，需要对数据进行增广，本 实施例数据增广方式不改变原始的标注样本文本，而是通过改变提示模板从 而进行大规模数据增广。
+
+这里是通过进行关键短语的排列组合来扩充提示模板，进而实现数据增 广，具体地，针对每个文本标签，从文本标签对应的提示模板释义集合内选 取第一预设数量的关键短语，其中，本领域技术人员可以根据实际需要而设 定第一预设数量的数值，根据第一预设数量的关键短语进行短语排列组合， 得到关键短语组合结果集合，比如，设文本标签对应的提示模板释义集合内 的关键短语的数量为n1；针对每个文本标签，从文本标签对应的提示模板释 义集合内分别选取n1-2个、n1-1个、n1个关键短语，根据选取n1-2、n1-1、n1个关键短语分别进行短语排列组合，得到关键短语组合结果集合，当然这里 也可以仅选取一次关键短语。
+...
+语的数量不能过少，这里每个文本标签ti选取分
+...
+种关键短 语的排列组合集合Ai，其中n1为Di中关键短语的数量，n1>2，！表示阶乘。 由于Di内的每个关键短语之间彼此独立，因此变换关键短语的顺序并不会改 变提示模板的语义；提示模板释义集合比较大时，Ai的基数会非常多，如n1＝8时，8！等于40320，所以这种方法可以对数据进行大规模增广，为了防止计算 量过大，通常情况下，n1<10。
+...
+其中，关键短语组合结果集合内的各关键短语组合的数量是非常多，为 了有效控制提示模板的数量，也为了提升文本标签对应的提示模板之间的差 异性，需要对提示模板进行筛选，具体地，根据关键短语组合结果集合内的 各关键短语组合生成文本标签对应的第一提示模板集合进一步可以通过如下 方法实现：构建空的第一提示模板集合；根据关键短语组合结果集合内的各 关键短语组合生成提示模板，得到第二提示模板集合；从第二提示模板集合 选取任一未被选取过的提示模板，计算提示模板与第二提示模板集合中其他提示模板之间的相似度，从第二提示模板集合中剔除相似度大于或等于预设 阈值的其他提示模板，并将提示模板由第二提示模板集合转移至第一提示模 板集合，直至第二提示模板集合为空，得到文本标签对应的第一提示模板集 合。
+...
+步骤S103，针对每个标注样本文本，将标注样本文本与存在标注关系的 至少一个文本标签对应的第一提示模板集合内的每个提示模板进行组合，得 到训练文本对正样本集合；将标注样本文本与从标签集合中选取的至少一个 不存在标注关系的文本标签对应的第一提示模板集合内的每个提示模板进行 组合，得到训练文本对负样本集合。
+...
+步骤S104，根据训练文本对正样本集合内的各个训练文本对正样本及训 练文本对负样本集合内的各个训练文本对负样本对分类网络进行训练，得到 文本分类模型。
+
+具体地，根据训练文本对正样本集合内的各个训练文本对...
+
+## 10. Unbalanced industrial data classification method and device, and computer readable storage medium - Eureka | Patsnap
+URL: https://eureka.patsnap.com/patent-CN114004266A
+Published: 2022-02-01T00:00:00.000Z
+
+Unbalanced industrial data classification method and ... , and computer readable storage medium - Eureka | Patsnap
+
+# Unbalanced industrial data classification method and device, and computer readable storage medium
+...
+A technology of industrial data and classification methods, applied in computer parts, calculation, character and pattern recognition, etc., can solve the problems of inability to learn sample characteristics, few training samples, poor learning effect, etc., and achieve the goal of alleviating the lack of potential useful information Effect
+...
+### Problems solved by technology 
+
+[0004] The inventor found through research that the EasyEnsemble algorithm, which is a related technology to solve the problem of data balance, is a down-sampling technology based on integrated learning. Various types of samples are taken as part of the training set, which makes the original few samples even fewer, resulting in potentially useful information. The lack of learning effect is poor, especially when the amount of data is small and the samples are extremely unbalanced. This method of integrated downsampling makes the sub-classifier contain too few training samples, which makes it impossible to learn the characteristics of the sample, resulting in poor performance of the classifier.
+...
+The invention relates to an unbalanced industrial data classification method and device, and a computer readable storage medium. The unbalanced industrial data classification method comprises the following steps: dividing an input unbalanced data set into a minority class sample set and a majority class sample set; in the sampling process, a plurality of balanced subsets are obtained in a mode of inducing missing values for a minority class sample set and estimating and complementing the missing values; training each balanced subset to obtain a sub-classifier; and integrating all the sub-classifiers to obtain a final data classifier. Missing values are induced for minority samples ...

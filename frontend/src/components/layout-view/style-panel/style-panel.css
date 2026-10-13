@@ -1,0 +1,84 @@
+/*
+ * W9 决策 3：章节 / 小节标题样式变量 --ps-h3-* / --ps-h4-*（后端 style_css.render_vars 输出；HeadingStylePanel 预览时内联覆盖）。
+ * 缺省回退到既有 --ps-font-heading / --ps-size-h1|h2，零漂移例（默认 headings）渲染与改前一致。
+ * 选择器同时覆盖现版面块（.ps-desc-h1 / .ps-desc-h2）与 U1 BookEditor 的 h3/h4.ps-heading。
+ */
+.ps-paper .ps-desc-h1,
+.ps-paper h3.ps-heading {
+  font-family: var(--ps-h3-font, var(--ps-font-heading));
+  font-size: var(--ps-h3-size, var(--ps-size-h1));
+  font-weight: var(--ps-h3-weight, normal);
+  text-align: var(--ps-h3-align, left);
+}
+.ps-paper .ps-desc-h2,
+.ps-paper h4.ps-heading {
+  font-family: var(--ps-h4-font, var(--ps-font-heading));
+  font-size: var(--ps-h4-size, var(--ps-size-h2));
+  font-weight: var(--ps-h4-weight, normal);
+  text-align: var(--ps-h4-align, left);
+}
+
+/* 编号（none | cn | arabic）：CSS 计数器；容器 data-h3-numbering / data-h4-numbering 由 Paper 按 settings（或面板预览）设置 */
+.ps-paper {
+  counter-reset: ps-h3 ps-h4;
+}
+.ps-paper .ps-desc-h1,
+.ps-paper h3.ps-heading {
+  counter-increment: ps-h3;
+  counter-reset: ps-h4;
+}
+.ps-paper .ps-desc-h2,
+.ps-paper h4.ps-heading {
+  counter-increment: ps-h4;
+}
+.ps-paper[data-h3-numbering='cn'] .ps-desc-h1::before,
+.ps-paper[data-h3-numbering='cn'] h3.ps-heading::before {
+  content: counter(ps-h3, cjk-ideographic) '、';
+}
+.ps-paper[data-h3-numbering='arabic'] .ps-desc-h1::before,
+.ps-paper[data-h3-numbering='arabic'] h3.ps-heading::before {
+  content: counter(ps-h3) '. ';
+}
+.ps-paper[data-h4-numbering='cn'] .ps-desc-h2::before,
+.ps-paper[data-h4-numbering='cn'] h4.ps-heading::before {
+  content: counter(ps-h4) '. ';
+}
+.ps-paper[data-h4-numbering='arabic'] .ps-desc-h2::before,
+.ps-paper[data-h4-numbering='arabic'] h4.ps-heading::before {
+  content: counter(ps-h3) '.' counter(ps-h4) ' ';
+}
+
+.ps-heading-panel__preview {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 0.5rem);
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+.ps-heading-panel__preview-h {
+  margin: 0;
+  line-height: 1.6;
+}
+.ps-heading-panel__preview-h[data-level='section'] {
+  font-family: var(--ps-h3-font);
+  font-size: var(--ps-h3-size);
+  font-weight: var(--ps-h3-weight);
+  text-align: var(--ps-h3-align);
+}
+.ps-heading-panel__preview-h[data-level='subsection'] {
+  font-family: var(--ps-h4-font);
+  font-size: var(--ps-h4-size);
+  font-weight: var(--ps-h4-weight);
+  text-align: var(--ps-h4-align);
+}
+.ps-heading-panel__grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 8px 12px;
+}
+@media (max-width: 480px) {
+  .ps-heading-panel__grid {
+    grid-template-columns: 1fr;
+  }
+}

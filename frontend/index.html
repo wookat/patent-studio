@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/logo-mark.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Patent Studio · 中国发明专利全链路工作台 — AI 辅助撰写到递交导出</title>
+    <!-- SEO -->
+    <meta name="description" content="Patent Studio 是面向中国发明专利的全链路写作工作台：论文/交底书一键转三书初稿（摘要·权利要求书·说明书）、确定性附图管线、千张真实 CN 案附图图库、句型骨架级专利文体范例、AI 建议式审阅、一键导出 DOCX/PDF/XML 递交包。数据仅存于机构私有部署。" />
+    <meta name="keywords" content="专利撰写,发明专利,专利申请,AI专利写作,权利要求书,说明书,交底书,论文转专利,专利附图,OA答复,专利代理,patent drafting,Patent Studio" />
+    <meta name="author" content="Patent Studio" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <meta name="application-name" content="Patent Studio" />
+    <meta name="theme-color" content="#2563eb" />
+    <link rel="canonical" href="https://patent.zalize.com/" />
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Patent Studio" />
+    <meta property="og:title" content="Patent Studio · 中国发明专利全链路工作台" />
+    <meta property="og:description" content="论文/交底书 → 三书初稿 → 附图管线 → 体检 → 递交导出。AI 建议式起草，人审把关；数据仅存机构私有部署。" />
+    <meta property="og:url" content="https://patent.zalize.com/" />
+    <meta property="og:image" content="https://patent.zalize.com/lp/workbench.png" />
+    <meta property="og:locale" content="zh_CN" />
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Patent Studio · 中国发明专利全链路工作台" />
+    <meta name="twitter:description" content="论文/交底书 → 三书初稿 → 附图管线 → 体检 → 递交导出。AI 建议式起草，人审把关。" />
+    <meta name="twitter:image" content="https://patent.zalize.com/lp/workbench.png" />
+    <!-- GEO：供 AI 引擎/LLM 抓取的语义化产品说明 -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Patent Studio",
+      "alternateName": "专利工作台",
+      "url": "https://patent.zalize.com/",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "zh-CN",
+      "description": "面向中国发明专利的全链路写作工作台：Markdown 源码撰写三书（摘要/权利要求书/说明书），确定性附图管线与 1021 张真实 CN 案附图图库，专利句型骨架级文体范例注入，AI 建议式起草与人审协同，一键导出 DOCX/PDF/XML 递交包。私有部署，案卷数据不出机构。",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CNY" },
+      "featureList": "论文转专利三书初稿, 权利要求书撰写辅助, 说明书五段式成稿, 确定性附图管线 (figspec), 附图图库 1021 张真实 CN 案, 专利句型骨架语料 589 篇授权案, 查新检索内置语料源, OA 答复争辩助手, 体检与语料重叠哨兵, DOCX/PDF/XML 递交导出, 协同审阅修订轨",
+      "screenshot": "https://patent.zalize.com/lp/workbench.png"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "Patent Studio 是做什么的？", "acceptedAnswer": { "@type": "Answer", "text": "面向中国发明专利的全链路写作工作台：把论文或交底书转成可递交的三书初稿（摘要、权利要求书、说明书），配套确定性附图管线、真实 CN 案附图图库与句型骨架语料，支持协同审阅并导出 DOCX/PDF/XML 递交包。" } },
+        { "@type": "Question", "name": "AI 写的专利文稿能保证授权吗？", "acceptedAnswer": { "@type": "Answer", "text": "不能。本平台产出为机器起草辅助与人审工具，不构成法律意见或授权保证；递交前应自行或委托执业专利代理师核实新颖性、创造性与支持性。" } },
+        { "@type": "Question", "name": "案卷数据存在哪里？", "acceptedAnswer": { "@type": "Answer", "text": "Patent Studio 采用机构私有部署，案卷数据存储于机构自有服务器，不上传第三方 SaaS。" } },
+        { "@type": "Question", "name": "支持哪些导出格式？", "acceptedAnswer": { "@type": "Answer", "text": "支持 CN 标准递交包：DOCX、PDF 与 XML 格式的一键导出，含五书与附图。" } }
+      ]
+    }
+    </script>
+    <style>
+      /* R24-01 启动兜底：JS 落地前（慢网冷启）不再裸白屏。React 挂载后自动替换 #root 内容。 */
+      .boot-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        font-family: system-ui, -apple-system, sans-serif;
+        color: #6b7280;
+        background: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        .boot-splash {
+          background: #0f1115;
+          color: #9ca3af;
+        }
+      }
+      .boot-splash .ring {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 3px solid #d1d5db;
+        border-top-color: #2563eb;
+        animation: boot-spin 0.9s linear infinite;
+      }
+      .boot-splash .brand {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-splash .ring {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="boot-splash" role="status" aria-label="加载中">
+        <div class="ring" aria-hidden="true"></div>
+        <div class="brand">Patent Studio</div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

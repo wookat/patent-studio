@@ -1,0 +1,828 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* `.dark` 自身与其子树都命中 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ====== 设计 token（docs/design-system/05-w6-spec.md §1 唯一权威；方向 C · Pro Dense）======
+   分层：原始层（--g0..--g11 冷灰 hue 255 / --brand-* / --<族>-fg|bg|dot）→ 语义层（--bg-* --fg-* --border* --st-*）→ Tailwind @theme inline。
+   组件只引用语义层；shadcn 惯例别名（--background --foreground --muted --card --popover --accent --border-2 …）
+   是组件面向的语义名常设层，全部指向四层面——不再计划移除（重命名数百调用点无收益）。
+   全部 OKLCH；对比度由 docs/design-system/w6-spec/contrast.py 与 src/__tests__/check-contrast.test.ts 断言。 */
+:root {
+  color-scheme: light;
+
+  /* ---- 原始层：冷灰 12 阶（§1.1） ---- */
+  --g0: oklch(1 0 0);
+  --g1: oklch(0.982 0.002 255);
+  --g2: oklch(0.958 0.004 255);
+  --g3: oklch(0.925 0.006 255);
+  --g4: oklch(0.870 0.008 255);
+  --g5: oklch(0.760 0.012 255);
+  --g6: oklch(0.565 0.016 255);
+  --g7: oklch(0.520 0.018 255);
+  --g8: oklch(0.420 0.020 255);
+  --g9: oklch(0.300 0.020 255);
+  --g10: oklch(0.220 0.018 255);
+  --g11: oklch(0.150 0.014 255);
+
+  /* ---- 原始层：品牌绿（§1.3；只做 primary / 焦点环 / 链接三义） ---- */
+  --brand-100: oklch(0.955 0.030 155);
+  --brand-300: oklch(0.800 0.110 152);
+  --brand-600: oklch(0.520 0.150 152);
+  --brand-700: oklch(0.460 0.130 153);
+  --brand-800: oklch(0.400 0.110 154);
+
+  /* ---- 原始层：7 色相族 × fg / bg / dot（§1.4） ---- */
+  --info-fg: oklch(0.470 0.150 258);
+  --info-bg: oklch(0.955 0.025 258);
+  --info-dot: oklch(0.600 0.170 258);
+  --ok-fg: oklch(0.440 0.120 152);
+  --ok-bg: oklch(0.955 0.030 155);
+  --ok-dot: oklch(0.580 0.150 152);
+  --warn-fg: oklch(0.480 0.130 70);
+  --warn-bg: oklch(0.965 0.040 85);
+  --warn-dot: oklch(0.600 0.150 70);
+  --danger-fg: oklch(0.480 0.180 27);
+  --danger-bg: oklch(0.960 0.025 25);
+  --danger-dot: oklch(0.600 0.210 27);
+  /* danger 实底按钮（白字 ≥ 6:1；hover 不能用 --danger-dot，白字仅 4.38） */
+  --danger-solid: oklch(0.480 0.180 27);
+  --danger-solid-hover: oklch(0.430 0.180 27);
+  --danger-solid-fg: oklch(1 0 0);
+  --violet-fg: oklch(0.460 0.160 300);
+  --violet-bg: oklch(0.960 0.025 300);
+  --violet-dot: oklch(0.620 0.180 300);
+  --teal-fg: oklch(0.450 0.100 190);
+  --teal-bg: oklch(0.955 0.030 190);
+  --teal-dot: oklch(0.580 0.110 190);
+  --orange-fg: oklch(0.500 0.160 45);
+  --orange-bg: oklch(0.965 0.035 50);
+  --orange-dot: oklch(0.580 0.170 45);
+
+  /* ---- 语义层：四层面（§1.2） ---- */
+  --bg-app: var(--g1);
+  --bg-panel: var(--g0);
+  --bg-sunken: var(--g2);
+  --bg-elevated: var(--g0);
+  --bg-hover: var(--g2);
+  --bg-active: var(--g3);
+  --bg-selected: var(--brand-100);
+  --bg-inverse: var(--g11);
+  --fg-inverse: var(--g0);
+  /* 纸面（版面页 / PDF 页）恒白（Word 对齐），画布随层面 */
+  --paper: oklch(1 0 0);
+  --paper-fg: var(--g10);
+  --paper-canvas: var(--g2);
+  --border: var(--g3);
+  --border-strong: var(--g4);
+  --fg-strong: var(--g10);
+  --fg: var(--g9);
+  --fg-muted: var(--g7);
+  --fg-subtle: oklch(0.530 0.016 255); /* g6 0.565 on --bg-app 仅 4.32:1，微调至 5.0（05 §1.3 修正） */
+  --fg-disabled: var(--g5);
+  --fg-icon: var(--g8);
+  --fg-on-brand: var(--g0);
+
+  /* ---- 语义层：品牌 ---- */
+  --primary: var(--brand-600);
+  --primary-hover: var(--brand-700);
+  --primary-active: var(--brand-800);
+  --primary-soft: var(--brand-100);
+  --primary-foreground: var(--fg-on-brand);
+  --link: var(--brand-700);
+  --ring: var(--brand-600);
+  --border-focus: var(--ring);
+
+  /* ---- 语义层：10 档专利状态（§1.4；key 与 types/case.ts CaseStatus 同名） ---- */
+  --st-intake-fg: var(--info-fg);
+  --st-intake-bg: var(--info-bg);
+  --st-intake-dot: var(--info-dot);
+  --st-drafting-fg: var(--violet-fg);
+  --st-drafting-bg: var(--violet-bg);
+  --st-drafting-dot: var(--violet-dot);
+  --st-review-fg: var(--orange-fg);
+  --st-review-bg: var(--orange-bg);
+  --st-review-dot: var(--orange-dot);
+  --st-client_review-fg: var(--teal-fg);
+  --st-client_review-bg: var(--teal-bg);
+  --st-client_review-dot: var(--teal-dot);
+  --st-final-fg: var(--ok-fg);
+  --st-final-bg: var(--ok-bg);
+  --st-final-dot: var(--ok-dot);
+  --st-filed-fg: var(--info-fg);
+  --st-filed-bg: var(--info-bg);
+  --st-filed-dot: oklch(0.520 0.170 258);
+  --st-oa-fg: var(--warn-fg);
+  --st-oa-bg: var(--warn-bg);
+  --st-oa-dot: var(--warn-dot);
+  --st-granted-fg: var(--ok-fg);
+  --st-granted-bg: var(--ok-bg);
+  --st-granted-dot: var(--ok-dot);
+  --st-rejected-fg: var(--danger-fg);
+  --st-rejected-bg: var(--danger-bg);
+  --st-rejected-dot: var(--danger-dot);
+  --st-closed-fg: var(--fg-muted);
+  --st-closed-bg: var(--bg-sunken);
+  --st-closed-dot: var(--g6);
+
+  /* ---- 语义层：期限热度 3 档（§1.5；阈值 = store/deadlines.ts 7d / 30d） ---- */
+  --heat-0-fg: var(--fg-muted);
+  --heat-0-bg: transparent;
+  --heat-1-fg: var(--warn-fg);
+  --heat-1-bg: var(--warn-bg);
+  --heat-2-fg: var(--danger-fg);
+  --heat-2-bg: var(--danger-bg);
+
+  /* ---- 组件面向的语义名（shadcn 惯例：background / foreground / muted / accent / destructive / warning / success / info / popover / card / border-2 / input / placeholder / primary-text）：
+     常设层，全部指向四层面；W5 旧名（--n* / --green-* / --h-control* / --h-segmented / --status-*）已在 W6 删除 ---- */
+  --background: var(--bg-panel);
+  --foreground: var(--fg);
+  --card: var(--bg-panel);
+  --card-foreground: var(--fg);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--fg);
+  --sheet-muted-foreground: var(--g7);
+  --sheet-info: var(--info-fg);
+  --sheet-info-soft: var(--info-bg);
+  --primary-text: var(--link);
+  --secondary: var(--bg-sunken);
+  --muted: var(--bg-sunken);
+  --muted-foreground: var(--fg-muted);
+  --accent: var(--bg-hover);
+  --accent-foreground: var(--fg-strong);
+  --placeholder: var(--fg-subtle);
+  --destructive: var(--danger-fg);
+  --destructive-foreground: var(--g0);
+  --destructive-soft: var(--danger-bg);
+  --warning: var(--warn-dot);
+  --warning-foreground: var(--warn-fg);
+  --warning-soft: var(--warn-bg);
+  --success: var(--brand-700);
+  --success-foreground: var(--g0);
+  --success-soft: var(--ok-bg);
+  --info: var(--info-fg);
+  --info-soft: var(--info-bg);
+  --border-2: var(--border-strong);
+  --input: var(--border-strong);
+  --selection: oklch(0.546 0.215 263 / 0.35);
+  --find-mark: oklch(0.861 0.173 92 / 0.45);
+  --find-mark-current: oklch(0.705 0.187 48 / 0.65);
+
+  /* ---- 图表系列色 = 7 族 dot（info / ok / warn / violet / teal） ---- */
+  --chart-1: var(--info-dot);
+  --chart-2: var(--ok-dot);
+  --chart-3: var(--warn-dot);
+  --chart-4: var(--violet-dot);
+  --chart-5: var(--teal-dot);
+
+  /* ---- 字体 ---- */
+  --font-ui: -apple-system, "PingFang SC", "Noto Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, "Segoe UI", sans-serif;
+  --font-code: "JetBrains Mono Variable", "JetBrains Mono", "Sarasa Mono SC", ui-monospace, Menlo, Consolas, monospace;
+
+  /* ---- 字阶 8 档（§1.6）：11/16 · 12/18 · 13/20 · 14/22 基准 · 16/24 · 20/28 · 24/32 · 28/36；最小 11，禁 9 / 10 ---- */
+  --fs-2xs: 11px;
+  --lh-2xs: 16px;
+  --fs-xs: 12px;
+  --lh-xs: 18px;
+  --fs-sm: 13px;
+  --lh-sm: 20px;
+  --fs-md: 14px;
+  --lh-md: 22px;
+  --fs-base: var(--fs-md);
+  --lh-base: var(--lh-md);
+  --fs-lg: 16px;
+  --lh-lg: 24px;
+  --fs-xl: 20px;
+  --lh-xl: 28px;
+  --fs-2xl: 24px;
+  --lh-2xl: 32px;
+  --fs-3xl: 28px;
+  --lh-3xl: 36px;
+  --lh-tight: 1.25;
+  --lh-normal: 1.5;
+  --lh-loose: 1.6;
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  /* 编辑器 14 / 1.7（用户可调，store clampEditorFontSize 11–20） */
+  --editor-font-size: 14px;
+  --editor-line-height: 1.7;
+
+  /* ---- 圆角 5 档 + pill（§1.7：≤24→3 · 28→4 · 32–36→6 · 浮层/卡→8 · 对话框/Sheet/登录卡→12） ---- */
+  --r-xs: 3px;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --r-xl: 12px;
+  --r-full: 9999px;
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-full: var(--r-full);
+  --radius: var(--r-sm);
+
+  /* ---- 阴影 3 档 + 纸（§1.7） ---- */
+  --sh-sm: 0 1px 2px oklch(0 0 0 / 0.06);
+  --sh-md: 0 4px 12px oklch(0 0 0 / 0.10), 0 1px 2px oklch(0 0 0 / 0.06);
+  --sh-lg: 0 12px 32px oklch(0 0 0 / 0.16), 0 2px 4px oklch(0 0 0 / 0.08);
+  --sh-paper: 0 1px 3px oklch(0 0 0 / 0.12), 0 0 0 1px var(--border);
+
+  /* ---- z-index 5 档 ---- */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-panel: 20;
+  --z-overlay: 40;
+  --z-popover: 50;
+  --z-toast: 60;
+
+  /* ---- 动效（§1.7）：fast 120 / color 150 / panel 200；reduced-motion → 0 ---- */
+  --dur-fast: 120ms;
+  --dur-color: 150ms;
+  --dur-panel: 200ms;
+  --dur-slow: 300ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-panel: var(--ease);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ---- 控件高度 5 档（§1.7）：24 / 28 / 32 / 36 / 44；40 档删除 ---- */
+  --h-xs: 24px;
+  --h-sm: 28px;
+  --h-md: 32px;
+  --h-lg: 36px;
+  --h-touch: 44px;
+
+  /* ---- 行高 ---- */
+  --row-h: 40px;
+  --row-h-compact: 36px;
+  --row-h-mobile: 48px;
+  --row-h-tree: 28px;
+  --row-h-menu: 32px;
+  --tree-row: var(--row-h-tree);
+  --h-outline-node: var(--row-h-tree);
+
+  /* ---- 壳尺寸（§1.8） ---- */
+  --h-topbar: 40px;
+  --h-statusbar: 24px;
+  --h-rail: 40px;
+  --h-pdftb: 32px;
+  --h-panel-header: 32px;
+  --h-side-handle: 6px;
+  --h-mobile-topbar: 44px;
+  --h-mobile-tabs: 56px;
+  --h-mobile-tabbar: var(--h-mobile-tabs);
+  --h-m-topbar: var(--h-mobile-topbar);
+  --h-m-tabbar: var(--h-mobile-tabs);
+  --h-page-header: 56px;
+  --h-action-bar: 64px;
+  --w-rail: 40px;
+  --w-side: 240px;
+  --w-side-min: 200px;
+  --w-side-max: 400px;
+  --w-companion: 360px;
+  --w-companion-min: 320px;
+  --w-companion-max: 480px;
+  --w-drawer: 320px;
+  --w-agent: var(--w-companion);
+  --w-agent-min: var(--w-companion-min);
+  --w-dialog-sm: 400px;
+  --w-dialog-md: 560px;
+  --w-dialog-lg: 800px;
+  --max-page: 1280px;
+  --pad-page: 32px; /* 非工作台页边距（05 §1.9） */
+  /* ---- 移动 8pt 间距（06 §3.1；只在 375 版式原语 MobilePage / ScrollRow / Sheet 内引用） ---- */
+  --pad-page-m: 16px;
+  --gap-section-m: 24px;
+  --pad-card-m: 16px;
+  --gap-card-m: 12px;
+  --gap-group-m: 8px;
+  --gap-inline-m: 4px;
+  --pad-sheet-m: 16px;
+  --pad-sheet-top-m: 8px;
+  --w-form: 400px;
+  --max-form: 640px;
+  --w-split-handle: 7px;
+  --w-settings-nav: 200px;
+  --w-editor-min: 360px;
+  --w-preview-min: 360px;
+  --w-dash-rail: 240px;
+  --w-board-col: 280px;
+  --w-board-col-collapsed: 40px;
+  --w-paper-max: 680px;
+  --w-toast: 360px;
+  --w-block-editor: 440px;
+}
+
+/* UI 密度（设置 › 外观 › 密度 → <html data-density>）：紧凑只压缩树行 / 面板头 / 列表行高，壳网格不变 */
+:root[data-density='compact'] {
+  --row-h-tree: 24px;
+  --h-panel-header: 28px;
+  --row-h: var(--row-h-compact);
+}
+
+/* 触控密度（MobileShell / 底部 Sheet 注入 data-density=touch）：视觉四档 28 / 32 / 36 / 44（06 §2.1），
+   44 只给主 CTA / 顶栏 / Tab bar / 列表主行 / Select·Input；视觉 < 44 的可点原语靠 .touch-hit 伪元素把命中区扩到 ≥ 44（06 §2.2）。
+   原语无需手写 isDesktop ? 'lg' : 'xl'（05 §2 ⑥） */
+[data-density='touch'] {
+  --h-xs: 28px;
+  --h-sm: 32px;
+  --h-md: 36px;
+  --h-lg: 44px;
+  --row-h: 48px;
+  --row-h-compact: 44px;
+  --row-h-tree: 44px;
+  --row-h-menu: 44px;
+  --h-panel-header: 44px;
+  --h-pdftb: 44px;
+}
+
+/* 深色 = 独立四层（VS Code Dark Modern：壳 0.175 < 编辑器 0.215；sunken 0.160；elevated 0.255 + 1px 环）；纸面恒白 */
+.dark {
+  color-scheme: dark;
+  --bg-app: oklch(0.175 0.006 260);
+  --bg-panel: oklch(0.215 0.006 260);
+  --bg-sunken: oklch(0.160 0.006 260);
+  --bg-elevated: oklch(0.255 0.007 260);
+  --bg-hover: oklch(0.255 0.007 260);
+  --bg-active: oklch(0.300 0.008 260);
+  --bg-selected: oklch(0.300 0.045 155);
+  --bg-inverse: oklch(0.255 0.007 260);
+  --fg-inverse: oklch(0.960 0.003 255);
+  --paper-fg: var(--g10);
+  --paper-canvas: oklch(0.135 0.006 260);
+  --border: oklch(0.300 0.008 260);
+  --border-strong: oklch(0.380 0.010 260);
+  --fg-strong: oklch(0.960 0.003 255);
+  --fg: oklch(0.870 0.006 255);
+  --fg-muted: oklch(0.680 0.012 255);
+  --fg-subtle: oklch(0.630 0.014 255);
+  --fg-disabled: oklch(0.450 0.012 255);
+  --fg-icon: oklch(0.760 0.010 255);
+  --fg-on-brand: oklch(0.140 0.020 155);
+
+  --primary: oklch(0.720 0.140 155);
+  --primary-hover: oklch(0.780 0.130 155);
+  --primary-active: oklch(0.840 0.110 155);
+  --primary-soft: oklch(0.300 0.045 155);
+  --link: oklch(0.800 0.110 152);
+  --ring: var(--primary);
+
+  --info-fg: oklch(0.800 0.100 250);
+  --info-bg: oklch(0.300 0.050 255);
+  --info-dot: oklch(0.680 0.150 255);
+  --ok-fg: oklch(0.820 0.120 152);
+  --ok-bg: oklch(0.300 0.050 155);
+  --ok-dot: oklch(0.700 0.150 152);
+  --warn-fg: oklch(0.850 0.120 80);
+  --warn-bg: oklch(0.320 0.060 75);
+  --warn-dot: oklch(0.740 0.150 75);
+  --danger-fg: oklch(0.800 0.130 25);
+  --danger-bg: oklch(0.320 0.070 25);
+  --danger-dot: oklch(0.680 0.190 25);
+  --danger-solid: oklch(0.520 0.190 27);
+  --danger-solid-hover: oklch(0.480 0.190 27);
+  --violet-fg: oklch(0.820 0.100 300);
+  --violet-bg: oklch(0.320 0.060 300);
+  --violet-dot: oklch(0.720 0.150 300);
+  --teal-fg: oklch(0.820 0.090 190);
+  --teal-bg: oklch(0.300 0.045 190);
+  --teal-dot: oklch(0.700 0.110 190);
+  --orange-fg: oklch(0.830 0.120 55);
+  --orange-bg: oklch(0.320 0.065 50);
+  --orange-dot: oklch(0.720 0.160 50);
+  --st-filed-dot: oklch(0.600 0.170 258);
+  --st-closed-dot: oklch(0.630 0.014 255);
+
+  /* 兼容别名（暗） */
+  --sheet-muted-foreground: var(--g7);
+  --sheet-info: oklch(0.470 0.150 258);
+  --sheet-info-soft: oklch(0.955 0.025 258);
+  --destructive-foreground: var(--fg-on-brand);
+  --success: var(--primary);
+  --success-foreground: var(--fg-on-brand);
+  --primary-foreground: var(--fg-on-brand);
+  --selection: oklch(0.726 0.101 258 / 0.4);
+  --find-mark: oklch(0.861 0.173 92 / 0.35);
+  --find-mark-current: oklch(0.705 0.187 48 / 0.6);
+
+  /* 阴影 ×1.5 + 1px --border-strong 环 */
+  --sh-sm: 0 0 0 1px var(--border-strong), 0 1px 2px oklch(0 0 0 / 0.40);
+  --sh-md: 0 0 0 1px var(--border-strong), 0 4px 12px oklch(0 0 0 / 0.45), 0 1px 2px oklch(0 0 0 / 0.30);
+  --sh-lg: 0 0 0 1px var(--border-strong), 0 12px 32px oklch(0 0 0 / 0.55), 0 2px 4px oklch(0 0 0 / 0.35);
+  --sh-paper: 0 0 0 1px oklch(0 0 0 / 0.60), 0 1px 3px oklch(0 0 0 / 0.60);
+}
+
+/* reduced motion：token 全 0（tw-animate / transition 读 token 的路径）；下方 @layer base 的 !important 兜底保留 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-color: 0ms;
+    --dur-panel: 0ms;
+    --dur-slow: 0ms;
+  }
+}
+
+/* Tailwind v4 主题映射：bg-panel / bg-app / text-fg-muted / border-strong / text-st-oa-fg / h-md / w-companion / shadow-paper / text-3xl … */
+@theme inline {
+  /* 四层面 + 前景 + 边 */
+  --color-app: var(--bg-app);
+  --color-panel: var(--bg-panel);
+  --color-sunken: var(--bg-sunken);
+  --color-elevated: var(--bg-elevated);
+  --color-hover: var(--bg-hover);
+  --color-active: var(--bg-active);
+  --color-selected: var(--bg-selected);
+  --color-inverse: var(--bg-inverse);
+  --color-fg-inverse: var(--fg-inverse);
+  --color-paper: var(--paper);
+  --color-paper-fg: var(--paper-fg);
+  --color-paper-canvas: var(--paper-canvas);
+  --color-fg: var(--fg);
+  --color-fg-strong: var(--fg-strong);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+  --color-fg-disabled: var(--fg-disabled);
+  --color-fg-icon: var(--fg-icon);
+  --color-fg-on-brand: var(--fg-on-brand);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-link: var(--link);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-soft: var(--primary-soft);
+  --color-brand-100: var(--brand-100);
+  --color-brand-300: var(--brand-300);
+  /* 7 族 */
+  --color-info-fg: var(--info-fg);
+  --color-info-bg: var(--info-bg);
+  --color-info-dot: var(--info-dot);
+  --color-ok-fg: var(--ok-fg);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-dot: var(--ok-dot);
+  --color-warn-fg: var(--warn-fg);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-dot: var(--warn-dot);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-dot: var(--danger-dot);
+  --color-danger-solid: var(--danger-solid);
+  --color-danger-solid-hover: var(--danger-solid-hover);
+  --color-danger-solid-fg: var(--danger-solid-fg);
+  --color-violet-fg: var(--violet-fg);
+  --color-violet-bg: var(--violet-bg);
+  --color-violet-dot: var(--violet-dot);
+  --color-teal-fg: var(--teal-fg);
+  --color-teal-bg: var(--teal-bg);
+  --color-teal-dot: var(--teal-dot);
+  --color-orange-fg: var(--orange-fg);
+  --color-orange-bg: var(--orange-bg);
+  --color-orange-dot: var(--orange-dot);
+  /* 热度 */
+  --color-heat-0-fg: var(--heat-0-fg);
+  --color-heat-0-bg: var(--heat-0-bg);
+  --color-heat-1-fg: var(--heat-1-fg);
+  --color-heat-1-bg: var(--heat-1-bg);
+  --color-heat-2-fg: var(--heat-2-fg);
+  --color-heat-2-bg: var(--heat-2-bg);
+
+  /* 兼容别名（shadcn / W5） */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-sheet-muted-foreground: var(--sheet-muted-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-placeholder: var(--placeholder);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-border-2: var(--border-2);
+  --color-input: var(--input);
+  --color-selection: var(--selection);
+  --color-find-mark: var(--find-mark);
+  --color-find-mark-current: var(--find-mark-current);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* 圆角 5 档：rounded-xs 3 / sm 4 / md 6 / lg 8 / xl 12 */
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: var(--r-xl);
+  --radius-3xl: var(--r-xl);
+
+  --shadow-sm: var(--sh-sm);
+  --shadow-md: var(--sh-md);
+  --shadow-lg: var(--sh-lg);
+  --shadow-paper: var(--sh-paper);
+
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+
+  --text-2xs: var(--fs-2xs);
+  --text-2xs--line-height: var(--lh-2xs);
+  --text-xs: var(--fs-xs);
+  --text-xs--line-height: var(--lh-xs);
+  --text-sm: var(--fs-sm);
+  --text-sm--line-height: var(--lh-sm);
+  --text-base: var(--fs-md);
+  --text-base--line-height: var(--lh-md);
+  --text-md: var(--fs-md);
+  --text-md--line-height: var(--lh-md);
+  --text-lg: var(--fs-lg);
+  --text-lg--line-height: var(--lh-lg);
+  --text-xl: var(--fs-xl);
+  --text-xl--line-height: var(--lh-xl);
+  --text-2xl: var(--fs-2xl);
+  --text-2xl--line-height: var(--lh-2xl);
+  --text-3xl: var(--fs-3xl);
+  --text-3xl--line-height: var(--lh-3xl);
+
+  --ease-panel: var(--ease);
+
+  /* 尺寸：h-xs/sm/md/lg/touch · w-side / w-companion … */
+  --spacing-xs-control: var(--h-xs);
+  --spacing-sm-control: var(--h-sm);
+  --spacing-md-control: var(--h-md);
+  --spacing-lg-control: var(--h-lg);
+  --spacing-touch: var(--h-touch);
+  --spacing-topbar: var(--h-topbar);
+  --spacing-statusbar: var(--h-statusbar);
+  --spacing-rail: var(--w-rail);
+  --spacing-side: var(--w-side);
+  --spacing-side-min: var(--w-side-min);
+  --spacing-side-max: var(--w-side-max);
+  --spacing-companion: var(--w-companion);
+  --spacing-companion-min: var(--w-companion-min);
+  --spacing-companion-max: var(--w-companion-max);
+  --spacing-drawer: var(--w-drawer);
+  --spacing-agent: var(--w-agent);
+  --spacing-agent-min: var(--w-agent-min);
+  --spacing-dialog-sm: var(--w-dialog-sm);
+  --spacing-dialog-md: var(--w-dialog-md);
+  --spacing-dialog-lg: var(--w-dialog-lg);
+  --spacing-page: var(--max-page);
+  --spacing-page-x: var(--pad-page);
+  --spacing-page-m: var(--pad-page-m);
+  --spacing-section-m: var(--gap-section-m);
+  --spacing-card-m: var(--pad-card-m);
+  --spacing-cards-m: var(--gap-card-m);
+  --spacing-group-m: var(--gap-group-m);
+  --spacing-inline-m: var(--gap-inline-m);
+  --spacing-sheet-m: var(--pad-sheet-m);
+  --spacing-sheet-top-m: var(--pad-sheet-top-m);
+  --spacing-form: var(--max-form);
+  --spacing-form-col: var(--w-form);
+  --spacing-pdftb: var(--h-pdftb);
+  --spacing-settings-nav: var(--w-settings-nav);
+  --spacing-split-handle: var(--w-split-handle);
+  --spacing-side-handle: var(--h-side-handle);
+  --spacing-mobile-topbar: var(--h-mobile-topbar);
+  --spacing-mobile-tabs: var(--h-mobile-tabs);
+  --spacing-page-header: var(--h-page-header);
+  --spacing-action-bar: var(--h-action-bar);
+  --spacing-row: var(--row-h);
+  --spacing-row-compact: var(--row-h-compact);
+  --spacing-row-mobile: var(--row-h-mobile);
+  --spacing-row-menu: var(--row-h-menu);
+  --spacing-tree-row: var(--row-h-tree);
+  --spacing-outline-node: var(--h-outline-node);
+  --spacing-panel-header: var(--h-panel-header);
+  --spacing-dash-rail: var(--w-dash-rail);
+  --spacing-board-col: var(--w-board-col);
+  --spacing-board-col-collapsed: var(--w-board-col-collapsed);
+  --spacing-editor-min: var(--w-editor-min);
+  --spacing-preview-min: var(--w-preview-min);
+  --spacing-paper-max: var(--w-paper-max);
+  --spacing-toast: var(--w-toast);
+  --spacing-block-editor: var(--w-block-editor);
+
+  --animate-pulse-dot: pulse-dot 1.2s ease-in-out infinite;
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+}
+
+
+/* z-index 阶（Tailwind v4 无 z 主题命名空间，用 @utility 提供 z-sticky / z-panel / z-overlay / z-popover / z-toast；禁止 z-[N]） */
+@utility z-base { z-index: var(--z-base); }
+@utility z-sticky { z-index: var(--z-sticky); }
+@utility z-panel { z-index: var(--z-panel); }
+@utility z-overlay { z-index: var(--z-overlay); }
+@utility z-popover { z-index: var(--z-popover); }
+@utility z-toast { z-index: var(--z-toast); }
+
+/* 触控命中区（06 §2.2）：只在 data-density=touch 后代生效；视觉尺寸按档，::after 把命中区扩到 max(100%, 44)。
+   探针按 el ∪ ::after 并集量命中区（w7-final/capture/probe.js 同口径）。桌面无 touch 属性 → 零影响。 */
+@utility touch-hit {
+  position: relative;
+  :where([data-density='touch']) &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, var(--h-touch));
+    height: max(100%, var(--h-touch));
+    translate: -50% -50%;
+  }
+}
+
+/* 横向可滑不裁切的行（ScrollRow）：隐藏滚动条但保留滚动 */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-ui);
+    font-size: var(--fs-base);
+    line-height: var(--lh-base);
+    overscroll-behavior: none;
+  }
+  ::placeholder {
+    color: var(--placeholder);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* 焦点环：2px --ring 外描边，键盘可见 */
+  :where(a, button, [role='button'], input, textarea, select, [tabindex]):focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* 状态 = 点 + 文字（StatusDot / 旧 StatusBadge / 台账行 / 看板列头共用）：data-status 取十档 token */
+[data-slot='status-badge'][data-status][data-variant='badge'],
+[data-slot='status-dot'][data-status][data-variant='badge'] {
+  background: var(--status-bg);
+}
+[data-slot='status-badge'][data-status],
+[data-slot='status-dot'][data-status] {
+  color: var(--status-fg);
+}
+[data-status] [data-slot='status-dot-mark'],
+[data-slot='status-dot-mark'][data-status] {
+  background: var(--status-dot);
+}
+[data-status='intake'] { --status-bg: var(--st-intake-bg); --status-fg: var(--st-intake-fg); --status-dot: var(--st-intake-dot); }
+[data-status='drafting'] { --status-bg: var(--st-drafting-bg); --status-fg: var(--st-drafting-fg); --status-dot: var(--st-drafting-dot); }
+[data-status='review'] { --status-bg: var(--st-review-bg); --status-fg: var(--st-review-fg); --status-dot: var(--st-review-dot); }
+[data-status='client_review'] { --status-bg: var(--st-client_review-bg); --status-fg: var(--st-client_review-fg); --status-dot: var(--st-client_review-dot); }
+[data-status='final'] { --status-bg: var(--st-final-bg); --status-fg: var(--st-final-fg); --status-dot: var(--st-final-dot); }
+[data-status='filed'] { --status-bg: var(--st-filed-bg); --status-fg: var(--st-filed-fg); --status-dot: var(--st-filed-dot); }
+[data-status='oa'] { --status-bg: var(--st-oa-bg); --status-fg: var(--st-oa-fg); --status-dot: var(--st-oa-dot); }
+[data-status='granted'] { --status-bg: var(--st-granted-bg); --status-fg: var(--st-granted-fg); --status-dot: var(--st-granted-dot); }
+[data-status='rejected'] { --status-bg: var(--st-rejected-bg); --status-fg: var(--st-rejected-fg); --status-dot: var(--st-rejected-dot); }
+[data-status='closed'] { --status-bg: var(--st-closed-bg); --status-fg: var(--st-closed-fg); --status-dot: var(--st-closed-dot); }
+
+/* 期限热度 3 档（Heat / Countdown / 台账期限列）：data-heat=0|1|2 */
+[data-heat='0'] { --heat-fg: var(--heat-0-fg); --heat-bg: var(--heat-0-bg); }
+[data-heat='1'] { --heat-fg: var(--heat-1-fg); --heat-bg: var(--heat-1-bg); }
+[data-heat='2'] { --heat-fg: var(--heat-2-fg); --heat-bg: var(--heat-2-bg); }
+[data-slot='heat'][data-heat],
+[data-slot='countdown'][data-heat] {
+  color: var(--heat-fg);
+}
+[data-slot='heat'][data-heat] {
+  background: var(--heat-bg);
+}
+
+/* 纸面（版面视图 / PDF 页）恒白：亮暗两套皆 #fff，画布随层面 */
+[data-slot='paper'] {
+  background: var(--paper);
+  color: var(--g9);
+  box-shadow: var(--sh-paper);
+}
+
+/* CodeMirror */
+.cm-editor {
+  height: 100%;
+  font-size: var(--editor-font-size);
+}
+.cm-editor.cm-focused {
+  outline: none;
+}
+.cm-scroller {
+  font-family: var(--font-code);
+  line-height: var(--editor-line-height);
+}
+.cm-editor .cm-scroller,
+.cm-editor .cm-gutters,
+.cm-editor .cm-content {
+  line-height: var(--editor-line-height);
+}
+.cm-content {
+  padding-bottom: 40vh;
+}
+/* react-pdf */
+.react-pdf__Page {
+  background: white;
+  box-shadow: var(--sh-paper);
+}
+.react-pdf__Page canvas {
+  display: block;
+  max-width: 100%;
+  height: auto !important;
+}
+/* pdf.js 文字层：文字透明叠在 canvas 上，选区、查找高亮只用背景色 */
+.react-pdf__Page__textContent ::selection {
+  background: var(--selection);
+}
+.react-pdf__Page__textContent mark {
+  color: transparent;
+  background: var(--find-mark);
+  border-radius: 2px;
+}
+.react-pdf__Page__textContent mark.pdf-find-current {
+  background: var(--find-mark-current);
+}
+
+/* 品牌层：登录/领取页品牌区纽索纹底纹（专利证书雕刻线），亮暗双版——底色跟随 --bg-sunken */
+.brand-hero {
+  background-color: var(--bg-sunken);
+  background-image: url('/brand-bg-light.jpg');
+  background-size: cover;
+  background-position: center;
+}
+.dark .brand-hero {
+  background-image: url('/brand-bg-dark.jpg');
+}
+
+/* AI 对话 markdown 渲染（assistant 气泡；marked+dompurify 输出，仅安全标签） */
+.ai-md { display: inline; }
+.ai-md > :first-child { margin-top: 0; }
+.ai-md > :last-child { margin-bottom: 0; }
+.ai-md p { margin: 0.35em 0; }
+.ai-md h1, .ai-md h2, .ai-md h3, .ai-md h4 { font-weight: 600; margin: 0.6em 0 0.3em; }
+.ai-md h1 { font-size: 1.05em; } .ai-md h2 { font-size: 1.02em; }
+.ai-md ul, .ai-md ol { margin: 0.3em 0; padding-left: 1.4em; }
+.ai-md ul { list-style: disc; } .ai-md ol { list-style: decimal; }
+.ai-md li { margin: 0.15em 0; }
+.ai-md strong { font-weight: 600; }
+.ai-md code { font-family: var(--font-mono); font-size: 0.9em; background: var(--bg-sunken); border-radius: 3px; padding: 0 3px; }
+.ai-md pre { background: var(--bg-sunken); border-radius: 6px; padding: 8px 10px; margin: 0.4em 0; overflow-x: auto; }
+.ai-md pre code { background: none; padding: 0; }
+.ai-md blockquote { border-left: 2px solid var(--border); padding-left: 8px; color: var(--fg-muted); margin: 0.35em 0; }
+.ai-md table { border-collapse: collapse; margin: 0.4em 0; font-size: 0.92em; }
+.ai-md th, .ai-md td { border: 1px solid var(--border); padding: 2px 8px; }
+.ai-md a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+.ai-md hr { border: none; border-top: 1px solid var(--border); margin: 0.5em 0; }
+
+/* AI 对话代码高亮：hljs token → 语义色（深浅主题自动跟随） */
+.ai-md .hljs { color: var(--fg); }
+.ai-md .hljs-comment, .ai-md .hljs-quote { color: var(--fg-muted); font-style: italic; }
+.ai-md .hljs-keyword, .ai-md .hljs-selector-tag, .ai-md .hljs-tag, .ai-md .hljs-name { color: var(--brand-700); font-weight: 600; }
+.ai-md .hljs-string, .ai-md .hljs-regexp, .ai-md .hljs-addition { color: var(--brand-700); }
+.ai-md .hljs-number, .ai-md .hljs-literal, .ai-md .hljs-built_in, .ai-md .hljs-type { color: var(--warn-fg); }
+.ai-md .hljs-title, .ai-md .hljs-title.function_, .ai-md .hljs-attr, .ai-md .hljs-attribute { color: var(--link); }
+.ai-md .hljs-variable, .ai-md .hljs-template-variable, .ai-md .hljs-deletion, .ai-md .hljs-meta { color: var(--danger-fg); }
+.ai-md .hljs-section, .ai-md .hljs-title.class_ { color: var(--fg-strong); font-weight: 600; }
+.dark .ai-md .hljs-keyword, .dark .ai-md .hljs-selector-tag, .dark .ai-md .hljs-tag, .dark .ai-md .hljs-name { color: var(--brand-300); }
+.dark .ai-md .hljs-string, .dark .ai-md .hljs-regexp, .dark .ai-md .hljs-addition { color: var(--brand-300); }
+.ai-md input[type="checkbox"] { accent-color: var(--brand-600); margin-right: 4px; vertical-align: -1px; }
+.ai-md .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; }

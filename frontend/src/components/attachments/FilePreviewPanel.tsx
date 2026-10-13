@@ -1,0 +1,59 @@
+import { FileQuestion } from 'lucide-react'
+import { api } from '@/lib/api'
+import { cn } from '@/lib/utils'
+import type { FigureItem } from '@/types/figures'
+import { useStudio } from '@/store'
+import { figPreviewName } from '@/components/outline/fileTreeUtils'
+import { AttachmentPreview } from './AttachmentPreview'
+
+export interface FilePreviewPanelProps {
+  className?: string
+}
+
+const NO_FIGURES: FigureItem[] = []
+
+/**
+ * 文件树点开的预览面（15 §4.3）：目标来自 store —— figuresBook.previewFig（figs/）或 attachments.previewAttachment（attachments/），二者互斥。
+ * 桌面：dockview `file` 面板；移动：NavDrawer「案卷文件」tab 内替换文件树（带返回）。
+ * figs/：svg / png / jpg 直接显示；emf 用 GET /figures 给的伴生 preview；没有伴生时只给下载。
+ */
+export function FilePreviewPanel({ className }: FilePreviewPanelProps) {
+  const pid = useStudio((s) => s.pid)
+  const fig = useStudio((s) => s.previewFig)
+  const att = useStudio((s) => s.previewAttachment)
+  const figures = useStudio((s) => (s.figuresPid === s.pid ? s.figures : NO_FIGURES))
+  const figsV = useStudio((s) => s.figsVersion)
+  const attItem = useStudio((s) => (att ? s.attachments.find((a) => a.name === att) ?? null : null))
+
+  if (!pid || (!fig && !att)) {
+    return (
+      <div className={cn('flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-xs text-fg-muted', className)} data-testid="file-preview-empty">
+        <FileQuestion className="size-8" aria-hidden />
+        <p>在左侧「案卷文件」里点开附图或附件即可预览</p>
+      </div>
+    )
+  }
+
+  if (fig) {
+    const previewName = figPreviewName(fig, figures)
+    return (
+      <AttachmentPreview
+        name={fig}
+        kind={previewName ? 'image' : 'binary'}
+        url={api.figUrl(pid, previewName ?? fig, figsV)}
+        downloadUrl={api.figUrl(pid, fig, figsV)}
+        className={className}
+      />
+    )
+  }
+
+  return (
+    <AttachmentPreview
+      name={att!}
+      kind={attItem?.kind ?? 'binary'}
+      url={attItem?.url ?? api.attachmentUrl(pid, att!)}
+      downloadUrl={api.attachmentUrl(pid, att!, true)}
+      className={className}
+    />
+  )
+}

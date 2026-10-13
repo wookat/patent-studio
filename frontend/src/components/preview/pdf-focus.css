@@ -1,0 +1,37 @@
+/* 三视图定位在 PDF 页上的包围盒 / 页级高亮（21 §5.2）。颜色只用 tokens：--focus-ring 由 index.css 定义前回退 --ring。 */
+.pdf-focus-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.pdf-focus-rect {
+  position: absolute;
+  border: 2px solid var(--focus-ring, var(--ring));
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--focus-ring, var(--ring)) 14%, transparent);
+  animation: pdf-focus-flash var(--dur-slow) ease-out 3 alternate;
+}
+
+.pdf-focus-page {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 3px var(--focus-ring, var(--ring));
+  animation: pdf-focus-flash var(--dur-slow) ease-out 3 alternate;
+}
+
+@keyframes pdf-focus-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+
+/* 拖选浮岛（位置由 PdfSelectionBar.clampIsland 计算，不用 transform 居中，保证右缘 ≥ 8px 不被裁切） */
+.pdf-sel-bar {
+  position: absolute;
+  z-index: var(--z-popover);
+}

@@ -1,0 +1,186 @@
+# Web Search Results for "patents.google.com patent CN 时间序列 预测 LSTM 方法"
+
+## 1. CN114548592A - 一种基于cemd和lstm的非平稳时间序列数据预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114548592A/zh
+
+CN114548592A - 一种基于cemd和lstm的非平稳时间序列数据预测方法 - Google Patents
+...
+Publication number CN114548592A CN114548592A CN202210199667.3A CN202210199667A CN114548592A CN 114548592 A CN114548592 A CN 114548592A CN 202210199667 A CN202210199667 A CN 202210199667A CN 114548592 A CN114548592 A CN 114548592A Authority CN China Prior art keywords data lstm prediction neural network time series Prior art date 2022-03-01 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202210199667.3A Other languages English (en) Other versions CN114548592B (zh Inventor 雷建军 秦振宇 程旭 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Chongqing University of Post and Telecommunications Original Assignee Chongqing University of Post and Telecommunications Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2022-03-01 Filing date 2022-03-01 Publication date 2022-05-27 2022-03-01 Application filed by Chongqing University of Post and Telecommunications filed Critical Chongqing University of Post and Telecommunications 2022-03-01 Priority to CN202210199667.3A priority Critical patent/CN114548592B/zh 2022-05-27 Publication of CN114548592A publication Critical patent/CN114548592A/zh 2025-09-23 Application granted granted Critical 2025-09-23 Publication of CN114548592B publication Critical patent/CN114548592B/zh Status Active legal-status Critical Current 2042-03-01 Anticipated expiration legal-status Critical
+...
+本发明属于时间序列预测领域，尤其涉及一种基于CEMD和LSTM的非平稳时间序列数据预测方法，包括通过历史数据构建训练集，通过实时数据构建测试集；使用经验模态分解将测试集和训练集中的目标序列分解为n个本征模态函数和1个残差序列；通过聚类算法对n个本征模态函数聚类为m组，形成m个子序列；利用训练集中子序列的特征向量对深度LSTM神经网络进行训练，获取完成训练...
+
+## 2. CN113128666A - 基于Mo-S-LSTMs模型的时间序列多步预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN113128666A/zh
+
+CN113128666A - 基于Mo-S-LSTMs模型的时间序列多步预测方法 - Google Patents
+
+# CN113128666A - 基于Mo-S-LSTMs模型的时间序列多步预测方法 - Google Patents
+...
+Publication number CN113128666A CN113128666A CN202110348412.4A CN202110348412A CN113128666A CN 113128666 A CN113128666 A CN 113128666A CN 202110348412 A CN202110348412 A CN 202110348412A CN 113128666 A CN113128666 A CN 113128666A Authority CN China Prior art keywords model prediction lstms time series output Prior art date 2021-03-31 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Pending Application number CN202110348412.4A Other languages English (en) Inventor 王晓峰 张英 赵泽坤 胡钢 白宁宁 张弛 胡幸福 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Xian University of Technology Original Assignee Xian University of Technology Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2021-03-31 Filing date 2021-03-31 Publication date 2021-07-16 2021-03-31 Application filed by Xian University of Technology filed Critical Xian University of Technology 2021-03-31 Priority to CN202110348412.4A priority Critical patent/CN113128666A/zh 2021-07-16 Publication of CN113128666A publication Critical patent/CN113128666A/zh Status Pending legal-status Critical Current
+...
+本发明公开了一种基于Mo‑S‑LSTMs模型的时间序列多步预测方法，具体按照以下步骤实施：步骤1、堆叠LSTM单元，采用Dropout结构，建立多输出堆叠LSTM模型的多输出堆叠LSTM模型Mo‑S‑LSTMs；步骤2、建立基于Mo‑S‑LSTMs模型的时间序列多步预测算法，本发明预测精度高，对长期时间序列数据具有较好的预测性能。
+...
+LSTMs模型的时间序列多步预测方法
+...
+本发明属于时间序列数据分析技术领域，具体涉及一种基于 Mo-S-LSTMs模型的时间序列多步预测方法。
+...
+本发明的目的是提供一种基于Mo-S-LSTMs模型的时间序列多步预测方法，预测精度高，对长期时间序列数据具有较好的预测性能。
+
+本发明所采用的技术方案是，一种基于Mo-S-LSTMs模型的时间序列多步预测方法，其特征在于，具体按照以下步骤实施：
+
+步骤1、堆叠LSTM单元，采用Dropout结构，建立多输出堆叠LSTM 模型的多输出...
+
+## 3. CN111950810A - 一种基于自演化预训练的多变量时间序列预测方法和设备 
+        - Google Patents
+URL: https://patents.google.com/patent/CN111950810A/zh
+
+CN111950810A - 一种基于自演化预训练的多变量时间序列预测方法和设备 - Google Patents
+...
+Publication number CN111950810A CN111950810A CN202010876972.2A CN202010876972A CN111950810A CN 111950810 A CN111950810 A CN 111950810A CN 202010876972 A CN202010876972 A CN 202010876972A CN 111950810 A CN111950810 A CN 111950810A Authority CN China Prior art keywords time series time univariate training prediction Prior art date 2020-08-27 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202010876972.2A Other languages English (en) Other versions CN111950810B (zh Inventor 李文中 万晨 张治杰 丁望祥 叶保留 陆桑璐 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Nanjing University Original Assignee Nanjing University Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2020-08-27 Filing date 2020-08-27 Publication date 2020-11-17 2020-08-27 Application filed by Nanjing University filed Critical Nanjing University 2020-08-27 Priority to CN202010876972.2A priority Critical patent/CN111950810B/zh 2020-11-17 Publication of CN111950810A publication Critical patent/CN111950810A/zh 2023-12-15 Application granted granted Critical 2023-12-15 Publication of CN111950810B publication Critical patent/CN111950810B/zh Status Active legal-status Critical Current 2040-08-27 Anticipated expiration legal-status Critical
+...
+本发明公开了一种基于自演化预训练的多变量时间序列预测方法和设备，所述方法基于预训练策略与卷积网络、长短记忆网络深度序列模型，结合单变量自演化信息与多变量依赖关系信息进行建模，实现了多变量时间序列预测的优化算法，同时兼顾了整体预测精度和局部单变量的预测精度。本发明具有较好的整体预测精度，对于局部单变量的预测精度保障性方面优于现有的多变量时间序列预测方法。
+...
+本发明涉及时间序列预测，具体涉及一种多变量时间序列预测方法。
+...
+发明目的：为保障局部变量的预测精度，提出了基于自演化预训练的多变量时间序列预测算法。既可以实现多变量时间序列预测的优化算法，同时还能兼顾整体预测精度和局部单变量的预测...
+
+## 4. CN109002917A - 基于lstm神经网络的粮食总产量多维时间序列预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN109002917A/zh
+
+CN109002917A - 基于lstm神经网络的粮食总产量多维时间序列预测方法 - Google Patents
+...
+Publication number CN109002917A CN109002917A CN201810775772.0A CN201810775772A CN109002917A CN 109002917 A CN109002917 A CN 109002917A CN 201810775772 A CN201810775772 A CN 201810775772A CN 109002917 A CN109002917 A CN 109002917A Authority CN China Prior art keywords lstm indicate layers input data Prior art date 2018-07-13 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Pending Application number CN201810775772.0A Other languages English (en) Inventor 郑勇 任万明 王钧 王统敏 毛向明 高波 李钊 邵青峰 陈通 王瑞霜 王磊 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Shandong Yi Yun Information Technology Co., Ltd Original Assignee Shandong Yi Yun Information Technology Co Ltd Shandong Agricultural Information Center Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2018-07-13 Filing date 2018-07-13 Publication date 2018-12-14 2018-07-13 Application filed by Shandong Yi Yun Information Technology Co Ltd, Shandong Agricultural Information Center filed Critical Shandong Yi Yun Information Technology Co Ltd 2018-07-13 Priority to CN201810775772.0A priority Critical patent/CN109002917A/zh 2018-12-14 Publication of CN109002917A publication Critical patent/CN109002917A/zh Status Pending legal-status Critical Current
+...
+本发明公开一种基于LSTM神经网络的粮食总产量多维时间序列预测方法，基于LSTM神经网络，采用多种农产品的产量数据作为LSTM神经网络输入数据的多个维度变量，建立基于LSTM神经网络的多维时间序列预测模型，因为考虑了多种农产品的产量数据，且采用叠加的LSTM来处理序列数据信息，避免了梯度消失问题，预测效果好，精度高，适用性好。
+...
+本发明要解决的技术问题是提供一种基于LSTM神经网络的粮食总产量多维时间序列预测方法，建立基于LSTM神经网络的多维时间序列预测模型，采用多种农产品的产量数据作为输入数据的多个维度变量，预测效果好，精度高。
+
+为了解决所述技术问题，本发明采用的技术方案是：基于LSTM神经网络的粮食总产量多维时间序列预测方法，包...
+
+## 5. Time series data prediction method based on time series decomposition and LSTM - Eureka | Patsnap
+URL: https://eureka.patsnap.com/patent-CN114239990A
+Published: 2022-03-25T00:00:00.000Z
+
+Time series data prediction method based on time series decomposition and LSTM - Eureka | Patsnap
+
+# Time series data prediction method based on time series decomposition and LSTM
+...
+A technology for time series and data prediction, applied in forecasting, data processing applications, neural learning methods, etc., can solve the problem of inability to predict nonlinear time series well, inaccurate prediction of non-stationary burst data, and inability to adapt to time series data Change characteristics and other issues to achieve the effect of solving traffic congestion, good prediction effect, and saving system energy consumption
+...
+### Embodiment Construction
+
+ [0040] The present invention will be further described in detail below in conjunction with the accompanying drawings, so that those skilled in the art can implement it with reference to the description. 
+
+ [0041] Such as Figure 1-5 As shown, the present invention provides a time series data prediction method based on time series decomposition and LSTM, which uses time series decomposition to separate the trend and cycle of time data, and combines it with LSTM, thereby effectively improving the accuracy of prediction. 
+
+ [0042] Use python software, version number: python3.7, tensorflow1.14, operating software environment: windows10, hardware configuration: processor AMD Ryzen 5 4600H with Radeon Graphics (12CPUs), 3.0GHz, memory 16G RAM, graphics card NVIDIA GeForce GTX 1650 ; 
+
+ [0043] The first neural network model: such as figure 1 The LSTM network in the middle is shown: the first layer is the LSTM layer with 100 neurons. The second layer is a Dense layer with 50 neurons. ...
+...
+The invention discloses a time series data prediction method based on time series decomposition and LSTM, and the method comprises the steps: 1, collecting time series data, carrying out the preprocessing of the time series data, obtaining a time series sample set which meets the data demands of a prediction model, carrying ...
+
+## 6. CN114091768B - 基于stl和带有注意力机制的lstm的旅游需求预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114091768B/zh
+
+CN114091768B - 基于stl和带有注意力机制的lstm的旅游需求预测方法 - Google Patents
+...
+Publication number CN114091768B CN114091768B CN202111414339.2A CN202111414339A CN114091768B CN 114091768 B CN114091768 B CN 114091768B CN 202111414339 A CN202111414339 A CN 202111414339A CN 114091768 B CN114091768 B CN 114091768B Authority CN China Prior art keywords lstm sequence model trend seasonal Prior art date 2021-11-25 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202111414339.2A Other languages English (en) Other versions CN114091768A (zh Inventor 贾兆红 金村界 唐俊 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Anhui University Original Assignee Anhui University Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2021-11-25 Filing date 2021-11-25 Publication date 2024-11-22 2021-11-25 Application filed by Anhui University filed Critical Anhui University 2021-11-25 Priority to CN202111414339.2A priority Critical patent/CN114091768B/zh 2022-02-25 Publication of CN114091768A publication Critical patent/CN114091768A/zh 2024-11-22 Application granted granted Critical 2024-11-22 Publication of CN114091768B publication Critical patent/CN114091768B/zh Status Active legal-status Critical Current 2041-11-25 Anticipated expiration legal-status Critical
+...
+一种基于STL和带有注意力机制的LSTM的旅游需求预测方法，包括：从旅游客流量数据中获取初始的时间序列；使用STL分解模型对初始时间序列进行分解，得到3个分解序列；将3个分解序列分别输入到一个共享的注意力层，获得每个序列中不同特征的权重，然后将带有权重的特征作为LSTM的输入；对3个分解序列使用相同参数的LSTM模型进行训练，并分别对它们的测试集进行预测；3个预测结果进入全连接单元；将这3个预测结果相加得到游客达到量的最终预测结果并输出。本发明的优点在于：首先利用STL解决了旅游需求预测过程中由于数据量有限引起的高度复杂的模型中过拟合问题，并形成了一个相对简单的预测过程；其次，运用Attention‑LSTM有效地选择了特征变量和适当的时间步长。
+...
+...
+
+## 7. 基于CNN-LSTM神经网络模型与ARIMA模型的时间序列预测方法及系统（CN202110076545.0）-中国专利【掌桥科研】
+URL: https://www.zhangqiaokeyan.com/patent-detail/06120112773161.html
+
+基于CNN-LSTM神经网络模型与ARIMA模型的时间序列预测方法及系统（CN202110076545.0）-中国专利【掌桥科研】
+
+# 基于CNN-LSTM神经网络模型与ARIMA模型的时间序列预测方法及系统 
+
+## 摘要
+
+ 本发明公开了时间序列预测技术领域的一种基于CNN‑LSTM神经网络模型与ARIMA模型的时间序列预测方法及系统，旨在解决现有技术中没有充分提取时间序列的周期特征从而导致预测精度不够的问题。包括：获取待预测的时间序列数据，构建输入样本；将输入样本输入经过训练的基于CNN‑LSTM的神经网络模型，得到第一预测结果；将第一预测结果与输入样本的观测值进行比对，得到误差序列；将误差序列输入建立的ARIMA模型对误差序列进行误差修正预测，得到第二预测结果；将第一预测结果和第二预测结果相加得到时间序列的最终预测结果。 
+
+## 著录项
+...
+专利类型发明专利
+- 公开/公告日 2021-05
+...
+原文格式 PDF
+- 申请/专利权人 南京邮电大学; 
+
+申请/专利号 CN202110076545.0
+...
+明设计人
+
+## 8. CN114519469A - 一种基于Transformer框架的多变量长序列时间序列预测模型的构建方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114519469A/zh
+
+CN114519469A - 一种基于Transformer框架的多变量长序列时间序列预测模型的构建方法 - Google Patents
+...
+Publication number CN114519469A CN114519469A CN202210162689.2A CN202210162689A CN114519469A CN 114519469 A CN114519469 A CN 114519469A CN 202210162689 A CN202210162689 A CN 202210162689A CN 114519469 A CN114519469 A CN 114519469A Authority CN China Prior art keywords graph multivariate sequence input time series Prior art date 2022-02-22 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202210162689.2A Other languages English (en) Other versions CN114519469B (zh Inventor 郑林江 龙颢 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Chongqing University Original Assignee Chongqing University Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2022-02-22 Filing date 2022-02-22 Publication date 2022-05-20 2022-02-22 Application filed by Chongqing University filed Critical Chongqing University 2022-02-22 Priority to CN202210162689.2A priority Critical patent/CN114519469B/zh 2022-05-20 Publication of CN114519469A publication Critical patent/CN114519469A/zh 2024-05-31 Application granted granted Critical 2024-05-31 Publication of CN114519469B publication Critical patent/CN114519469B/zh Status Active legal-status Critical Current 2042-02-22 Anticipated expiration legal
+...
+本发明公开了一种基于Transformer框架的多变量长序列时间序列预测模型的构建方法、预测模型以及提供一种基于Transformer框架的多变量长序列时间序列预测方法，以解决现有多变量长序列时间序列预测方法存在的无法高效处理长时间输入序列、计算复杂度和空间消耗较高、未充分利用变量之间潜在的空间相关性及忽视长序列时间序列稳定的周期模式等技术问题。
+...
+本发明涉及计算机数据处理技术及性能改进技术领域，特别涉及时间序列预测技术，具体为一种基于Transformer框架的多变量长序列时间序列预测模型的构建方法、预测模型以及预测方法。
+...
+最近的研究表明，基于自注意力机制的Transformer模型在序列型数据上展现出了...
+
+## 9. CN113011102B - 基于多元时间序列的Attention-LSTM的青霉素发酵过程故障预测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN113011102B/zh
+
+CN113011102B - 基于多元时间序列的Attention-LSTM的青霉素发酵过程故障预测方法 - Google Patents
+
+# CN113011102B - 基于多元时间序列的Attention-LSTM的青霉素发酵过程故障预测方法 - Google Patents
+...
+Publication number CN113011102B CN113011102B CN202110355435.8A CN202110355435A CN113011102B CN 113011102 B CN113011102 B CN 113011102B CN 202110355435 A CN202110355435 A CN 202110355435A CN 113011102 B CN113011102 B CN 113011102B Authority CN China Prior art keywords lstm spe time attention prediction model Prior art date 2021-04-01 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Expired - Fee Related Application number CN202110355435.8A Other languages English (en) Other versions CN113011102A (zh Inventor 梁秀霞 庞荣荣 杨凡 李万通 郭鹭 陈娇娇 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Hebei University of Technology Original Assignee Hebei University of Technology Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2021-04-01 Filing date 2021-04-01 Publication date 2022-05-24 2021-04-01 Application filed by Hebei University of Technology filed Critical Hebei University of Technology 2021-04-01 Priority to CN202110355435.8A priority Critical patent/CN113011102B/zh 2021-06-22 Publication of CN113011102A publication Critical patent/CN113011102A/zh 2022-05-24 Application granted granted Critical 2022-05-24 Publication of CN113011102B publication Critical patent/CN113011102B/zh Status Expired - Fee Related legal-status Critical Current 2041-04-01 Anticipated expiration legal-status Critical
+...
+本发明公开了一种基于多元时间序列的Attention‑LSTM的青霉素发酵过程故障预测方法，首先通过皮尔逊Pearson相关性分析选择青霉素发酵过程中的多个相关过程变量，然后通过Attention机制对LSTM的输入序列不同时刻的隐向量赋予了不同的权重，使得神经网络预测模型对长时间序列输入的...
+
+## 10. CN117522443A - 一种基于CNN-LSTM-Attention电力市场日前电价预测方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN117522443A/zh
+
+CN117522443A - 一种基于CNN-LSTM-Attention电力市场日前电价预测方法及系统 - Google Patents
+...
+本发明公开了一种基于CNN‑LSTM‑Attention电力市场日前电价预测方法及系统，属于电价预测技术领域，方法包括将经过标准化处理后的历史日电价信息数据分为训练集和测试集；将训练集输入至CNN‑LSTM模型中，进行参数优化学习，获得优化后的CNN‑LSTM模型；通过注意力机制对优化后的CNN‑LSTM模型的输出数据进行自动加权平均计算，获得CNN‑LSTM‑Attention模型；通过CNN‑LSTM‑Attention模型对预测日当天日前电价进行预测。本发明能够保证所得到的电价预测结果准确，帮助电力企业根据电价预测结果合理制定电力交易策略。
+
+ The classifications are assigned by a computer and are not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the classifications listed. 
+
+ The CPC classifications are assigned by a computer and are not a legal conclusion.
+...
+本发明涉及电力预测技术领域，具体涉及一种基于CNN-LSTM-Attention电力市场日前电价预测方法及系统。
+...
+针对现有技术存在的通过目前的人工智能模型所获取的电价预测结果不是最优的，使得电力企业无法通过电价预测结果合理制定自己交易策略的问题。本发明提供了一种基于CNN-LSTM-Attention电力市场日前电价预测方法，通过注意力机制，避免神经网络中出现简单的线性组合，保证所得到的电价预测结果准确，使得电力企业能够根据电价预测结果制定合理的交易策略。
+...
+一种基于CNN-LSTM-Attention电力市场日前电价预测方法，包括：
+
+将经过标准化处理后的历史日电价信息数据分为训练集和测试集；
+
+将训练集输入至CNN-LSTM模型中，进行参数优化学习，获得优化后的CNN-LSTM模型；
+
+通过注意力机制对优化后的CNN-LSTM模型的输出数据进行自动加权平均计算，获得CNN-LSTM-Attention模型；
+
+通过CNN-LSTM-Attention模型对预测日当天日前电价进行预测。
+...
+第一层使用CNN模型，进行输入参数特征向量的提取；第二层使用LSTM模型，进行数据非线性、多数据序列处理预测；第三层引入注意力机制，对与预测量密切相关的输入变量赋予合理的权值，通过注意力机制对LSTM每个时间步输出进行加权求和。
+
+作为本发明的进一步改进，所述通过注意力机制对LSTM每个时间步输出进行加权求和，并且在神经网络的各隐含层以及输出层选取TANH作为CNN-LSTM-Attention模型的激活化函数，然后对CNN-LSTM-Attention模型的训练和优化，确定丢弃阈值。
+
+作为本发明的进一步改进，所述通过CNN-LSTM-Attention模型对预测日当天日前电价进行预测，若输出的结果有误差，则采用平均绝对百分比误差和均方百分比误差进行模型校检，根据校验结果，对CNN-LSTM-Attention模型进行优化。
+
+一种基于CNN-LSTM-Attention电力市场日前电价预测系统，包括：
+...
+获取模型模块：用于通过注意力机制对优化后的CNN-LSTM模型的输出数据进行自动加权平均计算，获得CNN-LSTM-Attention模型；
+
+电价预测模块：用于通过CNN-LSTM-Attention模型对预测日当天日前电价进行预测。
+...
+本发明提出了一种基于CNN-LSTM-Attention电力市场日前电价预测方法，是基于注意力机制的长短时记忆神经网络(LSTM)与卷积神经网络(CNN)进行结合形成的CNN-LSTM-Attention模型，本发明中所使用的CNN-LSTM-Attention模型相对于LSTM和CNN模型具有更快的训练速度、更高的准确性和更好的泛化能力，能够最大限度地利用LSTM和CNN模型的优点，同时弥补单个模型在预测过程中的不足，Attention模型可以提高训练模型中重要数据比重，聚焦关键信息，从而提高电力市场日前电价预测预精度。
+...
+针对现有技术存在的通过目前的人工智能模型所获取的电价预测结果不是最优的，使得电力企业无法通过电价预测结果合理制定自己交易策略的问题。本发明提供了一种基于CNN-LSTM-Attent...

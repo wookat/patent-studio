@@ -1,0 +1,403 @@
+{
+  "title": {
+    "text": "一种时间序列预测模型可信部署监控与自动降级系统",
+    "line": 1
+  },
+  "abstract": {
+    "line": 3,
+    "end": 6
+  },
+  "claims": {
+    "line": 7,
+    "end": 35,
+    "items": [
+      {
+        "id": "claims/1",
+        "num": 1,
+        "text": "一种时间序列预测模型可信部署监控与自动降级系统，…",
+        "full": "一种时间序列预测模型可信部署监控与自动降级系统，其特征在于，包括：",
+        "dependent": false,
+        "refs": [],
+        "badRefs": [],
+        "line": 9,
+        "end": 14
+      },
+      {
+        "id": "claims/2",
+        "num": 2,
+        "text": "根据权利要求1所述的系统，其特征在于，所述成熟反…",
+        "full": "根据权利要求1所述的系统，其特征在于，所述成熟反馈队列模块提供预测挂起接口、成熟弹出接口与订阅分发接口；所述预测挂起接口在每次预测发出时将预测起点连同其元数据挂起入按时间有序的待定队列；所述成熟弹出接口返回并移除所述待定队列中全部满足 s ≤ now − H − d 的已成熟起点，其中s为该起点对应的预测发出时刻，now为当前时刻，H为预测地平线长度，d为额外上报延迟；所述订阅分发接口将成熟记录分发给全部订阅组件；且对不产生成熟事件的无状态查询设置旁路标志，使该类查询不进入所述待定队列。",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 16,
+        "end": 16
+      },
+      {
+        "id": "claims/3",
+        "num": 3,
+        "text": "根据权利要求1所述的系统，其特征在于，所述失效来…",
+        "full": "根据权利要求1所述的系统，其特征在于，所述失效来源类型包括检索记忆失效与外生协变量失效；针对不同风险轴的各在线自适应控制器分别承载于其风险轴所对应的预测流，分别订阅所述成熟反馈队列并各自独立维护信任统计，各控制器之间不传递受控预测输出。",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 18,
+        "end": 18
+      },
+      {
+        "id": "claims/4",
+        "num": 4,
+        "text": "根据权利要求1所述的系统，其特征在于，所述在线自…",
+        "full": "根据权利要求1所述的系统，其特征在于，所述在线自适应控制器包括以下至少一种：输出侧的检索安全门控控制器，其从记忆库检索与查询上下文相似的历史片段作为修正信号，信任系数为由成熟误差比值慢变量与检索置信度软上限乘性组合的双因子门控权重，并在凸组合前对检索预测施加以所述冻结基础预测模型的预测为中心的包络裁剪；输入侧的外生协变量信任控制器，其信任系数包括在成熟记录上以在线梯度下降更新的分支融合权重与由通道级留一探针损失驱动连续收缩的通道修复权重两级；以投注财富过程的对数经裁剪映射读出信任系数的投注财富门控控制器。",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 20,
+        "end": 20
+      },
+      {
+        "id": "claims/5",
+        "num": 5,
+        "text": "根据权利要求1所述的系统，其特征在于，所述e过程…",
+        "full": "根据权利要求1所述的系统，其特征在于，所述e过程财富统计量为固定正格点上的混合指数超鞅，如下式所示：",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 22,
+        "end": 24
+      },
+      {
+        "id": "claims/6",
+        "num": 6,
+        "text": "根据权利要求1所述的系统，其特征在于，还包括回放…",
+        "full": "根据权利要求1所述的系统，其特征在于，还包括回放编排模块，被配置为以滚动起点方式在历史数据上驱动与在线服务相同的预测引擎模块、成熟反馈队列模块、e过程监控模块与告警降级状态机模块实例，支持按协议注入包括缺失、噪声、陈旧与错位在内的受控腐蚀，并全程记录门控轨迹、监控统计量轨迹与告警事件，输出回放报告；所述服务接口模块还提供回放评测接口。",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 26,
+        "end": 26
+      },
+      {
+        "id": "claims/7",
+        "num": 7,
+        "text": "根据权利要求1所述的系统，其特征在于，还包括审计…",
+        "full": "根据权利要求1所述的系统，其特征在于，还包括审计模块，挂接于所述成熟反馈队列模块与所述告警降级状态机模块，被配置为以仅追加方式记录预测事件、成熟结算事件、门控决策、告警与降级恢复操作，形成可追溯的部署期审计轨迹；所述系统还包括泄漏自检模块，被配置为：在每次统计更新前断言被更新起点已满足成熟条件，断言失败时阻断该次更新并记录异常；以及提供泄漏自检模式，在该模式下将最后一个已成熟目标之后的观测数据替换为噪声并重放历史预测，用于验证历史预测逐位一致。",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 28,
+        "end": 28
+      },
+      {
+        "id": "claims/8",
+        "num": 8,
+        "text": "根据权利要求1所述的系统，其特征在于，所述服务接…",
+        "full": "根据权利要求1所述的系统，其特征在于，所述服务接口包括预测接口、系统状态接口与告警查询接口；所述系统还包括可视化前端模块，被配置为轮询所述系统状态接口并展示门控轨迹、监控统计量轨迹与告警状态。",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 30,
+        "end": 30
+      },
+      {
+        "id": "claims/9",
+        "num": 9,
+        "text": "一种计算机设备，其特征在于，包括存储器与处理器，…",
+        "full": "一种计算机设备，其特征在于，包括存储器与处理器，所述存储器存储有计算机程序，所述处理器执行所述计算机程序时实现权利要求1至8任一项所述的系统中各模块的功能。",
+        "dependent": false,
+        "refs": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "badRefs": [],
+        "line": 32,
+        "end": 32
+      },
+      {
+        "id": "claims/10",
+        "num": 10,
+        "text": "一种计算机可读存储介质，其上存储有计算机程序，其…",
+        "full": "一种计算机可读存储介质，其上存储有计算机程序，其特征在于，所述程序被处理器执行时使计算机设备实现权利要求1至8任一项所述的系统中各模块的功能。",
+        "dependent": false,
+        "refs": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "badRefs": [],
+        "line": 34,
+        "end": 34
+      }
+    ]
+  },
+  "description": {
+    "line": 36,
+    "end": 188,
+    "sections": [
+      {
+        "id": "description/技术领域",
+        "name": "技术领域",
+        "part": "technical-field",
+        "line": 38,
+        "end": 41,
+        "firstPara": 1,
+        "lastPara": 1,
+        "subsections": [],
+        "leaves": []
+      },
+      {
+        "id": "description/背景技术",
+        "name": "背景技术",
+        "part": "background-art",
+        "line": 42,
+        "end": 53,
+        "firstPara": 2,
+        "lastPara": 6,
+        "subsections": [],
+        "leaves": []
+      },
+      {
+        "id": "description/发明内容",
+        "name": "发明内容",
+        "part": "disclosure",
+        "line": 54,
+        "end": 113,
+        "firstPara": 7,
+        "lastPara": 30,
+        "subsections": [
+          {
+            "id": "description/发明内容/要解决的技术问题",
+            "name": "要解决的技术问题",
+            "line": 56,
+            "end": 59,
+            "leaves": []
+          },
+          {
+            "id": "description/发明内容/技术方案",
+            "name": "技术方案",
+            "line": 60,
+            "end": 99,
+            "leaves": [
+              {
+                "id": "description/发明内容/技术方案/eq1",
+                "kind": "equation",
+                "line": 66,
+                "label": "公式 （1）",
+                "tag": "（1）",
+                "paraNo": 9
+              },
+              {
+                "id": "description/发明内容/技术方案/eq2",
+                "kind": "equation",
+                "line": 84,
+                "label": "公式 （2）",
+                "tag": "（2）",
+                "paraNo": 17
+              }
+            ]
+          },
+          {
+            "id": "description/发明内容/有益效果",
+            "name": "有益效果",
+            "line": 100,
+            "end": 113,
+            "leaves": []
+          }
+        ],
+        "leaves": []
+      },
+      {
+        "id": "description/附图说明",
+        "name": "附图说明",
+        "part": "description-of-drawings",
+        "line": 114,
+        "end": 129,
+        "firstPara": 31,
+        "lastPara": 37,
+        "subsections": [],
+        "leaves": [
+          {
+            "id": "figures/1",
+            "kind": "figure",
+            "line": 118,
+            "label": "图1 本发明一个实施例的系统总体架构图",
+            "tag": "fig1.emf",
+            "paraNo": null
+          },
+          {
+            "id": "figures/2",
+            "kind": "figure",
+            "line": 120,
+            "label": "图2 本发明实施例的成熟反馈队列事件流图",
+            "tag": "fig2.emf",
+            "paraNo": null
+          },
+          {
+            "id": "figures/3",
+            "kind": "figure",
+            "line": 122,
+            "label": "图3 本发明实施例的告警降级状态机图",
+            "tag": "fig3.emf",
+            "paraNo": null
+          },
+          {
+            "id": "figures/4",
+            "kind": "figure",
+            "line": 124,
+            "label": "图4 本发明实施例的回放编排流程图",
+            "tag": "fig4.emf",
+            "paraNo": null
+          },
+          {
+            "id": "figures/5",
+            "kind": "figure",
+            "line": 126,
+            "label": "图5 本发明实施例的e值轨迹与告警回退联动示意图",
+            "tag": "fig5.emf",
+            "paraNo": null
+          }
+        ]
+      },
+      {
+        "id": "description/具体实施方式",
+        "name": "具体实施方式",
+        "part": "mode-for-invention",
+        "line": 130,
+        "end": 188,
+        "firstPara": 38,
+        "lastPara": 64,
+        "subsections": [],
+        "leaves": [
+          {
+            "id": "description/具体实施方式/p0051",
+            "kind": "table",
+            "line": 158,
+            "label": "表1 协变量信任回放腐蚀场景结果（均方误差）",
+            "tag": "[0051]",
+            "paraNo": 51
+          }
+        ]
+      }
+    ],
+    "paragraphs": 64,
+    "leaves": []
+  },
+  "nodeOfBlock": {
+    "abstract": "abstract",
+    "abstract/p1": "abstract",
+    "claims/1": "claims/1",
+    "claims/2": "claims/2",
+    "claims/3": "claims/3",
+    "claims/4": "claims/4",
+    "claims/5": "claims/5",
+    "claims/6": "claims/6",
+    "claims/7": "claims/7",
+    "claims/8": "claims/8",
+    "claims/9": "claims/9",
+    "claims/10": "claims/10",
+    "description/技术领域": "description/技术领域",
+    "description/技术领域/p0001": "description/技术领域",
+    "description/背景技术": "description/背景技术",
+    "description/背景技术/p0002": "description/背景技术",
+    "description/背景技术/p0003": "description/背景技术",
+    "description/背景技术/p0004": "description/背景技术",
+    "description/背景技术/p0005": "description/背景技术",
+    "description/背景技术/p0006": "description/背景技术",
+    "description/发明内容": "description/发明内容",
+    "description/发明内容/要解决的技术问题": "description/发明内容/要解决的技术问题",
+    "description/发明内容/要解决的技术问题/p0007": "description/发明内容/要解决的技术问题",
+    "description/发明内容/技术方案": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0008": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0009": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq1": "description/发明内容/技术方案/eq1",
+    "description/发明内容/技术方案/p0010": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0011": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0012": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0013": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0014": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0015": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0016": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0017": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq2": "description/发明内容/技术方案/eq2",
+    "description/发明内容/技术方案/p0018": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0019": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0020": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0021": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0022": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0023": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0024": "description/发明内容/技术方案",
+    "description/发明内容/有益效果": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0025": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0026": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0027": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0028": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0029": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0030": "description/发明内容/有益效果",
+    "description/附图说明": "description/附图说明",
+    "description/附图说明/p0031": "description/附图说明",
+    "description/附图说明/p0032": "figures/1",
+    "description/附图说明/p0033": "figures/2",
+    "description/附图说明/p0034": "figures/3",
+    "description/附图说明/p0035": "figures/4",
+    "description/附图说明/p0036": "figures/5",
+    "description/附图说明/p0037": "description/附图说明",
+    "description/具体实施方式": "description/具体实施方式",
+    "description/具体实施方式/p0038": "description/具体实施方式",
+    "description/具体实施方式/p0039": "description/具体实施方式",
+    "description/具体实施方式/p0040": "description/具体实施方式",
+    "description/具体实施方式/p0041": "description/具体实施方式",
+    "description/具体实施方式/p0042": "description/具体实施方式",
+    "description/具体实施方式/p0043": "description/具体实施方式",
+    "description/具体实施方式/p0044": "description/具体实施方式",
+    "description/具体实施方式/p0045": "description/具体实施方式",
+    "description/具体实施方式/p0046": "description/具体实施方式",
+    "description/具体实施方式/p0047": "description/具体实施方式",
+    "description/具体实施方式/p0048": "description/具体实施方式",
+    "description/具体实施方式/p0049": "description/具体实施方式",
+    "description/具体实施方式/p0050": "description/具体实施方式",
+    "description/具体实施方式/p0051": "description/具体实施方式/p0051",
+    "description/具体实施方式/p0052": "description/具体实施方式",
+    "description/具体实施方式/p0053": "description/具体实施方式",
+    "description/具体实施方式/p0054": "description/具体实施方式",
+    "description/具体实施方式/p0055": "description/具体实施方式",
+    "description/具体实施方式/p0056": "description/具体实施方式",
+    "description/具体实施方式/p0057": "description/具体实施方式",
+    "description/具体实施方式/p0058": "description/具体实施方式",
+    "description/具体实施方式/p0059": "description/具体实施方式",
+    "description/具体实施方式/p0060": "description/具体实施方式",
+    "description/具体实施方式/p0061": "description/具体实施方式",
+    "description/具体实施方式/p0062": "description/具体实施方式",
+    "description/具体实施方式/p0063": "description/具体实施方式",
+    "description/具体实施方式/p0064": "description/具体实施方式",
+    "figures/1": "figures/1",
+    "figures/2": "figures/2",
+    "figures/3": "figures/3",
+    "figures/4": "figures/4",
+    "figures/5": "figures/5"
+  }
+}

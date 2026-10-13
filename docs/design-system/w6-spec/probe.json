@@ -1,0 +1,172 @@
+{
+  "real-light": {
+    "dark": false,
+    "fontSize": "14px",
+    "tokens": {
+      "--n0": "oklch(1 0 0)",
+      "--n1": "oklch(0.970 0.002 248)",
+      "--n9": "oklch(0.250 0.022 257)",
+      "--background": "oklch(1 0 0)",
+      "--surface": "oklch(1 0 0)",
+      "--fs-base": "14px",
+      "--fs-2xs": "11px",
+      "--h-control": "32px",
+      "--h-segmented": "36px",
+      "--w-side": "208px",
+      "--w-agent": "320px",
+      "--radius-sm": "4px"
+    },
+    "firstButton": {
+      "h": 28,
+      "fs": "12px",
+      "r": "4px"
+    },
+    "buttonHeights": [
+      16,
+      18,
+      20,
+      26,
+      28,
+      32,
+      36
+    ],
+    "fontSizes": [
+      "11px",
+      "12px",
+      "13px",
+      "14px",
+      "16px",
+      "20px",
+      "24px"
+    ]
+  },
+  "proto-light": {
+    "dark": false,
+    "fontSize": "13px",
+    "tokens": {
+      "--g0": "oklch(1 0 0)",
+      "--g1": "oklch(0.982 0.002 255)",
+      "--g11": "oklch(0.150 0.014 255)",
+      "--bg-app": "oklch(0.982 0.002 255)",
+      "--bg-panel": "oklch(1 0 0)",
+      "--bg-sunken": "oklch(0.958 0.004 255)",
+      "--bg-elevated": "oklch(1 0 0)",
+      "--fs-md": "14px",
+      "--fs-2xs": "11px",
+      "--h-md": "32px",
+      "--w-side": "240px",
+      "--w-agent": "360px",
+      "--r-sm": "4px",
+      "--r-xl": "12px"
+    },
+    "firstButton": {
+      "h": 28,
+      "fs": "13px",
+      "r": "3px"
+    },
+    "buttonHeights": [
+      22,
+      24,
+      28,
+      32,
+      36,
+      40
+    ],
+    "fontSizes": [
+      "9px",
+      "10px",
+      "11px",
+      "12px",
+      "13px",
+      "14px",
+      "16px",
+      "20px",
+      "24px"
+    ]
+  },
+  "real-dark": {
+    "dark": true,
+    "fontSize": "14px",
+    "tokens": {
+      "--n0": "oklch(1 0 0)",
+      "--n1": "oklch(0.970 0.002 248)",
+      "--n9": "oklch(0.250 0.022 257)",
+      "--background": "oklch(0.250 0.022 257)",
+      "--surface": "oklch(0.250 0.022 257)",
+      "--fs-base": "14px",
+      "--fs-2xs": "11px",
+      "--h-control": "32px",
+      "--h-segmented": "36px",
+      "--w-side": "208px",
+      "--w-agent": "320px",
+      "--radius-sm": "4px"
+    },
+    "firstButton": {
+      "h": 28,
+      "fs": "12px",
+      "r": "4px"
+    },
+    "buttonHeights": [
+      16,
+      18,
+      20,
+      26,
+      28,
+      32,
+      36
+    ],
+    "fontSizes": [
+      "11px",
+      "12px",
+      "13px",
+      "14px",
+      "16px",
+      "20px",
+      "24px"
+    ]
+  },
+  "proto-dark": {
+    "dark": true,
+    "fontSize": "13px",
+    "tokens": {
+      "--g0": "oklch(1 0 0)",
+      "--g1": "oklch(0.982 0.002 255)",
+      "--g11": "oklch(0.150 0.014 255)",
+      "--bg-app": "oklch(0.175 0.006 260)",
+      "--bg-panel": "oklch(0.215 0.006 260)",
+      "--bg-sunken": "oklch(0.160 0.006 260)",
+      "--bg-elevated": "oklch(0.255 0.007 260)",
+      "--fs-md": "14px",
+      "--fs-2xs": "11px",
+      "--h-md": "32px",
+      "--w-side": "240px",
+      "--w-agent": "360px",
+      "--r-sm": "4px",
+      "--r-xl": "12px"
+    },
+    "firstButton": {
+      "h": 28,
+      "fs": "13px",
+      "r": "3px"
+    },
+    "buttonHeights": [
+      22,
+      24,
+      28,
+      32,
+      36,
+      40
+    ],
+    "fontSizes": [
+      "9px",
+      "10px",
+      "11px",
+      "12px",
+      "13px",
+      "14px",
+      "16px",
+      "20px",
+      "24px"
+    ]
+  }
+}

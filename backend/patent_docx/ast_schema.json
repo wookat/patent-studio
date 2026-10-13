@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/wookat/patent-studio/backend/patent_docx/ast_schema.json",
+  "title": "Patent Studio AST v1",
+  "description": "后端 patent_docx.ast.parse_ast() 的输出契约（docs/plan/04-r1-design.md §3）。块内 lines 为书相对 1-based 闭区间，全文行号 = books[<book>].offset + line。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "title", "books", "abstract", "claims", "description", "figures"],
+  "properties": {
+    "version": { "const": 1 },
+    "title": { "$ref": "#/$defs/Title" },
+    "books": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["abstract", "claims", "description"],
+      "properties": {
+        "abstract": { "$ref": "#/$defs/BookInfo" },
+        "claims": { "$ref": "#/$defs/BookInfo" },
+        "description": { "$ref": "#/$defs/BookInfo" }
+      }
+    },
+    "abstract": { "$ref": "#/$defs/Abstract" },
+    "claims": { "type": "array", "items": { "$ref": "#/$defs/Claim" } },
+    "description": { "type": "array", "items": { "$ref": "#/$defs/DescriptionBlock" } },
+    "figures": { "type": "array", "items": { "$ref": "#/$defs/Figure" } },
+    "figures_bad_lines": {
+      "type": "array",
+      "description": "docs/figures.md 中未解析成附图行的非空行（1-based 行号）；无 figures.md 时为空",
+      "items": { "$ref": "#/$defs/FiguresBadLine" }
+    }
+  },
+  "$defs": {
+    "Lines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "integer", "minimum": 1 },
+        "end": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "BookInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offset", "length"],
+      "properties": {
+        "offset": { "type": "integer", "minimum": 1, "description": "`## <书名>` 标题行在 content.md 的行号" },
+        "length": { "type": "integer", "minimum": 0, "description": "书正文行数（docs/<book>.md 行数）" }
+      }
+    },
+    "Title": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "line"],
+      "properties": {
+        "text": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1, "description": "全文行号" }
+      }
+    },
+    "InlineMark": { "enum": ["b", "i", "u", "sub", "sup"] },
+    "InlineSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "marks"],
+      "description": "行内格式片段（patent_docx.inline.inline_spans）：text 为去记号后的片段文本，marks 按 b,i,u,sub,sup 顺序，相邻同标志片段可能不合并",
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "marks": { "type": "array", "items": { "$ref": "#/$defs/InlineMark" }, "uniqueItems": true }
+      }
+    },
+    "Paragraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "lines", "text", "para_no", "role", "inline"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "paragraph" },
+        "lines": { "$ref": "#/$defs/Lines" },
+        "text": { "type": "string", "description": "原始 Markdown（含 **/*/<u>/_/^ 记号）" },
+        "para_no": { "type": ["integer", "null"], "minimum": 1, "description": "内核生成段号（[0001] → 1）；摘要段为 null" },
+        "role": { "$ref": "#/$defs/ParagraphRole" },
+        "inline": { "type": "array", "items": { "$ref": "#/$defs/InlineSpan" } }
+      }
+    },
+    "ParagraphRole": { "enum": ["body", "table-caption"] },
+    "Abstract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "lines", "paragraphs", "figure_num"],
+      "properties": {
+        "id": { "const": "abstract" },
+        "kind": { "const": "abstract" },
+        "lines": { "$ref": "#/$defs/Lines" },
+        "paragraphs": { "type": "array", "items": { "$ref": "#/$defs/Paragraph" } },
+        "figure_num": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "ClaimKind": { "enum": ["independent", "dependent"] },
+    "ClaimRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "targets", "alternative", "seg", "start", "end"],
+      "properties": {
+        "text": { "type": "string" },
+        "targets": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
+        "alternative": { "type": "boolean" },
+        "seg": { "type": "integer", "minimum": 0 },
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "SegmentKind": { "enum": ["text", "equation"] },
+    "Segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "text", "line", "mathml"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "$ref": "#/$defs/SegmentKind" },
+        "text": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1, "description": "书相对行号" },
+        "mathml": { "type": ["string", "null"] },
+        "inline": { "type": "array", "items": { "$ref": "#/$defs/InlineSpan" }, "description": "仅 kind=text 有；equation 无" }
+      }
+    },
+    "Claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "lines", "num", "num_written", "claim_kind", "category", "refs", "charact", "segments"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "claim" },
+        "lines": { "$ref": "#/$defs/Lines" },
+        "num": { "type": "integer", "minimum": 1, "description": "位置序号" },
+        "num_written": { "type": ["string", "null"], "description": "首段前导数字原文" },
+        "claim_kind": { "$ref": "#/$defs/ClaimKind" },
+        "category": { "type": ["string", "null"] },
+        "refs": { "type": "array", "items": { "$ref": "#/$defs/ClaimRef" } },
+        "charact": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["seg", "offset"],
+              "properties": {
+                "seg": { "type": "integer", "minimum": 0 },
+                "offset": { "type": "integer", "minimum": 0 }
+              }
+            }
+          ]
+        },
+        "segments": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/Segment" } }
+      }
+    },
+    "DescriptionPart": {
+      "enum": ["technical-field", "background-art", "disclosure", "description-of-drawings", "mode-for-invention", "other"]
+    },
+    "Section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "lines", "title", "part", "inline"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "enum": ["section", "subsection"] },
+        "lines": { "$ref": "#/$defs/Lines" },
+        "title": { "type": "string", "description": "原始 Markdown（不含 ###/#### 前缀）" },
+        "part": { "$ref": "#/$defs/DescriptionPart" },
+        "inline": { "type": "array", "items": { "$ref": "#/$defs/InlineSpan" } }
+      }
+    },
+    "Equation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "lines", "source", "label", "mathml", "anchor_para_no"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "equation" },
+        "lines": { "$ref": "#/$defs/Lines" },
+        "source": { "type": "string", "description": "$$…$$ 内文" },
+        "label": { "type": ["string", "null"], "description": "同行 $$ 之后的原文标号，如 （1）" },
+        "mathml": { "type": ["string", "null"] },
+        "anchor_para_no": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "TableOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["three_line", "repeat_header", "num_left", "col_widths"],
+      "properties": {
+        "three_line": { "type": "boolean" },
+        "repeat_header": { "type": "boolean" },
+        "num_left": { "type": "boolean" },
+        "col_widths": { "oneOf": [{ "type": "null" }, { "type": "array", "items": { "type": "number" } }] }
+      }
+    },
+    "NumberedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "para_no"],
+      "properties": {
+        "text": { "type": "string" },
+        "para_no": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "Table": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "lines", "para_no", "rows", "options", "caption_after", "note"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "table" },
+        "lines": { "$ref": "#/$defs/Lines" },
+        "para_no": { "type": "integer", "minimum": 1 },
+        "rows": { "type": "array", "minItems": 1, "items": { "type": "array", "items": { "type": "string" } } },
+        "options": { "$ref": "#/$defs/TableOptions" },
+        "caption_after": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/NumberedText" }] },
+        "note": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/NumberedText" }] }
+      }
+    },
+    "Code": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "lines", "para_no", "code_lines"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "code" },
+        "lines": { "$ref": "#/$defs/Lines" },
+        "para_no": { "type": "integer", "minimum": 1 },
+        "code_lines": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "DescriptionBlockKind": { "enum": ["section", "subsection", "paragraph", "equation", "table", "code", "figure"] },
+    "DescriptionBlock": {
+      "oneOf": [
+        { "$ref": "#/$defs/Section" },
+        { "$ref": "#/$defs/Paragraph" },
+        { "$ref": "#/$defs/Equation" },
+        { "$ref": "#/$defs/Table" },
+        { "$ref": "#/$defs/Code" },
+        { "$ref": "#/$defs/InlineFigure" }
+      ]
+    },
+    "InlineFigure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "lines", "file", "width", "alt", "para_no"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "figure" },
+        "lines": { "$ref": "#/$defs/Lines" },
+        "file": { "type": "string", "description": "figs/ 内文件名；只引用不复制" },
+        "width": { "type": "number", "description": "cm，{width=N}，缺省 15" },
+        "alt": { "type": "string", "description": "![alt] 题注/替代文字" },
+        "para_no": { "type": "integer", "minimum": 1, "description": "占段号；不占图号" }
+      }
+    },
+    "FiguresBadLine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "text"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string" }
+      }
+    },
+    "Figure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "book", "num", "file", "width", "alt", "caption", "caption_line"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "const": "figure" },
+        "book": { "const": "figures", "description": "第四书（docs/figures.md），不在 books 三书装配律内" },
+        "num": { "type": "integer", "minimum": 1, "description": "内核按 docs/figures.md 行序生成" },
+        "file": { "type": "string" },
+        "width": { "type": "number", "description": "cm，来自 figures.md {width=N}" },
+        "alt": { "type": ["string", "null"], "description": "figures.md 的 ![alt]；只做显示与体检；无 figures.md 时 null" },
+        "caption": { "type": ["string", "null"] },
+        "caption_line": { "type": ["integer", "null"], "minimum": 1, "description": "说明书相对行号" }
+      }
+    }
+  }
+}

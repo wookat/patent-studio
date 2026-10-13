@@ -1,0 +1,23 @@
+知撰 · Patent Studio
+Copyright 2026 wookat
+
+本产品以 Apache License 2.0 发布（见 LICENSE 文件）。
+
+第三方方法学
+------------
+.agents/skills/patent-drafting/ 的撰写方法学改写自
+HuangXinzhe/cn-patent-drafting（https://github.com/HuangXinzhe/cn-patent-drafting），
+Copyright (c) 2026 Huang Xinzhe，MIT License 授权使用。
+
+字体
+----
+本仓库不分发字体文件。DOCX 内引用的字体名（宋体/黑体/Times New Roman/
+Cambria Math/Courier New）由最终用户本机字体解析；Docker 预览环境使用
+SIL OFL 许可的开源替身（AR PL UMing CN、WenQuanYi Micro Hei、Noto CJK、
+Liberation、Caladea、OpenSymbol），映射规则见 fonts/README.md 与
+docker/fonts-cjk-alias.conf。
+
+语料与图库
+----------
+docs/text-corpus/ 与 docs/figure-library/ 内容提取自国家知识产权局公开的
+专利文献，仅供功能演示与研发测试，相关权利归原公开文献权利人所有。

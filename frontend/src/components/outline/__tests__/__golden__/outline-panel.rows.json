@@ -1,0 +1,114 @@
+[
+  {
+    "id": "abstract",
+    "level": 1,
+    "text": "摘要27 字",
+    "expanded": null,
+    "label": null
+  },
+  {
+    "id": "claims",
+    "level": 1,
+    "text": "权利要求书4 项",
+    "expanded": "true",
+    "label": null
+  },
+  {
+    "id": "claims/1",
+    "level": 2,
+    "text": "1. 一种控制方法，其特征在于，包括以下步骤独",
+    "expanded": null,
+    "label": "权利要求 1，独立"
+  },
+  {
+    "id": "claims/2",
+    "level": 2,
+    "text": "2. 根据权利要求1所述的方法，其特征在于，所述漂移分…→1",
+    "expanded": null,
+    "label": "权利要求 2，从属，引用 1"
+  },
+  {
+    "id": "claims/3",
+    "level": 2,
+    "text": "3. 根据权利要求1或2所述的方法，其特征在于，还包括…→1–2",
+    "expanded": null,
+    "label": "权利要求 3，从属，引用 1、2"
+  },
+  {
+    "id": "claims/4",
+    "level": 2,
+    "text": "4. 根据权利要求5所述的方法，其特征在于，所述告警为…→5",
+    "expanded": null,
+    "label": "权利要求 4，从属，引用 5"
+  },
+  {
+    "id": "description",
+    "level": 1,
+    "text": "说明书",
+    "expanded": "true",
+    "label": null
+  },
+  {
+    "id": "description/技术领域",
+    "level": 2,
+    "text": "技术领域",
+    "expanded": null,
+    "label": null
+  },
+  {
+    "id": "description/背景技术",
+    "level": 2,
+    "text": "背景技术",
+    "expanded": null,
+    "label": null
+  },
+  {
+    "id": "description/发明内容",
+    "level": 2,
+    "text": "发明内容1",
+    "expanded": "true",
+    "label": null
+  },
+  {
+    "id": "description/发明内容/技术方案",
+    "level": 3,
+    "text": "技术方案1",
+    "expanded": "false",
+    "label": null
+  },
+  {
+    "id": "description/发明内容/有益效果",
+    "level": 3,
+    "text": "有益效果",
+    "expanded": null,
+    "label": null
+  },
+  {
+    "id": "description/附图说明",
+    "level": 2,
+    "text": "附图说明图1–3",
+    "expanded": "false",
+    "label": null
+  },
+  {
+    "id": "description/具体实施方式",
+    "level": 2,
+    "text": "具体实施方式[0007]–[0010]",
+    "expanded": "true",
+    "label": null
+  },
+  {
+    "id": "description/具体实施方式/p0008",
+    "level": 3,
+    "text": "表1 阈值表[0008]",
+    "expanded": null,
+    "label": "表格 表1 阈值表"
+  },
+  {
+    "id": "description/工业实用性",
+    "level": 2,
+    "text": "工业实用性",
+    "expanded": null,
+    "label": null
+  }
+]

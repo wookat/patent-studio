@@ -1,0 +1,231 @@
+{
+  "title": {
+    "text": "一种控制方法",
+    "line": 1
+  },
+  "abstract": {
+    "line": 3,
+    "end": 6
+  },
+  "claims": {
+    "line": 7,
+    "end": 17,
+    "items": [
+      {
+        "id": "claims/1",
+        "num": 1,
+        "text": "一种控制方法，其特征在于，包括以下步骤",
+        "full": "一种控制方法，其特征在于，包括以下步骤：采集运行期指标；计算漂移分数。",
+        "dependent": false,
+        "refs": [],
+        "badRefs": [],
+        "line": 9,
+        "end": 9
+      },
+      {
+        "id": "claims/2",
+        "num": 2,
+        "text": "根据权利要求1所述的方法，其特征在于，所述漂移分…",
+        "full": "根据权利要求1所述的方法，其特征在于，所述漂移分数按滑窗计算。",
+        "dependent": true,
+        "refs": [
+          1
+        ],
+        "badRefs": [],
+        "line": 11,
+        "end": 11
+      },
+      {
+        "id": "claims/3",
+        "num": 3,
+        "text": "根据权利要求1或2所述的方法，其特征在于，还包括…",
+        "full": "根据权利要求1或2所述的方法，其特征在于，还包括告警步骤。",
+        "dependent": true,
+        "refs": [
+          1,
+          2
+        ],
+        "badRefs": [],
+        "line": 13,
+        "end": 13
+      },
+      {
+        "id": "claims/4",
+        "num": 4,
+        "text": "根据权利要求5所述的方法，其特征在于，所述告警为…",
+        "full": "根据权利要求5所述的方法，其特征在于，所述告警为短信。",
+        "dependent": true,
+        "refs": [
+          5
+        ],
+        "badRefs": [
+          5
+        ],
+        "line": 15,
+        "end": 15
+      }
+    ]
+  },
+  "description": {
+    "line": 18,
+    "end": 59,
+    "sections": [
+      {
+        "id": "description/技术领域",
+        "name": "技术领域",
+        "part": "technical-field",
+        "line": 20,
+        "end": 23,
+        "firstPara": 1,
+        "lastPara": 1,
+        "subsections": [],
+        "leaves": []
+      },
+      {
+        "id": "description/背景技术",
+        "name": "背景技术",
+        "part": "background-art",
+        "line": 24,
+        "end": 27,
+        "firstPara": 2,
+        "lastPara": 2,
+        "subsections": [],
+        "leaves": []
+      },
+      {
+        "id": "description/发明内容",
+        "name": "发明内容",
+        "part": "disclosure",
+        "line": 28,
+        "end": 39,
+        "firstPara": 3,
+        "lastPara": 4,
+        "subsections": [
+          {
+            "id": "description/发明内容/技术方案",
+            "name": "技术方案",
+            "line": 30,
+            "end": 35,
+            "leaves": [
+              {
+                "id": "description/发明内容/技术方案/eq1",
+                "kind": "equation",
+                "line": 34,
+                "label": "公式 (1)",
+                "tag": "(1)",
+                "paraNo": 3
+              }
+            ]
+          },
+          {
+            "id": "description/发明内容/有益效果",
+            "name": "有益效果",
+            "line": 36,
+            "end": 39,
+            "leaves": []
+          }
+        ],
+        "leaves": []
+      },
+      {
+        "id": "description/附图说明",
+        "name": "附图说明",
+        "part": "description-of-drawings",
+        "line": 40,
+        "end": 45,
+        "firstPara": 5,
+        "lastPara": 6,
+        "subsections": [],
+        "leaves": [
+          {
+            "id": "figures/3",
+            "kind": "figure",
+            "line": 40,
+            "label": "图3",
+            "tag": "fig3.svg",
+            "paraNo": null
+          },
+          {
+            "id": "figures/1",
+            "kind": "figure",
+            "line": 42,
+            "label": "图1 本发明实施例的总体流程图",
+            "tag": "fig1.svg",
+            "paraNo": null
+          },
+          {
+            "id": "figures/2",
+            "kind": "figure",
+            "line": 44,
+            "label": "图2 漂移分数曲线示意图",
+            "tag": "fig2.svg",
+            "paraNo": null
+          }
+        ]
+      },
+      {
+        "id": "description/具体实施方式",
+        "name": "具体实施方式",
+        "part": "mode-for-invention",
+        "line": 46,
+        "end": 55,
+        "firstPara": 7,
+        "lastPara": 10,
+        "subsections": [],
+        "leaves": [
+          {
+            "id": "description/具体实施方式/p0008",
+            "kind": "table",
+            "line": 50,
+            "label": "表1 阈值表",
+            "tag": "[0008]",
+            "paraNo": 8
+          }
+        ]
+      },
+      {
+        "id": "description/工业实用性",
+        "name": "工业实用性",
+        "part": "other",
+        "line": 56,
+        "end": 59,
+        "firstPara": 11,
+        "lastPara": 11,
+        "subsections": [],
+        "leaves": []
+      }
+    ],
+    "paragraphs": 11,
+    "leaves": []
+  },
+  "nodeOfBlock": {
+    "abstract": "abstract",
+    "abstract/p1": "abstract",
+    "claims/1": "claims/1",
+    "claims/2": "claims/2",
+    "claims/3": "claims/3",
+    "claims/4": "claims/4",
+    "description/技术领域": "description/技术领域",
+    "description/技术领域/p0001": "description/技术领域",
+    "description/背景技术": "description/背景技术",
+    "description/背景技术/p0002": "description/背景技术",
+    "description/发明内容": "description/发明内容",
+    "description/发明内容/技术方案": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/p0003": "description/发明内容/技术方案",
+    "description/发明内容/技术方案/eq1": "description/发明内容/技术方案/eq1",
+    "description/发明内容/有益效果": "description/发明内容/有益效果",
+    "description/发明内容/有益效果/p0004": "description/发明内容/有益效果",
+    "description/附图说明": "description/附图说明",
+    "description/附图说明/p0005": "figures/1",
+    "description/附图说明/p0006": "figures/2",
+    "description/具体实施方式": "description/具体实施方式",
+    "description/具体实施方式/p0007": "description/具体实施方式",
+    "description/具体实施方式/p0008": "description/具体实施方式/p0008",
+    "description/具体实施方式/p0010": "description/具体实施方式",
+    "description/工业实用性": "description/工业实用性",
+    "description/工业实用性/p0011": "description/工业实用性",
+    "figures/1": "figures/1",
+    "figures/2": "figures/2",
+    "figures/3": "figures/3"
+  }
+}

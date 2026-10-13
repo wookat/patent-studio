@@ -1,0 +1,219 @@
+# Web Search Results for "patents.google.com patent CN 换脸 篡改检测 图像取证 方法"
+
+## 1. CN118397678A - 一种基于微表情卷积的ai换脸系统的检测方法及其装置 
+        - Google Patents
+URL: https://patents.google.com/patent/CN118397678A/zh
+
+CN118397678A - 一种基于微表情卷积的ai换脸系统的检测方法及其装置 - Google Patents
+...
+本申请公开了一种基于微表情卷积的AI换脸系统的检测方法及其装置，包括获取原脸和检测数据，预处理并利用卷积神经网络提取人脸图像微表情生成特征数据，利用分类模型进行微表情分类，再通过对比模型判断是否换脸。从而判断原脸图像与AI换脸图像是否一致，避免了手动选取特征和训练权重的繁琐过程，提高了特征分类的准确性。同时，考虑了每个人的面部肌肉轮廓、微表情等个体差异，实现了对不同人物角色的微表情判断，进一步提高了检测的精确性和实用性。
+...
+目前，随着人工智能、信息技术的发展，深度学习技术被应用于AI换脸技术的发展。自此，人脸识别技术在中国经历了技术引进、市场导入、技术完善、技术应用和各行业领域使用等五个阶段。目前，国内的人脸识别技术已经相对发展成熟，体现了技术的先进性，但是换脸技术的出现也导致视频、人脸等的真实性降低，一些不法分子通过AI技术对视频、人脸等进行篡改、替换，导致视频、人脸等失去真实性，展开了一系列的AI诈骗陷阱，使得许多人尤其是一些老年人、小孩无法准确的辨别真实与虚假的人脸，从而掉入陷阱。因此，对视频中的信息、人脸等进行准确的检测尤为重要。
+
+至今为止，有关AI换脸图像进行检测的研究很少，在发明专利(专利公开号CN114494002)中公开了一种基于AI换脸视频的原脸图像智能还原方法和系统，主要是基于对待需要还原的大量AI换脸视频，首先进行性别的分类，再根据每个换脸人物进行分类，通过分类好的视频每一帧进行共性特征提取，确定海森矩阵，根据海森矩阵相似值算法，获取还原对象在预设的三维标准头骨模型状态下的海森矩阵值，确定脸部特征，基于脸部特征还原出待还原对象在预设状态下对应的原脸图像。但该方法中，是无法准确分析视频内容是否经过AI换脸处理。当前的方法在处理这一问题时存在一定的局限性，例如需要基于大量的视频进行分类和特征提取，以及预设的标准三维头骨模型与实际还原人脸模型存在偏差等。这些限制导致了无法有效区分原始人脸和经过AI换脸处理后的人脸图像，从而使得视频内容的真实性和可信度受到影响。
+...
+为了解决上述技术问题，本发明提供了一种基于微表情卷积的AI换脸系统的检测方法及其装置。以解决无法确定视频内容是原脸还是AI换脸的难题。
+
+一种基于微表情卷积的AI换脸系统的检测方法，包括以下步骤：
+
+S1,获取原脸数据以及检测数据，并对原脸数据以及检测数据分别进行预处理，得到原脸预处理数据以及检测预处理数据；
+
+S2,将原脸预处理数据以及检测预处理数据输入卷积神经网络，生成原脸特征数据和检测特征数据；
+
+S3，调用分类模型，对原脸特征数据和检测特征数据进行微表情分类，得到原脸微表情特征以及检测微表情特征；
+
+S4，调用对比模型，对原脸微表情特征与检测微表情特征进行对比，从而判断检测数据是否换脸。
+...
+微表情卷积的AI换脸系统的检测方法及其装置，利用卷积神经网络提取人脸图像微表情的特征值，从而判断原脸图像与AI换脸图像是否一致，避免了手动选取特征和训练权重的繁琐过程，提高了特征分类的准确性。同时，考虑了每个人的面部肌肉轮廓、微表情等个体差异，实现了对不同人物角色的微表情判断
+...
+步骤S3，调用分类模型，对原脸特征数据和检测特征数据进行微表情分类，得到原脸微表情特征以及检测微表情特征；
+...
+具体的，所述分类模型是结合了分类器和softmax函数，在一个或者多个实施例中，分类模型是结合了支持向量机(SVM)分类器和softmax函数的组合。首先，将原脸特征数据和检测特征数据输入到支持向量机分类器中，以进行微表情的初步分类。支持向量机能够有效地处理高维特征空间中的非线性分类问题，并输出原始的分类结果。然后，为了将这些原始的分类结果转化为各个类别的概率分布，使用了softmax函数。Softmax函数能够将分类器的输出转换为概率分布，使得最终的输出表示了每个类别的预测概率。分类器可以从输入的特征数据中学习到微表情的特征表示，并将其分为不同的类别。在分类过程中，使用softmax函数来进行微表情识别。Softmax函数可以将原始的分类器输出转换为概率分布，使得每个类别的概率之和为1。其公式如下所示：其中，P(y＝i)代表预测为i类的概率，WiX代表通过最后一个Dense层的输出结果中的第i个向量数据。Softmax函数的作用是将这些输出转换为概率值，以便进行微表情的分类识别。在分类过程中，还需要重复上述操作对检测特征进行微表情分类。为了更准确地识别微表情，通常会基于面部动作单元(Facial Action Unit，AU)进行分类。AU是将面部表情的发生解释为基于肌肉的面部运动的一种方法，每个AU对应特定区域的面部运...
+
+## 2. CN111950497B - 一种基于多任务学习模型的ai换脸视频检测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN111950497B/zh
+
+CN111950497B - 一种基于多任务学习模型的ai换脸视频检测方法 - Google Patents
+...
+CN111950497B CN111950497B CN202010844086.1A CN202010844086A CN111950497B CN 111950497 B CN111950497 B CN 111950497B CN 202010844086 A CN202010844086 A CN 202010844086A CN 111950497 B CN111950497 B CN 111950497B Authority CN China Prior art keywords video face loss function model false Prior art date 2020-08-20 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202010844086.1A Other languages English (en) Other versions CN111950497A (zh Inventor 李红波 王桔波 吴渝 王艺蓓 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Shanghai Enya Intelligent Technology Co ltd Original Assignee Chongqing University of Post and Telecommunications Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2020-08-20 Filing date 2020-08-20 Publication date 2022-07-01 2020-08-20
+...
+本发明请求保护一种基于多任务学习模型的AI换脸视频检测方法，属于计算机视觉与深度学习领域，包括以下步骤：预先训练基于多任务学习的模型来检测被修改的换脸视频，并为每个查询定位修改的区域，此模型为自动编码器包括一个Y型自动解码器。利用半监督学习方法来提高网络的生成性，利用多任务之前共享有价值的信息，减少激活损失函数、分割损失函数和重建损失函数的总和，并使用优化器进行优化，进而提高性能。对于视频输入检测，对所有帧的概率进行求平均，得出输入为真或假的概率。本发明有利提高AI换脸视频检测。
+...
+本发明属于计算机视觉与深度学习领域，具体涉及一种基于计算机与深度学习算法的虚假视频检测方法，用于快速准确判定虚假生成的视频文件以及定位视频篡改部位。
+...
+目前公开的AI换脸视频检测中，仅仅是从单一的特征去检测，例如基于眨眼的，基于嘴型的，基于皮肤边缘的，导致检测性能不佳。计算过程中，大多数检测方法把整个图像考虑计算，大大增加计算费用，从而不能高效并准确检测换脸视频。
+
+本发明主要提出一种利用多任务学习模型解决了AI换脸视频检测不能高效并且准确的问题。
+...
+本发明旨在解决以上现有技术的问题。提出了一种基于多任务学习模型的AI换脸视频检测方法。本发明的技术方案如下：
+
+一种基于多任务学习模型的AI换脸视频检测方法，其包括以下步骤：
+
+S1:预先下载用于虚假视频生成的算法，利用自有的数据生成虚假视频和未修改的视频，其中分为训练集、验证集和测试集；
+
+S2:预先训练多任务学习特征提取模型，再将训练好的特征提取模型保存；所述特征模型为一个自动编码器，自动编码器带有一个Y型解码器，Y型解码器在激活、分割和重建任务之间共享有价值的信息，通过调整总损失函数，以提高整体性能。Y型解码器以半监督的方式训练；
+
+...
+
+## 3. CN114694220A - 一种基于Swin Transformer的双流人脸伪造检测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN114694220A/zh
+
+CN114694220A - 一种基于Swin Transformer的双流人脸伪造检测方法 - Google Patents
+...
+CN114694220A CN114694220A CN202210307917.0A CN202210307917A CN114694220A CN 114694220 A CN114694220 A CN 114694220A CN 202210307917 A CN202210307917 A CN 202210307917A CN 114694220 A CN114694220 A CN 114694220A Authority CN China Prior art keywords face image stream forgery images Prior art date 2022-03-25 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202210307917.0A Other languages English (en) Other versions CN114694220B (zh Inventor 张新鹏 潘照广 冯国瑞 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) University of Shanghai for Science and Technology Original Assignee University of Shanghai for Science and Technology Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a
+...
+本发明涉及一种基于Swin Transformer的双流人脸伪造检测方法，利用深度学习来进行人脸伪造图像的检测。整体搭建一个深度学习网络模型，网络模型分为三部分：双流网络、特征提取网络和分类器。由于现在公开的人脸伪造数据集全部是视频，因此需要利用OpenCV将视频裁剪成帧图片。此外，由于帧图片包含了大量的背景信息，因此需要利用人脸定位算法将人脸区域裁剪出来。然后将得到的人脸区域图像输入到双流网络和特征提取网络中提取并学习特征。最后将学习到的特征输入到分类器中，进行人脸图像真假的识别。本发明应用于解决现有人脸伪造检测方案的部分局限性即泛化能力弱的问题，同时还通过双流框架提升模型抗压缩能力，使其更符合日常生活中常见的人脸视频质量。
+...
+本发明的目的是要解决现有人脸检测方法泛化能力不足以及抗压缩能力差的问题，提供了一种基于Swin Transformer的双流人脸伪造检测方法，在解决现有人脸伪造检测方案的部分局限性即泛化能力弱的问题的同时，还通过双流框架提升模型抗压缩能力，使其更符合日常生活中常见的人脸视频质量。
+...
+利用深度学习来进行人脸伪造图像的检测。整体搭建了一个深度学习网络模型，网络模型分为三部分：双流网络、特征提取网络和分类器。由于现在公开的人脸伪造数据集全部是视频，因此首先需要利用OpenCV将视频裁剪成帧图片。除此之外，由于帧图片包含了大量的背景信息，因此需要利用人脸定位算法将人脸区域裁剪出来。然后将得到的人脸区域图像输入到双流网络和特征提取网络中提取并学习特征。最后将学习到的特征输入到分类器中，进行人脸图像真假的识别。
+...
+采用双流网络，包括RGB流和噪声流；RGB流的输入是原始的RGB图像，用于直接提取原始图像特征，通过对比度差异、不自然边界找出伪造的痕迹；噪声流的输入是噪声图片，噪声图像是将RGB图像通过SRM(steganalysis rich model)卷积核得到的噪声特征图像；
+...
+优选地，在所述步骤(5)中，SRM卷积核用于进行隐写分析，包括发现图像中真实区域和被伪造区域的噪声间的不一致的卷积核组。本发明方法经双流网络检测人脸图像时，为...
+
+## 4. CN111539272A - 基于联合特征被动检测ai换脸视频的方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN111539272A/zh
+
+CN111539272A - 基于联合特征被动检测ai换脸视频的方法及系统 - Google Patents# CN111539272A - 基于联合特征被动检测ai换脸视频的方法及系统 - Google Patents
+...
+本发明提供了一种基于联合特征被动检测AI换脸视频的方法及系统，包括:对篡改视频解码数据做统计分析，找到全局性的可鉴定特征；将编码中不存在篡改痕迹的视频判定为未经篡改的视频，得到经过篡改的视频；对经过篡改的视频解帧得到连续多帧视频帧图像；检测识别每个视频帧中出现的人脸位置，并对人脸区域与小范围周边背景区域进行划分，形成人脸区域图片序列；提取序列中每张图片的纹理信息，获取帧内一致性信息；对帧内一致性特征序列进行序列分析，考察视频的帧间一致性特征；结合帧内一致性特征和帧间一致性特征，判断是否经过AI换脸的篡改。本发明能精确地检测出经过AI换脸篡改的视频，具有极大的应用价值。
+...
+针对上述问题，本发明提出了利用全局双压缩统计特征和局部的像素时空特征联合被动检测AI人脸的方法。可被用于新闻视频素材中人脸真实性检测和司法领域数字视频中人脸真实性鉴定等场景。与传统方法相比，本发明从全局双压缩统计特征和局部的像素时空特征两个角度对AI换脸视频进行检测，具有更高的准确率和鲁棒性。
+...
+现有技术存在精确度不够同时检测能力不足的缺陷，针对这一缺陷，本发明解决了通过联合两种特征：全局编码统计特征和局部像素时空特征对AI换脸视频进行检测，同时采取的算法所针对的篡改特征本身是AI换脸视频的根本性特征，因此本发明具有较强的检测能力和较强的鲁棒性，具有极大的应用价值。
+发明内容针对现有技术中的缺陷，本发明的目的是提供一种基于联合特征被动检测AI换脸视频的方法及系统。
+根据本发明提供的一种基于联合特征被动检测AI换脸视频的方法，包括:
+步骤M1：对原始视频解码数据做统计分析，提取视频特征，得到全局编码统计特征；
+步骤M2：根据得到全局编码统计特征，将原始视频编码中不存在篡改痕迹的视频判定为未经篡改的视频，得到其余经过篡改的视频；
+步骤M3：对经过篡改的视频解帧得到连续多帧视频帧图像；
+步骤M4：检测连续多帧视频帧图像的每张图像中是否出现人脸，将未出现人脸的视频判定为非AI换脸视频，得到其余出现人脸的连续多帧视频帧图像；
+步骤M5：对出现人脸的连续多帧视频帧进行人脸识别，获取人脸位置信息，对人脸区域与预设范围周边背景区域进行划分，形成人脸背景区域图片序列；
+步骤M6：根据局部二值模式，提取人脸背景区域图片序列中每张包含的纹理信息，获取帧内一致性信息；
+步骤M7：对人脸背景区域图片序列提取得到的帧内一致性特征序列进行序列分析，同时考察视频的帧内一致性特征和帧间一致性特征，得到局部像素时空特征；
+步骤M8：根据全局编码统计特征和局部像素时空特征，判断视频是否经过AI换脸的篡改；
+所述全局编码统计特征是根据双压缩检测判断视频是否经过换脸篡改之前，直接判断视频是否经过任何形式的篡改；所述局部像素时空特征是将帧内一致性特征和帧间一致性特征统称为局部像素时空特征，能够有效地检测出AI换脸视频。
+...
+2、本发明所检测的针对对象为AI换脸视频，该类视频在许多场景下可能会导致不良影响，而本发明因为能够有效地对其进行检测，本发明成果可应用于司法电子证据取证需求、网络平台上传视频真实性鉴定自检需求、新闻媒体发布视频的真实性鉴定等领域，具有广泛的应用范围和良好的发展前景；
+3、本发明所具备的精确有效的特点，其主要原因包含两点：1，通过联合两种特征对AI换脸视频进行检测，2，本发明所采取的算法所针对的篡改特征本身是AI换脸视频的根本性特征。本发明能精确有效地检测出经过“AI换脸”篡改的视频，具有极大的应用价值。
+...
+其原因在于，AI换脸工具需要检测并提取出视频中的人脸区域，因此视频中存在可以被检测到的人脸才有篡改的意义。本系统首先对输入视频中的人脸进行检测。如果输入视频中不含有任何人脸或者人脸的尺寸小于最低检测范围，那么将认为视频中不存在人脸，不需要对视频进行检测。
+...
+统计特征和局部像素时空特征，判断视频是否经过AI换脸的篡改
+...
+所述全局编码统计特征是根据双压缩检测判断视频是否经过换脸篡改之前，直接判断视频是否经过任何形式的篡改；换脸篡改是一种篡改的形式，如果视频没有经过任何形式的篡改，那么自然没有经过换脸篡改。经过得到全局编码统计特征能够有效过滤掉未经任何篡改的视频，减少工作量。所述局部像素时空特征是将帧内一致性特征和帧间一致性特征统称为局部像素时空特征，能够有效地检测出AI换脸视频。由于AI换脸视频和普通视频，在帧内一致性和帧间一致性这两点上有较大的差异，因此通过这两种特征能够有效地检测出AI换脸视频。
+...
+本发明填补了利用全...
+
+## 5. CN117593263B - 图像篡改检测方法、装置、存储介质以及电子设备 
+        - Google Patents
+URL: https://patents.google.com/patent/CN117593263B/zh
+
+CN117593263B - 图像篡改检测方法、装置、存储介质以及电子设备 - Google Patents
+...
+Publication number CN117593263B CN117593263B CN202311543068.XA CN202311543068A CN117593263B CN 117593263 B CN117593263 B CN 117593263B CN 202311543068 A CN202311543068 A CN 202311543068A CN 117593263 B CN117593263 B CN 117593263B Authority CN China Prior art keywords gradient model target image local Prior art date 2023-11-17 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Active Application number CN202311543068.XA Other languages English (en) Other versions CN117593263A (zh Inventor 周宇 王伟 王�义 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Chongqing Ant Consumer Finance Co ltd Original Assignee Chongqing Ant Consumer Finance Co ltd Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2023-11-17 Filing date 2023-11-17 Publication date 2025-09-19 2023-11-17 Application filed by Chongqing Ant Consumer Finance Co ltd filed Critical Chongqing Ant Consumer Finance Co ltd 2023-11-17 Priority to CN202511211431.7A priority Critical patent/CN121121447A/zh 2023-11-17 Priority to CN202311543068.XA priority patent/CN117593263B/zh 2024-02-23 Publication of CN117593263A publication Critical patent/CN117593263A/zh 2024-10-29 Priority to PCT/CN2024/128174 priority patent/WO2025103137A1/zh 2025-09-19 Application granted granted Critical 2025-09-19 Publication of CN117593263B publication Critical patent/CN117593263B/zh Status Active legal-status Critical Current 2043-11-17 Anticipated expiration legal-status Critical
+...
+本说明书公开了一种图像篡改检测方法、装置、存储介质以及电子设备，其中，方法包括：由电子设备确定本地图像篡改检测模型对应的第一模型梯度矩阵，然后根据第一模型梯度矩阵进行局部梯度差分隐私计算处理得到第二模型梯度矩阵，再...
+
+## 6. CN115116108A - 基于双流对比学习模型的人脸篡改视频检测方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN115116108A/zh
+
+CN115116108A - 基于双流对比学习模型的人脸篡改视频检测方法及系统 - Google Patents
+...
+本发明提出了一种基于双流对比学习模型的人脸篡改视频检测方法及系统，涉及计算机视觉与深度学习、信息安全的技术领域，对每一个视频分帧，在单帧图像上进行人脸检测并裁剪出包含背景区域的人脸图像，进行单帧图像的真伪检测，统计单帧图像判别结果得到视频级别检测结果，为给模型的训练注入更多的人脸篡改先验知识，从融合人脸篡改先验知识的角度出发，设计了双流对比学习模型，双流对比学习模型包含两个结构相同的语义分割网络分支，保证每个分支在进行自身信息流的提取和学习时，协同兼顾另一个流域的信息而作出调整，缓解了传统二分类检测算法过度依赖训练数据集的弊端，保持较高库内检测精度，且能有效提高模型对未知方法的跨库检测能力。
+...
+近年来，随着各类数字媒体编辑软件的普及，篡改数字媒体呈现出了泛滥的趋势，使得数字媒体内容的原创性以及可靠性降低。一类名为Deepfakes的深度伪造技术更是因其逼真的视频换脸效果而受到社会的广泛关注，利用该技术生成伪造视频会造成严重危害。因此，十分有必要针对此类伪造换脸视频媒体的检测方法进行开发研究。
+
+现有技术中公开了一种图像篡改检测方法，在该方法中，首先准备未篡改图像和篡改图像，将未篡改图像和篡改图像共同组成训练集，然后构建二分类网络模型，通过训练集对二分类网络模型进行训练，使得训练后的二分类网络模型能够区分图像是否被篡改；二分类网络模型包括特征提取层、图像注意力层和分类器，最后通过训练后的二分类网络模型对图像是否被篡改进行识别。在该技术方案中，使用神经网络训练二值分类网络，引导网络获取准确的篡改检测概率值，但该方案归根结底是将人脸篡改检测建模成一个端到端的二分类判别问题，这种端到端的二分类模式在网络训练时，由于缺乏人脸篡改先验的支持，可能会导致训练出来的模型过度依赖训练数据集，跨库检测性能较差。
+...
+为解决现有基于端到端的二分类人脸篡改检测方式在缺乏人脸篡改先验的支持时，跨库检测性能差的问题，本发明提出一种基于双流对比学习模型的人脸篡改视频检测方法及系统，注入了更多的人脸篡改先验知识，缓解了深度学习网络过度依赖训练数据集的弊端，在保持较高库内检测精度的同时，有效提高了跨库检测能力。
+...
+一种基于双流对比学习模型的人脸篡改视频检测方法，包括以下步骤：
+...
+S2.对原始分帧图像进行人脸篡改操作，得到人脸篡改图像，人脸篡改图像和原始分帧图像混合形成数据集，并将数据集划分为训练集、验证集和测试集；
+
+S3.对数据集中每一个单帧图像进行人脸检测，并裁剪出包含背景区域的人脸图像；
+
+S4.对输入人脸图像进行人脸关键点定位，生成像素级别掩膜；
+
+S5.构建双流对比学习模型，包括两个结构相同的语义分割网络分支；利用训练集对双流对比学习模型进行监督训练，然后利用验证集评估双流对比学习模型，选取出最优的检测模型，并利用测试集测试最优检测模型的有效性；
+
+S6.获取待检测视频，对其进行分帧操作，并以步骤S2的方式获得人脸图像，然后对人脸图像以步骤S4的方式获得像素级别掩膜；
+
+S7.将待检测人脸视频帧以及步骤S6生成的像素级别掩膜一并输入到最优检测模型中进行分类，得到所有待检测人脸视频帧的分类判别结果；
+...
+在本技术方案中，通过设计语义分割网络的形式实现人脸篡改检测，不同于现存多数检测网络端到端二分类的监督模式，本技术方案提供了一种基于像素级别的监督新范式，对每一个视频分帧，在单帧图像上进行人脸检测并裁剪出包含背景区域的人脸图像，进行单帧图像的真伪检测，统计单帧图像判别结果得到视频级别检测结果，为给模型的训练注入更多的人脸篡改先验知识，从融合人脸篡改先验知识的角度出发，设计了双流对比学习模型，双流对比学习模型包含两个结构相同的语义分割网络分支，保证每个分支在进行自身信息流的提取和学习时，协同兼顾另一个流域的信息而作出调整，缓解了传统二分类检测算法过度依赖训练数据集的弊端，保持较高库内检测精度，且能有效提高模型对未知方法的跨库检测能力。
+...
+S22.利用人脸篡改方法改对源素材和目标素材进行人脸篡改操作，得到人脸篡改图像，所述的人脸篡改方法包括Deepfakes深度伪造法和FaceSwap脸部替换法。
+...
+优选地，步骤S5所述构建的双流对比学习模型，包括两个结构相同的语义分割网络分支，一个为RGB流分支，另一个为梯度流分支；所述的语义分割网络包括两个基本部分：一个部分是以EfficientNet-b3网络为主干搭建的编码器，并通过加载该网络在ImageNet上的已训练网络权重参数作为编码器的预训练网络权重参数；另一个部分是通过交替堆叠双线性上采样模块和普通卷积模块得到的浅层解码器，并通过采用Kaiming初...
+
+## 7. CN112116577A - 一种基于深度学习的篡改人像视频检测方法及系统 
+        - Google Patents
+URL: https://patents.google.com/patent/CN112116577A/zh
+
+CN112116577A - 一种基于深度学习的篡改人像视频检测方法及系统 - Google Patents
+...
+Publication number CN112116577A CN112116577A CN202010994492.6A CN202010994492A CN112116577A CN 112116577 A CN112116577 A CN 112116577A CN 202010994492 A CN202010994492 A CN 202010994492A CN 112116577 A CN112116577 A CN 112116577A Authority CN China Prior art keywords tampered frame portrait video detection deep learning Prior art date 2020-09-21 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202010994492.6A Other languages English (en) Other versions CN112116577B (zh Inventor 许磊 谢兰迟 宋宏健 郭晶晶 晏于文 陈晨 彭思龙 李志刚 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Institute of Automation of Chinese Academy of Science Institute of Forensic Science Ministry of Public Security PRC Original Assignee Institute of Automation of Chinese Academy of Science Institute of Forensic Science Ministry of Public Security PRC Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2020-09-21 Filing date 2020-09-21 Publication date 2020-12-22 2020-09-21 Application filed by Institute of Automation of Chinese Academy of Science, Institute of Forensic Science Ministry of Public Security PRC filed Critical Institute of Automation of Chinese Academy of Science 2020-09-21 Priority to CN202010994492.6A priority Critical patent/CN112116577B/zh 2020-12-22 Publication of CN112116577A publication Critical patent/CN112116577A/zh 2024-01-23 Application granted granted Critical 2024-01-23 Publication of CN112116577B publication Critical patent/CN112116577B/zh Status Active legal-status Critical Current 2040-09-21 Anticipated ...
+
+## 8. CN116188439B – A method and device for detecting a fake face-swap image based on an identity recognition probability distribution | Patsnap Eureka
+URL: https://eureka.patsnap.com/patent/CN116188439B
+Published: 2026-04-28T00:00:00.000Z
+
+CN116188439B – A method and device for detecting a fake face-swap image based on an identity recognition probability distribution | Patsnap Eureka
+...
+Existing methods for detecting fake face-swapped images have low accuracy when faced with rapidly evolving face-swapping techniques, are difficult to deal with gray-box attacks, and are easily bypassed by face-swapping creators.
+...
+By constructing an identity recognition probability distribution model, using real images for multi-round supervised learning, and combining smooth labeling and occluded image training strategies, the identity recognition model is optimized to detect fake face-swapped images.
+...
+The application discloses a kind of based on identity recognition probability distribution's fake face swapping image detection method and device, construct real image and corresponding identity label, identity label is carried out smoothing operation to construct smooth identity label;Real image is used to carry out multiple rounds of identity label-based supervision learning to identity recognition model to optimize parameter;Copy current parameter optimization identity recognition model as copy model, based on the pixel area of greatest contribution in the prediction result of copy model in real image is shielded to construct shielded image;Shielded image is used to carry out multiple rounds of smooth identity label-based supervision learning to current parameter optimization identity recognition model to optimize parameter;Until training ends, the maximum prediction probability value output by identity recognition model is compared with threshold value, when maximum prediction probability value is less than threshold value, it is detected as fake face swapping image.This method prevents attack while improving the detection accuracy and generalization of fake face swapping image.
+
+ Need to check novelty before this filing date? Find Prior Art 
+
+### Description
+...
+[0010] Step 3: Copy the current parameter-optim...
+
+## 9. CN117746515A - 检测模型的训练方法、检测方法、装置、设备和介质 
+        - Google Patents
+URL: https://patents.google.com/patent/CN117746515A/zh
+
+本公开提供了一种检测模型的训练方法、检测方法、装置、设备和介质，涉及人工智能技术领域，尤其涉及计算机视觉、深度学习、人脸识别等技术领域，可应用于智慧城市、智慧金融等场景。具体实现方案为：利用RGB人脸图像的训练数据集，训练得到用于检测人脸合成图的预训练模型，其中，所述预训练模型包括嵌入层、主干网络和分类层；获取所述RGB人脸图像对应的频域人脸图像，得到频域人脸图像的训练数据集；在所述主干网络中插入可学习的指令微调参数，利用所述频域人脸图像的训练数据集对插入所述指令微调参数的预训练模型进行指令微调，得到人脸合成图检测模型。
+...
+人脸合成图检测即区分一张包含人脸的图像是否经过篡改，是人脸识别系统的基础组成模块，保证人脸识别系统的安全性。例如，在考勤、门禁、安防和金融支付等诸多场景中都会应用到人脸合成图检测。
+...
+根据本公开的一方面，提供了一种人脸合成图检测模型的训练方法，包括：
+...
+根据本公开的另一方面，提供了一种人脸合成图检测方法，包括：
+
+将待检测RGB图像输入人脸合成图检测模型，其中，所述人脸合成图检测模型是根据本公开任意实施例所述的人脸合成图检测模型的训练方法训练得到；
+...
+图1是根据本公开实施例的一种人脸合成图检测模型的训练方法的示意图，本实施例可适用于检测图像中的人脸是否是合成图的情况，涉及人工智能技术领域，尤其涉及计算机视觉、深度学习、人脸识别等技术领域，可应用于智慧城市、智慧金融等场景。该方法可由一种人脸合成图检测模型的训练装置来执行，该装置采用软件和/或硬件的方式实现，优选是配置于电子设备中，例如计算机设备、服务器或智能终端等。如图1所示，该方法具体包括如下：
+...
+RGB人脸图像的训练数据集包括真实的RGB人脸图像和合成的RGB人脸图像，真实的RGB人脸图像作为正样本，合成的RGB人脸图像作为负样本。预训练时，将训练数据集中的RGB人脸图像输入预训练模型，通过嵌入层(Embedding Layer)获取RGB人脸图像的嵌入向量，主干网络根据嵌入向量对RGB人脸图像进行特征提取，得到RGB人脸图像的图像特征，然后分类层对图像特征进行分类，输出针对RGB人脸图像是否为真实人脸图像的预测结果，根据该预测结果与预先标注的真值计算二分类交叉熵损失，通过该损失对模型中的网络参数进行优化。
+
+由于图像的频域信息也可以对检测人脸合成图进行辅助判断，因此，本公开实施例中在得到预训练模型后，进一步获取RGB人脸图像对应的频域人脸图像的训练数据集，利用频域人脸图像的训练数据集对预训练模型进行指令微调。具体的，先在主干网络中插入可学习的指令微调参数，然后将频域人脸图像的训练数据集输入插入了指令微调参数的预训练模型，通过监督训练的方式来优化指令微调参数。指令微调后得到的人脸合成图检测模型的主干网络与预训练模型中的主干网络相比，其网络参数中多了指令微调参数，从而使得通过指令微调后的人脸合成图检测模型在对输入的RGB人脸图像进行人脸合成图检测时，可以同时考虑到RGB人脸图像的频域信息，继而提高检测的精度。
+
+需要说明的是，有一些现有技术并没有考虑到图像频域带来的信息，导致检测精度欠佳，还有一些现有技术采用将RGB图像特征和频域特征融合或者结果投票的方式进行检测，造成对频域信息的过度依赖，但由于图像中的频域信息并没有RGB信息丰富，过度依赖频域信息的检测精度同样不理想。而本公开实施例的技术方案中，是先利用RGB人脸图像的训练数据集进行预训练，然后利用与RGB人脸图像对应的频域人脸图像的训练数据集对预训练模型进行指令微调，通过指令微调的方式来融合频域信息，让图像的频域信息也可以对人脸合成图检测进行辅助判断，但又不过度依赖频域信息，从而提升检测的准确率和泛化性，有效地防住人脸合成攻击，提升人脸合成图检测的防御效果。
+...
+：获取插入指令微调参数后的预训练模型对频域人脸图像的第一检测结果；根据第一检测结果和预先标注的真值，对插入指令微调参数后的预训练模型进行二分类监督。也即，将频域人脸图像输入插入指令微调参数后的预训练模型，利用模型进行预测并获取其输出的第一检测结果，然后根据该第一检测结果和预先标注的真值计算损失，如二分类交叉熵损失，通过该损失来监督模型，优化模型参数，使得模型具备分辨合成人脸图的能力，同时也能考虑到频域信息作为辅助，提高模型的训练效果。
+...
+图3是根据本公开实施例的另一种人脸合成图检测模型的训练方法的示意图。如图所示，在本公开实施例的技术方案中，首先，将包含真实人脸的RGB人脸图像作为正样本，将经换脸后的合成人脸图像作为负样本，并构成RGB人脸图像的训练数据集，同时，所有的样本均用傅里叶变换得到与之对应的频域图像，一张RGB人脸图像与其对应的频域图像可以构成一个RGB人脸图像-频域图像对。
+...
+将待检测...
+
+## 10. CN116704580A - 一种基于深度信息解耦的人脸伪造检测方法 
+        - Google Patents
+URL: https://patents.google.com/patent/CN116704580A/zh
+
+CN116704580A - 一种基于深度信息解耦的人脸伪造检测方法 - Google Patents
+...
+Publication number CN116704580A CN116704580A CN202310683248.1A CN202310683248A CN116704580A CN 116704580 A CN116704580 A CN 116704580A CN 202310683248 A CN202310683248 A CN 202310683248A CN 116704580 A CN116704580 A CN 116704580A Authority CN China Prior art keywords information face authenticity network forgery Prior art date 2023-06-09 Legal status (The legal status is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the status listed.) Granted Application number CN202310683248.1A Other languages English (en) Other versions CN116704580B (zh Inventor 杨善敏 蔡爽 吴锡 Current Assignee (The listed assignees may be inaccurate. Google has not performed a legal analysis and makes no representation or warranty as to the accuracy of the list.) Chengdu University of Information Technology Original Assignee Chengdu University of Information Technology Priority date (The priority date is an assumption and is not a legal conclusion. Google has not performed a legal analysis and makes no representation as to the accuracy of the date listed.) 2023-06-09 Filing date 2023-06-09 Publication date 2023-09-05 2023-06-09 Application filed by Chengdu University of Information Technology filed Critical Chengdu University of Information Technology 2023-06-09 Priority to CN202310683248.1A priority Critical patent/CN116704580B/zh 2023-09-05 Publication of CN116704580A publication Critical patent/CN116704580A/zh 2025-03-07 Application granted granted Critical 2025-03-07 Publication of CN116704580B publication Critical patent/CN116704580B/zh Status Active legal-status Critical Current 2043-06-09 Anticipated expiration legal-status Critical
+...
+本发明提出一种基于深度信息解耦的泛化性人脸伪造检测方法，首先将人脸图像输入到人脸特征提取基础网络，提取出对应的人脸表征信息，然后传递给深度信息解耦模块，深度信息解耦模块将人脸表征信息解耦为真伪判别相关信息和真伪判别无关信息，真伪判别无关信息包括人脸图像生成方法相关信息和其他信息，如人脸表情等；同时，所述深度信息解耦模块还约束所述真伪判别相关信息与真伪判别无关信息相互独立，进而提高伪造检测模型的鲁棒性和可泛化性。
+...
+深度伪造（...

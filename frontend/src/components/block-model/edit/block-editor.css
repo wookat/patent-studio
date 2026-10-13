@@ -1,0 +1,86 @@
+/* 块编辑器（ProseMirror）内部样式；颜色只用 index.css 的语义 token */
+.ps-editor .ProseMirror {
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 1.75rem;
+  line-height: 1.75;
+  flex: 1;
+}
+.ps-editor .ProseMirror[contenteditable='false'] {
+  opacity: 0.6;
+  cursor: progress;
+}
+.ps-editor .ps-para {
+  text-align: justify;
+}
+.ps-editor .ps-heading {
+  font-weight: 600;
+}
+.ps-editor h3.ps-heading {
+  font-size: 1rem;
+}
+.ps-editor h4.ps-heading {
+  font-size: 0.9375rem;
+}
+.ps-editor .ps-equation {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px dashed var(--border);
+  cursor: default;
+  user-select: none;
+}
+.ps-editor .ps-equation-math {
+  flex: 1;
+  text-align: center;
+  overflow-x: auto;
+}
+.ps-editor .ps-equation-src {
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.ps-editor .ps-equation.ProseMirror-selectednode {
+  border-style: solid;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 40%, transparent);
+}
+.ps-editor .ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin: 0.25rem 0;
+}
+.ps-editor .ps-cell {
+  border: 1px solid var(--border);
+  padding: 0.25rem 0.5rem;
+  vertical-align: top;
+  min-width: 2rem;
+}
+.ps-editor .ps-table tr:first-child .ps-cell {
+  font-weight: 600;
+}
+.ps-editor .ps-cell-merge {
+  color: var(--muted-foreground);
+  background: color-mix(in oklab, var(--muted) 60%, transparent);
+}
+.ps-editor .ps-note {
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+.ps-editor .ps-code {
+  font-family: var(--font-code);
+  font-size: 0.875rem;
+  white-space: pre;
+  overflow-x: auto;
+  padding: 0.25rem 0.5rem;
+  background: var(--muted);
+  border-radius: var(--radius);
+}
+.ps-editor .ps-gen {
+  pointer-events: none;
+}

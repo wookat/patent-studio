@@ -1,0 +1,731 @@
+/* 版面视图（16 §4.1 / §2）。所有尺寸 / 字体 / 间距只引用 --ps-* 变量：值来自 GET /style.css（D1，注入 <style>）；
+   这里的缺省 = style.py DEFAULT_STYLE，保证 style.css 未到（501）时纸面仍是 A4 + 默认版式。
+   不做真分页：连续纸面，页码以 PDF 为准。 */
+.ps-layout {
+  --ps-font-body-cjk: '宋体';
+  --ps-font-body-ascii: 'Times New Roman';
+  --ps-font-heading-cjk: '黑体';
+  --ps-font-heading-ascii: 'SimHei';
+  --ps-font-mono: 'Courier New';
+  --ps-size-body: 12pt;
+  --ps-size-title: 14pt;
+  --ps-size-h1: 12pt;
+  --ps-size-h2: 12pt;
+  --ps-size-header: 14pt;
+  --ps-size-para-no: 10.5pt;
+  --ps-size-table: 10.5pt;
+  --ps-size-eq: 12pt;
+  --ps-size-code: 10.5pt;
+  --ps-line-height: 1.3;
+  --ps-first-indent: 24pt;
+  --ps-gap-body: 6pt;
+  --ps-gap-title: 12pt;
+  --ps-gap-h1: 8pt;
+  --ps-gap-h2: 6pt;
+  --ps-gap-claim-inner: 4pt;
+  --ps-gap-claim: 8pt;
+  --ps-gap-table-label: 2pt;
+  --ps-gap-table: 6pt;
+  --ps-gap-figure: 12pt;
+  --ps-gap-eq: 3pt;
+  --ps-page-w: 21cm;
+  --ps-page-h: 29.7cm;
+  --ps-margin-t: 25mm;
+  --ps-margin-b: 15mm;
+  --ps-margin-l: 25mm;
+  --ps-margin-r: 15mm;
+  --ps-header-distance: 1.4cm;
+  --ps-header-rule: 1pt;
+  --ps-table-rule-outer: 1pt;
+  --ps-table-rule-head: 1pt;
+  --ps-gap-cell: 0pt;
+  --ps-eq-side: 2cm;
+  --ps-font-body: var(--ps-font-body-ascii), var(--ps-font-body-cjk), serif;
+  --ps-font-heading: var(--ps-font-heading-ascii), var(--ps-font-heading-cjk), sans-serif;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--paper-canvas);
+}
+.ps-layout-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--h-panel-header);
+  padding: 0 8px 0 12px;
+  font-size: var(--fs-xs);
+  color: var(--fg-muted);
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border);
+}
+.ps-layout-bar > .ps-layout-bar-end {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+/* W9 格式工具条：紧贴 .ps-layout-bar 之下同样 sticky（toolbar.css 给 top:0，这里按模式条高度下移） */
+.ps-layout > .ps-layout-format-bar {
+  top: var(--h-panel-header);
+}
+/* 模式条无内容（提示已关、非审阅、无状态、插入已并入工具条）时不渲染，工具条贴顶 */
+.ps-layout[data-bar='off'] > .ps-layout-format-bar {
+  top: 0;
+}
+.ps-layout-body {
+  position: relative;
+  flex: 1;
+  padding: 24px 16px 48px;
+  overflow-x: clip;
+}
+/* 375：表格工具条贴在版面底部（纸面 scale 之外，按钮保持 44px） */
+.ps-layout-mobile-tools {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+}
+/* 纸张列：窄屏按 zoom 缩放整张纸（字号 / 边距同比例，保持 Word 观感）而不是回流；scale 由 LayoutView 按容器宽算 */
+.ps-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  margin: 0 auto;
+  width: var(--ps-page-w);
+  max-width: none;
+  transform-origin: top center;
+  zoom: var(--ps-scale, 1);
+}
+.ps-layout-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0;
+  padding: 24px 16px;
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+}
+.ps-paper {
+  position: relative;
+  box-sizing: border-box;
+  width: var(--ps-page-w);
+  min-height: var(--ps-page-h);
+  padding: var(--ps-margin-t) var(--ps-margin-r) var(--ps-margin-b) var(--ps-margin-l);
+  background: var(--paper);
+  color: var(--paper-fg);
+  color-scheme: light;
+  /* 纸面内恒为浅色纸张：块内消费的语义色在此重绑到 sheet 系 */
+  --color-foreground: var(--color-sheet-foreground);
+  --color-muted-foreground: var(--color-sheet-muted-foreground);
+  --color-info: var(--sheet-info);
+  --color-info-soft: var(--sheet-info-soft);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-paper);
+  font-family: var(--ps-font-body);
+  font-size: var(--ps-size-body);
+  line-height: var(--ps-line-height);
+}
+.ps-header {
+  position: absolute;
+  top: var(--ps-header-distance);
+  left: var(--ps-margin-l);
+  right: var(--ps-margin-r);
+  padding-bottom: 2pt;
+  text-align: center;
+  font-family: var(--ps-font-heading);
+  font-size: var(--ps-size-header);
+  letter-spacing: 0.35em;
+  color: var(--color-foreground);
+  border-bottom: var(--ps-header-rule) solid currentColor;
+}
+
+/* ---- part 类（PART_CLASSES） ---- */
+.ps-title {
+  margin-bottom: var(--ps-gap-title);
+  text-align: center;
+  font-family: var(--ps-font-heading);
+  font-size: var(--ps-size-title);
+  font-weight: normal;
+}
+.ps-title .ps-h {
+  font: inherit;
+  margin: 0;
+}
+.ps-p {
+  margin: 0;
+  text-align: justify;
+  text-indent: var(--ps-first-indent);
+}
+.ps-abstract,
+.ps-body {
+  margin-bottom: var(--ps-gap-body);
+}
+.ps-claims {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ps-claim {
+  position: relative;
+  margin-bottom: var(--ps-gap-claim);
+}
+.ps-claim .ps-p + .ps-p {
+  margin-top: var(--ps-gap-claim-inner);
+}
+.ps-claim-kind {
+  position: absolute;
+  right: 100%;
+  top: 0;
+  margin-right: 6px;
+  white-space: nowrap;
+  font-family: var(--ps-font-heading);
+  font-size: 9pt;
+  line-height: calc(var(--ps-size-body) * var(--ps-line-height));
+  color: var(--color-muted-foreground);
+}
+.ps-desc-h {
+  font-family: var(--ps-font-heading);
+  font-weight: normal;
+}
+.ps-desc-h1 {
+  margin-bottom: var(--ps-gap-h1);
+  font-size: var(--ps-size-h1);
+}
+.ps-desc-h2 {
+  margin-bottom: var(--ps-gap-h2);
+  font-size: var(--ps-size-h2);
+}
+.ps-desc-h .ps-h {
+  font: inherit;
+  margin: 0;
+}
+.ps-caption {
+  margin-bottom: var(--ps-gap-table-label);
+}
+.ps-caption .ps-p,
+.ps-caption.ps-p {
+  text-align: center;
+  text-indent: 0;
+}
+/* 段号：内核生成、灰、不可选、不可编辑；正文段悬挂在首行缩进位置 */
+.ps-para-no {
+  display: inline-block;
+  margin-right: 0.5em;
+  font-family: var(--ps-font-heading);
+  font-size: var(--ps-size-para-no);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted-foreground);
+  user-select: none;
+  cursor: default;
+}
+.ps-body .ps-p > .ps-para-no {
+  margin-left: calc(-1 * var(--ps-first-indent));
+  min-width: var(--ps-first-indent);
+}
+.ps-table {
+  margin-bottom: var(--ps-gap-table);
+  font-size: var(--ps-size-table);
+}
+.ps-table-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2pt;
+}
+.ps-table-num-left .ps-table-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.ps-table-no {
+  line-height: calc(var(--ps-size-body) * var(--ps-line-height));
+}
+.ps-table-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+.ps-table-grid {
+  width: 100%;
+  border-collapse: collapse;
+  border: var(--ps-table-rule-outer) solid currentColor;
+}
+.ps-table-grid th,
+.ps-table-grid td {
+  padding: 2pt 4pt calc(2pt + var(--ps-gap-cell));
+  border: 0.5pt solid currentColor;
+  text-align: center;
+  vertical-align: middle;
+}
+.ps-table-grid th {
+  font-weight: normal;
+  border-bottom-width: var(--ps-table-rule-head);
+}
+.ps-table-three-line .ps-table-grid {
+  border-left: 0;
+  border-right: 0;
+  border-top-width: var(--ps-table-rule-outer);
+  border-bottom-width: var(--ps-table-rule-outer);
+}
+.ps-table-three-line .ps-table-grid th,
+.ps-table-three-line .ps-table-grid td {
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+.ps-table-three-line .ps-table-grid th {
+  border-bottom: var(--ps-table-rule-head) solid currentColor;
+}
+.ps-table-note.ps-p {
+  margin-top: 2pt;
+  font-size: var(--ps-size-table);
+  text-indent: 0;
+}
+/* 公式：三列 grid（左留白 | 公式 | 编号），与 style.css 动态规则同结构；DOM 为 .ps-eq 的直接子元素 */
+.ps-eq {
+  display: grid;
+  grid-template-columns: var(--ps-eq-side) minmax(0, 1fr) var(--ps-eq-side);
+  align-items: center;
+  margin-bottom: var(--ps-gap-eq);
+  font-size: var(--ps-size-eq);
+}
+.ps-eq-side {
+  text-align: right;
+  white-space: nowrap;
+}
+.ps-eq > .ps-eq-math {
+  grid-column: 2;
+  min-width: 0;
+  justify-self: stretch;
+  /* 仅横向滚动；MathML 分式/上下标的盒子会溢出行框几 px，纵向留 padding 兜住而不出竖向滚动条 */
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-block: 0.4em;
+  text-align: center;
+}
+.ps-eq > .ps-eq-label {
+  grid-column: 3;
+}
+.ps-eq-math math {
+  font-size: inherit;
+}
+.ps-eq-math math[display='block'] {
+  margin: 0;
+}
+.ps-claim-eq {
+  margin: var(--ps-gap-eq) 0;
+  text-align: center;
+}
+.ps-code {
+  margin-bottom: var(--ps-gap-body);
+}
+.ps-code-pre {
+  margin: 0;
+  padding: 4pt 6pt;
+  overflow-x: auto;
+  font-family: var(--ps-font-mono), monospace;
+  font-size: var(--ps-size-code);
+  line-height: 1.25;
+  background: var(--color-muted);
+}
+.ps-figure-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ps-gap-figure);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ps-figure {
+  margin-bottom: var(--ps-gap-figure);
+}
+/* W10 附图像 Word 一样直接摆在纸上：图片按 width/17 占正文宽、等比高、下方居中「图N」；选中 = Word 图片选框 */
+.ps-figure-paper {
+  position: relative;
+  margin: 0 0 var(--ps-gap-figure);
+  padding: 2px;
+  border-radius: 2px;
+  text-align: center;
+  outline: none;
+}
+.ps-figure-paper:hover {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--ring) 45%, transparent);
+}
+.ps-figure-paper.is-selected,
+.ps-figure-paper:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+.ps-figure-stage {
+  position: relative;
+  margin: 0 auto;
+  max-width: 100%;
+}
+.ps-figure-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ps-figure-missing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 6rem;
+  border: 1px dashed var(--color-border);
+  color: var(--color-muted-foreground);
+  font-size: var(--ps-size-table);
+}
+.ps-figure-no {
+  margin-top: var(--ps-gap-table-label, 4pt);
+  font-family: var(--ps-font-body);
+  font-size: var(--ps-size-body);
+  line-height: var(--ps-line-height);
+  text-align: center;
+}
+.ps-figure-paper .ps-figure-handle-idle {
+  opacity: 0;
+}
+.ps-figure-paper:hover .ps-figure-handle-idle,
+.ps-figure-paper:focus-within .ps-figure-handle-idle {
+  opacity: 1;
+}
+/* 选中后的一行元信息（文件 · 宽 · alt · 题注 · 附图书入口）：界面字体，不进纸面排版 */
+.ps-figure-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  margin-top: 4px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.4;
+  color: var(--color-muted-foreground);
+}
+.ps-figure-meta-m {
+  font-size: var(--fs-sm, 13px);
+}
+.ps-figure-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-elevated, var(--color-background));
+  color: var(--fg, var(--color-foreground));
+  font: inherit;
+  cursor: pointer;
+}
+.ps-figure-edit:hover {
+  background: var(--bg-hover, var(--color-muted));
+}
+.ps-figure-edit:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.ps-figure-meta-m .ps-figure-edit {
+  min-height: 36px;
+  padding: 0 10px;
+}
+.ps-empty {
+  text-indent: 0;
+  color: var(--color-muted-foreground);
+}
+.ps-ref {
+  padding: 0 1px;
+  border-radius: 2px;
+  color: var(--color-info);
+  background: var(--color-info-soft);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  font: inherit;
+}
+.ps-ref:hover {
+  background: color-mix(in oklab, var(--color-info) 20%, transparent);
+}
+.ps-ref-static,
+.ps-ref-static:hover {
+  background: transparent;
+  text-decoration: none;
+}
+.ps-ref:focus-visible {
+  outline: 2px solid var(--color-ring);
+}
+/* 纸面永远白底：块的悬停/选中底色用纸面色，不随 .dark 切换 */
+.ps-paper .sv-block:hover {
+  background: color-mix(in oklab, var(--sheet-muted-foreground) 10%, transparent);
+}
+.ps-paper .sv-block[data-active],
+.ps-paper .sv-block[data-active]:hover {
+  background: var(--brand-100);
+}
+/* 只读：块不可进编辑，去掉悬停底色 */
+.ps-layout[data-mode='readonly'] .sv-block:hover {
+  background: transparent;
+}
+.ps-layout[data-mode='readonly'] .sv-block[data-active]:hover {
+  background: var(--brand-100);
+}
+/* 块编辑器（B2）嵌在纸面里：继承纸面字体字号 */
+.ps-paper .ps-editor {
+  font-family: var(--ps-font-body);
+  font-size: var(--ps-size-body);
+  line-height: var(--ps-line-height);
+}
+
+/* ---- 弹层（/ 菜单、编号补全）：listbox + option，不嵌套按钮 ---- */
+.ps-popup {
+  position: absolute;
+  z-index: var(--z-popover);
+  min-width: 12rem;
+  max-height: 16rem;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  font-size: var(--fs-sm);
+  color: var(--fg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  outline: none;
+}
+.ps-popup-static {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+}
+.ps-popup:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring), var(--shadow-md);
+}
+.ps-popup-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+.ps-popup-item[data-active] {
+  background: var(--bg-hover);
+  color: var(--fg-strong);
+}
+.ps-popup-hint,
+.ps-popup-empty {
+  color: var(--color-muted-foreground);
+}
+.ps-popup-empty {
+  padding: 6px 8px;
+  cursor: default;
+}
+@media (pointer: coarse) {
+  .ps-popup-item {
+    min-height: 44px;
+    align-items: center;
+  }
+}
+
+/* ---- W5 三视图定位（21 §5.2）：其他视图发来的 Focus 落到块上闪烁一次；颜色 = --focus-ring（缺省回退 --ring） ---- */
+@keyframes ps-focus-flash {
+  0%,
+  60% {
+    box-shadow: 0 0 0 2px var(--focus-ring, var(--ring)), inset 0 0 0 999px color-mix(in oklch, var(--focus-ring, var(--ring)) 18%, transparent);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+.ps-layout .ps-focus-flash {
+  animation: ps-focus-flash 1200ms var(--ease-out, ease-out) 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ps-layout .ps-focus-flash {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--focus-ring, var(--ring));
+  }
+}
+
+/* ---- 375 移动阅读模式（21 §5.6 R-LAY-04 / 06 §3）：真重排而非缩放 —— 页边 16、纸内 16、纸间 12，正文 15px / 1.7，段间 / 权项间 8、权项内 4，段号常显，表格横滚 ---- */
+.ps-layout-mobile .ps-layout-body {
+  padding: var(--pad-page-m) var(--pad-page-m) var(--gap-section-m);
+}
+.ps-layout-mobile .ps-pages {
+  width: 100%;
+  gap: var(--gap-card-m);
+  zoom: 1;
+}
+.ps-layout-mobile .ps-paper {
+  --ps-size-body: 15px;
+  --ps-line-height: 1.7;
+  --ps-size-title: 18px;
+  --ps-size-h1: 16px;
+  --ps-size-h2: 15px;
+  --ps-size-header: 13px;
+  --ps-size-para-no: 12px;
+  --ps-size-table: 13px;
+  --ps-size-eq: 15px;
+  --ps-size-code: 13px;
+  --ps-first-indent: 0px;
+  --ps-eq-side: 0px;
+  --ps-gap-body: var(--gap-group-m);
+  --ps-gap-title: var(--pad-page-m);
+  --ps-gap-h1: var(--gap-group-m);
+  --ps-gap-h2: var(--gap-group-m);
+  --ps-gap-claim: var(--gap-group-m);
+  --ps-gap-claim-inner: var(--gap-inline-m);
+  --ps-gap-table: var(--gap-group-m);
+  --ps-gap-figure: var(--gap-card-m);
+  --ps-gap-eq: var(--gap-inline-m);
+  width: 100%;
+  min-height: 0;
+  padding: calc(var(--pad-page-m) + var(--pad-page-m)) var(--pad-page-m) var(--gap-section-m);
+  border-radius: var(--radius-md, 6px);
+}
+.ps-layout-mobile .ps-header {
+  top: var(--gap-group-m);
+  left: var(--pad-page-m);
+  right: var(--pad-page-m);
+}
+.ps-layout-mobile .ps-p {
+  text-align: start;
+}
+/* 移动纸面无左侧留白：权项类别标签回到纸内，独占一行置于权项首行之上（与正文间 4） */
+.ps-layout-mobile .ps-claim-kind {
+  position: static;
+  display: block;
+  margin: 0 0 var(--gap-inline-m);
+  font-size: var(--ps-size-para-no);
+  line-height: 1.4;
+}
+.ps-layout-mobile .ps-body .ps-p > .ps-para-no {
+  margin-left: 0;
+  min-width: 0;
+}
+.ps-layout-mobile .ps-table-grid {
+  width: max-content;
+  min-width: 100%;
+}
+.ps-layout-mobile .ps-eq {
+  grid-template-columns: 0 minmax(0, 1fr) auto;
+  column-gap: var(--gap-group-m);
+}
+.ps-eq-sheet-math math {
+  font-size: 1.25em;
+}
+
+/* ---- W9 整书 ProseMirror（22 决策 1）：编辑器根挂在纸面内，块元素复用上面的 .ps-* 类（由 decoration 加类）；段号 / 权项性质是 widget，不可选、不可编辑 ---- */
+.ps-book-host {
+  min-height: 1em;
+}
+.ps-book.ProseMirror {
+  outline: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  position: relative;
+}
+.ps-book.ProseMirror:focus-visible {
+  outline: none;
+}
+.ps-book .ps-claim > .ps-para {
+  margin: 0;
+  text-align: justify;
+  text-indent: var(--ps-first-indent);
+}
+.ps-book .ps-claim > .ps-para + .ps-para,
+.ps-book .ps-claim > .ps-para + .ps-eq {
+  margin-top: var(--ps-gap-claim-inner);
+}
+.ps-book .ps-gen {
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+.ps-book .ps-claim-kind {
+  pointer-events: none;
+}
+.ps-book .ps-code {
+  margin: 0 0 var(--ps-gap-body);
+  font-family: var(--ps-font-mono, var(--font-mono));
+  font-size: var(--ps-size-table);
+  white-space: pre;
+  overflow-x: auto;
+}
+.ps-book .ps-table-no {
+  display: block;
+  margin-bottom: var(--ps-gap-table-label);
+}
+.ps-book .ps-eq {
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ps-book .ps-eq-math:focus-visible,
+.ps-book .ps-eq.ProseMirror-selectednode,
+.ps-book .ps-figure.ProseMirror-selectednode {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.ps-book .ps-table-scroll {
+  margin-bottom: var(--ps-gap-table);
+  overflow-x: auto;
+}
+.ps-book .ps-table {
+  width: 100%;
+  margin-bottom: 0;
+  border-collapse: collapse;
+  border: var(--ps-table-rule-outer) solid currentColor;
+}
+.ps-book .ps-cell {
+  border: 0.5pt solid currentColor;
+  padding: 2pt 4pt calc(2pt + var(--ps-gap-cell));
+  text-align: center;
+  vertical-align: middle;
+}
+.ps-book .ps-table-three-line .ps-table {
+  border-left: 0;
+  border-right: 0;
+  border-top-width: var(--ps-table-rule-outer);
+  border-bottom-width: var(--ps-table-rule-outer);
+}
+.ps-book .ps-table-three-line .ps-cell {
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+.ps-book .ps-table-three-line th.ps-cell {
+  border-bottom: var(--ps-table-rule-head) solid currentColor;
+}
+.ps-book th.ps-cell {
+  font-weight: normal;
+  border-bottom-width: var(--ps-table-rule-head);
+}
+.ps-book .ps-cell.selectedCell {
+  background: color-mix(in oklch, var(--ring) 15%, transparent);
+}
+.ps-book .ps-note {
+  margin: 0 0 var(--ps-gap-body);
+  text-indent: 0;
+}
+.ps-book-host[data-editable] .ps-book {
+  cursor: text;
+}
+/* 375：软键盘弹出时视口变矮，光标行靠 scroll-margin 留在可见区 */
+.ps-layout-mobile .ps-book > * {
+  scroll-margin-block: 4rem;
+}
+.ps-layout-mobile .ps-book .ps-claim > .ps-para {
+  text-indent: 0;
+}

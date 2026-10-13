@@ -1,0 +1,17 @@
+services:
+  patent-studio:
+    build: .
+    image: patent-studio:local
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      # 案子数据（content.md / figs / studio.json / 备份 / 构建产物）持久化在命名卷；
+      # 如要直接编辑本机目录，改为：- ./examples:/data/projects
+      - patent-data:/data
+    environment:
+      PATENT_KEEP_BUILDS: "3"
+      SOFFICE_TIMEOUT: "120"
+    restart: unless-stopped
+
+volumes:
+  patent-data:

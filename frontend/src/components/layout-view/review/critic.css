@@ -1,0 +1,53 @@
+/* Word 式修订装饰（docs/plan/22 决策 4）；颜色只用 index.css 语义 token。标记符 display:none：doc 文本不变，只是不画。 */
+.ProseMirror .ps-critic-sym {
+  display: none;
+}
+.ProseMirror .ps-critic-ins {
+  color: var(--ok-fg);
+  text-decoration: underline;
+  text-decoration-color: var(--success);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.125em;
+}
+.ProseMirror .ps-critic-del {
+  color: var(--danger-fg);
+  text-decoration: line-through;
+  text-decoration-color: var(--destructive);
+  text-decoration-thickness: 2px;
+}
+.ProseMirror .ps-critic-comment {
+  background: var(--warning-soft);
+  color: var(--warning-foreground);
+  border-radius: var(--radius-sm, var(--radius));
+}
+.ProseMirror .ps-critic-mark {
+  background: var(--info-bg);
+  color: var(--info-fg);
+  border-radius: var(--radius-sm, var(--radius));
+}
+.ProseMirror .ps-critic-active {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm, var(--radius));
+}
+/* 左边距竖线：块首 widget，绝对定位到正文左侧；宿主需 .ProseMirror 相对定位 + 左内边距（layout-view 纸面已有页边距） */
+.ProseMirror .ps-critic-bar {
+  position: absolute;
+  left: -0.75rem;
+  width: 2px;
+  height: 1.5em;
+  border-radius: 1px;
+  background: var(--primary);
+  pointer-events: none;
+  user-select: none;
+}
+.ProseMirror .ps-critic-bar + * {
+  position: relative;
+}
+/* 格式变更：Word 只显示改格式后的文字并以点线标出（气泡说明「格式：下标」） */
+.ProseMirror .ps-critic-fmt {
+  text-decoration: underline dotted;
+  text-decoration-color: var(--info-fg);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.125em;
+}

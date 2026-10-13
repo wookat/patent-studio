@@ -1,0 +1,135 @@
+/*
+ * dockview 变量 → Overleaf token（docs/plan/08-r4-dockview-design.md §8）。
+ * 只映射，不改 index.css；浅 / 深色都从 :root / .dark 的 token 取值，所以本文件无 .dark 分支。
+ * 只由 layout/DockviewHost.tsx import（lazy chunk），叠在 dockview-react/dist/styles/dockview.css 之后。
+ */
+.dockview-theme-studio {
+  /* 尺寸 / 字号：与编辑器 tab 行（EditorTabs 32px）、UI 字号 13px 对齐 */
+  --dv-tabs-and-actions-container-height: var(--h-panel-header);
+  --dv-tabs-and-actions-container-font-size: var(--fs-sm);
+  --dv-tab-font-size: var(--fs-sm);
+  --dv-border-radius: 0px;
+  --dv-tab-border-radius: 0px;
+  --dv-sash-border-radius: 0px;
+  --dv-dropdown-border-radius: var(--radius);
+  --dv-spacing-padding: 0px;
+  --dv-tab-margin: 0;
+  --dv-tab-close-icon-size: 14px;
+
+  /* 面板与 tab 条 */
+  --dv-group-view-background-color: var(--card);
+  --dv-tabs-and-actions-container-background-color: var(--muted);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--card);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--muted);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--card);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--muted);
+  --dv-activegroup-visiblepanel-tab-color: var(--foreground);
+  --dv-activegroup-hiddenpanel-tab-color: var(--muted-foreground);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--muted-foreground);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted-foreground);
+  --dv-tab-divider-color: var(--border);
+  --dv-separator-border: var(--border);
+  --dv-paneview-header-border-color: var(--border);
+  --dv-paneview-active-outline-color: var(--ring);
+  --dv-icon-hover-background-color: var(--accent);
+  --dv-tabs-container-scrollbar-color: var(--border-2);
+  --dv-scrollbar-background-color: var(--border-2);
+
+  /* 分隔条：静止透明（与 SplitPane 7px 把手同色系），悬停 / 拖动显示主色 */
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--primary);
+  --dv-active-sash-transition-duration: 0.1s;
+  --dv-active-sash-transition-delay: 0.3s;
+
+  /* 拖拽停靠提示 */
+  --dv-drag-over-background-color: var(--primary-soft);
+  --dv-drag-over-border-color: var(--primary);
+  --dv-edge-dock-indicator-color: var(--primary);
+  --dv-smart-guides-color: var(--primary);
+  --dv-smart-guides-preview-color: var(--primary-soft);
+  --dv-dnd-compass-color: var(--card);
+  --dv-dnd-compass-cell-color: var(--accent);
+  --dv-dnd-compass-active-cell-color: var(--primary-soft);
+  --dv-dnd-compass-edge-cell-color: var(--muted);
+
+  /* 浮动组 / 右键菜单 */
+  --dv-floating-box-shadow: 0 8px 32px rgb(0 0 0 / 0.16), 0 2px 8px rgb(0 0 0 / 0.1);
+  --dv-floating-border: 1px solid var(--border-2);
+  --dv-floating-group-border: 1px solid var(--border-2);
+  --dv-floating-titlebar-background-color: var(--muted);
+  --dv-floating-titlebar-border-bottom: 1px solid var(--border);
+  --dv-floating-group-dragging-opacity: 0.85;
+  --dv-context-menu-background-color: var(--card);
+  --dv-context-menu-color: var(--foreground);
+  --dv-overlay-z-index: 40; /* 低于 Radix 弹层（z-50） */
+}
+
+/* tab：注册表图标 + 标题 + 关闭（DockviewHost StudioTab；沿用 dv-default-tab 的布局类） */
+.dockview-theme-studio .studio-tab {
+  gap: 6px;
+  padding: 0 4px 0 10px;
+}
+.dockview-theme-studio .studio-tab-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+.dockview-theme-studio .studio-tab .dv-default-tab-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dockview-theme-studio .dv-default-tab-action:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+  border-radius: var(--radius);
+}
+
+/* 组标题栏右侧：活动面板头插槽（视图 Tabs + 工具，卡片 portal 进来）+ 浮动 / 停靠、最大化 / 还原 */
+.dockview-theme-studio .studio-group-actions {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+  padding: 0 4px;
+  gap: 2px;
+  color: var(--muted-foreground);
+}
+.dockview-theme-studio .studio-header-slot {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-width: 0;
+}
+.dockview-theme-studio .studio-header-slot:not(:empty) {
+  padding-right: 4px;
+  margin-right: 2px;
+  border-right: 1px solid var(--border);
+}
+.dockview-theme-studio .studio-group-actions .dv-default-tab-action {
+  padding: 3px;
+  border-radius: var(--radius);
+}
+.dockview-theme-studio .studio-group-actions .dv-default-tab-action:hover {
+  background-color: var(--accent);
+  color: var(--foreground);
+}
+.dockview-theme-studio .studio-group-actions svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 键盘焦点：与 Rail / 菜单同一 2px ring（dockview 自带 ::after 只用 divider 色，不够醒目） */
+.dockview-theme-studio .dv-tab:focus-visible::after,
+.dockview-theme-studio .dv-tab:has(:focus-visible)::after {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dockview-theme-studio {
+    --dv-transition-duration: 0.01ms;
+    --dv-active-sash-transition-duration: 0.01ms;
+    --dv-active-sash-transition-delay: 0s;
+  }
+}
