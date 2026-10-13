@@ -15,7 +15,7 @@ import zipfile
 import pytest
 from fastapi.testclient import TestClient
 
-from patent_docx.figures_md import DEFAULT_ABSTRACT_WIDTH
+from patent_studio.kernel.figures_md import DEFAULT_ABSTRACT_WIDTH
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 1×1 灰度 PNG（PIL 生成）：上传入口用构建同一套识图器验内容，伪头部 + 零字节会被 400 拒掉
@@ -51,7 +51,7 @@ def client(tmp_path, monkeypatch):
 
 def _studio(projects, pid):
     """持久化的运行时设置：studio.json（非附图字段）+ docs/figures.md 派生的 spec_figures / abstract_figure。"""
-    from patent_docx import figures_md
+    from patent_studio.kernel import figures_md
 
     with open(projects / pid / "studio.json", encoding="utf-8") as f:
         s = json.load(f)
@@ -391,7 +391,7 @@ def test_export_zip_members_follow_spec(client):
 
 def test_export_zip_includes_abstract_not_in_spec(client):
     c, projects = client
-    from patent_docx import figures_md
+    from patent_studio.kernel import figures_md
 
     doc = figures_md.read(str(projects / "method"))
     doc.spec = doc.spec[:5]
@@ -409,7 +409,7 @@ def _md(projects, pid="method"):
 
 def test_mutations_keep_alt_and_write_figures_md_only(client):
     """重排 / 改宽 / 摘要图 / 上传 / 删除 都只改 docs/figures.md 对应行；alt 原样保留，studio.json 不写附图字段。"""
-    from patent_docx import figures_md
+    from patent_studio.kernel import figures_md
 
     c, projects = client
     before = figures_md.read(str(projects / "method"))
@@ -459,7 +459,7 @@ def test_mutations_keep_alt_and_write_figures_md_only(client):
 
 def test_delete_abstract_figure_falls_back_to_first(client):
     """删掉正当摘要图的图（且未被引用）→ 摘要图回落到剩下的第一张；alt 不变。"""
-    from patent_docx import figures_md
+    from patent_studio.kernel import figures_md
 
     c, projects = client
     _upload(c, "method", "fig7.png")
@@ -504,7 +504,7 @@ def test_replace_referenced_same_name(client):
 
 def test_replace_ext_change_rewrites_spec(client):
     """fig4.emf → 上传 fig4.png：主文件名变化 → spec.file 同步改，「图4」引用不受影响，旧组文件删除。"""
-    from patent_docx import figures_md
+    from patent_studio.kernel import figures_md
 
     c, projects = client
     assert (projects / "method" / "figs" / "fig4.svg").exists()  # 种子伴生：换图未带即应删
@@ -598,7 +598,7 @@ def test_figsrc_dedupe_same_num(tmp_path):
 # ---------------- mmd 标签去引号 + 图块限高（往复轮74） ----------------
 
 def test_mmd_quoted_labels_unwrapped():
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
     g = mmd_render.parse_mmd('flowchart TB\n  subgraph LG["图例"]\n  end\n'
                              '  A["微调模块 109"] -->|是否可行| B{"被遮盖替换策略"}\n')
     assert g.nodes["A"].label == "微调模块 109"
@@ -610,7 +610,7 @@ def test_mmd_quoted_labels_unwrapped():
 def test_mmd_legend_box_not_clipped_off_canvas():
     """图例子图停角按画框外扩包围盒选角——修复前只按成员包围盒，顶部候选把
     簇标题/框边裁出画布（ddpm fig3 图例框冒顶实案）。修复后顶带应全白。"""
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
     src = (
         "flowchart TD\n"
         '  X["加噪图像输入"] --> DS["下采样子层"]\n'
@@ -638,7 +638,7 @@ def test_add_figure_clamps_tall_image(tmp_path):
     from docx.shared import Cm
     from PIL import Image
 
-    from patent_docx.builder import PatentBuilder
+    from patent_studio.kernel.builder import PatentBuilder
 
     tall, wide = tmp_path / "tall.png", tmp_path / "wide.png"
     Image.new("RGB", (100, 400), "white").save(tall)
@@ -662,7 +662,7 @@ def test_promote_figsrc_claims_declared_positions(tmp_path, monkeypatch):
     import types
 
     from app.domain import figures as fmod
-    from patent_docx import figures_md, mmd_render
+    from patent_studio.kernel import figures_md, mmd_render
 
     proj_dir = tmp_path / "proj"
     (proj_dir / "figs").mkdir(parents=True)
@@ -705,7 +705,7 @@ def test_promote_figsrc_nonnumbered_appends(tmp_path, monkeypatch):
     import types
 
     from app.domain import figures as fmod
-    from patent_docx import figures_md, mmd_render
+    from patent_studio.kernel import figures_md, mmd_render
 
     proj_dir = tmp_path / "proj"
     (proj_dir / "figs").mkdir(parents=True)
@@ -737,7 +737,7 @@ def test_promote_figsrc_nonnumbered_appends(tmp_path, monkeypatch):
 def test_mmd_chained_edges_expand():
     """往复轮102：mmd 链式边 `A -->|x| B -->|y| C` 逐段展开——unet-seg fig2 实案
     （模型整行链式 21 节点仅 4 边存活、rank0 塌条）。扇出 `A & B --> C` 仍走旧路。"""
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
     src = ('flowchart TD\n'
            '  IN[输入] --> D1[单元1] -->|下采样| D2[单元2] -->|下采样| DB[瓶颈]\n'
            '  DB --> U[上卷积] --> J((⊕ 拼接)) --> E[卷积] --> OUT[输出]\n'
@@ -759,7 +759,7 @@ def test_mmd_chained_edges_expand():
 def test_mmd_serial_nodes_centered_on_axis():
     """往复轮103：串联节点按带内轴心居中——unet-seg fig2/3 实案
     （旧按左缘顺排、宽差节点中心错位，串联边只能斜画）。"""
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
     src = ('flowchart TD\n'
            '  A[短] --> B[一个很长很长的节点标签] -->|步骤| C[中]\n'
            '  P[并联甲] --> Q[汇合]\n'
@@ -780,7 +780,7 @@ def test_mmd_giant_cluster_band_split():
     """往复轮106a：跨大半 rank 轴的巨簇禁劈带会把串行长链焊成细条——
     yolo fig3 实案（12 层全包 subgraph → 3606×548）。带退化时放开巨簇，
     簇框按带分段出框。"""
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
     chain = ' -->|x| '.join(f'L{i}[层{i}]' for i in range(1, 13))
     src = ('flowchart LR\n'
            '  subgraph NET[网络 103]\n    ' + chain + '\n  end\n'
@@ -799,7 +799,7 @@ def test_mmd_giant_cluster_band_split():
 def test_mmd_bidir_edge_parses_and_draws():
     """往复轮106b：`A <-->|lab| B` 双向边整体丢失根修——ddpm fig5 实案
     CPU <-->|程序执行与数据读写| MEM 曾整条丢边，处理器孤悬图外。"""
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
     src = ('flowchart TB\n'
            '  subgraph MEM[存储器]\n'
            '    PG1[程序单元 101]\n    PG2[程序单元 102]\n  end\n'
@@ -816,7 +816,7 @@ def test_mmd_bidir_edge_parses_and_draws():
 def test_mmd_edge_to_cluster_routes_members_rank():
     """往复轮106c：边指簇 id 时簇成员随幽灵端点沉层——CPU-->MEM 让
     存储器整体在处理器之下，不与 CPU 同排。"""
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
     src = ('flowchart TB\n'
            '  subgraph MEM[存储器]\n'
            '    PG1[单元甲]\n    PG2[单元乙]\n  end\n'
@@ -835,7 +835,7 @@ def test_promote_figsrc_image_to_grayscale_png(tmp_path, monkeypatch):
     from PIL import Image
 
     from app.domain import figures as fmod
-    from patent_docx import figures_md
+    from patent_studio.kernel import figures_md
 
     proj_dir = tmp_path / "proj"
     (proj_dir / "figs").mkdir(parents=True)
@@ -852,7 +852,7 @@ def test_promote_figsrc_image_to_grayscale_png(tmp_path, monkeypatch):
     store = types.SimpleNamespace(get=lambda pid: proj,
                                   read_content=lambda pid: (
                                       proj_dir / "content.md").read_text(encoding="utf-8"))
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
     monkeypatch.setattr(mmd_render, "render_to",
                         lambda src, tgt: open(tgt, "wb").write(b"png"))
 
@@ -894,7 +894,7 @@ def test_promote_figsrc_spec_renders_png_with_tag(tmp_path):
     import types
 
     from app.domain import figures as fmod
-    from patent_docx import figures_md, figspec
+    from patent_studio.kernel import figures_md, figspec
     from PIL import Image
 
     proj_dir = tmp_path / "proj"
@@ -980,7 +980,7 @@ def test_mmd_to_spec_convert(tmp_path):
     edged = {(e["from"], e["to"], e.get("dashed", False)) for e in out["edges"]}
     assert ("B", "A", True) in edged and ("X", "A", False) in edged
     # 转出结果本身就是合法 spec
-    from patent_docx import figspec
+    from patent_studio.kernel import figspec
     assert figspec.validate_figspec(out) is None
     # 转出的 spec 可直接渲染
     img = figspec.render_figspec(json.dumps(out))
@@ -1000,7 +1000,7 @@ def test_figspec_weight_and_spacer():
     """weight 拉宽块、spacer 隐形占位且可作汇边节点——回归声明式布局旋钮。"""
     import json
 
-    from patent_docx import figspec
+    from patent_studio.kernel import figspec
 
     base = {"bands": [{"title": "", "blocks": [{"id": "A", "label": "模块一"},
                                              {"id": "B", "label": "模块二"}]}],
@@ -1037,7 +1037,7 @@ def test_figspec_weight_and_spacer():
 
 def test_spec_templates_all_render():
     """spec_templates 模板库：12 类骨架全部过校验+可渲染，catalog 非空。"""
-    from patent_docx import figspec, spec_templates
+    from patent_studio.kernel import figspec, spec_templates
 
     assert len(spec_templates.TEMPLATES) >= 10
     for name, t in spec_templates.TEMPLATES.items():

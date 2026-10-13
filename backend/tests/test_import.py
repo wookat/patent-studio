@@ -25,9 +25,9 @@ from PIL import Image
 
 from app.domain.projects import ProjectStore
 from app.routes import imports as routes_import
-from patent_docx import docx_import
-from patent_docx.builder import build_patent_ex
-from patent_docx.omml import append_omml
+from patent_studio.kernel import docx_import
+from patent_studio.kernel.builder import build_patent_ex
+from patent_studio.kernel.omml import append_omml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")

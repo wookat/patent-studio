@@ -8,8 +8,6 @@ if [ -z "$(ls -A "$PROJECTS" 2>/dev/null)" ]; then
   echo "[patent-studio] 初始化示例案子 → $PROJECTS"
   cp -r /app/examples/method /app/examples/system /app/examples/check_all.py "$PROJECTS"/
 fi
-# check_all.py / build_docx.py 需要能 import patent_docx
-[ -e "$PROJECTS/patent_docx" ] || ln -s /app/backend/patent_docx "$PROJECTS/patent_docx"
 
 # 常驻 LibreOffice（unoserver）。用独立 profile，避免与 CLI 回退路径的 soffice 抢同一 UserInstallation。
 # unoserver 在 LibreOffice 崩溃/超时后会退出，这里循环拉起；期间后端自动回退 soffice CLI。

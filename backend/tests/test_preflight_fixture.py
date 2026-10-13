@@ -9,8 +9,8 @@ import re
 
 import pytest
 
-from patent_docx import figures_md
-from patent_docx.ast import parse_ast
+from patent_studio.kernel import figures_md
+from patent_studio.kernel.ast import parse_ast
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = [os.path.join(ROOT, "examples", d) for d in ("method", "system")]

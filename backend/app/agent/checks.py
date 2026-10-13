@@ -28,8 +28,8 @@ from app.domain import terms as terms_mod
 from app.domain.projects import ProjectStore
 from app.mcp.tools import _settings
 from app.routes import ast as routes_ast
-from patent_docx import critic, docset, patch, preflight
-from patent_docx.ast import AstError, parse_ast
+from patent_studio.kernel import critic, docset, patch, preflight
+from patent_studio.kernel.ast import AstError, parse_ast
 
 # A4：结论式措辞只能由代理师/审查员给出；智能体只能「建议 / 疑似 / 请核对」
 LEGAL_VERDICT_WORDS: tuple[str, ...] = (

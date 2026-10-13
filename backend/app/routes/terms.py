@@ -13,7 +13,7 @@ from app.ai.client import AiError
 from app.domain import terms
 from app.errors import error_detail
 from app.routes import project_or_404
-from patent_docx.terms_lint import scan_lines
+from patent_studio.kernel.terms_lint import scan_lines
 
 router = APIRouter(prefix="/api/projects/{pid}/terms", tags=["terms"])
 UNIT = "E2-terms"

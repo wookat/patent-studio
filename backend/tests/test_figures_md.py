@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""W4-C prep：docs/figures.md 真源（patent_docx.figures_md）+ 迁移幂等 + AST book=figures + 占位路由。
+"""W4-C prep：docs/figures.md 真源（patent_studio.kernel.figures_md）+ 迁移幂等 + AST book=figures + 占位路由。
 preflight figures.alt_mismatch / figures.file_missing 用例见文末；C2 在 test_attachments.py 替换 501 断言。"""
 import hashlib
 import json
@@ -11,8 +11,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.domain.projects import ProjectStore
-from patent_docx import figures_md
-from patent_docx.ast import parse_ast
+from patent_studio.kernel import figures_md
+from patent_studio.kernel.ast import parse_ast
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = os.path.join(ROOT, "examples")
@@ -148,7 +148,7 @@ def _document_xml_md5(docx):
 ])
 def test_migrated_build_is_zero_drift(tmp_path, case, baseline):
     """旧 studio.json → 迁移生成 figures.md → 构建，word/document.xml md5 ∈ 基线（与 zero_drift.py 第三路同义）。"""
-    from patent_docx.builder import build_patent_ex
+    from patent_studio.kernel.builder import build_patent_ex
 
     _legacy_copy(case, str(tmp_path / case))
     store = ProjectStore(str(tmp_path))
@@ -265,7 +265,7 @@ def test_figures_api_has_alt_and_attachments_roundtrip(client):
 
 @pytest.mark.parametrize("case", ["method", "system"])
 def test_preflight_figures_md_rules(case):
-    from patent_docx import preflight
+    from patent_studio.kernel import preflight
 
     store = ProjectStore(EXAMPLES)
     content = store.read_content(case)
@@ -299,7 +299,7 @@ def test_preflight_inline_figure_missing(client):
     """W18 批B：figures.inline_missing——说明书内嵌图块引用不存在的 figs/ 文件 → error。"""
     import pathlib
 
-    from patent_docx import preflight
+    from patent_studio.kernel import preflight
     projects = pathlib.Path(os.environ["PATENT_PROJECTS_DIR"])
     md = client.get("/api/projects/method/content").json()["content"]
     anchor = "### 技术领域\n"

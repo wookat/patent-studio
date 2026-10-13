@@ -40,7 +40,7 @@ from app.ai.jobs import JobStore  # noqa: E402
 from app.ai.mock import MockProvider  # noqa: E402
 from app.domain.projects import ProjectStore  # noqa: E402
 from app.mcp import tools_semantic  # noqa: E402
-from patent_docx import critic  # noqa: E402
+from patent_studio.kernel import critic  # noqa: E402
 
 CASES = ("method", "system")
 CRITERIA = ("no_direct_write", "roundtrip", "preflight_delta", "anchor_hit", "no_legal_verdict")

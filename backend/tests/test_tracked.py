@@ -15,8 +15,8 @@ from lxml import etree
 from app import config
 from app.domain.projects import ProjectStore
 from app.main import app
-from patent_docx import tracked
-from patent_docx.builder import build_patent_ex
+from patent_studio.kernel import tracked
+from patent_studio.kernel.builder import build_patent_ex
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = os.path.join(ROOT, "examples")

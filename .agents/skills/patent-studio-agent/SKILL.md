@@ -35,7 +35,7 @@ Do **not** reason about a claim from `read_book` alone — the full text hides w
 ## Ground rules
 - `content.md` is the single source; the three books (`abstract` / `claims` / `description`) are its mirror. Never write both.
 - **Default write = suggestion.** `patch_block` / `insert_block` emit CriticMarkup (`{++ ++}` `{-- --}` `{~~old~>new~~}`) that the author accepts/rejects in the UI. Only pass `direct=true` when the user explicitly asked for a direct edit; with auth on that needs editor role (viewer gets `forbidden`, and the refusal is audited).
-- Markup never spans lines (`patent_docx/critic.py` parses per line). The server diffs per line: a changed line becomes `prefix{~~old~>new~~}suffix`, added/removed lines become whole-line `{++ ++}` / `{-- --}`. Send the **whole block** back, not just the changed line — a one-line reply replaces the whole block and shows up as delete-everything + insert-one-line.
+- Markup never spans lines (`patent_studio/kernel/critic.py` parses per line). The server diffs per line: a changed line becomes `prefix{~~old~>new~~}suffix`, added/removed lines become whole-line `{++ ++}` / `{-- --}`. Send the **whole block** back, not just the changed line — a one-line reply replaces the whole block and shows up as delete-everything + insert-one-line.
 - Questions or concerns go through `add_comment(pid, {block_id, line, quote}, body)`, not into the source.
 - Every call is audited to `.studio/audit.jsonl` (who / tool / args summary / result). Don't try to avoid it.
 - Errors come back as `isError` with JSON `{kind, message, line, detail}`; `stale` means the block id no longer exists — re-run `get_ast` and retry.
@@ -95,5 +95,5 @@ Other scenarios follow the same contract: `s2` claim critique (deterministic `an
 ## Kernel syntax you must respect
 - One `# 发明名称`, then `## 摘要` / `## 权利要求书` / `## 说明书`; description sections are `### 技术领域` … and `#### 实施例一` sub-sections.
 - Claims: blank-line-separated blocks, `1.一种…方法，其特征在于，` / `2.根据权利要求1所述的方法，…`; each line inside a block is a paragraph.
-- Formulas: a standalone `$$…$$` line (linear syntax → OMML), `$$…$$ （编号）` for numbered ones; see `backend/patent_docx/README.md` §content.md 格式约定.
+- Formulas: a standalone `$$…$$` line (linear syntax → OMML), `$$…$$ （编号）` for numbered ones; see `backend/src/patent_studio/kernel/README.md` §content.md 格式约定.
 - Don't invent Markdown the kernel doesn't parse (no HTML, no nested lists, no inline `$`).

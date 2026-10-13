@@ -1,5 +1,5 @@
 /**
- * 后端 AST 契约（手写，与 backend/patent_docx/ast_schema.json 逐字段对应；docs/plan/04-r1-design.md §3）。
+ * 后端 AST 契约（手写，与 backend/src/patent_studio/kernel/ast_schema.json 逐字段对应；docs/plan/04-r1-design.md §3）。
  * 枚举常量与 schema 的一致性由 ./__tests__/ast.test.ts 断言。
  *
  * 坐标：块内 `lines` 为**书相对** 1-based 闭区间；全文行号 = `books[<book>].offset + line`。

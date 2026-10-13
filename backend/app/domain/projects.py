@@ -2,7 +2,7 @@
 """案子（project）存储：PROJECTS_DIR/<id>/{content.md, docs/, figs/, attachments/, studio.json, .studio/}
 
 W4-C（docs/plan/15-w4c-figures-files-design.md §2）：附图顺序 / 宽度 / 摘要图的真源是 docs/figures.md
-（patent_docx.figures_md），studio.json 只存 style / sub_except / abstract_limit / ai_enabled。
+（patent_studio.kernel.figures_md），studio.json 只存 style / sub_except / abstract_limit / ai_enabled。
 运行期 settings dict 仍带 spec_figures / abstract_figure（由 figures.md 派生的只读视图，本波次内 lint / ast /
 cnipa_xml / 设置页继续读它）；save_settings 收到这两个键时写回 figures.md。
 """
@@ -17,9 +17,9 @@ from PIL import Image, ImageDraw
 
 from app import atomic, collab
 from app.domain import history, review_meta
-from patent_docx import docset, figures_md
-from patent_docx.builder import DEFAULT_SUB_EXCEPT
-from patent_docx.style import merge_style, style_diff, validate_headings
+from patent_studio.kernel import docset, figures_md
+from patent_studio.kernel.builder import DEFAULT_SUB_EXCEPT
+from patent_studio.kernel.style import merge_style, style_diff, validate_headings
 
 SETTINGS_FILE = "studio.json"
 STUDIO_DIR = ".studio"
@@ -409,7 +409,7 @@ class ProjectStore:
 
     # --- 构建配置 ---
     def build_config(self, project, out, content_md=None, settings=None):
-        """docs/figures.md + studio.json（或传入的草稿 settings）→ patent_docx.build_patent 的 CONFIG。
+        """docs/figures.md + studio.json（或传入的草稿 settings）→ patent_studio.kernel.build_patent 的 CONFIG。
         附图元组来自 project.settings 的派生视图（load_settings ← figures.md）；builder 的 CONFIG 契约不变，
         以便 examples/*/build_docx.py 与 make zero-drift 的原脚本路径继续作为基准。"""
         s = normalize_settings(settings if settings is not None else project.settings,

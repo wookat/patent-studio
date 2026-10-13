@@ -35,9 +35,9 @@ import json, os, sys
 sys.path.insert(0, os.getcwd())
 from app.projects import ProjectStore, normalize_settings
 from app.lo import docx_to_pdf, last_tagged, last_backend
-from patent_docx import critic
-from patent_docx.ast import parse_ast
-from patent_docx.builder import build_patent_ex
+from patent_studio.kernel import critic
+from patent_studio.kernel.ast import parse_ast
+from patent_studio.kernel.builder import build_patent_ex
 case, out = sys.argv[1], sys.argv[2]
 store = ProjectStore(os.path.dirname(case)); pid = os.path.basename(case)
 p = store.get(pid)

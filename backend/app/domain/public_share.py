@@ -32,7 +32,7 @@ from app import atomic, config
 from app.auth import access
 from app.domain import cases, events, history
 from app.errors import kind_error
-from patent_docx import critic
+from patent_studio.kernel import critic
 
 log = logging.getLogger("patent_studio.public")
 

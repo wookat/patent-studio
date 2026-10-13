@@ -1,7 +1,7 @@
 [project]
 name = "patent-studio-backend"
 version = "0.1.0"
-description = "Patent Studio — CN 发明专利申请文件所见即所得编辑器（FastAPI 后端 + patent_docx 排版内核）"
+description = "Patent Studio — CN 发明专利申请文件所见即所得编辑器（FastAPI 后端 + patent_studio.kernel 排版内核）"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1",
@@ -26,6 +26,13 @@ dependencies = [
     "latex2mathml>=3.77,<4",
 ]
 
+[build-system]
+requires = ["uv_build>=0.8,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "patent_studio"
+
 [dependency-groups]
 dev = [
     "pytest>=8",
@@ -37,7 +44,7 @@ dev = [
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-extend-exclude = ["patent_docx/omml.py", "patent_docx/content.py"]
+extend-exclude = ["src/patent_studio/kernel/omml.py", "src/patent_studio/kernel/content.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]

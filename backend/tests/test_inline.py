@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""W9 prep-kernel：行内格式 tokenizer（patent_docx.inline）单测 + 五种标记 DOCX / XML / 导入全链路。"""
+"""W9 prep-kernel：行内格式 tokenizer（patent_studio.kernel.inline）单测 + 五种标记 DOCX / XML / 导入全链路。"""
 import io
 import os
 import shutil
@@ -8,11 +8,11 @@ import pytest
 from docx import Document
 from lxml import etree
 
-from patent_docx import cnipa_xml as cx
-from patent_docx import critic, docx_import
-from patent_docx.builder import DEFAULT_SUB_EXCEPT, PatentBuilder, build_patent_ex
-from patent_docx.inline import MARKS, inline_spans, inline_strip, inline_tokens
-from patent_docx.tracked import TrackedRuns
+from patent_studio.kernel import cnipa_xml as cx
+from patent_studio.kernel import critic, docx_import
+from patent_studio.kernel.builder import DEFAULT_SUB_EXCEPT, PatentBuilder, build_patent_ex
+from patent_studio.kernel.inline import MARKS, inline_spans, inline_strip, inline_tokens
+from patent_studio.kernel.tracked import TrackedRuns
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 METHOD = os.path.join(ROOT, "examples", "method")
@@ -266,7 +266,7 @@ def test_full_chain_example_with_marks(tmp_path, name):
     hit = [p for p in doc.paragraphs if p.text.endswith("嵌套a2结束")]
     assert hit and any(r.underline for r in hit[0].runs) and any(r.font.superscript for r in hit[0].runs)
     ex = cx._Exporter({"sub_except": tuple(store.load_settings(name)["sub_except"]), "style": None})
-    from patent_docx.content import load_md
+    from patent_studio.kernel.content import load_md
     title, _abstract, _claims, spec = load_md(md_path)
     root, _ = ex.description(title, spec)
     xml = cx.serialize(root)

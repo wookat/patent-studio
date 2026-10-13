@@ -24,9 +24,9 @@ from app.convert.extract import Extracted
 from app.convert.questionnaire import Questionnaire, render
 from app.domain import history, lint
 from app.domain.projects import DOCX_FIG_EXTS
-from patent_docx import docset, figures_md, spec_templates
-from patent_docx.ast import AstError, parse_ast
-from patent_docx.preflight import _ABSTRACT_ELEMENTS, limit_abstract, normalize_self_ref
+from patent_studio.kernel import docset, figures_md, spec_templates
+from patent_studio.kernel.ast import AstError, parse_ast
+from patent_studio.kernel.preflight import _ABSTRACT_ELEMENTS, limit_abstract, normalize_self_ref
 
 DRAFT_MESSAGE = "draft: 论文转专利"
 PROMPT_BUDGET = 30_000
@@ -144,17 +144,17 @@ def _render_gen_fig(spec_or_mmd) -> bytes | None:
     try:
         import io
         if isinstance(spec_or_mmd, (dict, list)):
-            from patent_docx import figspec
+            from patent_studio.kernel import figspec
             img = figspec.render_figspec(spec_or_mmd)
         else:
             src = str(spec_or_mmd or "").strip()
             if not src:
                 return None
             if src.lstrip().startswith("{"):
-                from patent_docx import figspec
+                from patent_studio.kernel import figspec
                 img = figspec.render_figspec(src)
             else:
-                from patent_docx import mmd_render
+                from patent_studio.kernel import mmd_render
                 img = mmd_render.render_mmd(src)
         buf = io.BytesIO()
         img.save(buf, "PNG")

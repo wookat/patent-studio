@@ -24,8 +24,8 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
 
 from app.domain.projects import ProjectStore  # noqa: E402
-from patent_docx import build_patent, figures_md  # noqa: E402
-from patent_docx.builder import build_patent_ex  # noqa: E402
+from patent_studio.kernel import build_patent, figures_md  # noqa: E402
+from patent_studio.kernel.builder import build_patent_ex  # noqa: E402
 
 # 基线刷新：style.paragraph.space_after.body 6pt→0（对齐授权专利版式，段距=行距）。
 # 变更日 2026-10-10；method/system 三路径（legacy / figures.md+studio.json / 迁移）均同 md5。

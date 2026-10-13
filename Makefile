@@ -62,7 +62,7 @@ zero-drift:
 	cd backend && uv run python scripts/zero_drift.py
 
 roundtrip:
-	cd backend && uv run python -m patent_docx.docset --check ../examples/method ../examples/system
+	cd backend && uv run python -m patent_studio.kernel.docset --check ../examples/method ../examples/system
 
 check: lint typecheck test test-frontend build
 	@echo "✅ 本地验收全绿"

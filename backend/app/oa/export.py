@@ -13,7 +13,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Pt
 
-from patent_docx import critic
+from patent_studio.kernel import critic
 
 FONT = "宋体"
 

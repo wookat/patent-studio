@@ -1,6 +1,6 @@
 /**
  * 公式对话框的纯函数：内核独立成行公式语法 `$$源码$$ 标号`（标号可选，与 serialize_block 的 equation 分支一致）。
- * 线性语法见 backend/patent_docx/omml.py 模块注释：a/b 分式、Σ_{…} 求和、√x 根式、_x 下标、( ) [ ] { } 定界符。
+ * 线性语法见 backend/src/patent_studio/kernel/omml.py 模块注释：a/b 分式、Σ_{…} 求和、√x 根式、_x 下标、( ) [ ] { } 定界符。
  */
 export const formulaMarkdown = (source: string, label: string | null = null) =>
   `$$${source.trim()}$$` + (label ? ` ${label}` : '')

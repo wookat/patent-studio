@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""构建服务：content.md（草稿）+ settings → DOCX（patent_docx）→ PDF（LibreOffice）。
+"""构建服务：content.md（草稿）+ settings → DOCX（patent_studio.kernel）→ PDF（LibreOffice）。
 
 latest-wins：每个案子维护递增 seq；请求进入即分配 seq；拿到全局构建锁后若已被更新的请求
 超越，直接返回 superseded，不再浪费 soffice 时间。
@@ -20,8 +20,8 @@ from app.domain.lint import lint
 from app.domain.projects import ProjectError, ProjectStore, normalize_settings
 from app.errors import describe_error
 from app.lo import docx_to_pdf, last_backend, last_tagged, soffice_available  # noqa: F401 - re-export
-from patent_docx import critic, tracked
-from patent_docx.builder import build_patent_ex
+from patent_studio.kernel import critic, tracked
+from patent_studio.kernel.builder import build_patent_ex
 
 log = logging.getLogger("patent_studio.build")
 

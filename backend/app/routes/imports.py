@@ -18,7 +18,7 @@ from app.domain.importer import import_project, suggest_styles
 from app.domain.projects import ATTACHMENT_MAX_BYTES
 from app.errors import error_detail
 from app.routes import read_bounded
-from patent_docx.docx_import import DocxImportError
+from patent_studio.kernel.docx_import import DocxImportError
 
 router = APIRouter(prefix="/api", tags=["import"], dependencies=[Depends(auth.require_login)])
 

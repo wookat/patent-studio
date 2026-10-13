@@ -80,7 +80,7 @@ img[@file REQUIRED @he @wi REQUIRED @img-format (jpg|tif|st33|st35) REQUIRED @im
 
 校验：后端用 lxml 加载随包附带的官方 DTD 做 `dtd.validate`；`cn-drawings` 的 DTD 非确定性错误单独忽略（已复现，是 DTD 缺陷）。前端"XML 预览"可用官方 `showxml.xsl` 做 XSLT → HTML，与局方预览同源。
 
-实现位置：`backend/patent_docx/cnipa_xml.py`（纯函数，输入 `load_md()` 的解析结果 + settings，不触碰 builder.py，零漂移不受影响）+ `POST /api/projects/{pid}/export/xml` + 导出菜单一项 + `check_all` 增加"XML DTD 校验"项。预计一轮（1 个会话）可出可下载的 zip 与本地 DTD 校验通过。
+实现位置：`backend/src/patent_studio/kernel/cnipa_xml.py`（纯函数，输入 `load_md()` 的解析结果 + settings，不触碰 builder.py，零漂移不受影响）+ `POST /api/projects/{pid}/export/xml` + 导出菜单一项 + `check_all` 增加"XML DTD 校验"项。预计一轮（1 个会话）可出可下载的 zip 与本地 DTD 校验通过。
 
 ## 6. 已验证 / 未验证
 
@@ -90,5 +90,5 @@ img[@file REQUIRED @he @wi REQUIRED @img-format (jpg|tif|st33|st35) REQUIRED @im
 
 ## 7. 下一步（如无异议按此执行）
 
-1. 本轮：把官方 DTD/ENT/XSL 随仓库附带（`backend/patent_docx/cnipa_dtd/`，政府公开标准文件），实现 §5 的 `cnipa_xml.py` + 导出 API + DTD 校验，方法案/系统案各出一份 zip。
+1. 本轮：把官方 DTD/ENT/XSL 随仓库附带（`backend/src/patent_studio/kernel/cnipa_dtd/`，政府公开标准文件），实现 §5 的 `cnipa_xml.py` + 导出 API + DTD 校验，方法案/系统案各出一份 zip。
 2. 验收门：Windows 上用官方插件"XML 导入"读回我们的 XML、或 CPOnline 上传预览；通过后再考虑 MathML 与 CALS 表。

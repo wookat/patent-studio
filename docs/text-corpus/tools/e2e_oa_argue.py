@@ -4,7 +4,7 @@ import json, os, re, sys, urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, os.path.join(ROOT, "backend"))
 os.chdir(ROOT)
-from patent_docx import text_forms
+from patent_studio.kernel import text_forms
 from app.ai import prompts_agent
 from app.oa import answer as oa_answer
 

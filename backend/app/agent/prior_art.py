@@ -53,7 +53,7 @@ def configured_providers() -> list[str]:
     """按声明顺序返回当前可用 provider；凭证缺失的源跳过并留给 notes。corpus 常驻最前。"""
     order = [p.strip().lower() for p in config.PRIOR_ART_PROVIDERS.split(",") if p.strip()]
     out = []
-    from patent_docx import text_forms
+    from patent_studio.kernel import text_forms
     if text_forms._pub_vecs()[0]:
         out.append("corpus")
     for p in order:
@@ -68,7 +68,7 @@ def configured_providers() -> list[str]:
 
 def _corpus(query: str, limit: int) -> list[Hit]:
     """内建语料库检索源：589 篇真实 CN 授权案 TF-IDF 语义检索（零外部依赖）。"""
-    from patent_docx import text_forms
+    from patent_studio.kernel import text_forms
     q = re.sub(r"^\s*(TACD|TAC|TI|AB|CLMS|DESC|ALLD)\s*:\s*", "", (query or "").strip(), flags=re.I)
     q = re.sub(r"[()\"]", "", q).strip()
     if not q:

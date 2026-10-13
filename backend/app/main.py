@@ -64,8 +64,8 @@ from app.routes.terms import router as terms_router
 from app.routes.timeline import router as timeline_router
 from app.routes.tracked import author_name
 from app.routes.tracked import router as tracked_router
-from patent_docx import critic
-from patent_docx.style import DEFAULT_STYLE, merge_style
+from patent_studio.kernel import critic
+from patent_studio.kernel.style import DEFAULT_STYLE, merge_style
 
 
 @asynccontextmanager

@@ -8,8 +8,8 @@ import shutil
 import pytest
 from fastapi.testclient import TestClient
 
-from patent_docx import docset
-from patent_docx.content import parse_md
+from patent_studio.kernel import docset
+from patent_studio.kernel.content import parse_md
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = [os.path.join(ROOT, "examples", d) for d in ("method", "system")]

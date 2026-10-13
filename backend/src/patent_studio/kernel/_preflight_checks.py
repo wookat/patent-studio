@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-from patent_docx.preflight import (
+from patent_studio.kernel.preflight import (
     _ABSTRACT_ELEMENTS,
     _ABSTRACT_LIMIT_DEFAULT,
     _CLAIM_FIG_REF_RE,
@@ -787,7 +787,7 @@ def _check_corpus_overlap(ast, rep):
     """语料重叠哨兵：生成句与 CN 公开案语料撞车（整句搬运或 12-gram 大段命中）报 warning。
     形库供仿句式，禁搬原句——命中说明模型在搬运而非模仿（对应 spec.corpus_overlap）。
     语料索引缺失时静默不查。"""
-    from patent_docx import text_forms
+    from patent_studio.kernel import text_forms
     for b in ast["description"]:
         if b["kind"] != "paragraph":
             continue

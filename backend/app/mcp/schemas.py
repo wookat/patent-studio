@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.domain.cases import CaseStatus
-from patent_docx.docset import BOOKS
+from patent_studio.kernel.docset import BOOKS
 
 # 顺序 = 注册顺序（server.py）：tools.register → tools_figures → tools_case → tools_attachments → tools_semantic
 TOOL_NAMES = (

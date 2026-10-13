@@ -4,7 +4,7 @@ import { expandMerges } from '../table/gfm'
 import { serializeInline } from './inline'
 
 /**
- * `(doc) → 整书 Markdown`（docs/plan/22 §2）。与 backend/patent_docx/patch.py serialize_block 逐字节一致的块序列化 +
+ * `(doc) → 整书 Markdown`（docs/plan/22 §2）。与 backend/src/patent_studio/kernel/patch.py serialize_block 逐字节一致的块序列化 +
  * 书级拼装：`lead` 个空行 + 各块（单空行相隔）+ `trail` 个空行 + 末尾换行。
  * 块 = 顶层节点；紧随 ps_table 的 ps_note 并入该表块（空行 + 注文）。权项 = 各段 / 公式各一行、无空行。
  * 文本块经 serializeInline 写回行内格式；代码块 / 公式 source 原样。`book='figures'` 的 doc 无 Markdown 形态 → 抛错。

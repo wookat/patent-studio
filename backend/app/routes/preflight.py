@@ -12,8 +12,8 @@ from pydantic import BaseModel
 
 from app.domain import terms
 from app.domain.projects import normalize_settings
-from patent_docx import critic, preflight
-from patent_docx.ast import AstError, parse_ast
+from patent_studio.kernel import critic, preflight
+from patent_studio.kernel.ast import AstError, parse_ast
 
 router = APIRouter(prefix="/api/projects/{pid}", tags=["preflight"])
 log = logging.getLogger("patent_studio.preflight")

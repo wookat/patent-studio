@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import pathlib
 import re
 from functools import lru_cache
 
@@ -29,8 +30,7 @@ def _find() -> str | None:
     for rel in _DEFAULTS:
         if os.path.exists(rel):
             return rel
-    here = os.path.dirname(os.path.abspath(__file__))
-    for up in (here, os.path.dirname(here), os.path.dirname(os.path.dirname(here))):
+    for up in pathlib.Path(__file__).resolve().parents:
         cand = os.path.join(up, "docs", "text-corpus", "forms_library.json")
         if os.path.exists(cand):
             return cand

@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from patent_docx import critic
+from patent_studio.kernel import critic
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

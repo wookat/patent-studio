@@ -13,7 +13,7 @@ import re
 
 from PIL import Image, ImageDraw, ImageFont
 
-from patent_docx._mmd_parse import (  # noqa: F401 — 回引保留原命名空间
+from patent_studio.kernel._mmd_parse import (  # noqa: F401 — 回引保留原命名空间
     _CHAIN_SEP,
     _EDGE_RES,
     _HEADER,

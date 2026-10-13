@@ -12,7 +12,7 @@ import os
 import time
 
 from app import atomic
-from patent_docx import critic
+from patent_studio.kernel import critic
 
 FILE = os.path.join("reviews", "marks.json")
 

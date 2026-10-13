@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """v1 工具集 + 资源（docs/plan/10 §3.2）。全部复用 app 层函数：
 ProjectStore / routes_ast._parse / routes_preflight._report /
-lint / run_build / run_xml_export / figures / comments / history / patent_docx.patch。
+lint / run_build / run_xml_export / figures / comments / history / patent_studio.kernel.patch。
 
 每个案卷级工具：store.get(pid) 确认存在 → AUTH=on 时按 ACL 校验角色（读与建议 viewer+，direct 写 editor+）→
 在工作线程里跑同步业务函数 → 追加一行审计（args 只记标量/长度，不记正文）。业务错误抛 ToolError，
@@ -35,8 +35,8 @@ from app.mcp import audit, schemas
 from app.mcp.auth import CURRENT_ACTOR, LOCAL, Actor
 from app.routes.ast import _parse
 from app.routes.preflight import _report
-from patent_docx import critic, docset, patch
-from patent_docx.docset import BOOKS
+from patent_studio.kernel import critic, docset, patch
+from patent_studio.kernel.docset import BOOKS
 
 # ---------------------------------------------------------------- 错误 ----
 

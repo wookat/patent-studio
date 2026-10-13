@@ -20,7 +20,7 @@ export interface AbstractStat {
   bodyLine: number | null
 }
 
-/** 摘要字数：含标点、不含空白、标记符不计（接受后文本——与 store selectAbstractLive / patent_docx 规则一致） */
+/** 摘要字数：含标点、不含空白、标记符不计（接受后文本——与 store selectAbstractLive / patent_studio.kernel 规则一致） */
 export function abstractStat(content: string, limit: number): AbstractStat {
   const lines = content.split('\n')
   const start = lines.findIndex((l) => ABSTRACT_HEADING.test(l))

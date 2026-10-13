@@ -383,7 +383,7 @@ def mmd_to_spec(src):
     分层规则：subgraph → 同名 band；无 subgraph 时按拓扑 rank 分层
     （TB/BT 纵向流一 rank 一层；LR/RL 横向流全部进单 band 保横排手感）。
     `-.->` 虚线边、diamond 判据、块 label 原样携带。返回规范化 dict。"""
-    from patent_docx._mmd_parse import parse_mmd
+    from patent_studio.kernel._mmd_parse import parse_mmd
 
     g = parse_mmd(src)
     if g is None or not g.nodes:

@@ -9,10 +9,10 @@ import shutil
 import pytest
 from fastapi.testclient import TestClient
 
-from patent_docx import block_templates, critic, docset
-from patent_docx.ast import parse_ast
-from patent_docx.boundary_lint import RULES, lint_boundary
-from patent_docx.patch import PatchError, delete_block, insert_block, iter_blocks, patch_block, serialize_block
+from patent_studio.kernel import block_templates, critic, docset
+from patent_studio.kernel.ast import parse_ast
+from patent_studio.kernel.boundary_lint import RULES, lint_boundary
+from patent_studio.kernel.patch import PatchError, delete_block, insert_block, iter_blocks, patch_block, serialize_block
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = [os.path.join(ROOT, "examples", d) for d in ("method", "system")]

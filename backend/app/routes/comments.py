@@ -17,8 +17,8 @@ from app.auth import CurrentUser, forbidden, my_role, role_at_least
 from app.domain import comments as store_mod
 from app.domain import events, review_meta
 from app.domain.comments import Anchor, Author, Comment
-from patent_docx import critic
-from patent_docx.ast import AstError, parse_ast
+from patent_studio.kernel import critic
+from patent_studio.kernel.ast import AstError, parse_ast
 
 router = APIRouter(prefix="/api/projects/{pid}", tags=["review"])
 log = logging.getLogger("patent_studio.review")

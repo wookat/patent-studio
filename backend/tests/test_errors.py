@@ -4,7 +4,7 @@ import os
 import tempfile
 
 from app.errors import describe_error
-from patent_docx.builder import build_patent_ex
+from patent_studio.kernel.builder import build_patent_ex
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -94,7 +94,7 @@ def test_abstract_limit_still_works():
 
 
 def test_xml_content_error_locates_section_heading():
-    from patent_docx.cnipa_xml import XmlContentError
+    from patent_studio.kernel.cnipa_xml import XmlContentError
 
     complete = DOC.replace("## 权利要求\n", "## 权利要求书\n")
     e = describe_error(XmlContentError("权利要求书", "权利要求书为空：官方 DTD 要求至少 1 项权利要求"), complete)

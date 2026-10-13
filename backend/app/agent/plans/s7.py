@@ -13,7 +13,7 @@ from app.agent.plans import CheckStep, GenStep, Plan, RunContext, ToolStep, comm
 from app.ai import prompts_agent
 from app.mcp import tools_semantic as ts
 from app.oa import answer as oa_answer
-from patent_docx import text_forms
+from patent_studio.kernel import text_forms
 
 PLAN = Plan(
     scenario="s7",

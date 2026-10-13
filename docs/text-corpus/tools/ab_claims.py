@@ -4,7 +4,7 @@ import ast, json, os, re, sys, urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, os.path.join(ROOT, "backend"))
 os.chdir(ROOT)
-from patent_docx import text_forms
+from patent_studio.kernel import text_forms
 
 # 1) 从 s1.py 抽出 claims 步的真实规则串（隐式拼接字面量）
 src_code = open(os.path.join(ROOT, "backend/app/agent/plans/s1.py"), encoding="utf-8").read()

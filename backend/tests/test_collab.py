@@ -34,7 +34,7 @@ from websockets.exceptions import ConnectionClosed
 from app.collab import BOOKS, DEBOUNCE_S, IDLE_RELEASE_S, on_saved, rooms
 from app.collab.text import apply_full_text
 from app.domain import history
-from patent_docx import docset
+from patent_studio.kernel import docset
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SECRET = "test-secret-not-for-production-32bytes+"

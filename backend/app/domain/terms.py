@@ -10,9 +10,9 @@ import re
 from typing import TypedDict
 
 from app import atomic
-from patent_docx import critic, preflight
-from patent_docx.ast import AstError, parse_ast
-from patent_docx.terms_lint import iter_hits, scan_lines
+from patent_studio.kernel import critic, preflight
+from patent_studio.kernel.ast import AstError, parse_ast
+from patent_studio.kernel.terms_lint import iter_hits, scan_lines
 
 TERMS_FILE = "terms.json"
 VERSION = 1

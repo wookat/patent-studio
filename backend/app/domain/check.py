@@ -16,7 +16,7 @@ import time
 from app import config
 from app.domain.build import latest_artifact_dir
 from app.domain.projects import ProjectStore
-from patent_docx.builder import build_patent_ex
+from patent_studio.kernel.builder import build_patent_ex
 
 CASES = ("method", "system")
 _LINE_RE = re.compile(r"^(PASS|FAIL|SKIP)\s+(.*)$")

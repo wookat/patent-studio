@@ -31,9 +31,9 @@ from docx.oxml.ns import qn
 from lxml import etree
 from pydantic import BaseModel
 
-from patent_docx.content import table_spec_line
-from patent_docx.inline import SUB_RE, SUP_RE
-from patent_docx.style import DEFAULT_STYLE
+from patent_studio.kernel.content import table_spec_line
+from patent_studio.kernel.inline import SUB_RE, SUP_RE
+from patent_studio.kernel.style import DEFAULT_STYLE
 
 UNIT = "F3-docx-import-templates"
 
@@ -96,7 +96,7 @@ class ReportItem(BaseModel):
 
 
 class StyleSuggestion(BaseModel):
-    style: dict = {}  # 与 patent_docx.style.DEFAULT_STYLE 同形，只含检测到的键
+    style: dict = {}  # 与 patent_studio.kernel.style.DEFAULT_STYLE 同形，只含检测到的键
     evidence: dict[str, str] = {}
 
 

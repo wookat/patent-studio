@@ -10,7 +10,7 @@
     失败 {"detail": {"kind", "message", "line", "detail": null}}（errors.py 形状，line 全文行）：
       422 kind="content"（重解析失败 / 删法定章节）、kind="kind"（块类型不适用于该书）；
       409 kind="stale"（block_id 不在当前 content 的 AST 里，结构已过期）；pid 不存在 404。
-  POST   /api/mathml  {source} → {"mathml"}  复用 patent_docx.omml.to_mathml（无项目上下文；prep 已实现）
+  POST   /api/mathml  {source} → {"mathml"}  复用 patent_studio.kernel.omml.to_mathml（无项目上下文；prep 已实现）
   GET    /api/block-templates → {"templates": [Template]}（block_templates.py）
 """
 import asyncio
@@ -22,8 +22,8 @@ from app import auth
 from app.domain import review_meta
 from app.domain.projects import normalize_settings
 from app.routes import ast as routes_ast
-from patent_docx import block_templates, patch
-from patent_docx.omml import to_mathml
+from patent_studio.kernel import block_templates, patch
+from patent_studio.kernel.omml import to_mathml
 
 router = APIRouter(tags=["blocks"])
 

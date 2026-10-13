@@ -1,7 +1,7 @@
 import type { Ast, AstClaim, AstParagraph, DescriptionBlock, DescriptionPart } from '@/types/ast'
 
 /**
- * 合成 AST（与 backend/patent_docx/ast_schema.json 契约一致），覆盖大纲要用到的全部形态：
+ * 合成 AST（与 backend/src/patent_studio/kernel/ast_schema.json 契约一致），覆盖大纲要用到的全部形态：
  * 四项权项（独立 / 从属单引 / 从属多引 / 前向引用）、法定五章节 + 非标准章节、小节、公式（anchor_para_no）、
  * 表格（表题在前 + 表注）、三幅附图（两幅有题注行、一幅没有）。全文行号 = books[book].offset + lines.start。
  *

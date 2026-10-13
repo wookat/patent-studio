@@ -1,7 +1,7 @@
 """text_forms 形库：范例注入与语料重叠哨兵。"""
 import pytest
 
-from patent_docx import text_forms
+from patent_studio.kernel import text_forms
 
 
 def test_roles_and_blocks():

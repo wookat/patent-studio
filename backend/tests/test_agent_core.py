@@ -23,7 +23,7 @@ from app.domain import events
 from app.domain.projects import ProjectStore
 from app.mcp import audit
 from app.routes import ai as routes_ai
-from patent_docx import critic
+from patent_studio.kernel import critic
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 HEAVY = client_mod.MODELS["heavy"]

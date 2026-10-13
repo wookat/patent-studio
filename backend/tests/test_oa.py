@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 
 from app.oa import answer, export, parse
 from app.routes import oa as routes_oa
-from patent_docx import critic
-from patent_docx.ast import parse_ast
+from patent_studio.kernel import critic
+from patent_studio.kernel.ast import parse_ast
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

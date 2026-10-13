@@ -7,7 +7,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCHEMA_PATH = os.path.join(os.path.dirname(HERE), "patent_docx", "ast_schema.json")
+SCHEMA_PATH = os.path.join(os.path.dirname(HERE), "src", "patent_studio", "kernel", "ast_schema.json")
 SAMPLES = ["ast_sample_method.json", "ast_sample_system.json"]
 
 

@@ -59,7 +59,7 @@ AUTH=on 时 PAT 绑定创建它的用户，工具按案卷 ACL（`projects_acl`�
 
 资源：`patent://{pid}/docs/{book}` → `text/markdown`，一书源码原文（含标记）。
 
-所有工具都复用 REST 同一套 app 层函数（`ProjectStore` / `routes_ast._parse` / `lint` / `run_build` / `run_xml_export` / `figures` / `comments` / `history` / `patent_docx.patch`），写操作走 `save_content`（.bak + 三书镜像 + git commit）。
+所有工具都复用 REST 同一套 app 层函数（`ProjectStore` / `routes_ast._parse` / `lint` / `run_build` / `run_xml_export` / `figures` / `comments` / `history` / `patent_studio.kernel.patch`），写操作走 `save_content`（.bak + 三书镜像 + git commit）。
 
 错误：工具返回 `isError=true`，文本为 `Error executing tool <name>: {"kind": "...", "message": "...", "line": null, "detail": null}`，`kind` 与 REST 的 `error_detail` 一致：`not_found`（案子不存在）、`stale`（块 id 不在当前结构里）、`kind` / `content`（补丁不合法）、`forbidden`、`bad_request`、`figures`、`history`。
 

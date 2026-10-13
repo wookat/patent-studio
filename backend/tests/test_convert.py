@@ -18,8 +18,8 @@ from app.ai.mock import MockProvider
 from app.convert import extract, pipeline, questionnaire
 from app.domain.projects import ProjectStore
 from app.routes.convert import new_pid
-from patent_docx import docset, figures_md
-from patent_docx.ast import parse_ast
+from patent_studio.kernel import docset, figures_md
+from patent_studio.kernel.ast import parse_ast
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FIXTURE = json.load(open(os.path.join(os.path.dirname(__file__), "..", "app", "ai", "fixtures", "convert.json"),

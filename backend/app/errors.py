@@ -7,8 +7,8 @@ from typing import Literal, get_args
 from fastapi import HTTPException
 
 from app.lo import PdfConvertError
-from patent_docx.builder import EquationError, FigureError
-from patent_docx.cnipa_xml import XmlContentError
+from patent_studio.kernel.builder import EquationError, FigureError
+from patent_studio.kernel.cnipa_xml import XmlContentError
 
 _ABSTRACT_RE = re.compile(r"摘要超过(\d+)字：(\d+)")
 _TOP_SECTIONS = ("摘要", "权利要求书", "说明书")

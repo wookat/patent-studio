@@ -116,7 +116,7 @@ export interface BuildSummary {
 export type Severity = 'error' | 'warning' | 'info'
 export type DiagnosticSource = 'build' | 'lint' | 'boundary' | 'client'
 
-/** boundary.* 诊断的修正载荷（backend/patent_docx/boundary_lint.py）：直接喂 patchBlock */
+/** boundary.* 诊断的修正载荷（backend/src/patent_studio/kernel/boundary_lint.py）：直接喂 patchBlock */
 export interface BoundaryFix {
   block_id: string
   markdown: string

@@ -57,7 +57,7 @@ from app.errors import error_detail
 from app.lo import soffice_available
 from app.routes.tracked import author_name
 from app.schemas import DeliverError, DeliverErrorsResponse
-from patent_docx import critic, tracked
+from patent_studio.kernel import critic, tracked
 
 router = APIRouter(prefix="/api/projects/{pid}/deliver", tags=["deliver"])
 UNIT = "E1-deliver-page"

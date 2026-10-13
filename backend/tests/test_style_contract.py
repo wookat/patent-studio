@@ -6,10 +6,10 @@ import os
 import pytest
 import test_auth
 
-from patent_docx import figures_md
-from patent_docx.ast import parse_ast
-from patent_docx.style import DEFAULT_STYLE, merge_style
-from patent_docx.style_css import PART_CLASSES, STYLE_CSS_VARS, render_css, style_value
+from patent_studio.kernel import figures_md
+from patent_studio.kernel.ast import parse_ast
+from patent_studio.kernel.style import DEFAULT_STYLE, merge_style
+from patent_studio.kernel.style_css import PART_CLASSES, STYLE_CSS_VARS, render_css, style_value
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = os.path.join(ROOT, "examples")

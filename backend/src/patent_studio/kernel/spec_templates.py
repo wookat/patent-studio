@@ -281,7 +281,7 @@ _EXEMPLAR_CACHE: list[str] | None = None
 
 def _manifest_path():
     from pathlib import Path
-    return Path(__file__).resolve().parents[2] / "docs" / "figure-library" / "manifest.json"
+    return Path(__file__).resolve().parents[4] / "docs" / "figure-library" / "manifest.json"
 
 
 def exemplar_captions(per_kind: int = 2, max_kinds: int = 8) -> str:

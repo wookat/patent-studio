@@ -9,7 +9,7 @@ COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY frontend/ ./
 # 前端 types/ast.ts 与 tsc -b 覆盖的测试文件按相对路径读后端 AST schema / golden / fixtures（单解析器契约）
-COPY backend/patent_docx/ast_schema.json /app/backend/patent_docx/ast_schema.json
+COPY backend/src/patent_studio/kernel/ast_schema.json /app/backend/src/patent_studio/kernel/ast_schema.json
 COPY backend/tests/golden /app/backend/tests/golden
 COPY backend/tests/fixtures /app/backend/tests/fixtures
 COPY examples/method/studio.json /app/examples/method/studio.json
@@ -74,8 +74,9 @@ RUN --mount=type=bind,source=.venv-cache,target=/tmp/venv-cache \
     if [ -d /tmp/venv-cache/venv/lib ]; then cp -a /tmp/venv-cache/venv ./.venv; \
     else UV_INDEX_URL="${PYPI_MIRROR:-https://pypi.org/simple}" uv sync --frozen --no-dev --no-install-project; fi
 COPY --chown=1000:1000 backend/ ./
+# 安装项目自身（patent_studio 包，含 kernel），示例案与 check_all.py 直接 import，不再软链接
+RUN UV_INDEX_URL="${PYPI_MIRROR:-https://pypi.org/simple}" uv sync --frozen --no-dev
 COPY --chown=1000:1000 examples/ /app/examples/
-RUN rm -rf /app/examples/patent_docx && ln -s /app/backend/patent_docx /app/examples/patent_docx
 COPY --from=web --chown=1000:1000 /app/frontend/dist /app/frontend/dist
 
 ENV PATH="/app/backend/.venv/bin:$PATH" \

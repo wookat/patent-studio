@@ -1,4 +1,4 @@
-# patent_docx —— CN 发明专利申请文件（Word）通用生成工具
+# patent_studio.kernel —— CN 发明专利申请文件（Word）通用生成工具
 
 内容与排版分离：正文写在 `content.md`（Markdown），本工具负责按 CNIPA
 发明专利格式装配成 docx；PDF 用 LibreOffice 命令行导出。
@@ -71,8 +71,8 @@ $$W_t = W_{t-1}·(1+b_t·r_t)$$ （3）
 ```python
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, "<patent_docx 所在父目录>")
-from patent_docx import build_patent
+sys.path.insert(0, "<patent_studio.kernel 所在父目录>")
+from patent_studio.kernel import build_patent
 
 build_patent({
     "content_md": os.path.join(HERE, "content.md"),

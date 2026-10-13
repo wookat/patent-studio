@@ -17,12 +17,12 @@ from fastapi.testclient import TestClient
 from lxml import etree
 
 from app.domain.projects import ProjectStore
-from patent_docx import figures_md
-from patent_docx.ast import AstError, _split_books, _walk_description, load_schema, parse_ast
-from patent_docx.builder import build_patent_ex
-from patent_docx.cnipa_xml import _Exporter
-from patent_docx.content import parse_md
-from patent_docx.omml import MML_NS, to_mathml
+from patent_studio.kernel import figures_md
+from patent_studio.kernel.ast import AstError, _split_books, _walk_description, load_schema, parse_ast
+from patent_studio.kernel.builder import build_patent_ex
+from patent_studio.kernel.cnipa_xml import _Exporter
+from patent_studio.kernel.content import parse_md
+from patent_studio.kernel.omml import MML_NS, to_mathml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = os.path.join(ROOT, "examples")
@@ -202,7 +202,7 @@ def test_inline_figure_roundtrip_and_malformed():
     import os
     import tempfile
 
-    from patent_docx.content import dump_md
+    from patent_studio.kernel.content import dump_md
 
     text = (
         "# T\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X。\n\n## 说明书\n\n"
@@ -227,7 +227,7 @@ def test_inline_figure_roundtrip_and_malformed():
 
 
 def test_inline_figure_insert_delete_serialize():
-    from patent_docx.patch import delete_block, insert_block
+    from patent_studio.kernel.patch import delete_block, insert_block
 
     text = (
         "# T\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X。\n\n## 说明书\n\n### 技术领域\n段一\n段二\n"

@@ -11,7 +11,7 @@ import shutil
 import time
 
 from app.domain.projects import TEMPLATE_FIG, ProjectStore, id_slug
-from patent_docx import docx_import
+from patent_studio.kernel import docx_import
 
 UNIT = docx_import.UNIT
 

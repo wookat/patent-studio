@@ -4,14 +4,14 @@
 只做可判定的形式规则（docs/ux/05-architecture.md §4.1 十条，后扩 style.*/claims.excluded_matter
 等确定性词表扫描），不做术语一致性/支持性/新颖性判断。与 preflight 重复的 claims.* 规则不在此另写，
 统一走 with_preflight 通道。
-解析规则镜像 patent_docx.content.load_md（# 标题 / ## 三大节 / 权利要求空行分块 / ### 说明书章节 /
+解析规则镜像 patent_studio.kernel.content.load_md（# 标题 / ## 三大节 / 权利要求空行分块 / ### 说明书章节 /
 ``` 代码块），但保留行号；不修改也不依赖 load_md 本身。
 
-with_preflight=True 时在十条之后追加递交前体检（patent_docx.preflight.run，05-r2 §4）：items 映射为
+with_preflight=True 时在十条之后追加递交前体检（patent_studio.kernel.preflight.run，05-r2 §4）：items 映射为
 id="preflight.<rule>#<n>" 的 Diagnostic；与十条同义的 abstract.limit / claims.forward_ref / figures.ref_missing
 不重复并入；AST 结构不成立时跳过（结构问题十条已报）。
 
-terms 非空时追加术语一致性（patent_docx.terms_lint.lint_terms，docs/plan/09 §4）：别名命中 ⇒ warning，
+terms 非空时追加术语一致性（patent_studio.kernel.terms_lint.lint_terms，docs/plan/09 §4）：别名命中 ⇒ warning，
 带机器可读 replace={from,to}；terms 为空 / 未传 ⇒ 不产生任何诊断（零漂移）。
 """
 import os
@@ -19,10 +19,10 @@ import re
 from dataclasses import dataclass, field
 from typing import Literal, TypedDict
 
-from patent_docx import preflight
-from patent_docx.ast import AstError, parse_ast
-from patent_docx.boundary_lint import lint_boundary
-from patent_docx.terms_lint import lint_terms
+from patent_studio.kernel import preflight
+from patent_studio.kernel.ast import AstError, parse_ast
+from patent_studio.kernel.boundary_lint import lint_boundary
+from patent_studio.kernel.terms_lint import lint_terms
 
 Severity = Literal["error", "warning", "info"]
 

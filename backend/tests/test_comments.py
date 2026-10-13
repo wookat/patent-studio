@@ -10,8 +10,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.domain import comments as cm
-from patent_docx import critic
-from patent_docx.ast import parse_ast
+from patent_studio.kernel import critic
+from patent_studio.kernel.ast import parse_ast
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

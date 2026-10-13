@@ -11,7 +11,7 @@ ROOT = os.path.dirname(os.path.dirname(D))  # repo root
 sys.path.insert(0, os.path.join(ROOT, "backend"))
 os.chdir(ROOT)  # so text_forms._find() locates docs/text-corpus
 
-from patent_docx import text_forms
+from patent_studio.kernel import text_forms
 
 DOMAINS = {
     "对话问答": "对话|问答|意图识别|多轮",

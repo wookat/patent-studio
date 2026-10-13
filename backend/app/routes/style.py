@@ -6,8 +6,8 @@ PUT /settings 后再 GET 即新值；Cache-Control: no-cache 让前端 bumpStyle
 """
 from fastapi import APIRouter, Request, Response
 
-from patent_docx.style import merge_style
-from patent_docx.style_css import render_css
+from patent_studio.kernel.style import merge_style
+from patent_studio.kernel.style_css import render_css
 
 router = APIRouter(prefix="/api/projects/{pid}", tags=["style"])
 

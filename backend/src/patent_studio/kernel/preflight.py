@@ -116,7 +116,7 @@ _MARK_RE = re.compile(r"\d{3,4}")
 
 # ---------------- 「图N」引用 ----------------
 
-from patent_docx._preflight_checks import (  # noqa: F401 — 回引保留原命名空间
+from patent_studio.kernel._preflight_checks import (  # noqa: F401 — 回引保留原命名空间
     _CAPTION_DECL_RE,
     _EQ_TAG_RE,
     _EQ_TRAIL_RE,

@@ -4,7 +4,7 @@ import type { Text } from '@codemirror/state'
  * 光标所在章节（03 §1.2 E4）：从光标行向上找最近的 `# / ## / ###` 标题；
  * 在「权利要求书」内再定位到所在权项（`N.` 开头的块），产出如
  * 「摘要」「权利要求书 · 权项 2」「说明书 / 背景技术」「标题」。
- * 规则镜像 patent_docx/content.py：一级标题 = 发明名称，二级 = 三书，三级 = 说明书章节。
+ * 规则镜像 patent_studio/kernel/content.py：一级标题 = 发明名称，二级 = 三书，三级 = 说明书章节。
  * F2 的 lib/outline.ts 落地后可改为按 doc.outline 二分查找；此处保持无依赖。
  */
 

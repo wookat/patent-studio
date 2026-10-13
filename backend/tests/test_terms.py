@@ -15,9 +15,9 @@ from app.ai.client import ChatResult, Usage
 from app.domain import terms
 from app.domain.lint import lint
 from app.domain.projects import ProjectStore
-from patent_docx import critic, docset, preflight
-from patent_docx.ast import parse_ast
-from patent_docx.terms_lint import lint_terms
+from patent_studio.kernel import critic, docset, preflight
+from patent_studio.kernel.ast import parse_ast
+from patent_studio.kernel.terms_lint import lint_terms
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = os.path.join(ROOT, "examples")

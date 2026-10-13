@@ -43,7 +43,7 @@ from app.ai.client import AiClient, ChatResult, Purpose
 from app.ai.jobs import Job, JobStore
 from app.domain import events
 from app.mcp import audit, tools_semantic
-from patent_docx import critic
+from patent_studio.kernel import critic
 
 log = logging.getLogger(__name__)
 plans.install()  # agent-scenarios：s1–s10 的 run 挂到 registry；未注册（测试 reset 后）的场景走 default_handler

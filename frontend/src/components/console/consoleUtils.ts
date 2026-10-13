@@ -17,7 +17,7 @@ const PREFLIGHT_RULES: typeof LINT_RULES = Object.entries(RULE_LABEL).map(([id, 
   severity: id === 'abstract.limit' || id === 'claims.forward_ref' || id === 'figures.ref_missing' ? 'error' : 'warning',
 }))
 
-/** 术语一致性（轨道 E，backend/patent_docx/terms_lint.py；id = terms.alias#<n>，带 replace）；不计入十条形式检查 */
+/** 术语一致性（轨道 E，backend/src/patent_studio/kernel/terms_lint.py；id = terms.alias#<n>，带 replace）；不计入十条形式检查 */
 const TERMS_RULES: typeof LINT_RULES = [
   { id: 'terms.alias', name: '术语统一：别名应改为主名', desc: '术语表（terms.json）里的别名在正文出现；一键改为主名或在「术语」面板整案统一', severity: 'warning' },
 ]

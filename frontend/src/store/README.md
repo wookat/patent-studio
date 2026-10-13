@@ -131,7 +131,7 @@
 - UI 挂点：`components/integrations/IntegrationsPage.tsx`（设置 › 集成）、`components/templates/TemplatesPage.tsx`（设置 › 模板）、`components/templates/TemplateMenuItems.tsx`、`components/importer/ImportDocxDialog.tsx`（`DialogId 'import-docx'`）、`components/importer/ImportReportPanel.tsx`；菜单「文件 › 导入 Word 文档…」`openDialog('import-docx')`、「导出 › Word（带修订）」链接 `api.trackedDocxUrl(pid)`；移动端 MoreSheet `more-import-docx`、MobileSettings 头部页面下拉（PAGES 全部页，含模板/集成）经 `SettingsContent page/onPageChange` 受控切页。
 
 ### R1 ast slice（docs/plan/04-r1-design.md §5.3；prep 已接线，B2 后端落地后即生效）
-- `ast: Ast | null`（`@/types/ast`，与 `backend/patent_docx/ast_schema.json` 逐字段对应）；请求中/失败时保留旧值，`selectAstStale(s)` = `ast && astContent !== content`。
+- `ast: Ast | null`（`@/types/ast`，与 `backend/src/patent_studio/kernel/ast_schema.json` 逐字段对应）；请求中/失败时保留旧值，`selectAstStale(s)` = `ast && astContent !== content`。
 - 触发：`openProject` → `resetAst()` + `loadAst(pid, {fromDisk: true})`（磁盘内容）；`setContent` → `scheduleAst()`（200ms `AST_DEBOUNCE_MS` 防抖 → `loadAst(pid)` 带编辑区 content + settings；`AbortController` 最新者胜；不占构建锁）。
 - 后端路由 501（B2 未落地）→ `astError` 置文案、`astUnavailable=true`，本案内停止随编辑重试（不弹 toast）；`resetAst`/显式 `loadAst` 复位。
 - `activeBlock: {id, source: 'editor'|'structure'|'outline'} | null`：编辑器光标行 → `selectBlockAt(fullLine)`（source editor）；结构预览单击 → `setActiveBlock(id,'structure')`（不切视图）；大纲点击 → `setActiveBlock(id,'outline')` + `gotoLine`。
@@ -147,7 +147,7 @@
 ### R3 blocks slice（docs/plan/06-r3-structure-edit-design.md §6；prep 已接线，B1 后端落地后即生效）
 - 共享文件（prep/integrate 才能改）：`store/blocks.ts` `store/ui.ts`（`structureEditable`）`lib/api.ts`。B2/B3 只**调用**这些动作，不新增 slice 字段；缺什么在 06 §7 提需求给 integrate。
 - `ui.structureEditable: boolean`（持久化，默认 false）· `setStructureEditable` `toggleStructureEditable`。`StructureView` 实际可编辑 = `structureEditable && isDesktop`（375 恒只读，06 §5.6）；`StructureView` 的 `editable` prop 可覆盖（测试 / MobilePreview）。
-- 行区间法则（后端 `patent_docx/patch.py` 同一法则）：块全文行 = `ast.books[book].offset + block.lines.{start,end}`（书相对 1-based 闭区间）；`blockSource(ast, content, id)` 取该块源码行（不含块间空行），`spliceBlock(ast, content, id, markdown)` 回填。可编辑块 = 摘要**各段** `abstract/pN`、权项 `claims/N`、说明书块；`title` / 摘要整块 `abstract` / `figures/*` 不可编辑（`findBlockLines` 返回 null）。两案 golden：`store/__tests__/blocks.test.ts` 对每块断言 `spliceBlock(blockSource) ≡ content`。
+- 行区间法则（后端 `patent_studio/kernel/patch.py` 同一法则）：块全文行 = `ast.books[book].offset + block.lines.{start,end}`（书相对 1-based 闭区间）；`blockSource(ast, content, id)` 取该块源码行（不含块间空行），`spliceBlock(ast, content, id, markdown)` 回填。可编辑块 = 摘要**各段** `abstract/pN`、权项 `claims/N`、说明书块；`title` / 摘要整块 `abstract` / `figures/*` 不可编辑（`findBlockLines` 返回 null）。两案 golden：`store/__tests__/blocks.test.ts` 对每块断言 `spliceBlock(blockSource) ≡ content`。
 - `patchBlock(id, markdown)`：快照 `{content, saved, ast, astContent}` → 本地 `spliceBlock` + `setContent`（结构预览/构建照常跟随）→ `api.patchBlock(pid, id, {markdown, content, settings})` → 成功以后端 `content/ast` 为准且 `saved = content`（后端已 `save_content`）、`activeBlock = {id, 'structure'}`、`enqueue('save')`；失败恢复快照、`blockError` + `toast(error)`（422 文案含行号）、501 → `blocksUnavailable = true`（进入编辑仍允许，提交必失败并回滚）。返回 `boolean`。
 - `insertBlock` / `deleteBlock`：不做本地预演（新块 id 由后端 AST 定），成功同上，`insertBlock` 返回新块 id 并设为 activeBlock；`deleteBlock` 成功后若 activeBlock 是被删块则清空。
 - 一次只编辑一块：`editingBlockId`；`blockPending` 期间 `BlockEditor` 禁用再次提交。`blockTemplates` 由 `loadBlockTemplates()`（GET /api/block-templates）一次性缓存，B3 插入菜单用。

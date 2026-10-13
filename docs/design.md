@@ -38,7 +38,7 @@
 └────────────────────────────────────────────┬───────────────────────────────────────┘
                                              │ import
 ┌────────────────────────────────────────────▼───────────────────────────────────────┐
-│ backend/patent_docx（排版内核，原代码 + 参数化）                                        │
+│ backend/src/patent_studio/kernel（排版内核，原代码 + 参数化）                                        │
 │  style.py   DEFAULT_STYLE（全部原硬编码值）+ merge_style(overrides)                    │
 │  builder.py PatentBuilder(style=...)；build_patent(CONFIG) 向下兼容（无 style 键=默认） │
 │  content.py / omml.py 不改                                                           │
@@ -49,7 +49,7 @@
 目录：
 
 ```
-backend/patent_docx/   排版内核（可被 examples/*/build_docx.py 通过 examples/patent_docx 符号链接原样导入）
+backend/src/patent_studio/kernel/   排版内核（可被 examples/*/build_docx.py 通过 examples/patent_docx 符号链接原样导入）
 backend/app/           FastAPI
 backend/tests/         pytest：零漂移 md5 回归 + API 测试
 examples/method|system 示例案子（content.md + figs/ + build_docx.py + make_figs.py + studio.json）
@@ -99,7 +99,7 @@ docker/fonts-cjk-alias.conf  缺字体时 宋体/黑体 → UMing/WQY 别名（�
 
 ## 4. 设置项 ⇄ builder 参数映射
 
-`DEFAULT_STYLE`（backend/patent_docx/style.py）——每一项的默认值就是原 builder.py 的硬编码值；
+`DEFAULT_STYLE`（backend/src/patent_studio/kernel/style.py）——每一项的默认值就是原 builder.py 的硬编码值；
 默认下 `build_patent(CONFIG)` 输出与原代码逐字节相同。
 
 | 设置项（UI） | style 键 | 原 builder.py 位置 / 硬编码值 |

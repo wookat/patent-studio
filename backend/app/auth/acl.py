@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from app.auth import ROLE_RANK
 from app.auth.db import SessionLocal, init_db
 from app.auth.models import ProjectAcl, ShareAccept, ShareLink, User
-from patent_docx import critic
+from patent_studio.kernel import critic
 
 SHARE_ROLES = ("viewer", "reviewer", "editor", "agent")
 

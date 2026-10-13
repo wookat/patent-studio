@@ -5,9 +5,9 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
-from patent_docx import docset
-from patent_docx.content import load_md, parse_md
-from patent_docx.numbering import ItemNumbers, number_spec, para_label
+from patent_studio.kernel import docset
+from patent_studio.kernel.content import load_md, parse_md
+from patent_studio.kernel.numbering import ItemNumbers, number_spec, para_label
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = [os.path.join(ROOT, "examples", d) for d in ("method", "system")]

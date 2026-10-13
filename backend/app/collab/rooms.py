@@ -27,7 +27,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from app.collab.text import apply_full_text
 from app.domain import history, review_meta
-from patent_docx import docset
+from patent_studio.kernel import docset
 
 BOOKS = ("abstract", "claims", "description", "content")
 DEBOUNCE_S = 0.8

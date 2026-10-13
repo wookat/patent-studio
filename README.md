@@ -143,7 +143,7 @@ React + TypeScript 工作台
         ↓
 FastAPI ── AI 建议 / 确定性检查 / 案件协作 / MCP
         ↓
-Markdown 真源 → patent_docx → DOCX → LibreOffice → PDF
+Markdown 真源 → patent_studio.kernel → DOCX → LibreOffice → PDF
         ↑
 可选的本地语料与附图库（独立审核来源与使用许可）
 ```

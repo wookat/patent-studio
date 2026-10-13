@@ -1,7 +1,7 @@
 import type { CriticKind } from '@/lib/types'
 
 /**
- * CriticMarkup 单行解析（前端等价于 backend/patent_docx/critic.py：TOKEN 非贪婪、不跨行、不嵌套）。
+ * CriticMarkup 单行解析（前端等价于 backend/src/patent_studio/kernel/critic.py：TOKEN 非贪婪、不跨行、不嵌套）。
  * 只服务版面装饰与四档投影；落盘真源仍是 Markdown 文本里的标记本身，接受 / 拒绝的写回走 store.review（POST /critic 的 marks）。
  * 法则与后端一致：无标记时 accept/reject 恒等；不改变行数；幂等。
  */

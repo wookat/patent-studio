@@ -8,7 +8,7 @@ import pytest
 from app import config
 from app.agent import prior_art
 from app.agent.plans import s8
-from patent_docx import text_forms
+from patent_studio.kernel import text_forms
 
 
 @pytest.fixture(autouse=True)

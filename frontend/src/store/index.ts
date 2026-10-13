@@ -281,7 +281,7 @@ export interface AbstractLive {
 let abstractMemo: { content: string; limit: number; value: AbstractLive } | null = null
 
 /**
- * 摘要实时字数（含标点、不含空白；对应 patent_docx 300 字上限）。
+ * 摘要实时字数（含标点、不含空白；对应 patent_studio.kernel 300 字上限）。
  * 按 (content, limit) 缓存结果对象，直接 useStudio(selectAbstractLive) 不会因返回新对象而无限重渲染。
  */
 export const selectAbstractLive = (s: Studio): AbstractLive => {

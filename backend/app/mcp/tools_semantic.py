@@ -26,7 +26,7 @@ from app.domain import comments, terms
 from app.mcp import schemas
 from app.mcp.tools import _err, _settings, open_project_for, run_audited
 from app.routes import ast as routes_ast
-from patent_docx import critic, preflight
+from patent_studio.kernel import critic, preflight
 
 MAX_CHARS_CAP = 40000
 _CLAIM_ID_RE = re.compile(r"^(?:claims/)?(\d+)$")

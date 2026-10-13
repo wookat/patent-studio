@@ -58,9 +58,9 @@ from app.convert import extract, pipeline, questionnaire
 from app.convert.pipeline import DESC_SECTIONS
 from app.domain import attachments, cases
 from app.routes.convert import new_pid
-from patent_docx import patch, text_forms
-from patent_docx.preflight import _ABSTRACT_ELEMENTS as _ABS_ELEMENTS
-from patent_docx.preflight import (
+from patent_studio.kernel import patch, text_forms
+from patent_studio.kernel.preflight import _ABSTRACT_ELEMENTS as _ABS_ELEMENTS
+from patent_studio.kernel.preflight import (
     _LEGEND_RE,
     _META_WORDS,
     _NUMERAL_RE,
@@ -1357,7 +1357,7 @@ async def run(ctx: RunContext) -> None:
             fig_entries += list((fig_src2 or {}).get("figsrc") or [])
         # figlint 确定性体检：warn 命中即点名重产一次——语义回执告诉模型渲染器
         # 到底把图理解成了什么（模型看不见渲染，这是它的自查通道）
-        from patent_docx import mmd_render
+        from patent_studio.kernel import mmd_render
 
         def _lint_of(entry):
             _m = str(entry.get("mmd") or "").strip()

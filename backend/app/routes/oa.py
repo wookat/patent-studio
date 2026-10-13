@@ -35,7 +35,7 @@ from app.oa import answer as oa_answer_mod
 from app.oa import export, parse, rounds
 from app.routes import read_bounded
 from app.schemas import OaRound, OaRoundIn, OaRoundPatch, OaRoundsResponse
-from patent_docx import docset
+from patent_studio.kernel import docset
 
 router = APIRouter(prefix="/api/projects/{pid}/oa", tags=["oa"])
 UNIT = "E3-convert-oa"

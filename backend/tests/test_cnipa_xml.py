@@ -10,7 +10,7 @@ from lxml import etree
 from pypdf import PdfWriter
 
 from app import config
-from patent_docx import cnipa_xml as cx
+from patent_studio.kernel import cnipa_xml as cx
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 METHOD = os.path.join(ROOT, "examples", "method")

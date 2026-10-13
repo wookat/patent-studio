@@ -11,8 +11,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.domain.projects import normalize_settings
-from patent_docx import critic
-from patent_docx.ast import AstError, parse_ast
+from patent_studio.kernel import critic
+from patent_studio.kernel.ast import AstError, parse_ast
 
 router = APIRouter(prefix="/api/projects/{pid}", tags=["ast"])
 log = logging.getLogger("patent_studio.ast")

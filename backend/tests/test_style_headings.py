@@ -11,8 +11,8 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from app.domain.projects import normalize_settings
-from patent_docx.builder import build_patent_ex
-from patent_docx.style import (
+from patent_studio.kernel.builder import build_patent_ex
+from patent_studio.kernel.style import (
     DEFAULT_STYLE,
     cn_number,
     heading_prefix,
@@ -21,7 +21,7 @@ from patent_docx.style import (
     style_diff,
     validate_headings,
 )
-from patent_docx.style_css import render_css, render_vars
+from patent_studio.kernel.style_css import render_css, render_vars
 
 MD = """# 标题
 

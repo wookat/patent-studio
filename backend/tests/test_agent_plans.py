@@ -193,7 +193,7 @@ def test_s6_abstract_within_300_and_noun_subset(store, pid):
     ctx = run(store, "s6", pid)
     assert ctx.proposals and ctx.proposals[0].kind in ("critic", "patch")
     p = ctx.proposals[0]
-    from patent_docx import critic
+    from patent_studio.kernel import critic
     text = critic.accept(p.critic_markdown) if p.kind == "critic" else p.patch.blocks[0].markdown
     assert len(text) <= 300
     assert checks.noun_subset(text, store.read_content(pid)).ok
@@ -207,7 +207,7 @@ def test_s3_insertion_critic(store):
     crits = [p for p in ctx.proposals if p.kind == "critic"]
     assert crits
     lines = store.read_content("system").split("\n")
-    from patent_docx import critic
+    from patent_studio.kernel import critic
     for p in crits:
         old = "\n".join(lines[p.anchor.line_start - 1: p.anchor.line_end])
         assert "{++" in p.critic_markdown and "{--" not in p.critic_markdown and "~>" not in p.critic_markdown
@@ -232,7 +232,7 @@ def test_s7_one_heavy_gen_per_item_and_no_renumber(store):
     assert all(c["model"] == MODELS["heavy"] for c in ai.provider.calls)
     assert len([p for p in ctx.proposals if p.kind == "comment"]) == 2
     lines = store.read_content("method").split("\n")
-    from patent_docx import critic
+    from patent_studio.kernel import critic
     for p in ctx.proposals:
         if p.kind == "critic":
             old = "\n".join(lines[p.anchor.line_start - 1: p.anchor.line_end])
@@ -275,7 +275,7 @@ def test_s1_build_blocks_replaces_template_stubs():
 
     from app.agent.plans import s1
     from app.domain.projects import TEMPLATE_MD
-    from patent_docx.ast import parse_ast
+    from patent_studio.kernel.ast import parse_ast
 
     ast = parse_ast(TEMPLATE_MD, {})
     d = SimpleNamespace(ast=ast)
@@ -337,7 +337,7 @@ def test_s1_caption_stubs_replaced_by_number():
 
     from app.agent.plans import s1
     from app.domain.projects import TEMPLATE_MD
-    from patent_docx.ast import parse_ast
+    from patent_studio.kernel.ast import parse_ast
 
     d = SimpleNamespace(ast=parse_ast(TEMPLATE_MD, {}))
     blocks = s1.build_blocks(
@@ -797,7 +797,7 @@ def test_clean_abstract_normalizes_opening():
 
 
 def test_promo_covers_benchmark_boasts():
-    from patent_docx.preflight import _PROMO_RE
+    from patent_studio.kernel.preflight import _PROMO_RE
     for w in ("刷新纪录", "创下纪录", "打破纪录", "世界纪录", "先进水平", "SOTA"):
         assert _PROMO_RE.search(w), w
     # 实验数据陈述不判宣传
@@ -834,8 +834,8 @@ def test_wrap_eq_lead_display_and_markup():
 
 
 def test_mark_name_abbr_parens_not_drift():
-    from patent_docx import preflight
-    from patent_docx.ast import parse_ast
+    from patent_studio.kernel import preflight
+    from patent_studio.kernel.ast import parse_ast
     # bert-15 实案：图例带（NSP）括注 vs 正文裸名——定义性注释非漂移
     text = ("# 一种方法\n\n## 摘要\n\n一种方法。\n\n## 权利要求书\n\n1.一种方法，包括下一句预测单元107。\n\n"
             "## 说明书\n\n### 具体实施方式\n\n"
@@ -846,8 +846,8 @@ def test_mark_name_abbr_parens_not_drift():
 
 
 def test_mark_name_true_drift_still_flags():
-    from patent_docx import preflight
-    from patent_docx.ast import parse_ast
+    from patent_studio.kernel import preflight
+    from patent_studio.kernel.ast import parse_ast
     # resnet-4 实案：同号异基名——真漂移仍报
     text = ("# 一种方法\n\n## 摘要\n\n一种方法。\n\n## 权利要求书\n\n1.一种方法，包括残差单元102。\n\n"
             "## 说明书\n\n### 具体实施方式\n\n"
@@ -863,7 +863,7 @@ def test_s1_build_blocks_redraft_replaces_in_place():
     from types import SimpleNamespace
 
     from app.agent.plans import s1
-    from patent_docx.ast import parse_ast
+    from patent_studio.kernel.ast import parse_ast
 
     drafted = (
         "# 一种方法\n\n## 摘要\n\n本发明公开一种旧摘要。\n\n"
@@ -1008,8 +1008,8 @@ def test_s1_figures_caption_para_explode():
     from types import SimpleNamespace
 
     from app.agent.plans import s1
-    from patent_docx import critic
-    from patent_docx.ast import parse_ast
+    from patent_studio.kernel import critic
+    from patent_studio.kernel.ast import parse_ast
 
     old = (
         "# 一种方法\n\n## 摘要\n\n本发明公开旧摘要。\n\n"

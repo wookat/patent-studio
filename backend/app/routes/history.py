@@ -5,7 +5,8 @@
 提交信息经 history.override 改为 `restore <sha7>`。
 
 GET /diff?a=&b=&format=blocks（W9 "已修改" Tab）：除 unified diff 外再返回
-  blocks: [{book, block_id, kind: added|removed|changed, lines: [from, to]}]（patent_docx.blockdiff.block_diff，
+  blocks: [{book, block_id, kind: added|removed|changed, lines: [from, to]}]
+  （patent_studio.kernel.blockdiff.block_diff，
   按 b 版 AST 的块行区间归并，AST 走 routes_ast._parse 同路径）；任一版结构不成立时 blocks=null 且
   blocks_error={kind,message,line,detail}（同 /ast 的 422 detail）。format 省略或为 "unified" 时响应与旧版一致。
 """
@@ -18,7 +19,7 @@ from app.convert import pipeline as convert_pipeline
 from app.domain import history
 from app.errors import error_detail
 from app.routes import ast as routes_ast
-from patent_docx.blockdiff import block_diff
+from patent_studio.kernel.blockdiff import block_diff
 
 router = APIRouter(prefix="/api/projects/{pid}/history", tags=["history"])
 UNIT = "C3-history"

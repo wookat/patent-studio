@@ -13,8 +13,8 @@ import zipfile
 import pytest
 
 from app.domain.projects import ProjectStore
-from patent_docx import build_patent
-from patent_docx.builder import build_patent_ex
+from patent_studio.kernel import build_patent
+from patent_studio.kernel.builder import build_patent_ex
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = os.path.join(ROOT, "examples")

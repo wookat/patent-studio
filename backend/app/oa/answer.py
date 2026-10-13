@@ -16,8 +16,8 @@ from app import atomic
 from app.ai import prompts
 from app.convert import runner
 from app.oa.rounds import RoundError
-from patent_docx import critic, patch, text_forms
-from patent_docx.ast import AstError, parse_ast
+from patent_studio.kernel import critic, patch, text_forms
+from patent_studio.kernel.ast import AstError, parse_ast
 
 OA_DIR = os.path.join(".studio", "oa")
 ITEMS_FILE = "items.json"

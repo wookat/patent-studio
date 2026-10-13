@@ -1,7 +1,7 @@
 import { BOOK_NAMES, type BookName } from '@/types/ast'
 
 /**
- * 三书切分的前端镜像（docs/plan/08-r4-dockview-design.md §4）：与 backend/patent_docx/docset.py 同一法则——
+ * 三书切分的前端镜像（docs/plan/08-r4-dockview-design.md §4）：与 backend/src/patent_studio/kernel/docset.py 同一法则——
  * 只以 "\n" 分行，`## ` 后去首尾空白等于书名的行是书标题行（每书只认第一次出现），其余逐字节归入当前书。
  * 这不是 Markdown 解析（唯一解析器仍是后端 content.py / ast.py），只是把 content.md 拆成卡片要显示的书正文，
  * 以及书相对行 ⇄ 全文行的换算。`offset` 与 `/ast` 的 `books[b].offset` 同值（lib/__tests__/docset.test.ts 对两案断言）。

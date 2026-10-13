@@ -5,7 +5,7 @@ import { schema } from './schema'
 
 /**
  * AST 块 ⇄ ProseMirror doc ⇄ 内核 Markdown 行。
- * fromDoc 与 backend/patent_docx/patch.py serialize_block 逐字节一致（golden：两案每个块 fromDoc(toDoc(b)) === blockSource）。
+ * fromDoc 与 backend/src/patent_studio/kernel/patch.py serialize_block 逐字节一致（golden：两案每个块 fromDoc(toDoc(b)) === blockSource）。
  * 不含块间空行；不含段号 / 权项号 / 图号等内核生成物（生成物由 BlockEditor 用只读装饰呈现）。
  */
 
@@ -54,7 +54,7 @@ function tableDoc(t: AstTable): PmNode {
 }
 
 /** 与 patch.py `_table_option_tokens` 一致 */
-/** 表格选项注释标记（与 backend/patent_docx/content.py TABLE_SPEC_OPEN 同义；写点统一引用，防全角冒号类漂移） */
+/** 表格选项注释标记（与 backend/src/patent_studio/kernel/content.py TABLE_SPEC_OPEN 同义；写点统一引用，防全角冒号类漂移） */
 export const TABLE_SPEC_OPEN = '<!-- 表格: '
 
 export function tableOptionTokens(options: TableOptions, captionAfter: string | null): string[] {

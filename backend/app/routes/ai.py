@@ -32,8 +32,8 @@ from app.errors import error_detail
 from app.mcp import tools_semantic
 from app.oa.parse import NoTextLayer, pdf_text
 from app.routes import read_bounded
-from patent_docx import critic, docx_import
-from patent_docx.ast import AstError, parse_ast
+from patent_studio.kernel import critic, docx_import
+from patent_studio.kernel.ast import AstError, parse_ast
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["ai"])

@@ -26,8 +26,8 @@ from pydantic import BaseModel
 from app import auth
 from app.domain import review_meta
 from app.routes import ast as routes_ast
-from patent_docx import docset
-from patent_docx.docset import BOOKS
+from patent_studio.kernel import docset
+from patent_studio.kernel.docset import BOOKS
 
 router = APIRouter(prefix="/api/projects/{pid}", tags=["docset"])
 

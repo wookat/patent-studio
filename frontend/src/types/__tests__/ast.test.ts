@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import astSchema from '../../../../backend/patent_docx/ast_schema.json'
+import astSchema from '../../../../backend/src/patent_studio/kernel/ast_schema.json'
 import sampleMethod from '../../../../backend/tests/fixtures/ast_sample_method.json'
 import sampleSystem from '../../../../backend/tests/fixtures/ast_sample_system.json'
 import {

@@ -1,5 +1,5 @@
 /**
- * 表格对话框的编辑模型 ↔ 内核表格行语法（与 backend/patent_docx/patch.py serialize_block 的 table 分支逐字节一致）：
+ * 表格对话框的编辑模型 ↔ 内核表格行语法（与 backend/src/patent_studio/kernel/patch.py serialize_block 的 table 分支逐字节一致）：
  *
  *   <!-- 表格: 三线 重复表头 段号居左 列宽=30,70 表题后置=表1 xx -->   （无任一选项时省略整行）
  *   | 表头1 | 表头2 |

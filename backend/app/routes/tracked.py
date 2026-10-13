@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 
 from app.auth import CurrentUser
 from app.errors import describe_error
-from patent_docx import critic, tracked
+from patent_studio.kernel import critic, tracked
 
 router = APIRouter(prefix="/api/projects/{pid}/export", tags=["tracked"])
 

@@ -36,8 +36,8 @@ from app.domain.projects import normalize_settings
 from app.errors import kind_error
 from app.mcp import audit
 from app.mcp.tools import suggest
-from patent_docx import critic, patch
-from patent_docx.ast import parse_ast
+from patent_studio.kernel import critic, patch
+from patent_studio.kernel.ast import parse_ast
 
 DIR = os.path.join(".studio", "ai-proposals")
 FILE_RE = re.compile(r"^(docs/[A-Za-z0-9_.-]+\.md|figs-src/[A-Za-z0-9_-]{1,64}\.mmd)$")

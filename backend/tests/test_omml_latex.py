@@ -7,7 +7,7 @@ import pytest
 from docx import Document
 from lxml import etree
 
-from patent_docx.omml import append_omml, latex_to_text, to_mathml
+from patent_studio.kernel.omml import append_omml, latex_to_text, to_mathml
 
 M = {"m": "http://www.w3.org/1998/Math/MathML"}
 
@@ -68,7 +68,7 @@ def test_norm_bars_not_literal():
 
 def test_docx_inline_math_builds_omml():
     """builder 行内 $...$ 出 m:oMath 而非字面源码（ddpm-10 实案形态）。"""
-    from patent_docx.builder import PatentBuilder
+    from patent_studio.kernel.builder import PatentBuilder
 
     b = PatentBuilder()
     p = b.doc.add_paragraph()
@@ -83,7 +83,7 @@ def test_cnipa_xml_math_flatten():
     """CNIPA XML 不允许 OMML：$...$ 降级为可读线性文本（latex_to_text）。"""
     from lxml import etree as _e
 
-    from patent_docx.cnipa_xml import inline_text
+    from patent_studio.kernel.cnipa_xml import inline_text
 
     parent = _e.fromstring("<p/>")
     inline_text(parent, r"转移核为 $p_\theta(x_{t-1}|x_t)=\mathcal{N}(\mu_\theta)$ 的核")
@@ -94,7 +94,7 @@ def test_cnipa_xml_math_flatten():
 
 def test_docx_roundtrip_keeps_subsup(tmp_path):
     """sSubSup 回读无损：b_i^2 → b_i^2（docx_import 线性化可再解析）。"""
-    from patent_docx.docx_import import import_docx
+    from patent_studio.kernel.docx_import import import_docx
 
     d = Document()
     d.add_paragraph("一种示例装置", style="Title")

@@ -18,11 +18,11 @@ import zipfile
 
 from app import atomic
 from app.domain.projects import DOCX_FIG_EXTS, ProjectError, _fig_sort_key
-from patent_docx import critic, figures_md
-from patent_docx.ast import AstError, parse_ast
-from patent_docx.builder import probe_image
-from patent_docx.content import INLINE_FIG_RE
-from patent_docx.preflight import scan_refs
+from patent_studio.kernel import critic, figures_md
+from patent_studio.kernel.ast import AstError, parse_ast
+from patent_studio.kernel.builder import probe_image
+from patent_studio.kernel.content import INLINE_FIG_RE
+from patent_studio.kernel.preflight import scan_refs
 
 log = logging.getLogger(__name__)
 
@@ -479,13 +479,13 @@ def put_figure_source(store, pid, name, source):
     out = {"name": name, "size": os.path.getsize(path)}
     low = name.lower()
     if low.endswith(FIGSRC_EXT):
-        from patent_docx import mmd_render
+        from patent_studio.kernel import mmd_render
 
         g = mmd_render.parse_mmd(source)
         out["lint"] = mmd_render.validate_graph(g)
         out["readback"] = mmd_render.describe_graph(g)
     elif low.endswith(FIGSRC_SPEC_EXT):
-        from patent_docx import figspec
+        from patent_studio.kernel import figspec
 
         err = figspec.validate_figspec(source)
         out["lint"] = ([{"level": "warn", "code": "spec_invalid", "detail": err}]
@@ -503,10 +503,10 @@ def preview_figure_source(store, pid, source):
         raise ProjectError("图源内容为空", 400)
     try:
         if src.startswith("{"):
-            from patent_docx import figspec
+            from patent_studio.kernel import figspec
             img = figspec.render_figspec(src)
         else:
-            from patent_docx import mmd_render
+            from patent_studio.kernel import mmd_render
             img = mmd_render.render_mmd(src)
     except Exception as e:
         raise ProjectError(f"图源渲染失败：{e}", 422)
@@ -523,7 +523,7 @@ def mmd_to_spec_source(store, pid, source):
     if not src:
         raise ProjectError("图源内容为空", 400)
     try:
-        from patent_docx import figspec
+        from patent_studio.kernel import figspec
         spec = figspec.mmd_to_spec(src)
     except Exception as e:
         raise ProjectError(f"mmd 转 spec 失败：{e}", 422)
@@ -550,10 +550,10 @@ def _derived_png_fresh(tgt, src, src_name=""):
         from PIL import Image
 
         if src_name.lower().endswith(FIGSRC_SPEC_EXT):
-            from patent_docx import figspec
+            from patent_studio.kernel import figspec
             tag, want = "figspec_version", figspec.RENDER_VERSION
         else:
-            from patent_docx import mmd_render
+            from patent_studio.kernel import mmd_render
             tag, want = "mmd_render_version", mmd_render.RENDER_VERSION
         with Image.open(tgt) as im:
             return im.info.get(tag) == want
@@ -570,7 +570,7 @@ def _convert_figsrc_image(src, tgt):
     from PIL import Image
     from PIL.PngImagePlugin import PngInfo
 
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
     with Image.open(src) as im:
         gray = im.convert("L")
     meta = PngInfo()
@@ -638,7 +638,7 @@ def promote_figure_sources(store, pid):
     语义：源码是唯一真相，PNG 是派生物——图源缺失或比 PNG 新时重渲；渲染成功的图收进
     说明书附图节（占位图1 自动让位），摘要图为空/失效时补第一张。返回本次晋级文件名。
     渲染失败只跳过该图（图源语法不合法等），不中断构建。"""
-    from patent_docx import mmd_render
+    from patent_studio.kernel import mmd_render
 
     p = store.get(pid)
     names, losers = _dedupe_figsrc(p, _figsrc_files(p))
@@ -661,7 +661,7 @@ def promote_figure_sources(store, pid):
                             log.warning("figsrc %s lint %s: %s", name, hit["code"], hit["detail"])
                     mmd_render.render_to(mmd_src, tgt)
                 elif low.endswith(FIGSRC_SPEC_EXT):
-                    from patent_docx import figspec
+                    from patent_studio.kernel import figspec
                     figspec.render_spec_to(src, tgt)
                 else:
                     _convert_figsrc_image(src, tgt)

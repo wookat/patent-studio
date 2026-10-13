@@ -28,9 +28,9 @@ from app.errors import kind_error, not_implemented
 from app.routes.ast import _parse as parse_project_ast
 from app.routes.comments import load_reanchored
 from app.schemas import PublicAnchor, PublicShareLink, PublicShareLinkIn, PublicShareMeta
-from patent_docx import critic
-from patent_docx.style import merge_style
-from patent_docx.style_css import render_css
+from patent_studio.kernel import critic
+from patent_studio.kernel.style import merge_style
+from patent_studio.kernel.style_css import render_css
 
 UNIT = "share-confirm-backend"
 ORG_NAME = "Patent Studio"

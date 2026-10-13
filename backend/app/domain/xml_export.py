@@ -21,8 +21,8 @@ from app.domain.projects import ProjectError, ProjectStore
 from app.errors import describe_error
 from app.lo import docx_to_pdf
 from app.schemas import DeliverError
-from patent_docx import critic
-from patent_docx.cnipa_xml import BOOKS, XSL_PATH, export_cnipa_xml
+from patent_studio.kernel import critic
+from patent_studio.kernel.cnipa_xml import BOOKS, XSL_PATH, export_cnipa_xml
 
 _lock = threading.Lock()
 _xslt = None

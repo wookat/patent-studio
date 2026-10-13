@@ -17,7 +17,7 @@ export interface PutDocResult {
   sha?: string
 }
 
-/** W9 prep-kernel：GET /history/diff?format=blocks 的块级变化（patent_docx/blockdiff.py） */
+/** W9 prep-kernel：GET /history/diff?format=blocks 的块级变化（patent_studio/kernel/blockdiff.py） */
 export type BlockChangeKind = 'added' | 'removed' | 'changed'
 export interface BlockChange {
   book: BookName

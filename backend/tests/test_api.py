@@ -169,7 +169,7 @@ def test_lint_endpoint_settings_override(client):
 
 def test_build_error_equation_has_line(client, monkeypatch):
     """omml 线性解析器对畸形输入是宽容的（实测不抛错），这里注入一个渲染异常验证 定位到行号 的链路。"""
-    import patent_docx.builder as bmod
+    import patent_studio.kernel.builder as bmod
 
     def boom(p, text, size=12):
         if "frac{a}{" in text:

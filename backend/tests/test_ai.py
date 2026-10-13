@@ -19,7 +19,7 @@ from app.ai.client import MODELS, AiClient, AiError, OpenAICompatProvider, Usage
 from app.ai.jobs import JobStore
 from app.ai.mock import MockProvider
 from app.domain import comments as comments_mod
-from patent_docx import critic
+from patent_studio.kernel import critic
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PRIMARY, HEAVY, FALLBACK = MODELS["interactive"], MODELS["heavy"], MODELS["fallback"]

@@ -15,7 +15,7 @@ const cases: [string, string, Ast][] = [
   ['system', SYSTEM, goldenSystem as unknown as Ast],
 ]
 
-describe('lib/docset ⇄ patent_docx.docset', () => {
+describe('lib/docset ⇄ patent_studio.kernel.docset', () => {
   for (const [name, md, ast] of cases) {
     it(`${name}: assemble(split(md)) === md 且 offset 与 AST 一致`, () => {
       const ds = splitBooks(md)

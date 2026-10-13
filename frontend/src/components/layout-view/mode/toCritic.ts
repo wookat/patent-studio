@@ -1,6 +1,6 @@
 /**
  * 审阅模式：块的旧 / 新 Markdown → 带 CriticMarkup 的 Markdown（docs/plan/16 §4.6）。
- * 标记子集与 backend/patent_docx/critic.py 一致：{++ins++} {--del--} {~~a~>b~~}，单行内非贪婪匹配 ⇒ 标记绝不跨行。
+ * 标记子集与 backend/src/patent_studio/kernel/critic.py 一致：{++ins++} {--del--} {~~a~>b~~}，单行内非贪婪匹配 ⇒ 标记绝不跨行。
  *
  * 行级：LCS 对齐旧 / 新行；成对的改动行做字符级 LCS 合成 {~~~>~~} / {++++} / {----}；只在新文里的整行 → {++行++}，
  * 只在旧文里的整行 → {--行--}（服务端 acl._original 把整行插入视为「原文没有」，故 reviewer 落盘后 original(new) == 原文）。

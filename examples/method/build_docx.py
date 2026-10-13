@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""生成 基于指纹信息的区块链电子钱包的私钥生成方法及系统（CN109840487A，已公开专利）申请 Word 文档；排版由 patent_docx 完成。"""
+"""生成 基于指纹信息的区块链电子钱包的私钥生成方法及系统（CN109840487A，已公开专利）申请 Word 文档；排版由 patent_studio.kernel 完成。"""
 import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-from patent_docx import build_patent
+from patent_studio.kernel import build_patent
 
 CONFIG = {
     "content_md": os.path.join(HERE, "content.md"),

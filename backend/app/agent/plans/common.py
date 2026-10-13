@@ -9,7 +9,7 @@ from app.agent.types import BlockAnchor, CheckResult
 from app.ai import prompts, prompts_agent
 from app.mcp import tools_semantic as ts
 from app.mcp.tools_semantic import Derived
-from patent_docx import patch
+from patent_studio.kernel import patch
 
 
 def derive(ctx: RunContext) -> Derived:

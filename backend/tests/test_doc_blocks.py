@@ -12,9 +12,9 @@ import shutil
 import pytest
 from fastapi.testclient import TestClient
 
-from patent_docx import docset
-from patent_docx.ast import parse_ast
-from patent_docx.blockdiff import block_diff
+from patent_studio.kernel import docset
+from patent_studio.kernel.ast import parse_ast
+from patent_studio.kernel.blockdiff import block_diff
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

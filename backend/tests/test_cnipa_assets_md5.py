@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """CNIPA 资产冻结门禁（docs/plan/21 §1.4 Q2 / §5.4）：
-patent_docx/cnipa_dtd 下的 DTD / XSL 逐字节与 tests/golden/cnipa_assets_md5.json 一致；
+patent_studio/kernel/cnipa_dtd 下的 DTD / XSL 逐字节与 tests/golden/cnipa_assets_md5.json 一致；
 tagged PDF 开关（lo.docx_to_pdf tagged=…）绝不能改变 CNIPA XML 走的 docx_to_pdf → pdftoppm 资产栅格路径。
 """
 import hashlib
@@ -9,7 +9,7 @@ import os
 
 BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GOLDEN = os.path.join(BACKEND, "tests", "golden", "cnipa_assets_md5.json")
-ASSETS = os.path.join(BACKEND, "patent_docx", "cnipa_dtd")
+ASSETS = os.path.join(BACKEND, "src", "patent_studio", "kernel", "cnipa_dtd")
 
 
 def _md5(path):

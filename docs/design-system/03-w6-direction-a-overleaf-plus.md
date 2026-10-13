@@ -105,7 +105,7 @@
 |---|---|---|---|---|
 | `--font-ui` | `-apple-system, "PingFang SC", "Noto Sans SC", … system-ui` | 同 | 同（Overleaf 用 Lato/Noto Sans，中文场景以系统栈为优） | [实测] OL 页 `"Noto Sans", system-ui`（`ext-overleaf-docs-redesigned-editor.json`） |
 | `--font-code` | `"JetBrains Mono", "Sarasa Mono SC", ui-monospace` | 同 | 同 | W5 |
-| `--font-paper` | `"Times New Roman", SimSun, "Songti SC", serif` | 版面由 patent_docx 决定 | 原型示意用，**不约束内核** | 硬约束 |
+| `--font-paper` | `"Times New Roman", SimSun, "Songti SC", serif` | 版面由 patent_studio.kernel 决定 | 原型示意用，**不约束内核** | 硬约束 |
 | 字阶 | 11/12/13/14/16/20/24/**28** | 11–24 七档 | +28 页级标题；**要求每个非工作台页有 24px H1**（W5 定义了 20/24 但无页面使用） | audit #5；Notion 标题 [实测] |
 | 行高 | 16/16/20/22/24/28/32/36 | 13→18、14→20 | 13→**20**、14→**22**（中文行高 ≥ 1.5） | 飞书正文 14/22 [官方] |
 | 编辑器 | 13px / 1.7 | 13 / 1.6 | 行高 +0.1（中文源码） | [推断] |

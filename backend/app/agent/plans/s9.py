@@ -11,7 +11,7 @@ import re
 from app.agent.plans import CheckStep, GenStep, Plan, RunContext, ToolStep, common
 from app.agent.types import CheckResult, FileAnchor, FilePatch
 from app.ai import prompts_agent
-from patent_docx.docset import BOOKS
+from patent_studio.kernel.docset import BOOKS
 
 PLAN = Plan(
     scenario="s9",

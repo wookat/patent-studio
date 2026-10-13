@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""R2.5 递交前体检（patent_docx.preflight）：规则正例/造错 fixture、两案基线、路由与 lint 并入。
+"""R2.5 递交前体检（patent_studio.kernel.preflight）：规则正例/造错 fixture、两案基线、路由与 lint 并入。
 
 fixture 预期见 tests/fixtures/preflight/README.md；行号一律全文行（书内行 + docset 书偏移）。
 """
@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 
 from app.domain.lint import lint
 from app.domain.projects import ProjectStore
-from patent_docx import preflight
-from patent_docx.ast import parse_ast
+from patent_studio.kernel import preflight
+from patent_studio.kernel.ast import parse_ast
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = os.path.join(ROOT, "examples")

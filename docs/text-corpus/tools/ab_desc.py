@@ -4,7 +4,7 @@ import json, os, re, sys, urllib.request
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, os.path.join(ROOT, "backend"))
 os.chdir(ROOT)
-from patent_docx import text_forms
+from patent_studio.kernel import text_forms
 
 doc = open(os.path.join(ROOT, "examples/method/content.md"), encoding="utf-8").read()
 title = doc.split("\n", 1)[0].lstrip("# ")

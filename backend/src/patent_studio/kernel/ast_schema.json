@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/wookat/patent-studio/backend/patent_docx/ast_schema.json",
+  "$id": "https://github.com/wookat/patent-studio/backend/src/patent_studio/kernel/ast_schema.json",
   "title": "Patent Studio AST v1",
-  "description": "后端 patent_docx.ast.parse_ast() 的输出契约（docs/plan/04-r1-design.md §3）。块内 lines 为书相对 1-based 闭区间，全文行号 = books[<book>].offset + line。",
+  "description": "后端 patent_studio.kernel.ast.parse_ast() 的输出契约（docs/plan/04-r1-design.md §3）。块内 lines 为书相对 1-based 闭区间，全文行号 = books[<book>].offset + line。",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "title", "books", "abstract", "claims", "description", "figures"],
@@ -62,7 +62,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["text", "marks"],
-      "description": "行内格式片段（patent_docx.inline.inline_spans）：text 为去记号后的片段文本，marks 按 b,i,u,sub,sup 顺序，相邻同标志片段可能不合并",
+      "description": "行内格式片段（patent_studio.kernel.inline.inline_spans）：text 为去记号后的片段文本，marks 按 b,i,u,sub,sup 顺序，相邻同标志片段可能不合并",
       "properties": {
         "text": { "type": "string", "minLength": 1 },
         "marks": { "type": "array", "items": { "$ref": "#/$defs/InlineMark" }, "uniqueItems": true }

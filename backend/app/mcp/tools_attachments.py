@@ -4,7 +4,8 @@
 - list_attachments(pid) → {items: [...]}：与 GET /api/projects/{pid}/attachments 同形（name / ext / size / mtime /
   kind / url）。viewer+。
 - read_attachment_text(pid, name, max_chars=20000) → AttachmentTextOut：
-    kind=docx  → patent_docx.docx_import 的段落文本（逐段 \\n 连接；表格逐行、单元格 \\t 连接；不落图、不产 content.md）
+    kind=docx  → patent_studio.kernel.docx_import 的段落文本（逐段 \\n 连接；表格逐行、单元格 \\t 连接；
+                不落图、不产 content.md）
     kind=pdf   → `pdftotext -layout` 子进程（poppler-utils，README 已要求安装）；不可用 ⇒ ToolError kind="unsupported"
     kind=text  → 原文（utf-8，错误字节替换）
     kind=image / zip → ToolError kind="unsupported"（图片不做 OCR，zip 不解包）
@@ -22,7 +23,7 @@ from docx.oxml.ns import qn
 from app.domain import attachments
 from app.mcp import schemas
 from app.mcp.tools import _err, open_project_for, run_audited
-from patent_docx import docx_import
+from patent_studio.kernel import docx_import
 
 MAX_CHARS_CAP = 200_000
 

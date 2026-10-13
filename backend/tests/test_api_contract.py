@@ -350,7 +350,7 @@ def test_w5_on_public_is_anonymous_and_tables_exist(on):
 # ---------------------------------------------------------------- fixtures / golden ----
 
 def test_cnipa_assets_md5_golden():
-    root = os.path.join(BACKEND, "patent_docx", "cnipa_dtd")
+    root = os.path.join(BACKEND, "src", "patent_studio", "kernel", "cnipa_dtd")
     with open(os.path.join(BACKEND, "tests", "golden", "cnipa_assets_md5.json"), encoding="utf-8") as f:
         golden = json.load(f)
     actual = {n: hashlib.md5(open(os.path.join(root, n), "rb").read()).hexdigest() for n in sorted(os.listdir(root))}

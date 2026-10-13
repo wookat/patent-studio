@@ -8,12 +8,12 @@ import pytest
 import test_auth
 
 from app.domain.projects import ProjectStore
-from patent_docx import ast as ast_mod
-from patent_docx import figures_md, numbering
-from patent_docx.ast import parse_ast
-from patent_docx.builder import build_patent_ex
-from patent_docx.style import DEFAULT_STYLE, merge_style
-from patent_docx.style_css import (
+from patent_studio.kernel import ast as ast_mod
+from patent_studio.kernel import figures_md, numbering
+from patent_studio.kernel.ast import parse_ast
+from patent_studio.kernel.builder import build_patent_ex
+from patent_studio.kernel.style import DEFAULT_STYLE, merge_style
+from patent_studio.kernel.style_css import (
     PART_CLASSES,
     STYLE_CSS_VARS,
     cm_to_px,

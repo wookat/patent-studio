@@ -12,7 +12,7 @@
 行的定义与内核 content.parse_md 一致：只以 "\\n" 分行（"\\r" 留在行内），因此 offsets 与
 内核诊断 / 编辑器行号同一坐标。书标题行的识别也与内核一致：`## ` 后去首尾空白等于书名。
 
-`python -m patent_docx.docset --check <项目目录>...` 是 `make roundtrip` 的入口。
+`python -m patent_studio.kernel.docset --check <项目目录>...` 是 `make roundtrip` 的入口。
 """
 import argparse
 import dataclasses
@@ -180,7 +180,7 @@ def check(project_dirs):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="patent_docx.docset")
+    ap = argparse.ArgumentParser(prog="patent_studio.kernel.docset")
     ap.add_argument("--check", nargs="+", metavar="PROJECT_DIR", help="往返断言 assemble(split(md)) == md")
     args = ap.parse_args(argv)
     if not args.check:

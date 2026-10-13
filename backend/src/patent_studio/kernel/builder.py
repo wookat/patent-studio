@@ -137,7 +137,7 @@ class PatentBuilder:
     def add_math_text(self, p, text, font=None, size=None, bold=False):
         """按下标记号切分文本：_x / _{...} / _[...] 渲染为 Word 真下标。
 
-        run_hook（patent_docx.tracked.RunHook）不为 None 时，先由 hook.split 把文本切成
+        run_hook（patent_studio.kernel.tracked.RunHook）不为 None 时，先由 hook.split 把文本切成
         (kind, 片段) 序列，每片段照常生成 run 后交给 hook.wrap 包裹（w:ins / w:del 等）。
         """
         if self.run_hook is None:
@@ -675,7 +675,7 @@ def build_patent(config):
     """按 config 生成一份完整的发明专利申请 docx。
 
     config 字段：
-      content_md      content.md 路径（内容源，格式约定见 patent_docx.content）
+      content_md      content.md 路径（内容源，格式约定见 patent_studio.kernel.content）
       out             输出 docx 路径
       figs_dir        附图目录
       abstract_figure (文件名, 宽度cm)                摘要附图
