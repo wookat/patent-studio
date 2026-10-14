@@ -1,9 +1,11 @@
 """Thin, authenticated /api/v1 commands and queries over PostgreSQL domain services."""
+import hashlib
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Header
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 
 from patent_studio.api import schemas as s
@@ -18,6 +20,8 @@ from patent_studio.domain import runs as run_domain
 from patent_studio.domain import work_items as w
 from patent_studio.domain.identity import Notification
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
+from patent_studio.infra.storage import object_ref, open_store
+from patent_studio.settings import get_settings
 
 router = APIRouter(prefix="/api/v1", tags=["Platform"], route_class=DomainRoute, responses={
     code: {"model": s.ErrorResponse} for code in (401, 403, 404, 409, 422, 503)
@@ -108,6 +112,30 @@ def create_case(organization_id: uuid.UUID, body: s.CaseIn, ctx: Ctx, key: Key):
         ctx.session.flush()
         return case, organization_id, case.id
     return command(ctx, key, "case.create", str(organization_id), body, s.CaseOut, action)
+
+
+@router.get("/cases", response_model=list[s.CaseOut])
+def list_cases(ctx: Ctx):
+    """当前 Principal 可见的案件，供平台工作队列选择器使用。"""
+    member_orgs = select(OrganizationMembership.organization_id).where(
+        OrganizationMembership.principal_id == ctx.principal.id,
+        OrganizationMembership.status == "active",
+    )
+    participant_cases = select(CaseParticipant.case_id).where(
+        CaseParticipant.principal_id == ctx.principal.id,
+        CaseParticipant.status == "active",
+    )
+    return list(
+        ctx.session.scalars(
+            select(Case)
+            .where(
+                (Case.organization_id.in_(member_orgs))
+                | (Case.id.in_(participant_cases))
+                | (Case.created_by_principal_id == ctx.principal.id)
+            )
+            .order_by(Case.updated_at.desc(), Case.case_key)
+        ).all()
+    )
 
 
 @router.get("/cases/{case_id}", response_model=s.CaseOut)
@@ -209,6 +237,25 @@ def get_copy(working_copy_id: uuid.UUID, ctx: Ctx):
     return _copy(ctx, working_copy_id)[0]
 
 
+@router.get("/working-copies/{working_copy_id}/content", response_class=PlainTextResponse)
+async def get_copy_content(working_copy_id: uuid.UUID, ctx: Ctx):
+    copy, _case = _copy(ctx, working_copy_id)
+    settings = get_settings()
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    try:
+        data = await open_store(
+            settings.storage_url,
+            s3_endpoint_url=settings.s3_endpoint_url,
+            s3_region=settings.s3_region,
+        ).get(copy.content_key)
+    except Exception as exc:
+        raise error(404, "not_found", "Working copy content is unavailable") from exc
+    if len(data) != copy.content_size or hashlib.sha256(data).hexdigest() != copy.content_sha256:
+        raise error(409, "conflict", "Working copy content digest does not match metadata")
+    return PlainTextResponse(data, media_type=copy.content_type)
+
+
 @router.put("/working-copies/{working_copy_id}", response_model=s.WorkingCopyOut)
 def save_copy(working_copy_id: uuid.UUID, body: s.SaveIn, ctx: Ctx, key: Key):
     _copy_row, case = _copy(ctx, working_copy_id)
@@ -226,6 +273,37 @@ def save_copy(working_copy_id: uuid.UUID, body: s.SaveIn, ctx: Ctx, key: Key):
             principal_id=ctx.principal.id,
             expected_version=body.expected_version,
             content_ref=body.content_ref.object_ref(),
+        ),
+    )
+
+
+@router.put("/working-copies/{working_copy_id}/content", response_model=s.WorkingCopyOut)
+async def save_copy_content(working_copy_id: uuid.UUID, body: s.WorkingCopyContentIn, ctx: Ctx, key: Key):
+    copy, case = _copy(ctx, working_copy_id)
+    settings = get_settings()
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    data = body.content.encode("utf-8")
+    ref = object_ref(data, "text/markdown; charset=utf-8")
+    await open_store(
+        settings.storage_url,
+        s3_endpoint_url=settings.s3_endpoint_url,
+        s3_region=settings.s3_region,
+    ).put(data, ref.content_type)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "working_copy.save_content",
+        working_copy_id,
+        body,
+        s.WorkingCopyOut,
+        lambda: d.save_working_copy(
+            ctx.session,
+            working_copy_id,
+            principal_id=ctx.principal.id,
+            expected_version=body.expected_version,
+            content_ref=ref,
         ),
     )
 
@@ -328,6 +406,20 @@ def work_items(case_id: uuid.UUID, ctx: Ctx):
     return list(ctx.session.scalars(select(w.WorkItem).where(w.WorkItem.case_id == case_id)))
 
 
+@router.get("/work-items", response_model=list[s.WorkItemOut])
+def list_all_work_items(ctx: Ctx):
+    """跨案件工作队列查询；每个结果仍经过案件访问关系过滤。"""
+    rows = list(ctx.session.scalars(select(w.WorkItem).order_by(w.WorkItem.deadline, w.WorkItem.created_at)))
+    visible = []
+    for item in rows:
+        try:
+            case_access(ctx, item.case_id)
+        except Exception:
+            continue
+        visible.append(item)
+    return visible
+
+
 @router.post("/cases/{case_id}/work-items", response_model=s.WorkItemOut, status_code=201)
 def create_work_item(case_id: uuid.UUID, body: s.WorkItemIn, ctx: Ctx, key: Key):
     case = case_access(ctx, case_id, manage=True)
@@ -384,6 +476,29 @@ def notifications(ctx: Ctx):
     )
     # A notification's existence does not keep revoked case access alive.
     return [notice for notice in notices if w._assignable(ctx.session, notice.case_id, ctx.principal.id)]
+
+
+@router.get("/approvals", response_model=list[s.ApprovalOut])
+def approvals(ctx: Ctx):
+    """当前 Principal 的审批收件箱；拒绝已撤权案件的历史记录。"""
+    rows = list(
+        ctx.session.scalars(
+            select(run_domain.Approval)
+            .where(
+                run_domain.Approval.approver_principal_id == ctx.principal.id,
+                run_domain.Approval.status == "pending",
+            )
+            .order_by(run_domain.Approval.created_at)
+        )
+    )
+    visible = []
+    for approval in rows:
+        try:
+            case_access(ctx, approval.case_id)
+        except Exception:
+            continue
+        visible.append(approval)
+    return visible
 
 
 @router.post("/notifications/{notification_id}/read", response_model=s.NotificationOut)

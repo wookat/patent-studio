@@ -134,6 +134,11 @@ class SaveIn(DTO):
     content_ref: Ref
 
 
+class WorkingCopyContentIn(DTO):
+    expected_version: int = Field(ge=1)
+    content: str = Field(max_length=2_000_000)
+
+
 class CommitIn(DTO):
     expected_version: int = Field(ge=1)
 

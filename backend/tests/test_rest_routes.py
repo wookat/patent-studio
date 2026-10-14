@@ -196,6 +196,95 @@ def test_authenticated_rest_proposal_release_work_item_flow(on):
     assert any(n["work_item_id"] == work_item["id"] for n in notifications.json())
 
 
+def _rest_user(on, tag):
+    client = TestClient(on.app)
+    email = f"{tag}-{uuid.uuid4().hex[:10]}@example.com"
+    _register(client, email)
+    return _login(on, email)
+
+
+def _rest_case(client, tag):
+    organization = client.post(
+        "/api/v1/organizations",
+        headers={"Idempotency-Key": f"{tag}-org"},
+        json={"slug": f"{tag}-{uuid.uuid4().hex[:8]}", "name": "Org"},
+    ).json()
+    case = client.post(
+        f"/api/v1/organizations/{organization['id']}/cases",
+        headers={"Idempotency-Key": f"{tag}-case"},
+        json={"case_key": f"{tag.upper()}-1", "title": "Case", "kind": "invention"},
+    ).json()
+    return organization, case
+
+
+def test_rest_case_and_work_item_lists_are_scoped(on):
+    owner = _rest_user(on, "rest-list-owner")
+    outsider = _rest_user(on, "rest-list-outsider")
+    _organization, case = _rest_case(owner, "list")
+    work_item = owner.post(
+        f"/api/v1/cases/{case['id']}/work-items",
+        headers={"Idempotency-Key": "list-item"},
+        json={"type": "review", "title": "队列项", "priority": 2},
+    ).json()
+
+    cases = owner.get("/api/v1/cases")
+    assert cases.status_code == 200
+    assert [row["id"] for row in cases.json()] == [case["id"]]
+    items = owner.get("/api/v1/work-items")
+    assert items.status_code == 200
+    assert [row["id"] for row in items.json()] == [work_item["id"]]
+
+    assert outsider.get("/api/v1/cases").json() == []
+    assert outsider.get("/api/v1/work-items").json() == []
+    assert outsider.get("/api/v1/approvals").json() == []
+
+
+def test_rest_working_copy_content_roundtrip(on, tmp_path, monkeypatch):
+    from patent_studio.settings import get_settings
+
+    monkeypatch.setenv("PATENT_STUDIO_STORAGE_URL", f"file://{tmp_path / 'objects'}")
+    get_settings.cache_clear()
+    try:
+        client = _rest_user(on, "rest-content")
+        _organization, case = _rest_case(client, "content")
+        document = client.post(
+            f"/api/v1/cases/{case['id']}/documents",
+            headers={"Idempotency-Key": "content-doc"},
+            json={"book": "claims"},
+        ).json()
+        revision = client.post(
+            f"/api/v1/documents/{document['id']}/revisions",
+            headers={"Idempotency-Key": "content-rev"},
+            json={"content_ref": _ref("权利要求 v1")},
+        ).json()
+        copy = client.post(
+            f"/api/v1/documents/{document['id']}/working-copies",
+            headers={"Idempotency-Key": "content-wc"},
+            json={"base_revision_id": revision["id"]},
+        ).json()
+
+        saved = client.put(
+            f"/api/v1/working-copies/{copy['id']}/content",
+            headers={"Idempotency-Key": "content-save"},
+            json={"expected_version": copy["version"], "content": "权利要求 v2 正文"},
+        )
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["version"] == copy["version"] + 1
+        fetched = client.get(f"/api/v1/working-copies/{copy['id']}/content")
+        assert fetched.status_code == 200
+        assert fetched.text == "权利要求 v2 正文"
+
+        stale = client.put(
+            f"/api/v1/working-copies/{copy['id']}/content",
+            headers={"Idempotency-Key": "content-stale"},
+            json={"expected_version": copy["version"], "content": "过期版本写入"},
+        )
+        assert stale.status_code == 409
+        assert stale.json()["detail"]["kind"] == "conflict"
+    finally:
+        get_settings.cache_clear()
+
+
 def test_authenticated_run_rest_query_and_events(on):
     client = TestClient(on.app)
     email = f"rest-run-{uuid.uuid4().hex[:10]}@example.com"
