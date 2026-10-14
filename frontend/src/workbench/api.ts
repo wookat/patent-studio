@@ -43,6 +43,8 @@ export const workbenchApi = {
     write<{ operation_id: string; status: string }>(`${V1}/working-copies/${workingCopyId}/commit`, {
       body: JSON.stringify({ expected_version: expectedVersion }),
     }),
+  flushCollab: (workingCopyId: string) =>
+    write<{ flushed: number }>(`${V1}/working-copies/${workingCopyId}/collab/flush`),
   figures: (caseId: string, signal?: AbortSignal) => req<Figure[]>(`${V1}/cases/${caseId}/figures`, { signal }),
   proposals: (caseId: string, signal?: AbortSignal) => req<Proposal[]>(`${V1}/cases/${caseId}/proposals`, { signal }),
   decideProposal: (proposalId: string, decision: 'submit' | 'accept' | 'reject') =>
