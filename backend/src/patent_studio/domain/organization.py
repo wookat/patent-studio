@@ -88,6 +88,7 @@ class OrganizationMembership(Base):
 class Case(Base):
     __tablename__ = "cases"
     __table_args__ = (
+        UniqueConstraint("organization_id", "id", name="uq_cases_organization_id"),
         UniqueConstraint("organization_id", "case_key", name="uq_cases_organization_key"),
         UniqueConstraint("organization_id", "case_no", name="uq_cases_organization_case_no"),
         ForeignKeyConstraint(
