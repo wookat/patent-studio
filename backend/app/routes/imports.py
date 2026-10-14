@@ -6,6 +6,7 @@ POST /api/projects/import/docx  multipart file[, id, title, apply_styles, style(
 POST /api/import/docx/styles    multipart file → StyleSuggestion
 非 DOCX 输入 → 400 {kind: "import"}；id 非法/重复 → ProjectError（400/409，main.py 统一处理）。
 """
+
 import asyncio
 import json
 from typing import Annotated
@@ -28,12 +29,15 @@ def _bad_docx(e: DocxImportError) -> HTTPException:
 
 
 @router.post("/projects/import/docx", status_code=201)
-async def import_docx(request: Request, user: auth.CurrentUser,
-                      file: Annotated[UploadFile, File()],
-                      id: Annotated[str | None, Form()] = None,
-                      title: Annotated[str | None, Form()] = None,
-                      apply_styles: Annotated[bool, Form()] = True,
-                      style: Annotated[str | None, Form()] = None):
+async def import_docx(
+    request: Request,
+    user: auth.CurrentUser,
+    file: Annotated[UploadFile, File()],
+    id: Annotated[str | None, Form()] = None,
+    title: Annotated[str | None, Form()] = None,
+    apply_styles: Annotated[bool, Form()] = True,
+    style: Annotated[str | None, Form()] = None,
+):
     store = request.app.state.store
     # 导入上限与附件一致（50MB）
     data = await read_bounded(file, "import", ATTACHMENT_MAX_BYTES)
@@ -47,15 +51,18 @@ async def import_docx(request: Request, user: auth.CurrentUser,
             raise HTTPException(400, error_detail("import", "style 应为对象"))
     try:
         # 批80：docx 解析+建案+落盘（秒级同步活）——offload 防阻塞事件循环
-        pid, report = await asyncio.to_thread(import_project, store, data, file.filename or "", id, title,
-                                              apply_styles, style_override)
+        pid, report = await asyncio.to_thread(
+            import_project, store, data, file.filename or "", id, title, apply_styles, style_override
+        )
     except DocxImportError as e:
         raise _bad_docx(e) from None
     p = store.get(pid)
     cases.claim_owner(p.dir, str(user.id) if user is not None else None)
     await auth.grant_owner(p.id, user)
-    return {"project": {"id": p.id, "title": p.title, "content": store.read_content(pid)},
-            "report": report.model_dump()}
+    return {
+        "project": {"id": p.id, "title": p.title, "content": store.read_content(pid)},
+        "report": report.model_dump(),
+    }
 
 
 @router.post("/import/docx/styles")

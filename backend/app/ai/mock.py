@@ -4,6 +4,7 @@
 按 prompts.kind_of(messages) 选 fixture（ai/fixtures/<kind>.txt|json），构造时可用 {kind: text} 覆盖；
 流式按 8 字一段切分；用量固定 prompt=len(prompt)//2、completion=len(text)//2；calls 计数供测试断言「零调用」。
 """
+
 import asyncio
 import os
 from collections.abc import AsyncIterator
@@ -49,7 +50,7 @@ class MockProvider:
         text = self._text(messages)
         self.calls.append({"model": model, "stream": True, "kind": prompts.kind_of(messages)})
         for i in range(0, len(text), CHUNK):
-            yield text[i:i + CHUNK]
+            yield text[i : i + CHUNK]
             await asyncio.sleep(0)
         yield self._usage(messages, text)
 

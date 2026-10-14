@@ -8,6 +8,7 @@ POST /api/projects/{pid}/review-assign {user_id, due?}
      写 case.json.deadlines[]{kind:review_due}（deadlines 单元合入后改调其 add）+ 时间线 review.assigned
      + emit comment.assign（events.py 的枚举名；规格写作 review.assigned）。
 """
+
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Query, Request
@@ -69,6 +70,10 @@ async def review_assign(pid: str, body: ReviewAssignIn, request: Request, user: 
         raise kind_error("validation", f"截止日需为 YYYY-MM-DD：{due!r}") from None
     timeline.add_review_deadline(d, due, f"审阅：{assignee['display_name']}")
     timeline.assign_review(d, assignee, due, events.actor_of(user))
-    events.emit("comment.assign", pid=pid, actor=events.actor_of(user),
-                data={"user_id": assignee["id"], "display_name": assignee["display_name"], "due": due})
+    events.emit(
+        "comment.assign",
+        pid=pid,
+        actor=events.actor_of(user),
+        data={"user_id": assignee["id"], "display_name": assignee["display_name"], "due": due},
+    )
     return {"deadline_id": None}

@@ -9,6 +9,7 @@ ValueError）。
     ...
     task.cancel()
 """
+
 import asyncio
 import logging
 import os
@@ -48,9 +49,21 @@ def scan_once(projects_dir: str, today: date | None = None) -> int:
             continue
         case = cases.load_case(project_dir)
         for d, days in due_soon(case, today):
-            events.emit(EVENT, pid=pid, data={"id": d.id, "deadline_id": d.id, "kind": d.kind, "title": d.title,
-                                               "due": d.due, "days": days, "days_left": days,
-                                               "owner_user_id": case.owner_user_id, "user_id": case.owner_user_id})
+            events.emit(
+                EVENT,
+                pid=pid,
+                data={
+                    "id": d.id,
+                    "deadline_id": d.id,
+                    "kind": d.kind,
+                    "title": d.title,
+                    "due": d.due,
+                    "days": days,
+                    "days_left": days,
+                    "owner_user_id": case.owner_user_id,
+                    "user_id": case.owner_user_id,
+                },
+            )
             n += 1
     return n
 

@@ -7,6 +7,7 @@
 - create_pending 供 router.set_member（PUT /members 邮箱未注册分支）调用。
 - 本模块在 AUTH=off 下也被 import（router 常驻），acl / db 只在函数内惰性 import；off ⇒ 501。
 """
+
 import uuid
 
 from fastapi import APIRouter, HTTPException
@@ -51,8 +52,11 @@ async def list_pending(pid: str) -> list[dict]:
 
     await init_db()
     async with SessionLocal() as s:
-        rows = await s.scalars(select(PendingInvite).where(PendingInvite.project_id == pid)
-                               .order_by(PendingInvite.created_at, PendingInvite.email))
+        rows = await s.scalars(
+            select(PendingInvite)
+            .where(PendingInvite.project_id == pid)
+            .order_by(PendingInvite.created_at, PendingInvite.email)
+        )
         return [invite_out(r) for r in rows]
 
 
@@ -105,8 +109,9 @@ async def delete_pending(pid: str, email: str) -> bool:
 
     await init_db()
     async with SessionLocal() as s:
-        r = await s.execute(delete(PendingInvite).where(PendingInvite.project_id == pid,
-                                                        PendingInvite.email == _norm(email)))
+        r = await s.execute(
+            delete(PendingInvite).where(PendingInvite.project_id == pid, PendingInvite.email == _norm(email))
+        )
         await s.commit()
         return r.rowcount > 0
 
@@ -157,8 +162,12 @@ async def create_invite(pid: str, body: InviteIn, user: CurrentUser):
             raise HTTPException(409, error_detail("conflict", "案子至少保留一个所有者"))
         role = await acl.set_role(pid, target.id, body.role)
     # 已注册邮箱邀请即真实成员变更：与 PUT /members 同事件（通知被变更者 + 审计）
-    events.emit("member.changed", pid=pid, actor=events.actor_of(user),
-                data={"user_id": str(target.id), "role": role, "email": target.email})
+    events.emit(
+        "member.changed",
+        pid=pid,
+        actor=events.actor_of(user),
+        data={"user_id": str(target.id), "role": role, "email": target.email},
+    )
     return JSONResponse({"member": acl.member_out(target, role)}, status_code=200)
 
 

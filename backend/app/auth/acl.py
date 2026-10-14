@@ -4,6 +4,7 @@
 W4-B（docs/plan/14）：`SHARE_ROLES` 加 reviewer；`share_out` 带 `accepted_by[]`；
 `reviewer_allowed` 是 reviewer 写源文档的服务端校验（§5）：只做字符串比较，不解析 Markdown。
 """
+
 import asyncio
 import secrets
 import uuid
@@ -39,8 +40,12 @@ def iso(dt: datetime | None) -> str | None:
 
 def user_brief(user: User) -> dict:
     """头像 / 姓名展示所需的最少字段；avatar_color 空串 = 未选（前端按名派生）。"""
-    return {"user_id": str(user.id), "email": user.email, "display_name": user.display_name,
-            "avatar_color": user.avatar_color or ""}
+    return {
+        "user_id": str(user.id),
+        "email": user.email,
+        "display_name": user.display_name,
+        "avatar_color": user.avatar_color or "",
+    }
 
 
 def member_out(user: User, role: str) -> dict:
@@ -61,9 +66,14 @@ async def get_user_brief(user_id: str) -> dict | None:
 
 
 def share_out(link: ShareLink, origin: str, accepted_by: list[dict] | None = None) -> dict:
-    return {"token": link.token, "role": link.role, "expires_at": iso(link.expires_at),
-            "url": f"{origin}/#/share/{link.token}", "created_at": iso(link.created_at),
-            "accepted_by": accepted_by or []}
+    return {
+        "token": link.token,
+        "role": link.role,
+        "expires_at": iso(link.expires_at),
+        "url": f"{origin}/#/share/{link.token}",
+        "created_at": iso(link.created_at),
+        "accepted_by": accepted_by or [],
+    }
 
 
 def _original(text: str) -> str:
@@ -109,7 +119,8 @@ async def role_for(pid: str, user_id: uuid.UUID) -> str | None:
     await init_db()
     async with SessionLocal() as s:
         return await s.scalar(
-            select(ProjectAcl.role).where(ProjectAcl.project_id == pid, ProjectAcl.user_id == user_id))
+            select(ProjectAcl.role).where(ProjectAcl.project_id == pid, ProjectAcl.user_id == user_id)
+        )
 
 
 async def project_ids_for(user_id: uuid.UUID) -> set[str]:
@@ -131,10 +142,12 @@ async def members_map_for_pids(pids: list[str]) -> dict[str, list[dict]]:
     """{pid: [member]} 批量版 list_members——聚合列表逐案取协作者会 N+1。组内排序与 list_members 同。"""
     await init_db()
     async with SessionLocal() as s:
-        rows = await s.execute(select(User, ProjectAcl.project_id, ProjectAcl.role)
-                               .join(ProjectAcl, ProjectAcl.user_id == User.id)
-                               .where(ProjectAcl.project_id.in_(pids))
-                               .order_by(ProjectAcl.created_at, User.email))
+        rows = await s.execute(
+            select(User, ProjectAcl.project_id, ProjectAcl.role)
+            .join(ProjectAcl, ProjectAcl.user_id == User.id)
+            .where(ProjectAcl.project_id.in_(pids))
+            .order_by(ProjectAcl.created_at, User.email)
+        )
         out: dict[str, list[dict]] = {}
         for u, pid, role in rows.all():
             out.setdefault(pid, []).append(member_out(u, role))
@@ -152,8 +165,12 @@ async def max_role_for(user_id: uuid.UUID) -> str | None:
 async def list_members(pid: str) -> list[dict]:
     await init_db()
     async with SessionLocal() as s:
-        rows = await s.execute(select(User, ProjectAcl.role).join(ProjectAcl, ProjectAcl.user_id == User.id)
-                               .where(ProjectAcl.project_id == pid).order_by(ProjectAcl.created_at, User.email))
+        rows = await s.execute(
+            select(User, ProjectAcl.role)
+            .join(ProjectAcl, ProjectAcl.user_id == User.id)
+            .where(ProjectAcl.project_id == pid)
+            .order_by(ProjectAcl.created_at, User.email)
+        )
         return [member_out(u, role) for u, role in rows]
 
 
@@ -196,7 +213,8 @@ async def owner_count(pid: str) -> int:
     await init_db()
     async with SessionLocal() as s:
         rows = await s.scalars(
-            select(ProjectAcl.user_id).where(ProjectAcl.project_id == pid, ProjectAcl.role == "owner"))
+            select(ProjectAcl.user_id).where(ProjectAcl.project_id == pid, ProjectAcl.role == "owner")
+        )
         return len(list(rows))
 
 
@@ -216,8 +234,9 @@ async def list_share_links(pid: str) -> list[ShareLink]:
 async def create_share_link(pid: str, role: str, expires_in_days: int | None, created_by: uuid.UUID) -> ShareLink:
     await init_db()
     expires_at = datetime.now(UTC) + timedelta(days=expires_in_days) if expires_in_days else None
-    link = ShareLink(token=secrets.token_urlsafe(24), project_id=pid, role=role, expires_at=expires_at,
-                     created_by=created_by)
+    link = ShareLink(
+        token=secrets.token_urlsafe(24), project_id=pid, role=role, expires_at=expires_at, created_by=created_by
+    )
     async with SessionLocal() as s:
         s.add(link)
         await s.commit()
@@ -249,9 +268,12 @@ async def accepted_by(pid: str) -> dict[str, list[dict]]:
     await init_db()
     async with SessionLocal() as s:
         rows = await s.execute(
-            select(ShareAccept, User).join(User, User.id == ShareAccept.user_id)
+            select(ShareAccept, User)
+            .join(User, User.id == ShareAccept.user_id)
             .join(ShareLink, ShareLink.token == ShareAccept.token)
-            .where(ShareLink.project_id == pid).order_by(ShareAccept.accepted_at))
+            .where(ShareLink.project_id == pid)
+            .order_by(ShareAccept.accepted_at)
+        )
         out: dict[str, list[dict]] = {}
         for acc, u in rows:
             out.setdefault(acc.token, []).append({**user_brief(u), "accepted_at": iso(acc.accepted_at)})

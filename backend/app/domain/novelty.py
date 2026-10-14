@@ -6,6 +6,7 @@ s8 场景把检索报告落成批注（锚在权项末块），随修订易散�
 REST /novelty 端点与 MCP novelty 工具共用本文件；原子写 + studio_lock（comments/oa 同族）。
 腐坏 JSON ⇒ NoveltyError(422)（R38 同口径），GET 不 500。
 """
+
 import json
 import os
 from datetime import UTC, datetime
@@ -19,8 +20,16 @@ RELEVANCES = ("X", "Y", "A", "P")
 
 _MAX_QUERIES = 20
 _MAX_HITS = 50
-_LENS = {"number": 64, "title": 300, "note": 2000, "link": 500, "query": 300,
-         "provider": 40, "ran_at": 40, "conclusion": 20000}
+_LENS = {
+    "number": 64,
+    "title": 300,
+    "note": 2000,
+    "link": 500,
+    "query": 300,
+    "provider": 40,
+    "ran_at": 40,
+    "conclusion": 20000,
+}
 
 
 class NoveltyError(Exception):
@@ -30,7 +39,7 @@ class NoveltyError(Exception):
 
 
 def _clip(v, key):
-    s = str(v or "")[:_LENS[key]]
+    s = str(v or "")[: _LENS[key]]
     return s
 
 
@@ -44,8 +53,13 @@ def _norm_hit(h) -> dict:
     rel = str(h.get("relevance") or "A").strip().upper()
     if rel not in RELEVANCES:
         raise NoveltyError(f"相关度必须是 {'/'.join(RELEVANCES)} 之一")
-    return {"number": number, "title": title, "relevance": rel,
-            "note": _clip(h.get("note"), "note"), "link": _clip(h.get("link"), "link")}
+    return {
+        "number": number,
+        "title": title,
+        "relevance": rel,
+        "note": _clip(h.get("note"), "note"),
+        "link": _clip(h.get("link"), "link"),
+    }
 
 
 def _norm_query(q) -> dict:
@@ -54,8 +68,11 @@ def _norm_query(q) -> dict:
     query = _clip(q.get("query"), "query").strip()
     if not query:
         raise NoveltyError("检索式不能为空")
-    return {"query": query, "provider": _clip(q.get("provider"), "provider"),
-            "ran_at": _clip(q.get("ran_at"), "ran_at")}
+    return {
+        "query": query,
+        "provider": _clip(q.get("provider"), "provider"),
+        "ran_at": _clip(q.get("ran_at"), "ran_at"),
+    }
 
 
 def _empty() -> dict:

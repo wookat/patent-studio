@@ -23,6 +23,7 @@
     keywords_any expect 任一出现
     比较前去空白、全角→半角、大小写折叠。
 """
+
 from __future__ import annotations
 
 import argparse
@@ -55,6 +56,7 @@ SYSTEM_PROMPT = (
 
 # ---------------------------------------------------------------- 判分 ----
 
+
 def _norm(s: str) -> str:
     return re.sub(r"\s+", "", unicodedata.normalize("NFKC", s)).casefold()
 
@@ -84,8 +86,9 @@ def load_questions(path: str = QUESTIONS) -> dict:
 def self_test() -> None:
     assert grade("int_set", [2, 3, 4, 5, 6], "权利要求2、3、4、5和6")
     assert not grade("int_set", [2], "权利要求 2 与 3")
-    assert grade("keywords_all", ["1034", "投注财富门控控制器", "投注财富门控"],
-                 "1034：投注财富门控 / 投注财富门控控制器")
+    assert grade(
+        "keywords_all", ["1034", "投注财富门控控制器", "投注财富门控"], "1034：投注财富门控 / 投注财富门控控制器"
+    )
     assert grade("keywords_all", ["计算机设备", "1至8|1-8"], "一种计算机设备，引用权利要求1至8任一项")
     assert not grade("keywords_all", ["仅追加", "109"], "审计模块 109")
     assert grade("keywords_any", ["1/α", "1/alpha"], "阈值为 1/α")
@@ -93,10 +96,16 @@ def self_test() -> None:
 
 # ---------------------------------------------------------------- 模型侧 ----
 
+
 def _tool_specs(server_tools, names: list[str]) -> list[dict]:
     by = {t.name: t for t in server_tools}
-    return [{"type": "function", "function": {"name": n, "description": by[n].description or "",
-                                              "parameters": by[n].input_schema}} for n in names]
+    return [
+        {
+            "type": "function",
+            "function": {"name": n, "description": by[n].description or "", "parameters": by[n].input_schema},
+        }
+        for n in names
+    ]
 
 
 async def _call_tool(server, name: str, args: dict) -> str:
@@ -113,14 +122,16 @@ async def _chat(client, body: dict) -> dict:
         if r.status_code not in RETRY_STATUS or attempt == RETRY_MAX - 1:
             r.raise_for_status()
             return r.json()
-        await asyncio.sleep(min(2 ** attempt * 5, 60))
+        await asyncio.sleep(min(2**attempt * 5, 60))
     raise RuntimeError("unreachable")
 
 
 async def ask(client, model: str, server, tools: list[dict], pid: str, question: str) -> dict:
     """一题一段对话：system + user → 工具循环 → 最终文本。返回 {answer, tool_calls, tools, tokens}。"""
-    messages = [{"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": f"案卷 pid={pid}。问题：{question}"}]
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"案卷 pid={pid}。问题：{question}"},
+    ]
     calls: list[str] = []
     tokens = 0
     for _ in range(MAX_STEPS):
@@ -152,6 +163,7 @@ async def run_toolset(toolset: str, model: str, bank: dict, out_dir: str) -> dic
     import httpx
 
     from app.ai.client import BASE_URL
+
     logging.getLogger("httpx").setLevel(logging.WARNING)
     from app.mcp.server import server
 
@@ -167,8 +179,16 @@ async def run_toolset(toolset: str, model: str, bank: dict, out_dir: str) -> dic
                 t0 = time.perf_counter()
                 res = await ask(client, model, server, tools, case["pid"], q["q"])
                 ok = grade(q["match"], q["expect"], res["answer"])
-                rows.append({"id": q["id"], "pid": case["pid"], "type": q["type"], "correct": ok,
-                             "seconds": round(time.perf_counter() - t0, 1), **res})
+                rows.append(
+                    {
+                        "id": q["id"],
+                        "pid": case["pid"],
+                        "type": q["type"],
+                        "correct": ok,
+                        "seconds": round(time.perf_counter() - t0, 1),
+                        **res,
+                    }
+                )
                 print(f"[{toolset}] {q['id']} {'✓' if ok else '✗'} calls={res['tool_calls']} {res['answer'][:60]!r}")
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, f"{toolset}.jsonl"), "w", encoding="utf-8") as f:
@@ -193,25 +213,32 @@ def summarize(rows: list[dict]) -> dict:
 
 
 def markdown_table(summary: dict[str, dict], model: str) -> str:
-    lines = [f"| 工具集（模型 {model}） | 准确率 | 依赖 | 术语 | 支持 | 附图标记 | 缺陷 "
-             "| 工具调用总数 | 平均/题 | tokens |",
-             "|---|---|---|---|---|---|---|---|---|---|"]
+    lines = [
+        f"| 工具集（模型 {model}） | 准确率 | 依赖 | 术语 | 支持 | 附图标记 | 缺陷 | 工具调用总数 | 平均/题 | tokens |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
     for ts, s in summary.items():
         bt = s["by_type"]
-        lines.append(f"| {ts} | {s['accuracy']} | {bt.get('dependency', '-')} | {bt.get('terminology', '-')} | "
-                     f"{bt.get('support', '-')} | {bt.get('figure_marker', '-')} | {bt.get('defect', '-')} | "
-                     f"{s['tool_calls_total']} | {s['tool_calls_avg']} | {s['tokens']} |")
+        lines.append(
+            f"| {ts} | {s['accuracy']} | {bt.get('dependency', '-')} | {bt.get('terminology', '-')} | "
+            f"{bt.get('support', '-')} | {bt.get('figure_marker', '-')} | {bt.get('defect', '-')} | "
+            f"{s['tool_calls_total']} | {s['tool_calls_avg']} | {s['tokens']} |"
+        )
     return "\n".join(lines)
 
 
 # ---------------------------------------------------------------- 入口 ----
 
+
 def _projects_copy() -> str:
     """examples/ 拷到临时目录做 PATENT_PROJECTS_DIR（读工具也会写 .studio/audit.jsonl，不能落回 examples/）。"""
     d = tempfile.mkdtemp(prefix="mcp-eval-")
     for pid in ("method", "system"):
-        shutil.copytree(os.path.join(ROOT, "examples", pid), os.path.join(d, pid),
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            os.path.join(ROOT, "examples", pid),
+            os.path.join(d, pid),
+            ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+        )
     return d
 
 

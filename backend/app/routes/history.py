@@ -10,6 +10,7 @@ GET /diff?a=&b=&format=blocks（W9 "已修改" Tab）：除 unified diff 外再�
   按 b 版 AST 的块行区间归并，AST 走 routes_ast._parse 同路径）；任一版结构不成立时 blocks=null 且
   blocks_error={kind,message,line,detail}（同 /ast 的 422 detail）。format 省略或为 "unified" 时响应与旧版一致。
 """
+
 import asyncio
 
 from fastapi import APIRouter, HTTPException, Request
@@ -110,5 +111,10 @@ async def restore_version(pid: str, sha: str, request: Request, user: CurrentUse
     except history.HistoryError as e:
         _raise(e)
     # 恢复到与当前一致的版本：commit 为空操作 → changed=false 让前端区分「已恢复」与「本就一致」
-    return {"ok": True, "content": content, "sha_new": sha_new,
-            "changed": sha_new != before, "figures_promoted": promoted}
+    return {
+        "ok": True,
+        "content": content,
+        "sha_new": sha_new,
+        "changed": sha_new != before,
+        "figures_promoted": promoted,
+    }

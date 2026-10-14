@@ -18,6 +18,7 @@ target_filings（W7 ux-04，只读）：可见案中填了 dates.target_filing �
     不进 items / counts（rules.json 语义不变）；受 range / owner / client 筛选，kind 筛选时为空（它不是 DeadlineKind）。
 holidays_missing：涉及年份的 holidays/<year>.json 缺失或未核对（verified=false）⇒ true，仅 warning。
 """
+
 import asyncio
 import time
 from datetime import date
@@ -53,6 +54,7 @@ DUE_SOON_DAYS = 7
 
 class TargetFilingItem(BaseModel):
     """目标递交倒计时（只读，不是期限条目）：target_filing = dates.target_filing；days_left 负数 = 已过目标日。"""
+
     pid: str
     case_no: str | None = None
     title: str
@@ -86,8 +88,9 @@ def status_of(d: cases.Deadline, days_left: int) -> str:
     return "due_soon" if days_left <= DUE_SOON_DAYS else "upcoming"
 
 
-def to_item(pid: str, case: cases.Case, title: str, d: cases.Deadline, *, today: date,
-            owner: Actor | None) -> DeadlineItem:
+def to_item(
+    pid: str, case: cases.Case, title: str, d: cases.Deadline, *, today: date, owner: Actor | None
+) -> DeadlineItem:
     days_left = (date.fromisoformat(d.due) - today).days
     lb = d.legal_basis
     # W4 旧案 kind 是自由字符串（filing / client_review …）：归 custom，原词当标题
@@ -95,11 +98,24 @@ def to_item(pid: str, case: cases.Case, title: str, d: cases.Deadline, *, today:
     if not d.title:
         title = d.kind if kind != d.kind else title
     return DeadlineItem(
-        id=d.id, pid=pid, case_no=case.case_no or None, title=d.title or title, kind=kind, due=d.due,
-        base_date=d.base_date, rule=d.rule,
+        id=d.id,
+        pid=pid,
+        case_no=case.case_no or None,
+        title=d.title or title,
+        kind=kind,
+        due=d.due,
+        base_date=d.base_date,
+        rule=d.rule,
         legal_basis=LegalBasis(text=f"{lb.law} {lb.article}", url=lb.url) if lb else None,
-        source=d.source, override_reason=d.override_reason, status=status_of(d, days_left), days_left=days_left,
-        owner=owner, client=case.client or None, done=d.done, done_at=d.done_at)
+        source=d.source,
+        override_reason=d.override_reason,
+        status=status_of(d, days_left),
+        days_left=days_left,
+        owner=owner,
+        client=case.client or None,
+        done=d.done,
+        done_at=d.done_at,
+    )
 
 
 def counts_of(items: list[DeadlineItem]) -> dict[Group, int]:
@@ -141,8 +157,9 @@ async def _owner(case: cases.Case, seen: dict[str, Actor | None]) -> Actor | Non
     return actor
 
 
-async def _case_items(request: Request, pid: str, case: cases.Case, today: date,
-                      owners: dict[str, Actor | None] | None = None) -> list[DeadlineItem]:
+async def _case_items(
+    request: Request, pid: str, case: cases.Case, today: date, owners: dict[str, Actor | None] | None = None
+) -> list[DeadlineItem]:
     title = _project(request, pid).title
     owner = await _owner(case, owners if owners is not None else {})
     return [to_item(pid, case, title, d, today=today, owner=owner) for d in case.deadlines]
@@ -155,9 +172,15 @@ def to_target_filing(
     n = cases.target_filing_days_left(case, today)
     if n is None or case.dates.filed:
         return None
-    return TargetFilingItem(pid=pid, case_no=case.case_no or None, title=title,
-                            target_filing=case.dates.target_filing or "", target_filing_days_left=n,
-                            owner=owner, client=case.client or None)
+    return TargetFilingItem(
+        pid=pid,
+        case_no=case.case_no or None,
+        title=title,
+        target_filing=case.dates.target_filing or "",
+        target_filing_days_left=n,
+        owner=owner,
+        client=case.client or None,
+    )
 
 
 def _response(
@@ -165,8 +188,9 @@ def _response(
 ) -> DeadlineListResponseW7:
     items = sorted(items, key=lambda it: (it.done, it.due, it.pid, it.id))
     targets = sorted(target_filings or [], key=lambda t: (t.target_filing, t.pid))
-    return DeadlineListResponseW7(items=items, counts=counts_of(items), holidays_missing=holidays_missing_for(items),
-                                  target_filings=targets)
+    return DeadlineListResponseW7(
+        items=items, counts=counts_of(items), holidays_missing=holidays_missing_for(items), target_filings=targets
+    )
 
 
 def _find(case: cases.Case, deadline_id: str) -> cases.Deadline:
@@ -186,8 +210,14 @@ def _save(project_dir: str, case: cases.Case, message: str, user) -> cases.Case:
 
 
 @router.get("/api/deadlines", response_model=DeadlineListResponseW7)
-async def list_deadlines(request: Request, user: auth.CurrentUser, range: Range = "all", owner: str | None = None,
-                         client: str | None = None, kind: str | None = None) -> DeadlineListResponseW7:
+async def list_deadlines(
+    request: Request,
+    user: auth.CurrentUser,
+    range: Range = "all",
+    owner: str | None = None,
+    client: str | None = None,
+    kind: str | None = None,
+) -> DeadlineListResponseW7:
     if kind is not None and kind not in cases.DEADLINE_KINDS:
         raise kind_error("validation", f"未知期限类型：{kind}")
     store = request.app.state.store
@@ -199,6 +229,7 @@ async def list_deadlines(request: Request, user: auth.CurrentUser, range: Range 
     su = bool(config.AUTH_ON and user is not None and user.is_superuser)
     if config.AUTH_ON and user is not None and not su:
         from app.auth import acl
+
         roles_map = await acl.roles_map_for(user.id)
     else:
         roles_map = {}
@@ -235,32 +266,44 @@ async def compute_deadlines(request: Request, pid: str, user: auth.CurrentUser) 
 
 
 @router.put("/api/projects/{pid}/deadlines/{deadline_id}", dependencies=[AGENT], response_model=DeadlineItem)
-async def override_deadline(request: Request, pid: str, deadline_id: str, body: DeadlineOverrideIn,
-                            user: auth.CurrentUser) -> DeadlineItem:
+async def override_deadline(
+    request: Request, pid: str, deadline_id: str, body: DeadlineOverrideIn, user: auth.CurrentUser
+) -> DeadlineItem:
     p = _project(request, pid)
     with atomic.studio_lock(p.dir, "case"):
         case = case_or_404(p.dir)
         d = _find(case, deadline_id)
         old_due = d.due
         d = d.model_copy(update={"due": body.due or d.due, "source": "manual", "override_reason": body.override_reason})
-        case = await asyncio.to_thread(_save, p.dir, cases.replace_deadline(case, d),
-                                       f"case: deadline override {d.id} → {d.due}", user)
-    events.emit("deadline.override", pid=pid, actor=events.actor_of(user),
-                data={"id": d.id, "kind": d.kind, "from": old_due, "to": d.due, "reason": body.override_reason})
+        case = await asyncio.to_thread(
+            _save, p.dir, cases.replace_deadline(case, d), f"case: deadline override {d.id} → {d.due}", user
+        )
+    events.emit(
+        "deadline.override",
+        pid=pid,
+        actor=events.actor_of(user),
+        data={"id": d.id, "kind": d.kind, "from": old_due, "to": d.due, "reason": body.override_reason},
+    )
     return (await _case_items(request, pid, case, compute.today()))[case.deadlines.index(d)]
 
 
 @router.post("/api/projects/{pid}/deadlines/{deadline_id}/done", dependencies=[AGENT], response_model=DeadlineItem)
-async def done_deadline(request: Request, pid: str, deadline_id: str, body: DeadlineDoneIn | None = None,
-                        user: auth.CurrentUser = None) -> DeadlineItem:
+async def done_deadline(
+    request: Request, pid: str, deadline_id: str, body: DeadlineDoneIn | None = None, user: auth.CurrentUser = None
+) -> DeadlineItem:
     p = _project(request, pid)
     with atomic.studio_lock(p.dir, "case"):
         case = case_or_404(p.dir)
         done = True if body is None else body.done
         d = _find(case, deadline_id).model_copy(update={"done": done, "done_at": time.time() if done else None})
         verb = "done" if done else "undone"
-        case = await asyncio.to_thread(_save, p.dir, cases.replace_deadline(case, d),
-                                       f"case: deadline {verb} {d.id}", user)
-    events.emit("deadline.done" if done else "deadline.undone", pid=pid, actor=events.actor_of(user),
-                data={"id": d.id, "kind": d.kind, "due": d.due})
+        case = await asyncio.to_thread(
+            _save, p.dir, cases.replace_deadline(case, d), f"case: deadline {verb} {d.id}", user
+        )
+    events.emit(
+        "deadline.done" if done else "deadline.undone",
+        pid=pid,
+        actor=events.actor_of(user),
+        data={"id": d.id, "kind": d.kind, "due": d.due},
+    )
     return (await _case_items(request, pid, case, compute.today()))[case.deadlines.index(d)]

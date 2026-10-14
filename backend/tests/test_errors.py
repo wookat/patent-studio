@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """describe_error：内核异常 → 可读 kind/message/line；detail 保留原异常。"""
+
 import os
 import tempfile
 
@@ -33,9 +34,16 @@ def _raise_from_builder(content):
         with open(md, "w", encoding="utf-8") as f:
             f.write(content)
         try:
-            build_patent_ex({"content_md": md, "out": os.path.join(d, "o.docx"),
-                             "figs_dir": os.path.join(ROOT, "examples", "method", "figs"),
-                             "abstract_figure": ("fig1.emf", 14.5), "spec_figures": [], "abstract_limit": 300})
+            build_patent_ex(
+                {
+                    "content_md": md,
+                    "out": os.path.join(d, "o.docx"),
+                    "figs_dir": os.path.join(ROOT, "examples", "method", "figs"),
+                    "abstract_figure": ("fig1.emf", 14.5),
+                    "spec_figures": [],
+                    "abstract_limit": 300,
+                }
+            )
         except Exception as e:  # noqa: BLE001
             return e
     raise AssertionError("内核未抛错")

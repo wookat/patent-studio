@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """share-confirm-backend：案件时间线 / 备注 @ / 审阅指派（docs/plan/21 §2.2 R-CASE-05）。夹具复用 test_auth。"""
+
 import json
 import os
 from datetime import timedelta
@@ -38,6 +39,7 @@ def _items(c, pid="method", q=""):
 
 # ---------------- off：合并来源 ----------------
 
+
 def test_off_merges_status_audit_case_and_notes(client):
     c, tmp = client
     d = str(tmp / "projects" / "method")
@@ -53,8 +55,18 @@ def test_off_merges_status_audit_case_and_notes(client):
     case = cases.ensure_case(d)
     case.dates.filed = "2026-09-01"
     case.case_no = "CN2026100001"
-    case.confirmations.append(cases.Confirmation(name="王总", actor="client:王总", version=3, sha="abc1234",
-                                                 confirmed_at=1_800_000_000.0, ip="1.2.3.4", ua="ua", token="t"))
+    case.confirmations.append(
+        cases.Confirmation(
+            name="王总",
+            actor="client:王总",
+            version=3,
+            sha="abc1234",
+            confirmed_at=1_800_000_000.0,
+            ip="1.2.3.4",
+            ua="ua",
+            token="t",
+        )
+    )
     cases.save_case(d, case)
     # 4) 备注（@ 解析）+ 总线事件落盘
     r = c.post("/api/projects/method/notes", json={"body": "@张律师 请复核权 1"})
@@ -112,6 +124,7 @@ def timeline_default_days():
 
 # ---------------- on：成员 @ / 指派 / 权限 ----------------
 
+
 def test_on_mention_emits_and_assign_requires_member(on):
     anon = TestClient(on.app)
     _register(anon, "su@example.com", display_name="所长")
@@ -130,8 +143,10 @@ def test_on_mention_emits_and_assign_requires_member(on):
     assert ev.pid == "method" and ev.data["user_ids"] == [ed_id] and ev.data["note_id"] == r.json()["id"]
     assert ev.actor["display_name"] == "所长"
     # 批注里 @ 同样发事件（comment.mention 是 events.py 的枚举名；规格写作 comment.mentioned）
-    r = su.post("/api/projects/method/comments",
-                json={"anchor": {"block_id": "claims/1", "line": 9, "quote": "其特征在于"}, "body": "@张律师 权1"})
+    r = su.post(
+        "/api/projects/method/comments",
+        json={"anchor": {"block_id": "claims/1", "line": 9, "quote": "其特征在于"}, "body": "@张律师 权1"},
+    )
     assert r.status_code == 201 and len(mentioned) == 2 and mentioned[1].data["comment_id"] == r.json()["id"]
     # 无命中不发
     su.post("/api/projects/method/notes", json={"body": "@路人 看"})
@@ -161,8 +176,10 @@ def test_deadline_undone_kind_roundtrip_and_unknown_kind_filtered(on):
     _register(anon, "su@example.com", display_name="所长")
     su = _login(on, "su@example.com")
     # 种一条期限并完成 → 撤销完成（agent 门槛由超管兜底满足）
-    r = su.put("/api/projects/method/case",
-               json={"deadlines": [{"id": "oa1", "kind": "oa_reply", "due": "2026-10-10", "note": "一通"}]})
+    r = su.put(
+        "/api/projects/method/case",
+        json={"deadlines": [{"id": "oa1", "kind": "oa_reply", "due": "2026-10-10", "note": "一通"}]},
+    )
     assert r.status_code == 200, r.text
     assert su.post("/api/projects/method/deadlines/oa1/done").status_code == 200
     assert su.post("/api/projects/method/deadlines/oa1/done", json={"done": False}).status_code == 200
@@ -184,15 +201,21 @@ def test_deadline_override_lands_in_timeline(on):
     anon = TestClient(on.app)
     _register(anon, "su@example.com", display_name="所长")
     su = _login(on, "su@example.com")
-    r = su.put("/api/projects/method/case",
-               json={"deadlines": [{"id": "oa1", "kind": "oa_reply", "due": "2026-10-10", "note": "一通"}]})
+    r = su.put(
+        "/api/projects/method/case",
+        json={"deadlines": [{"id": "oa1", "kind": "oa_reply", "due": "2026-10-10", "note": "一通"}]},
+    )
     assert r.status_code == 200, r.text
-    r = su.put("/api/projects/method/deadlines/oa1",
-               json={"due": "2026-11-01", "override_reason": "证据补充需要"})
+    r = su.put("/api/projects/method/deadlines/oa1", json={"due": "2026-11-01", "override_reason": "证据补充需要"})
     assert r.status_code == 200, r.text
     items = su.get("/api/projects/method/timeline").json()["items"]
     ov = next(i for i in items if i["kind"] == "deadline.override")
     assert "2026-11-01" in ov["text"] and "证据补充需要" in ov["text"]
-    assert ov["data"] == {"id": "oa1", "kind": "oa_reply", "from": "2026-10-10", "to": "2026-11-01",
-                          "reason": "证据补充需要"}
+    assert ov["data"] == {
+        "id": "oa1",
+        "kind": "oa_reply",
+        "from": "2026-10-10",
+        "to": "2026-11-01",
+        "reason": "证据补充需要",
+    }
     assert ov["actor"]["display_name"] == "所长"

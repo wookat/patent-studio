@@ -5,6 +5,7 @@ export_docx(project, items, answers, claims_md) -> bytes
   标题 / 申请号占位 / 答复表（序号 · 审查意见 · 申请人意见 · 修改说明）/ 逐条陈述 / 修改后的权利要求书
   （当前权利要求书 + 已生成的 CriticMarkup 建议全部 accept 后的文本）。
 """
+
 import io
 
 from docx import Document

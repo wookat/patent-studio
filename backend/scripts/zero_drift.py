@@ -9,6 +9,7 @@
      spec_figures / abstract_figure → 加载时迁移生成 figures.md → 构建；md5 仍须等于基准
 退出码 0 = 全部一致；1 = 存在差异。
 """
+
 import argparse
 import hashlib
 import importlib.metadata
@@ -27,11 +28,11 @@ from app.domain.projects import ProjectStore  # noqa: E402
 from patent_studio.kernel import build_patent, figures_md  # noqa: E402
 from patent_studio.kernel.builder import build_patent_ex  # noqa: E402
 
-# 基线刷新：style.paragraph.space_after.body 6pt→0（对齐授权专利版式，段距=行距）。
-# 变更日 2026-10-10；method/system 三路径（legacy / figures.md+studio.json / 迁移）均同 md5。
+# 基线刷新：b12a541 换 examples 语料（指纹私钥 / 神经网络可视化）后重录；
+# method/system 三路径（legacy / figures.md+studio.json / 迁移）均同 md5。
 BASELINE = {
-    "method": "9ffc298f03fa301c034899f3fb5253ef",
-    "system": "c713de2163e59186f7bb148d60c822ec",
+    "method": "f58e308dc5dcb3c594eccd11142691e5",
+    "system": "75b57c286a75b32527c301e1c8c700f4",
 }
 
 
@@ -76,8 +77,9 @@ def main():
             h1 = md5_document_xml(legacy_out)
 
             proj = store.get(name)
-            cfg = store.build_config(proj, out=os.path.join(tmp, f"{name}-studio.docx"),
-                                     content_md=os.path.join(case_dir, "content.md"))
+            cfg = store.build_config(
+                proj, out=os.path.join(tmp, f"{name}-studio.docx"), content_md=os.path.join(case_dir, "content.md")
+            )
             build_patent_ex(cfg)
             h2 = md5_document_xml(cfg["out"])
 

@@ -4,6 +4,7 @@
 soffice CLI 每次都要冷启动一个 LibreOffice 进程（实测 1.3–2 s），而 unoserver 让 LibreOffice
 常驻，单次转换只剩排版+导出本身（实测同一文档 ~0.6 s）。两者产出的 PDF 除元数据时间戳外一致。
 """
+
 import http.client
 import logging
 import os
@@ -82,8 +83,15 @@ def _uno_convert(docx_path, pdf_path, timeout, tagged=False):
     tagged → 写 PDF 导出过滤器选项 UseTaggedPDF（结构树 + MCID，前端 struct 配对用）。
     """
     _proxy(timeout).convert(
-        os.path.abspath(docx_path), None, os.path.abspath(pdf_path),
-        "pdf", None, ["UseTaggedPDF=true"] if tagged else [], True, None, None,
+        os.path.abspath(docx_path),
+        None,
+        os.path.abspath(pdf_path),
+        "pdf",
+        None,
+        ["UseTaggedPDF=true"] if tagged else [],
+        True,
+        None,
+        None,
     )
     if not os.path.isfile(pdf_path):
         raise PdfConvertError("PDF 转换失败：未产出 PDF 文件", "unoserver 未产出 PDF")
@@ -92,9 +100,16 @@ def _uno_convert(docx_path, pdf_path, timeout, tagged=False):
 def _cli_convert(docx_path, out_dir, timeout):
     os.makedirs(config.LO_PROFILE_DIR, exist_ok=True)
     cmd = [
-        config.SOFFICE, "--headless", "--norestore", "--nologo",
+        config.SOFFICE,
+        "--headless",
+        "--norestore",
+        "--nologo",
         f"-env:UserInstallation=file://{config.LO_PROFILE_DIR}",
-        "--convert-to", "pdf", "--outdir", out_dir, docx_path,
+        "--convert-to",
+        "pdf",
+        "--outdir",
+        out_dir,
+        docx_path,
     ]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -104,8 +119,10 @@ def _cli_convert(docx_path, out_dir, timeout):
         raise PdfConvertError(f"PDF 转换超时（{timeout} s），DOCX 已生成", str(e)) from e
     pdf = os.path.join(out_dir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf")
     if r.returncode != 0 or not os.path.isfile(pdf):
-        raise PdfConvertError("PDF 转换失败：LibreOffice 未能完成转换，DOCX 已生成",
-                              f"soffice exit {r.returncode}\n{(r.stderr or r.stdout).strip()[-800:]}")
+        raise PdfConvertError(
+            "PDF 转换失败：LibreOffice 未能完成转换，DOCX 已生成",
+            f"soffice exit {r.returncode}\n{(r.stderr or r.stdout).strip()[-800:]}",
+        )
     return pdf
 
 

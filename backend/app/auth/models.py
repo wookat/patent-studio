@@ -6,6 +6,7 @@ W5（docs/plan/21 §7.4.8）：notifications / public_share_links / org_audit_ev
 
 只在 PATENT_STUDIO_AUTH=on 时被 C1 的 db.py 导入；off 模式下本模块不加载。
 """
+
 import uuid
 from datetime import datetime
 
@@ -120,6 +121,7 @@ class ProjectCollabSettings(Base):
 
 # ---------- W5（docs/plan/21 §7.4.8）：notify-audit-backend / share-confirm-backend 的表；全部新表 ----------
 
+
 class Notification(Base):
     """站内通知（schemas.Notification）：kind ∈ NotificationKind；href 是前端 hash 路由；read_at 为 None ⇒ 未读。"""
 
@@ -160,14 +162,11 @@ class PublicShareLink(Base):
 
 
 # public_share_links 发布后新增的列（同 USER_ADDED_COLUMNS 机制）
-PUBLIC_LINK_ADDED_COLUMNS: tuple[tuple[str, str], ...] = (
-    ("baseline", "VARCHAR(8) NOT NULL DEFAULT 'original'"),
-)
+PUBLIC_LINK_ADDED_COLUMNS: tuple[tuple[str, str], ...] = (("baseline", "VARCHAR(8) NOT NULL DEFAULT 'original'"),)
 
 
 class OrgAuditEvent(Base):
-    """机构审计（schemas.OrgAuditEvent）：events 总线 "*" 订阅者写入；data 为 JSON 文本（不存外部全文，只存字数）。
-    """
+    """机构审计（schemas.OrgAuditEvent）：events 总线 "*" 订阅者写入；data 为 JSON 文本（不存外部全文，只存字数）。"""
 
     __tablename__ = "org_audit_events"
     __table_args__ = (Index("ix_org_audit_events_ts_kind", "ts", "kind"),)
@@ -175,7 +174,8 @@ class OrgAuditEvent(Base):
     id: Mapped[str] = mapped_column(String(24), primary_key=True)
     ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     kind: Mapped[str] = mapped_column(String(32), index=True)
-    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user.id", ondelete="SET NULL"), nullable=True,
-                                                            index=True)
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("user.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     project_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     data: Mapped[str] = mapped_column(Text, default="{}", server_default="{}")

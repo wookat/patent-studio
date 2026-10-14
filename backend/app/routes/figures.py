@@ -4,6 +4,7 @@
 契约 docs/plan/05-r2-figures-preflight-design.md §3.1；错误形状 §5。
 处理函数通过 request.app.state.store 取 ProjectStore，不反向 import app.main。
 """
+
 import asyncio
 from urllib.parse import quote
 
@@ -40,8 +41,16 @@ def _run(fn, *args):
     except fig.FiguresError as e:
         raise HTTPException(422, {"kind": "figures", "message": str(e), "line": None, "detail": e.detail})
     except fig.FigureReferencedError as e:
-        raise HTTPException(409, {"kind": "figure-referenced", "message": str(e), "line": e.refs[0]["line"],
-                                  "detail": "、".join(f"L{r['line']}" for r in e.refs), "refs": e.refs})
+        raise HTTPException(
+            409,
+            {
+                "kind": "figure-referenced",
+                "message": str(e),
+                "line": e.refs[0]["line"],
+                "detail": "、".join(f"L{r['line']}" for r in e.refs),
+                "refs": e.refs,
+            },
+        )
 
 
 @router.get("/figures")
@@ -68,15 +77,25 @@ async def export_figures_zip(pid: str, request: Request):
     data = await asyncio.to_thread(fig.export_zip, request.app.state.store, pid)
     filename = f"{pid}-figures.zip"
     ascii_name = filename if filename.isascii() else "figures.zip"
-    disposition = f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{quote(filename)}'
-    return Response(data, media_type="application/zip",
-                    headers={"Content-Disposition": disposition, "Cache-Control": "no-store"})
+    disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
+    return Response(
+        data, media_type="application/zip", headers={"Content-Disposition": disposition, "Cache-Control": "no-store"}
+    )
 
 
 @router.put("/figures/{name}")
 async def update_figure(pid: str, name: str, body: FigurePatch, request: Request):
-    return await asyncio.to_thread(_run, fig.update_figure, request.app.state.store, pid, name,
-                                   body.width, body.abstract, body.abstract_width, body.marks)
+    return await asyncio.to_thread(
+        _run,
+        fig.update_figure,
+        request.app.state.store,
+        pid,
+        name,
+        body.width,
+        body.abstract,
+        body.abstract_width,
+        body.marks,
+    )
 
 
 @router.put("/figures/{name}/image")
@@ -92,6 +111,7 @@ async def delete_figure(pid: str, name: str, request: Request):
 
 
 # ---------------- 绘制图源 figs-src/*.mmd（W16） ----------------
+
 
 @router.get("/figures-src")
 async def list_figure_sources(pid: str, request: Request):
@@ -109,12 +129,10 @@ async def put_figure_source(pid: str, name: str, body: SourceIn, request: Reques
 
 
 @router.post("/figures-src/{name}/upload")
-async def upload_figure_image_source(pid: str, name: str, request: Request,
-                                     files: list[UploadFile] = _FILES):
+async def upload_figure_image_source(pid: str, name: str, request: Request, files: list[UploadFile] = _FILES):
     """图片图源上传（往复轮104）——论文抽出的数据图/结果照片可作图号占位图源。"""
     data = await read_bounded(files[0], "figures-src", ATTACHMENT_MAX_BYTES)
-    return await asyncio.to_thread(fig.save_figure_image_source,
-                                   request.app.state.store, pid, name, data)
+    return await asyncio.to_thread(fig.save_figure_image_source, request.app.state.store, pid, name, data)
 
 
 @router.post("/figures-preview")

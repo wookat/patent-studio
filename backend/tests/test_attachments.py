@@ -4,6 +4,7 @@
 案子复制到临时目录，不触碰仓库文件。off 模式覆盖形状 / 白名单 / 大小 / 重名 / 原子性 / 下载头 / 删除；
 on 模式覆盖 ACL（GET viewer 可、POST/DELETE viewer 403、editor 可）。
 """
+
 import importlib
 import io
 import os
@@ -24,8 +25,11 @@ ERR_KEYS = {"kind", "message", "line", "detail"}
 def _projects(tmp_path):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     return projects
 
 
@@ -71,8 +75,10 @@ def on(tmp_path, monkeypatch):
 
 
 def _upload(c, *files, pid="method"):
-    return c.post(f"/api/projects/{pid}/attachments",
-                  files=[("files", (n, io.BytesIO(data), "application/octet-stream")) for n, data in files])
+    return c.post(
+        f"/api/projects/{pid}/attachments",
+        files=[("files", (n, io.BytesIO(data), "application/octet-stream")) for n, data in files],
+    )
 
 
 def _err(r, status, kind="attachments"):
@@ -83,6 +89,7 @@ def _err(r, status, kind="attachments"):
 
 
 # ---------------- 服务层：白名单 ----------------
+
 
 def test_check_name_whitelist_and_bad_names():
     for ext in ATTACHMENT_EXTS:
@@ -95,6 +102,7 @@ def test_check_name_whitelist_and_bad_names():
 
 
 # ---------------- 列表 / 上传 ----------------
+
 
 def test_list_empty_when_dir_missing(client):
     c, d = client
@@ -187,6 +195,7 @@ def test_upload_without_files_is_validation_error(client):
 
 # ---------------- 下载 ----------------
 
+
 def test_get_attachment_inline_and_download_headers(client):
     c, _ = client
     r = _upload(c, ("现有技术.pdf", PDF), ("notes.txt", "中文\n".encode()), ("p.png", b"\x89PNG\r\n\x1a\n"))
@@ -195,7 +204,7 @@ def test_get_attachment_inline_and_download_headers(client):
     r = c.get("/api/projects/method/attachments/现有技术.pdf")
     assert r.status_code == 200 and r.content == PDF
     assert r.headers["content-type"] == "application/pdf"
-    assert r.headers["content-disposition"].startswith('inline; filename="attachment.pdf"; filename*=UTF-8\'\'')
+    assert r.headers["content-disposition"].startswith("inline; filename=\"attachment.pdf\"; filename*=UTF-8''")
     assert "%E7%8E%B0%E6%9C%89%E6%8A%80%E6%9C%AF.pdf" in r.headers["content-disposition"]
     assert r.headers["cache-control"] == "no-store"
     assert r.headers["content-length"] == str(len(PDF))
@@ -229,6 +238,7 @@ def test_get_missing_and_bad_names(client):
 
 # ---------------- 删除 ----------------
 
+
 def test_delete_and_missing_404(client):
     c, d = client
     assert _upload(c, ("a.pdf", PDF), ("b.txt", b"b")).status_code == 200
@@ -255,6 +265,7 @@ def test_attachments_do_not_touch_docs_or_history_tracked(client):
 
 
 # ---------------- 交底书模板（W19 批3）----------------
+
 
 def test_seed_intake_template(client):
     c, d = client
@@ -285,6 +296,7 @@ def test_on_seed_intake_requires_editor(on):
 
 
 # ---------------- ACL（AUTH=on）----------------
+
 
 def _register(c, email, password="pw-123456"):
     r = c.post("/api/auth/register", json={"email": email, "password": password, "display_name": ""})

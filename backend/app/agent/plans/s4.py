@@ -5,6 +5,7 @@
 medium gen 只做一件事：为每组选主术语（必须是组内写法之一）并剔除非同一概念的组；模型不可用或选错则回退
 到确定性默认（图例名 / 术语表主名）。然后 terms.unify 生成 {~~旧~>新~~}，按块产 critic，每块过 lint + roundtrip。
 """
+
 from __future__ import annotations
 
 import json
@@ -81,11 +82,23 @@ async def run(ctx: RunContext) -> None:
     if not groups:
         ctx.finish(groups=0)
         return
-    context = ctx.clip(json.dumps([{"primary_default": g["primary"], "words": [g["primary"], *g["aliases"]],
-                                    "lines": g["lines"][:6], "source": g["source"]} for g in groups],
-                                  ensure_ascii=False))
-    messages = prompts_agent.build("s4", "select", "请为每个候选组选出主术语，剔除不是同一概念的组，输出 JSON。",
-                                   context=context, pid=ctx.pid)
+    context = ctx.clip(
+        json.dumps(
+            [
+                {
+                    "primary_default": g["primary"],
+                    "words": [g["primary"], *g["aliases"]],
+                    "lines": g["lines"][:6],
+                    "source": g["source"],
+                }
+                for g in groups
+            ],
+            ensure_ascii=False,
+        )
+    )
+    messages = prompts_agent.build(
+        "s4", "select", "请为每个候选组选出主术语，剔除不是同一概念的组，输出 JSON。", context=context, pid=ctx.pid
+    )
     data, _raw = await common.gen_json(ctx, "select", messages)
     selected = _select(groups, data)
     content = ctx.store.read_content(ctx.pid)
@@ -104,8 +117,8 @@ async def run(ctx: RunContext) -> None:
             continue
         done.add(block["id"])
         anchor = common.anchor_of(d, book, block)
-        old = "\n".join(old_lines[anchor.line_start - 1: anchor.line_end])
-        crit = "\n".join(new_lines[anchor.line_start - 1: anchor.line_end])
+        old = "\n".join(old_lines[anchor.line_start - 1 : anchor.line_end])
+        crit = "\n".join(new_lines[anchor.line_start - 1 : anchor.line_end])
         results = [checks.lint(crit), checks.roundtrip(old, crit)]
         if all([ctx.check(r) for r in results]):
             ctx.propose("critic", anchor, critic_markdown=crit, checks_=results)

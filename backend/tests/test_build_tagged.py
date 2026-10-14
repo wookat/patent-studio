@@ -5,6 +5,7 @@
 - 导出 PDF / 递交包 / CNIPA XML 资产三条路径调用 docx_to_pdf 时 tagged 未传或 False。
 LibreOffice 全部用桩替代，测试不依赖 soffice / unoserver。
 """
+
 import importlib
 import inspect
 import os
@@ -29,8 +30,11 @@ def _fake_pdf(docx_path, out_dir):
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("LO_PROFILE_DIR", str(tmp_path / "lo"))
     from app import config, main

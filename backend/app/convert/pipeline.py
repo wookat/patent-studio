@@ -11,6 +11,7 @@ run(...) 在后台任务里执行：
      target=pid ⇒ history.commit_draft(author="ai")，工作区不动；
   5. 返回 report{warnings, unmapped, chars_in, claims, paragraphs, figures, lint, terms, notes, usage}。
 """
+
 import asyncio
 import json
 import os
@@ -52,15 +53,16 @@ def user_prompt(extracted: Extracted, q: Questionnaire, filename: str) -> tuple[
         "说明书各节为多段纯文本，段落之间空一行，不写段号；"
         "附图规则：附图只收说明技术方案的流程图、结构示意图、模块框图——指标对比图、性能/损失曲线、"
         "效果可视化、照片、正文截图一律不收，其结论改为正文文字叙述；附图说明中每图题注各占一行、"
-        "只写一句「图N是本发明实施例的XX图」，不得照抄论文题注的细节描述、不得把多图题注合并在一段内；figures 数组逐项写 {num: 图号自 1 顺排, src: 提取图序号, "
+        "只写一句「图N是本发明实施例的XX图」，不得照抄论文题注的细节描述、不得把多图题注合并在一段内；"
+        "figures 数组逐项写 {num: 图号自 1 顺排, src: 提取图序号, "
         "caption: 那句附图说明}，未收录的提取图不写入 figures；收录的提取图本身是多子图拼版时，按"
         "「图N(a)」「图N(b)」引用其子图，不得拆占新图号（图号总数=figures 数组长度）；"
         "若提取图中没有任何合格的流程/结构/模块示意图而本发明为方法/系统类，应自绘 1~3 张工程示意图——"
         "figures 项写 {num, spec, marks, caption}（spec 为分层框图 JSON，直接描述图面结构："
-        "{\"bands\":[{\"title\":\"层名\",\"blocks\":[{\"id\":\"A\",\"label\":\"元件名 标记号\"}]},"
-        "\"edges\":[{\"from\":\"A\",\"to\":\"B\",\"label\":\"标注\",\"dashed\":false}]}——bands 自上而下"
+        '{"bands":[{"title":"层名","blocks":[{"id":"A","label":"元件名 标记号"}]},'
+        '"edges":[{"from":"A","to":"B","label":"标注","dashed":false}]}——bands 自上而下'
         "逐层排列（数据流向从上层流向下层），blocks 层内从左到右排列，edges 全部正交连线，"
-        "dashed:true 画虚线边（参数/均值/权重等辅助数据传递线惯例用虚线），判据节点加 \"shape\":\"diamond\"；"
+        'dashed:true 画虚线边（参数/均值/权重等辅助数据传递线惯例用虚线），判据节点加 "shape":"diamond"；'
         "标签用中文、不含公式记号；"
         "构图要求：结构图按分层框图画——层代表数据流阶段（输入层→预处理层→编码/网络层→汇聚层→输出/更新层"
         "或类似命名），每 band 1~4 个块、全图≤12 块；主干信号链沿各层向下，并行支路放在同 band 并列块、"
@@ -68,17 +70,24 @@ def user_prompt(extracted: Extracted, q: Questionnaire, filename: str) -> tuple[
         "条件判据用 diamond 块并各出「是/否」分支边（label 写是/否），回环边用虚线；细节塞不下拆成"
         "图N/图N+1 两张分画，不得把训练循环、正则化、适配等全部细节堆进一张图；"
         "图型模板库（真实专利图型归纳，按图型套骨架再改文案）："
-        + spec_templates.catalog() + "；"
-        + (("真实专利附图题注参照（模仿其命名与图型配比，勿照抄文案细节）："
-            + spec_templates.exemplar_captions() + "；")
-           if spec_templates.exemplar_captions() else "")
-        + "合格结构图范例：{\"bands\":[{\"title\":\"输入\",\"blocks\":[{\"id\":\"X\",\"label\":\"多视图输入\"}]},"
-        "{\"title\":\"增强层\",\"blocks\":[{\"id\":\"A\",\"label\":\"双视图增强模块 101\"}]},"
-        "{\"title\":\"网络层\",\"blocks\":[{\"id\":\"B\",\"label\":\"学生网络 102\"},{\"id\":\"C\",\"label\":\"教师网络 103\"}]},"
-        "{\"title\":\"输出层\",\"blocks\":[{\"id\":\"D\",\"label\":\"损失计算模块 104\"}]}],"
-        "\"edges\":[{\"from\":\"X\",\"to\":\"A\"},{\"from\":\"A\",\"to\":\"B\"},{\"from\":\"A\",\"to\":\"C\"},"
-        "{\"from\":\"B\",\"to\":\"D\"},{\"from\":\"C\",\"to\":\"D\"},"
-        "{\"from\":\"D\",\"to\":\"C\",\"label\":\"教师参数\",\"dashed\":true}]}"
+        + spec_templates.catalog()
+        + "；"
+        + (
+            (
+                "真实专利附图题注参照（模仿其命名与图型配比，勿照抄文案细节）："
+                + spec_templates.exemplar_captions()
+                + "；"
+            )
+            if spec_templates.exemplar_captions()
+            else ""
+        )
+        + '合格结构图范例：{"bands":[{"title":"输入","blocks":[{"id":"X","label":"多视图输入"}]},'
+        '{"title":"增强层","blocks":[{"id":"A","label":"双视图增强模块 101"}]},'
+        '{"title":"网络层","blocks":[{"id":"B","label":"学生网络 102"},{"id":"C","label":"教师网络 103"}]},'
+        '{"title":"输出层","blocks":[{"id":"D","label":"损失计算模块 104"}]}],'
+        '"edges":[{"from":"X","to":"A"},{"from":"A","to":"B"},{"from":"A","to":"C"},'
+        '{"from":"B","to":"D"},{"from":"C","to":"D"},'
+        '{"from":"D","to":"C","label":"教师参数","dashed":true}]}'
         "（学生/教师两路同层并行、虚线回授——呈清晰分层拓扑而非直链）；"
         "自绘图必须带附图标记：为图中 6~12 个关键元件/步骤分配三位阿拉伯数字标记（百位起编 101、102…），"
         "节点文本写「中文元件名 标记号」如 [加噪单元 102]，方法流程图的步骤节点带步骤号 S101、S102…，"
@@ -143,8 +152,10 @@ def _render_gen_fig(spec_or_mmd) -> bytes | None:
     旧案 mmd 文本走 mmd_render 兜底；渲染失败（语法/空图）→ None。"""
     try:
         import io
+
         if isinstance(spec_or_mmd, (dict, list)):
             from patent_studio.kernel import figspec
+
             img = figspec.render_figspec(spec_or_mmd)
         else:
             src = str(spec_or_mmd or "").strip()
@@ -152,9 +163,11 @@ def _render_gen_fig(spec_or_mmd) -> bytes | None:
                 return None
             if src.lstrip().startswith("{"):
                 from patent_studio.kernel import figspec
+
                 img = figspec.render_figspec(src)
             else:
                 from patent_studio.kernel import mmd_render
+
                 img = mmd_render.render_mmd(src)
         buf = io.BytesIO()
         img.save(buf, "PNG")
@@ -163,9 +176,9 @@ def _render_gen_fig(spec_or_mmd) -> bytes | None:
         return None
 
 
-def _order_figures(figures: list[tuple[str, bytes]], items,
-                   gen_src: dict[str, str] | None = None,
-                   marks_out: list[dict] | None = None) -> list[tuple[str, bytes]]:
+def _order_figures(
+    figures: list[tuple[str, bytes]], items, gen_src: dict[str, str] | None = None, marks_out: list[dict] | None = None
+) -> list[tuple[str, bytes]]:
     """按模型 figures[] 挑选并重排图——src（提取图序号，1 起）收提取图，mmd 渲染自绘工程示意。
     items 为 None（模型未输出 figures 键）→ 原样全收；[] → 模型判定全不收；全无效 → 原序兑底。
     gen_src 收集本次用到的 {图名: mmd 源}——写 figs-src/ 供后续人工改图源；
@@ -198,8 +211,8 @@ def _order_figures(figures: list[tuple[str, bytes]], items,
                     stem = f"fig{len(order) + 1}"
                     if spec is not None:
                         import json as _json
-                        gen_src[stem + ".spec"] = _json.dumps(
-                            spec, ensure_ascii=False, indent=2)
+
+                        gen_src[stem + ".spec"] = _json.dumps(spec, ensure_ascii=False, indent=2)
                     else:
                         gen_src[stem + ".mmd"] = mmd
                 order.append(("png", blob))
@@ -258,13 +271,20 @@ def check(content: str) -> list[str]:
     except AstError as e:
         return [f"第 {e.line} 行：{e}" if e.line else str(e)]
     report = lint.lint(content)
-    return [f"第 {d['line']} 行：{d['message']}" if d.get("line") else d["message"]
-            for d in report["diagnostics"] if d["severity"] == "error"]
+    return [
+        f"第 {d['line']} 行：{d['message']}" if d.get("line") else d["message"]
+        for d in report["diagnostics"]
+        if d["severity"] == "error"
+    ]
 
 
 def _fix_prompt(errors: list[str], previous: str) -> str:
-    return ("上一轮输出装配成案卷后校验失败，请修正后重新输出完整 JSON（同一 schema，不要解释）。\n校验错误：\n- "
-            + "\n- ".join(errors) + "\n\n上一轮输出：\n" + previous)
+    return (
+        "上一轮输出装配成案卷后校验失败，请修正后重新输出完整 JSON（同一 schema，不要解释）。\n校验错误：\n- "
+        + "\n- ".join(errors)
+        + "\n\n上一轮输出：\n"
+        + previous
+    )
 
 
 def _gen_quality_errors(data: dict) -> list[str]:
@@ -272,21 +292,28 @@ def _gen_quality_errors(data: dict) -> list[str]:
     成稿环节按 error 回修一次，仍未过则退为告警交付、不报废整案）：
     摘要未写全细则第 23 条四要素 / figures[].marks 声明的标记号未在说明书正文出现。"""
     errors: list[str] = []
-    missing = [name for name, pat in _ABSTRACT_ELEMENTS
-               if not pat.search(str(data.get("abstract") or ""))]
+    missing = [name for name, pat in _ABSTRACT_ELEMENTS if not pat.search(str(data.get("abstract") or ""))]
     if missing:
-        errors.append("摘要未体现" + "、".join(missing)
-                      + "（细则第 23 条：技术领域、所解决的技术问题、技术方案要点、有益效果四要素须写全）")
+        errors.append(
+            "摘要未体现"
+            + "、".join(missing)
+            + "（细则第 23 条：技术领域、所解决的技术问题、技术方案要点、有益效果四要素须写全）"
+        )
     desc = data.get("description") or {}
     desc_text = "\n".join(str(v) for v in desc.values()) if isinstance(desc, dict) else str(desc)
     for fig in data.get("figures") or []:
         if not isinstance(fig, dict):
             continue
-        missing_marks = [f"{n}（{name}）" for n, name in (fig.get("marks") or {}).items()
-                         if not re.search(rf"(?<![0-9]){re.escape(str(n))}(?![0-9])", desc_text)]
+        missing_marks = [
+            f"{n}（{name}）"
+            for n, name in (fig.get("marks") or {}).items()
+            if not re.search(rf"(?<![0-9]){re.escape(str(n))}(?![0-9])", desc_text)
+        ]
         if missing_marks:
-            errors.append(f"图{fig.get('num')} 标记表中的 {'、'.join(missing_marks)} 在说明书正文未出现"
-                          "——正文须按号引用图中全部标记号")
+            errors.append(
+                f"图{fig.get('num')} 标记表中的 {'、'.join(missing_marks)} 在说明书正文未出现"
+                "——正文须按号引用图中全部标记号"
+            )
     return errors
 
 
@@ -297,8 +324,9 @@ _ATTACHMENT_FIG_EXTS = {"png", "jpg", "jpeg", "gif", "webp"}
 _CV_FIG_MANIFEST = "cv-fig-manifest.json"
 
 
-def _stage_figures_as_attachments(project_dir: str, figures: list[tuple[str, bytes]],
-                                  draft_sha: str | None = None) -> list[str]:
+def _stage_figures_as_attachments(
+    project_dir: str, figures: list[tuple[str, bytes]], draft_sha: str | None = None
+) -> list[str]:
     """草稿模式（is_new=False）抽出的图不落 figs/，写 attachments/cv-figN.ext——
     附加文件属新增不动现有引用；另留 cv-fig-manifest.json 记录批次与草稿提交号，
     采纳草稿（恢复该 commit）时按序号晋级附图节，图号不悬空。"""
@@ -320,8 +348,7 @@ def _stage_figures_as_attachments(project_dir: str, figures: list[tuple[str, byt
         atomic.write_bytes(os.path.join(ad, name), data)
         staged.append(name)
     if staged:
-        atomic.write_json(os.path.join(ad, _CV_FIG_MANIFEST),
-                          {"draft_sha": draft_sha, "files": staged})
+        atomic.write_json(os.path.join(ad, _CV_FIG_MANIFEST), {"draft_sha": draft_sha, "files": staged})
     return staged
 
 
@@ -358,12 +385,14 @@ def promote_staged_figures(project_dir: str, draft_sha: str, content: str = "") 
     if promoted:
         caps = figures_md.captions_of(content)
         doc = figures_md.read(project_dir) or figures_md.FiguresDoc()
-        doc.spec = [figures_md.Figure(file=n, width=figures_md.DEFAULT_WIDTH,
-                                      alt=f"图{i} {caps[i]}" if caps.get(i) else f"图{i}")
-                    for i, n in enumerate(promoted, 1)]
+        doc.spec = [
+            figures_md.Figure(
+                file=n, width=figures_md.DEFAULT_WIDTH, alt=f"图{i} {caps[i]}" if caps.get(i) else f"图{i}"
+            )
+            for i, n in enumerate(promoted, 1)
+        ]
         if doc.abstract is None or doc.abstract.file not in promoted:
-            doc.abstract = figures_md.Figure(file=promoted[0],
-                                             width=figures_md.DEFAULT_ABSTRACT_WIDTH)
+            doc.abstract = figures_md.Figure(file=promoted[0], width=figures_md.DEFAULT_ABSTRACT_WIDTH)
         figures_md.write(project_dir, doc)
         try:
             os.remove(mp)
@@ -379,6 +408,7 @@ def _normalize_fig(ext: str, blob: bytes) -> tuple[str, bytes]:
     import io as _io
 
     from app.convert.extract import _flatten
+
     im = _flatten(blob)
     if im is None:
         return ext, blob
@@ -387,8 +417,9 @@ def _normalize_fig(ext: str, blob: bytes) -> tuple[str, bytes]:
     return "png", buf.getvalue()
 
 
-def _write_figures(project_dir: str, figures: list[tuple[str, bytes]], content: str = "",
-                   marks: list[dict] | None = None) -> int:
+def _write_figures(
+    project_dir: str, figures: list[tuple[str, bytes]], content: str = "", marks: list[dict] | None = None
+) -> int:
     fd = os.path.join(project_dir, "figs")
     os.makedirs(fd, exist_ok=True)
     for name in os.listdir(fd):  # projects.create 放的占位图让位——模型 0 收录时也须清空
@@ -415,8 +446,18 @@ def _write_figures(project_dir: str, figures: list[tuple[str, bytes]], content: 
     return len(figures)
 
 
-async def run(*, store, ai, pid: str, is_new: bool, filename: str, extracted: Extracted, questionnaire: Questionnaire,
-              progress, job_id: str | None = None) -> dict:
+async def run(
+    *,
+    store,
+    ai,
+    pid: str,
+    is_new: bool,
+    filename: str,
+    extracted: Extracted,
+    questionnaire: Questionnaire,
+    progress,
+    job_id: str | None = None,
+) -> dict:
     project_dir = store._dir(pid)
     progress(0.1, "整理发明要点")
     user, warnings = user_prompt(extracted, questionnaire, filename)
@@ -474,7 +515,8 @@ async def run(*, store, ai, pid: str, is_new: bool, filename: str, extracted: Ex
     if len(ordered_figs) != len(extracted["figures"]):
         warnings.append(
             f"模型按附图规则剔除 {len(extracted['figures']) - len(ordered_figs)} 张提取图"
-            f"（效果/指标/照片类不入附图），收录 {len(ordered_figs)} 张")
+            f"（效果/指标/照片类不入附图），收录 {len(ordered_figs)} 张"
+        )
     if gen_src:
         warnings.append(f"提取图无合格示意图，模型自绘 {len(gen_src)} 张工程示意（图源存 figs-src/）")
     if is_new:
@@ -492,12 +534,12 @@ async def run(*, store, ai, pid: str, is_new: bool, filename: str, extracted: Ex
         if ordered_figs:
             # 草稿版本不改动 figs/，但抽出的图不能白丢——落 attachments/ 并记清单，
             # 采纳草稿（恢复该 commit）时自动晋级附图节
-            staged = _stage_figures_as_attachments(project_dir, ordered_figs,
-                                                   draft_sha=draft_sha)
+            staged = _stage_figures_as_attachments(project_dir, ordered_figs, draft_sha=draft_sha)
             if staged:
                 warnings.append(
                     f"抽取到 {len(staged)} 张图片已存至附件（{staged[0]} 等）；"
-                    "草稿版本不改动现有案卷，采纳草稿时自动编入附图节")
+                    "草稿版本不改动现有案卷，采纳草稿时自动编入附图节"
+                )
             dropped = len(ordered_figs) - len(staged)
             if dropped:
                 warnings.append(f"另有 {dropped} 张图片格式不入附件（emf 等），未保留")
@@ -514,5 +556,10 @@ async def run(*, store, ai, pid: str, is_new: bool, filename: str, extracted: Ex
         "notes": [str(n) for n in data.get("notes") or []],
         "usage": usage_total,
     }
-    return {"pid": pid, "new_pid": pid if is_new else None, "draft_sha": draft_sha, "title": ast["title"]["text"],
-            "report": report}
+    return {
+        "pid": pid,
+        "new_pid": pid if is_new else None,
+        "draft_sha": draft_sha,
+        "title": ast["title"]["text"],
+        "report": report,
+    }

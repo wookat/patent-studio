@@ -5,6 +5,7 @@
 prep 只定形状；单元实现路由时 `response_model=` 引用此处，不得另造同名模型。改动字段必须同步对应 types 文件
 并更新 frontend/src/store/README.md。时间戳一律 epoch 秒（float）；日期一律 `YYYY-MM-DD`（Asia/Shanghai，后端权威）。
 """
+
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -198,9 +199,19 @@ class PublicConfirmIn(BaseModel):
 # ---------- 时间线 / 备注 / 审阅指派（share-confirm-backend） ----------
 
 TimelineEventKind = Literal[
-    "case.created", "case.status", "note", "share.created", "share.confirmed", "deliver.filed",
-    "oa.round", "deadline.done", "deadline.undone", "deadline.override", "review.assigned",
-    "export.downloaded", "ai.proposal",
+    "case.created",
+    "case.status",
+    "note",
+    "share.created",
+    "share.confirmed",
+    "deliver.filed",
+    "oa.round",
+    "deadline.done",
+    "deadline.undone",
+    "deadline.override",
+    "review.assigned",
+    "export.downloaded",
+    "ai.proposal",
 ]
 
 
@@ -234,10 +245,24 @@ class ReviewAssignResult(BaseModel):
 # ---------- 机构审计 / 设置 / AI 用量（notify-audit-backend / agent-core-backend） ----------
 
 OrgAuditKind = Literal[
-    "auth.login", "case.created", "case.deleted", "case.status", "member.changed", "admin.user",
-    "share.created", "share.revoked",
-    "share.confirmed", "export.downloaded", "ai.sent", "deliver.filed",
-    "oa.round", "deadline.done", "deadline.undone", "deadline.override", "deadline.nudge", "comment.assign",
+    "auth.login",
+    "case.created",
+    "case.deleted",
+    "case.status",
+    "member.changed",
+    "admin.user",
+    "share.created",
+    "share.revoked",
+    "share.confirmed",
+    "export.downloaded",
+    "ai.sent",
+    "deliver.filed",
+    "oa.round",
+    "deadline.done",
+    "deadline.undone",
+    "deadline.override",
+    "deadline.nudge",
+    "comment.assign",
 ]
 
 
@@ -340,6 +365,7 @@ class OaRoundsResponse(BaseModel):
 
 # ---------- 递交页字段级错误（preflight-backend） ----------
 
+
 class DeliverError(BaseModel):
     field: str
     code: str
@@ -351,6 +377,7 @@ class DeliverErrorsResponse(BaseModel):
 
 
 # ---------- 构建 tagged PDF 开关（three-view） ----------
+
 
 class BuildTagged(BaseModel):
     pdf_tagged: bool = False

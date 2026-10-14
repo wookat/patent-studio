@@ -3,6 +3,7 @@
 GET /api/figlib            → manifest.json（patents + figures 全量，前端分组/搜索）
 GET /api/figlib/img/{path} → 单张附图 PNG（path 为 manifest file 字段，如 "B流程图/CN…fig1.png"）
 """
+
 from __future__ import annotations
 
 import json

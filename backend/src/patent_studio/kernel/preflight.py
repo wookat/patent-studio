@@ -14,6 +14,7 @@ W5 R-CHK-02 / R-FIG-02（docs/plan/21-w5-spec.md §2.1；A3 形式项默认 warn
   numerals.mark_not_in_spec / numerals.spec_not_in_marks（figures.md 每图 marks 表 ↔ 说明书正文标记）。
   每条 item 带 para_no（说明书段号；非说明书段落为 None）；settings["preflight"]["disabled"] 列出的规则跳过。
 """
+
 import re
 
 VERSION = 1
@@ -44,11 +45,45 @@ _NAME_ABBR_RE = re.compile(r"[（(]\s*[A-Za-z][A-Za-z0-9\- ]*[)）]")
 
 
 # 名称前缀里的功能字：连词 / 介词 / 谓词。先按多字词切到最后一个，再剥掉开头的单字功能字
-_NAME_CUT_WORDS = ("所述", "包括", "包含", "其中", "通过", "以及", "或者", "并且", "具有", "设有", "用于",
-                   "连接", "承载", "装载", "形成", "构成", "组成", "对应", "作为", "分别", "还有",
-                   # 纯动词前缀（不会作元件名语素）——接入/处理/传输等会作元件名尾的不能加
-                   "送入", "经过", "共享", "二者", "两者", "根据", "依据", "借助", "返回", "提供",
-                   "完成", "判断", "调用", "送至", "决定")
+_NAME_CUT_WORDS = (
+    "所述",
+    "包括",
+    "包含",
+    "其中",
+    "通过",
+    "以及",
+    "或者",
+    "并且",
+    "具有",
+    "设有",
+    "用于",
+    "连接",
+    "承载",
+    "装载",
+    "形成",
+    "构成",
+    "组成",
+    "对应",
+    "作为",
+    "分别",
+    "还有",
+    # 纯动词前缀（不会作元件名语素）——接入/处理/传输等会作元件名尾的不能加
+    "送入",
+    "经过",
+    "共享",
+    "二者",
+    "两者",
+    "根据",
+    "依据",
+    "借助",
+    "返回",
+    "提供",
+    "完成",
+    "判断",
+    "调用",
+    "送至",
+    "决定",
+)
 _NAME_STRIP_CHARS = set("在与和及以含为包括承载至到约共达对经由将把从向于或的上中后前即则等各该是有并且而使被让享")
 _NAME_CUT_CHARS = set("的与和及或并为即是有在将把从向于由经至到含")
 
@@ -84,10 +119,16 @@ def normalize_self_ref(text: str) -> str:
         return text
     return _ABS_OPEN.sub(r"本发明\1", text.replace("本申请", "本发明"))
 
+
 # 细则 §20 说明书五段：技术领域 → 背景技术 → 发明内容 → 附图说明 → 具体实施方式（part 见 cnipa_xml.SECTION_ELEMENTS）
 _SECTION_ORDER = ("technical-field", "background-art", "disclosure", "description-of-drawings", "mode-for-invention")
-_SECTION_TITLES = {"technical-field": "技术领域", "background-art": "背景技术", "disclosure": "发明内容",
-                   "description-of-drawings": "附图说明", "mode-for-invention": "具体实施方式"}
+_SECTION_TITLES = {
+    "technical-field": "技术领域",
+    "background-art": "背景技术",
+    "disclosure": "发明内容",
+    "description-of-drawings": "附图说明",
+    "mode-for-invention": "具体实施方式",
+}
 # 审查指南第二部分第二章 2.2.7：说明书不得使用商业性宣传用语。「最佳实施」是惯用语（best mode）不算
 # 竞赛名次/排行榜类自我标榜（resnet-10 实案「ILSVRC 2015 第一名」照搬论文）同归宣传口径——
 # 语料 ~3.6% 授权件含此类词（多为现有技术引述），故随 _PROMO_RE 保持 warning 级
@@ -103,13 +144,23 @@ _CLAIM_FIG_REF_RE = re.compile(r"如(?:附)?图|参见(?:附)?图|见附图")
 _ABSTRACT_ELEMENTS = (
     ("技术领域", re.compile(r"领域|涉及|属于|公开了?一种|提供了?一种|提出了?一种")),
     ("技术问题", re.compile(r"问题|解决|克服|针对|不足|缺陷|难以|无法|防止|避免|应对")),
-    ("技术方案", re.compile(r"包括|包含|步骤|通过|采用|设有|其中|由.{1,20}组成|配置为|技术方案|方案要点|要点为|"
-                   r"该方法|所述方法|步骤为")),
-    ("有益效果", re.compile(r"提高|提升|降低|减少|减小|改善|增强|优化|保证|确保|实现|有效|效果|优点|有利于|便于|"
-                          r"能够|可靠|稳定|准确|精度|效率|成本|安全|受控|"
-                          # 效果收束连接词与呈现类动词——s1 成稿规约末句以「从而/使得…的效果」
-                          # 收尾（itransformer 实案「从而使得…呈现可解释的变量间相关性」被误报）
-                          r"从而|使得|呈现|支持|泛化|扩展")),
+    (
+        "技术方案",
+        re.compile(
+            r"包括|包含|步骤|通过|采用|设有|其中|由.{1,20}组成|配置为|技术方案|方案要点|要点为|"
+            r"该方法|所述方法|步骤为"
+        ),
+    ),
+    (
+        "有益效果",
+        re.compile(
+            r"提高|提升|降低|减少|减小|改善|增强|优化|保证|确保|实现|有效|效果|优点|有利于|便于|"
+            r"能够|可靠|稳定|准确|精度|效率|成本|安全|受控|"
+            # 效果收束连接词与呈现类动词——s1 成稿规约末句以「从而/使得…的效果」
+            # 收尾（itransformer 实案「从而使得…呈现可解释的变量间相关性」被误报）
+            r"从而|使得|呈现|支持|泛化|扩展"
+        ),
+    ),
 )
 _MARK_RE = re.compile(r"\d{3,4}")
 
@@ -161,6 +212,7 @@ from patent_studio.kernel._preflight_checks import (  # noqa: F401 — 回引保
 
 # ---------------- 报告 ----------------
 
+
 def disabled_rules(settings):
     """studio.json → settings["preflight"]["disabled"]：要跳过的规则名列表（缺省无）。"""
     pf = (settings or {}).get("preflight")
@@ -172,6 +224,7 @@ def disabled_rules(settings):
 # ---------------- 附图标记 ----------------
 
 # ---------------- 支持性 ----------------
+
 
 def run(ast, settings=None, terms=None, figs=None, figures=None):
     """terms（terms.json 的 terms 列表，可省略）：支持性匹配前把权项与说明书中的别名归一为主名。
@@ -203,5 +256,12 @@ def run(ast, settings=None, terms=None, figs=None, figures=None):
     counts = {"error": 0, "warning": 0, "info": 0}
     for it in items:
         counts[it["severity"]] += 1
-    return {"version": VERSION, "items": items, "counts": counts, "claim_tree": tree,
-            "numerals": numerals, "support_map": support, "figures": fig_rows}
+    return {
+        "version": VERSION,
+        "items": items,
+        "counts": counts,
+        "claim_tree": tree,
+        "numerals": numerals,
+        "support_map": support,
+        "figures": fig_rows,
+    }

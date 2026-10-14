@@ -8,6 +8,7 @@ events.emit 同步派发：订阅者用同步写法就能在 emit 返回前落�
 引擎按 config.DB_PATH 缓存（测试按 tmp 重载 config 时换库）；建表用同一份 Base.metadata（create_all 幂等）。
 只在 PATENT_STUDIO_AUTH=on 时才会被调用——off 模式没有用户，也不建 studio.db。
 """
+
 import secrets
 from datetime import UTC, datetime
 

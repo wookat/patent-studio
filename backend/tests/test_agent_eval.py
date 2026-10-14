@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """scripts/agent_eval.py：mock 全场景确定性判分 100%（进 make check 路径）；real 缺 key 不跑且不泄露 key。"""
+
 import asyncio
 import json
 import os
@@ -54,9 +55,16 @@ def test_mock_single_case_single_scenario(tmp_path):
 
 def test_summary_marks_failure_and_exit_code(tmp_path, monkeypatch, capsys):
     async def bad(case, scenario, ai, workdir):
-        return {"case": case, "scenario": scenario, "status": "done", "seconds": 0.0, "tokens": 0,
-                "proposals": 0, "comments": 0,
-                "checks": {c: c != "no_direct_write" for c in agent_eval.CRITERIA}}
+        return {
+            "case": case,
+            "scenario": scenario,
+            "status": "done",
+            "seconds": 0.0,
+            "tokens": 0,
+            "proposals": 0,
+            "comments": 0,
+            "checks": {c: c != "no_direct_write" for c in agent_eval.CRITERIA},
+        }
 
     monkeypatch.setattr(agent_eval, "run_one", bad)
     rc = agent_eval.main(["--provider", "mock", "--scenario", "s6", "--case", "method"])
@@ -83,9 +91,16 @@ def test_real_metrics_has_19_fields_and_no_secret(tmp_path, monkeypatch):
 
     async def fake(case, scenario, ai, workdir):
         calls.append(type(ai.provider).__name__)
-        return {"case": case, "scenario": scenario, "status": "done", "seconds": 1.5, "tokens": 1234,
-                "proposals": 2, "comments": 2 if scenario == "s2" else 0,
-                "checks": dict.fromkeys(agent_eval.CRITERIA, True)}
+        return {
+            "case": case,
+            "scenario": scenario,
+            "status": "done",
+            "seconds": 1.5,
+            "tokens": 1234,
+            "proposals": 2,
+            "comments": 2 if scenario == "s2" else 0,
+            "checks": dict.fromkeys(agent_eval.CRITERIA, True),
+        }
 
     monkeypatch.setattr(agent_eval, "run_one", fake)
     out = tmp_path / "real.json"

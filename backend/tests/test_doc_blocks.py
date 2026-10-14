@@ -4,6 +4,7 @@
 - PUT /docs/{book}：base_sha / 409 stale / 成功响应 ast+content+changed_lines+sha，GET 返回 sha；
   镜像 + history 同 save_content；
 - GET /history/diff?format=blocks：blocks[] 按 b 版 AST 块归并（added / removed / changed）。"""
+
 import hashlib
 import json
 import os
@@ -23,8 +24,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     import importlib
 
@@ -54,6 +58,7 @@ def _no_critic(obj):
 
 # ---------------- T5：审阅式补丁后 AST 恒为 final 文本 ----------------
 
+
 def test_patch_insert_delete_ast_is_critic_accepted(client):
     c = client
     ast = c.get("/api/projects/method/ast").json()
@@ -66,8 +71,10 @@ def test_patch_insert_delete_ast_is_critic_accepted(client):
     assert _no_critic(j["ast"]) and j["ast"] == c.get("/api/projects/method/ast").json()
     assert j["ast"]["description"][1]["inline"][0]["text"].startswith(p["text"][:3])
 
-    r = c.post("/api/projects/method/blocks", json={"kind": "paragraph", "after_block_id": p["id"],
-                                                    "markdown": "插入段{++带审阅++}。"})
+    r = c.post(
+        "/api/projects/method/blocks",
+        json={"kind": "paragraph", "after_block_id": p["id"], "markdown": "插入段{++带审阅++}。"},
+    )
     assert r.status_code == 200, r.text
     j = r.json()
     assert "{++带审阅++}" in j["content"]
@@ -79,6 +86,7 @@ def test_patch_insert_delete_ast_is_critic_accepted(client):
 
 
 # ---------------- T6：整书保存契约 ----------------
+
 
 def _sha(text):
     return hashlib.sha1(text.encode("utf-8")).hexdigest()
@@ -135,6 +143,7 @@ def test_put_doc_saves_even_when_ast_fails(client):
 
 # ---------------- T7：history diff format=blocks ----------------
 
+
 def test_block_diff_pure():
     md = _read_example()
     ast = parse_ast(md)
@@ -143,13 +152,19 @@ def test_block_diff_pure():
     off = ast["books"]["description"]["offset"]
     lines = md.split("\n")
     s = off + p["lines"]["start"] - 1
-    changed = "\n".join(lines[:s] + [lines[s] + "（改）"] + lines[s + 1:])
+    changed = "\n".join(lines[:s] + [lines[s] + "（改）"] + lines[s + 1 :])
     out = block_diff(md, ast, changed, parse_ast(changed))
-    assert out == [{"book": "description", "block_id": p["id"], "kind": "changed",
-                    "lines": [off + p["lines"]["start"], off + p["lines"]["end"]]}]
+    assert out == [
+        {
+            "book": "description",
+            "block_id": p["id"],
+            "kind": "changed",
+            "lines": [off + p["lines"]["start"], off + p["lines"]["end"]],
+        }
+    ]
     # 删掉该段 ⇒ removed，落点为其原起始行（空区间）
     e = off + p["lines"]["end"]
-    removed = "\n".join(lines[:s] + lines[e + 1:])
+    removed = "\n".join(lines[:s] + lines[e + 1 :])
     out = block_diff(md, ast, removed, parse_ast(removed))
     assert [(b["kind"], b["block_id"]) for b in out] == [("removed", p["id"])]
     lo, hi = out[0]["lines"]  # 空区间；落点在原段行或其前的空行（difflib 对空行归属二选一）

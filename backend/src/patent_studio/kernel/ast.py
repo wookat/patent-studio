@@ -12,6 +12,7 @@ books[book].offset = 该书 `## 标题` 所在全文行；title.line 为全文�
 （inline.inline_spans，marks ⊆ {b,i,u,sub,sup}，sub_except 取 settings.sub_except）；
 `text` / `title` 字段仍是原始 Markdown。
 """
+
 import json
 import os
 import re
@@ -65,6 +66,7 @@ def _lines(start, end):
 
 # ---------------- 权利要求 ----------------
 
+
 def _claim_refs(segments):
     refs = []
     for si, seg in enumerate(segments):
@@ -83,10 +85,16 @@ def _claim_refs(segments):
                 targets.append(int(lm.group(2)))
                 if lm.group(1) == "或":
                     alternative = True
-            refs.append({
-                "text": m.group(0), "targets": targets, "alternative": alternative,
-                "seg": si, "start": m.start(), "end": m.end(),
-            })
+            refs.append(
+                {
+                    "text": m.group(0),
+                    "targets": targets,
+                    "alternative": alternative,
+                    "seg": si,
+                    "start": m.start(),
+                    "end": m.end(),
+                }
+            )
     return refs
 
 
@@ -117,15 +125,21 @@ def _claim(num, block, sub_except=DEFAULT_SUB_EXCEPT):
     dependent = bool(_DEPENDENT_RE.match(head))
     cm = (_CATEGORY_DEP_RE if dependent else _CATEGORY_INDEP_RE).search(head)
     return {
-        "id": cid, "kind": "claim", "lines": _lines(block[0][0], block[-1][0]),
-        "num": num, "num_written": num_written,
+        "id": cid,
+        "kind": "claim",
+        "lines": _lines(block[0][0], block[-1][0]),
+        "num": num,
+        "num_written": num_written,
         "claim_kind": "dependent" if dependent else "independent",
         "category": cm.group(1) if cm else None,
-        "refs": _claim_refs(segments), "charact": _claim_charact(segments), "segments": segments,
+        "refs": _claim_refs(segments),
+        "charact": _claim_charact(segments),
+        "segments": segments,
     }
 
 
 # ---------------- 说明书 ----------------
+
 
 def _walk_description(lines):
     """与 parse_md 说明书分支逐字相同的状态机，额外记录每个 spec 项的行区间。
@@ -166,8 +180,7 @@ def _walk_description(lines):
             continue
         if s.startswith("注："):
             flush_table()
-            if items and isinstance(items[-1][0], tuple) and items[-1][0][0] == "t" \
-                    and "表注" not in items[-1][0][2]:
+            if items and isinstance(items[-1][0], tuple) and items[-1][0][0] == "t" and "表注" not in items[-1][0][2]:
                 items[-1][0][2]["表注"] = s
                 items[-1][2] = no
                 continue
@@ -190,7 +203,7 @@ def _walk_description(lines):
                 raise AstError("公式行缺少结尾 $$", no)
             formula, rest = body.rsplit("$$", 1)
             items.append([("e", formula, rest.strip()), no, no])
-        elif (m := INLINE_FIG_RE.match(s)):
+        elif m := INLINE_FIG_RE.match(s):
             items.append([("f", m.group("file"), float(m.group("width") or 15), m.group("alt").strip()), no, no])
         else:
             items.append([ln, no, no])
@@ -228,49 +241,105 @@ def _description_blocks(lines, sub_except=DEFAULT_SUB_EXCEPT):
             part = SECTION_ELEMENTS.get(it[1], "other")
             section_path = ids.unique("description/%s" % it[1])
             path, eq_no = section_path, 0
-            blocks.append({"id": path, "kind": "section", "lines": _lines(start, end), "title": it[1], "part": part,
-                           "inline": inline_spans(it[1], sub_except)})
+            blocks.append(
+                {
+                    "id": path,
+                    "kind": "section",
+                    "lines": _lines(start, end),
+                    "title": it[1],
+                    "part": part,
+                    "inline": inline_spans(it[1], sub_except),
+                }
+            )
         elif kind == "s":
             path = ids.unique("%s/%s" % (section_path or "description", it[1]))
             eq_no = 0
-            blocks.append({"id": path, "kind": "subsection", "lines": _lines(start, end),
-                           "title": it[1], "part": part, "inline": inline_spans(it[1], sub_except)})
+            blocks.append(
+                {
+                    "id": path,
+                    "kind": "subsection",
+                    "lines": _lines(start, end),
+                    "title": it[1],
+                    "part": part,
+                    "inline": inline_spans(it[1], sub_except),
+                }
+            )
         elif kind == "p":
             nxt = spec[i + 1] if i + 1 < len(spec) else None
             caption = isinstance(nxt, tuple) and nxt[0] == "t" and _TABLE_CAPTION_RE.match(it.strip())
-            blocks.append({"id": ids.unique("%s/p%04d" % (path, n.para_no)), "kind": "paragraph",
-                           "lines": _lines(start, end), "text": it, "para_no": n.para_no,
-                           "role": "table-caption" if caption else "body",
-                           "inline": inline_spans(it, sub_except)})
+            blocks.append(
+                {
+                    "id": ids.unique("%s/p%04d" % (path, n.para_no)),
+                    "kind": "paragraph",
+                    "lines": _lines(start, end),
+                    "text": it,
+                    "para_no": n.para_no,
+                    "role": "table-caption" if caption else "body",
+                    "inline": inline_spans(it, sub_except),
+                }
+            )
             last_no = n.para_no
         elif kind == "e":
             eq_no += 1
-            blocks.append({"id": ids.unique("%s/eq%d" % (path, eq_no)), "kind": "equation",
-                           "lines": _lines(start, end), "source": it[1], "label": it[2] or None,
-                           "mathml": to_mathml(it[1]), "anchor_para_no": last_no})
+            blocks.append(
+                {
+                    "id": ids.unique("%s/eq%d" % (path, eq_no)),
+                    "kind": "equation",
+                    "lines": _lines(start, end),
+                    "source": it[1],
+                    "label": it[2] or None,
+                    "mathml": to_mathml(it[1]),
+                    "anchor_para_no": last_no,
+                }
+            )
         elif kind == "t":
             rows, topts = it[1], it[2]
             widths = topts.get("列宽")
-            blocks.append({
-                "id": ids.unique("%s/p%04d" % (path, n.para_no)), "kind": "table", "lines": _lines(start, end),
-                "para_no": n.para_no,
-                "rows": rows,
-                "options": {"three_line": bool(topts.get("三线")), "repeat_header": bool(topts.get("重复表头")),
-                            "num_left": bool(topts.get("段号居左")),
-                            "col_widths": [float(w) for w in widths] if widths else None},
-                "caption_after": ({"text": topts["表题后置"], "para_no": n.caption_after_no}
-                                  if n.caption_after_no is not None else None),
-                "note": {"text": topts["表注"], "para_no": n.note_no} if n.note_no is not None else None,
-            })
+            blocks.append(
+                {
+                    "id": ids.unique("%s/p%04d" % (path, n.para_no)),
+                    "kind": "table",
+                    "lines": _lines(start, end),
+                    "para_no": n.para_no,
+                    "rows": rows,
+                    "options": {
+                        "three_line": bool(topts.get("三线")),
+                        "repeat_header": bool(topts.get("重复表头")),
+                        "num_left": bool(topts.get("段号居左")),
+                        "col_widths": [float(w) for w in widths] if widths else None,
+                    },
+                    "caption_after": (
+                        {"text": topts["表题后置"], "para_no": n.caption_after_no}
+                        if n.caption_after_no is not None
+                        else None
+                    ),
+                    "note": {"text": topts["表注"], "para_no": n.note_no} if n.note_no is not None else None,
+                }
+            )
             last_no = max(x for x in (n.para_no, n.caption_after_no, n.note_no) if x is not None)
         elif kind == "c":
-            blocks.append({"id": ids.unique("%s/p%04d" % (path, n.para_no)), "kind": "code",
-                           "lines": _lines(start, end), "code_lines": it[1], "para_no": n.para_no})
+            blocks.append(
+                {
+                    "id": ids.unique("%s/p%04d" % (path, n.para_no)),
+                    "kind": "code",
+                    "lines": _lines(start, end),
+                    "code_lines": it[1],
+                    "para_no": n.para_no,
+                }
+            )
             last_no = n.para_no
         elif kind == "f":
-            blocks.append({"id": ids.unique("%s/fig%d" % (path, n.para_no)), "kind": "figure",
-                           "lines": _lines(start, end), "file": it[1], "width": it[2], "alt": it[3],
-                           "para_no": n.para_no})
+            blocks.append(
+                {
+                    "id": ids.unique("%s/fig%d" % (path, n.para_no)),
+                    "kind": "figure",
+                    "lines": _lines(start, end),
+                    "file": it[1],
+                    "width": it[2],
+                    "alt": it[3],
+                    "para_no": n.para_no,
+                }
+            )
             last_no = n.para_no
     return blocks
 
@@ -295,9 +364,19 @@ def _figures(blocks, settings, doc=None):
     figures = []
     for k, (file, width, alt) in enumerate(spec_figures, 1):
         cap = captions.get(k)
-        figures.append({"id": "figures/%d" % k, "kind": "figure", "book": "figures", "num": k, "file": file,
-                        "width": float(width), "alt": alt,
-                        "caption": cap[0] if cap else None, "caption_line": cap[1] if cap else None})
+        figures.append(
+            {
+                "id": "figures/%d" % k,
+                "kind": "figure",
+                "book": "figures",
+                "num": k,
+                "file": file,
+                "width": float(width),
+                "alt": alt,
+                "caption": cap[0] if cap else None,
+                "caption_line": cap[1] if cap else None,
+            }
+        )
     return figures
 
 
@@ -307,6 +386,7 @@ def _figures_bad_lines(doc):
 
 
 # ---------------- 全文 ----------------
+
 
 def _split_books(lines):
     """按 parse_md 的 `# `/`## ` 规则切书：返回 title(text,line)、{book: (offset, [(rel_line, raw)])}。"""
@@ -354,8 +434,15 @@ def parse_ast(text, settings=None, figures=None):
 
     abs_off, abs_lines = books["abstract"]
     abs_paras = [
-        {"id": "abstract/p%d" % k, "kind": "paragraph", "lines": _lines(no, no), "text": ln, "para_no": None,
-         "role": "body", "inline": inline_spans(ln, sub_except)}
+        {
+            "id": "abstract/p%d" % k,
+            "kind": "paragraph",
+            "lines": _lines(no, no),
+            "text": ln,
+            "para_no": None,
+            "role": "body",
+            "inline": inline_spans(ln, sub_except),
+        }
         for k, (no, ln) in enumerate((x for x in abs_lines if x[1].strip()), 1)
     ]
 
@@ -386,7 +473,9 @@ def parse_ast(text, settings=None, figures=None):
             "description": {"offset": desc_off, "length": len(desc_lines)},
         },
         "abstract": {
-            "id": "abstract", "kind": "abstract", "lines": _lines(1, len(abs_lines)),
+            "id": "abstract",
+            "kind": "abstract",
+            "lines": _lines(1, len(abs_lines)),
             "figure_num": 1 if (settings or {}).get("abstract_figure") else None,
             "paragraphs": abs_paras,
         },

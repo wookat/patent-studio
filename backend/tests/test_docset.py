@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """R1 B1：三书拆合（docset）—— 往返法则、规范性校验、offset 坐标、镜像写入、/docs 路由。"""
+
 import hashlib
 import json
 import os
@@ -14,9 +15,11 @@ from patent_studio.kernel.content import parse_md
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 EXAMPLES = [os.path.join(ROOT, "examples", d) for d in ("method", "system")]
 
-CANON = ("# 一种测试方法\n\n## 摘要\n\n摘要正文。\n\n## 权利要求书\n\n1.一种测试方法，其特征在于：\n"
-         "$$x = 1$$\n\n2.根据权利要求1所述的方法。\n\n## 说明书\n\n### 技术领域\n\n正文。\n\n"
-         "表1 结果\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n\n\n")
+CANON = (
+    "# 一种测试方法\n\n## 摘要\n\n摘要正文。\n\n## 权利要求书\n\n1.一种测试方法，其特征在于：\n"
+    "$$x = 1$$\n\n2.根据权利要求1所述的方法。\n\n## 说明书\n\n### 技术领域\n\n正文。\n\n"
+    "表1 结果\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n\n\n"
+)
 
 
 def _read(d):
@@ -25,6 +28,7 @@ def _read(d):
 
 
 # --- split / assemble / offsets ---
+
 
 @pytest.mark.parametrize("d", EXAMPLES)
 def test_examples_roundtrip_and_offsets(d):
@@ -38,20 +42,20 @@ def test_examples_roundtrip_and_offsets(d):
         assert lines[off[b] - 1] == docset.BOOK_HEADINGS[b]
         # docs/<book>.md 第 k 行 ⇔ content.md 第 offset+k 行
         body = ds.book(b).split("\n")
-        assert lines[off[b]:off[b] + len(body) - 1] == body[:-1]
+        assert lines[off[b] : off[b] + len(body) - 1] == body[:-1]
     assert docset.check([d]) == []
 
 
 def test_edge_cases_roundtrip_bytewise():
     cases = [
-        CANON,                                             # 权项内公式行、说明书表格块、尾部多空行
-        CANON.rstrip("\n"),                                # 无换行结尾
+        CANON,  # 权项内公式行、说明书表格块、尾部多空行
+        CANON.rstrip("\n"),  # 无换行结尾
         CANON.replace("\n\n## 权利要求书", "\n\n\n\n## 权利要求书"),  # 书间多空行
-        "# 只有标题\n",                                     # 空案
+        "# 只有标题\n",  # 空案
         "# 只有标题",
         "",
         "# t\r\n\r\n## 摘要\r\nx\r\n## 权利要求书\r\n## 说明书\r\n",  # CRLF
-        "# t\n## 摘要 \n a\n##  权利要求书\nb\n## 说明书\n",          # 标题行首尾空白（与内核同判）
+        "# t\n## 摘要 \n a\n##  权利要求书\nb\n## 说明书\n",  # 标题行首尾空白（与内核同判）
     ]
     for md in cases:
         assert docset.assemble(docset.split(md)) == md, repr(md)
@@ -71,11 +75,15 @@ def test_offsets_canon_and_empty():
     ds = docset.split(CANON)
     assert docset.offsets(ds) == {"abstract": 3, "claims": 7, "description": 14}
     assert docset.offsets(docset.split("# 只有标题\n")) == {}
-    assert docset.offsets(docset.split("## 摘要\n## 权利要求书\n## 说明书")) == \
-        {"abstract": 1, "claims": 2, "description": 3}
+    assert docset.offsets(docset.split("## 摘要\n## 权利要求书\n## 说明书")) == {
+        "abstract": 1,
+        "claims": 2,
+        "description": 3,
+    }
 
 
 # --- validate ---
+
 
 def test_validate_ok_and_errors():
     docset.validate(docset.split(CANON))
@@ -90,6 +98,7 @@ def test_validate_ok_and_errors():
 
 
 # --- replace ---
+
 
 def test_replace_pads_newline_for_non_last_book():
     ds = docset.split(CANON)
@@ -106,6 +115,7 @@ def test_replace_pads_newline_for_non_last_book():
 
 
 # --- write_mirror ---
+
 
 def test_write_mirror_and_skip_invalid(tmp_path):
     d = str(tmp_path)
@@ -133,12 +143,16 @@ def test_check_reports_noncanonical(tmp_path):
 
 # --- API ---
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*", "docs", "project.json"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*", "docs", "project.json"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     import importlib
 
@@ -160,13 +174,17 @@ def test_get_docs_shapes_and_offsets(client):
     assert set(body) == {"title", "books"} and set(body["books"]) == set(docset.BOOKS)
     assert body["title"] == md.split("\n")[0][2:]
     assert body["books"]["abstract"]["offset"] == 3 and body["books"]["claims"]["offset"] == 7
-    assert body["books"]["description"]["offset"] == 45
+    assert body["books"]["description"]["offset"] == 29
     r = c.get("/api/projects/method/docs/claims")
     assert r.status_code == 200
     claims = body["books"]["claims"]["content"]
-    assert r.json() == {"book": "claims", "content": claims, "offset": 7,
-                        "sha": hashlib.sha1(claims.encode("utf-8")).hexdigest()}
-    assert md.split("\n")[44] == "## 说明书"
+    assert r.json() == {
+        "book": "claims",
+        "content": claims,
+        "offset": 7,
+        "sha": hashlib.sha1(claims.encode("utf-8")).hexdigest(),
+    }
+    assert md.split("\n")[28] == "## 说明书"
 
 
 def test_docs_404s(client):
@@ -253,5 +271,6 @@ def test_docs_422_when_content_noncanonical(client):
     r = c.put("/api/projects/method/docs/abstract", json={"content": "y\n"})
     assert r.status_code == 422
     # 非规范保存不更新镜像：仍是迁移时写下的三书
-    assert (projects / "method" / "docs" / "abstract.md").read_text(encoding="utf-8") == \
-        docset.split(_read(EXAMPLES[0])).abstract
+    assert (projects / "method" / "docs" / "abstract.md").read_text(encoding="utf-8") == docset.split(
+        _read(EXAMPLES[0])
+    ).abstract

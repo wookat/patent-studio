@@ -9,6 +9,7 @@
   3. `.studio/audit.jsonl`（MCP 写工具）→ ai.proposal。
   4. case.json.confirmations[] → share.confirmed；case.dates.filed → deliver.filed。
 """
+
 from __future__ import annotations
 
 import json
@@ -26,8 +27,16 @@ from app.mcp import audit
 from app.schemas import TimelineEventKind
 
 TIMELINE = "timeline.jsonl"
-BUS_KINDS: tuple[str, ...] = ("case.created", "share.created", "oa.round", "deadline.done", "deadline.undone",
-                              "deadline.override", "export.downloaded", "ai.proposal")
+BUS_KINDS: tuple[str, ...] = (
+    "case.created",
+    "share.created",
+    "oa.round",
+    "deadline.done",
+    "deadline.undone",
+    "deadline.override",
+    "export.downloaded",
+    "ai.proposal",
+)
 _AUDIT_WRITE_TOOLS = {"patch_block", "insert_block", "add_comment", "set_figure_order", "set_case_status"}
 
 
@@ -67,9 +76,16 @@ def add_note(project_dir: str, body: str, actor: dict | None) -> dict:
 
 
 def assign_review(project_dir: str, assignee: dict, due: str, actor: dict | None) -> dict:
-    return append(project_dir, {"kind": "review.assigned", "text": f"指派 {assignee['display_name']} 审阅，截止 {due}",
-                                "actor": actor, "mentions": [assignee["display_name"]],
-                                "data": {"user_id": assignee["id"], "due": due}})
+    return append(
+        project_dir,
+        {
+            "kind": "review.assigned",
+            "text": f"指派 {assignee['display_name']} 审阅，截止 {due}",
+            "actor": actor,
+            "mentions": [assignee["display_name"]],
+            "data": {"user_id": assignee["id"], "due": due},
+        },
+    )
 
 
 def add_review_deadline(project_dir: str, due: str, note: str) -> None:
@@ -93,9 +109,16 @@ def _from_history(project_dir: str) -> list[dict]:
             continue
         frm, to, note = m.group(1), m.group(2), m.group(3) or ""
         actor = {"id": h["author"], "display_name": h["author"]} if h.get("author") else None
-        out.append({"id": f"st-{h['sha'][:10]}", "kind": "case.status", "ts": float(h["at"]),
-                    "actor": actor, "text": f"状态：{frm} → {to}" + (f"（{note}）" if note else ""),
-                    "data": {"from": frm, "to": to, "note": note, "sha": h["sha"]}})
+        out.append(
+            {
+                "id": f"st-{h['sha'][:10]}",
+                "kind": "case.status",
+                "ts": float(h["at"]),
+                "actor": actor,
+                "text": f"状态：{frm} → {to}" + (f"（{note}）" if note else ""),
+                "data": {"from": frm, "to": to, "note": note, "sha": h["sha"]},
+            }
+        )
     return out
 
 
@@ -109,10 +132,16 @@ def _from_audit(project_dir: str) -> list[dict]:
             ts_f = datetime.fromisoformat(rec["ts"]).timestamp()
         except (KeyError, ValueError):
             ts_f = 0.0
-        out.append({"id": f"au-{i}-{int(ts_f)}", "kind": "ai.proposal", "ts": ts_f,
-                    "actor": {"id": rec.get("who") or "mcp", "display_name": rec.get("who") or "外部智能体"},
-                    "text": f"MCP 工具 {tool}",
-                    "data": {"tool": tool, "result": rec.get("result", "ok"), "args": rec.get("args", {})}})
+        out.append(
+            {
+                "id": f"au-{i}-{int(ts_f)}",
+                "kind": "ai.proposal",
+                "ts": ts_f,
+                "actor": {"id": rec.get("who") or "mcp", "display_name": rec.get("who") or "外部智能体"},
+                "text": f"MCP 工具 {tool}",
+                "data": {"tool": tool, "result": rec.get("result", "ok"), "args": rec.get("args", {})},
+            }
+        )
     return out
 
 
@@ -120,16 +149,29 @@ def _from_case(project_dir: str) -> list[dict]:
     case = cases.ensure_case(project_dir)
     out = []
     for i, c in enumerate(case.confirmations):
-        out.append({"id": f"cf-{i}-{int(c.confirmed_at)}", "kind": "share.confirmed", "ts": c.confirmed_at,
-                    "actor": {"id": c.actor, "display_name": c.name},
-                    "text": f"{c.name} 确认定稿（v{c.version}）" + (f"：{c.note}" if c.note else ""),
-                    "data": {"version": c.version, "sha": c.sha, "note": c.note}})
+        out.append(
+            {
+                "id": f"cf-{i}-{int(c.confirmed_at)}",
+                "kind": "share.confirmed",
+                "ts": c.confirmed_at,
+                "actor": {"id": c.actor, "display_name": c.name},
+                "text": f"{c.name} 确认定稿（v{c.version}）" + (f"：{c.note}" if c.note else ""),
+                "data": {"version": c.version, "sha": c.sha, "note": c.note},
+            }
+        )
     if case.dates.filed:
         filed = case.dates.filed  # YYYY-MM-DD
         ts = datetime.fromisoformat(filed).timestamp()
-        out.append({"id": f"filed-{filed}", "kind": "deliver.filed", "ts": ts, "actor": None,
-                    "text": f"已递交（{filed}）" + (f"，申请号 {case.case_no}" if case.case_no else ""),
-                    "data": {"filed": filed, "case_no": case.case_no}})
+        out.append(
+            {
+                "id": f"filed-{filed}",
+                "kind": "deliver.filed",
+                "ts": ts,
+                "actor": None,
+                "text": f"已递交（{filed}）" + (f"，申请号 {case.case_no}" if case.case_no else ""),
+                "data": {"filed": filed, "case_no": case.case_no},
+            }
+        )
     return out
 
 

@@ -8,6 +8,7 @@ PUT  /api/templates/{name}             → Template（新建或覆盖）
 DELETE /api/templates/{name}           → 204
 POST /api/projects/{pid}/templates/apply {name} → {settings}
 """
+
 import asyncio
 
 from fastapi import APIRouter, Depends, Request

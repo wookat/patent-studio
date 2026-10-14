@@ -8,6 +8,7 @@
   AUTH=on 需 agent+（与 REST 的 AGENT 门槛一致），被拒也进审计。
   不提供 MCP 改申请日 / 申请号：递交回写是人在递交页做的事（17 §2.4），AI 只改状态并留 note。
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -62,5 +63,4 @@ def register(server, store):
         """改案卷状态（同 POST /case/status，记一条 git 事件）；AUTH=on 需 agent+。申请日 / 申请号请在递交页填。"""
         args = {"status": status, "note": note}
         await open_for_write(store, pid, "agent", "set_case_status", args)
-        return await run_audited(store, pid, "set_case_status", args,
-                                 lambda: change_status(store, pid, status, note))
+        return await run_audited(store, pid, "set_case_status", args, lambda: change_status(store, pid, status, note))

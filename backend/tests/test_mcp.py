@@ -7,6 +7,7 @@
   裸 TestClient 直连时 Host 须为 127.0.0.1——SDK 的 DNS 重绑定保护对 testserver 回 421。
 AUTH=on：monkeypatch env 后按依赖顺序重载模块（同 test_auth._reload_app，再加 app.mcp.http / app.mcp.server）。
 """
+
 import asyncio
 import importlib
 import json
@@ -34,19 +35,26 @@ BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROOT = os.path.dirname(BACKEND)
 SECRET = "test-secret-not-for-production-32bytes+"
 HEADERS = {"accept": "application/json, text/event-stream", "content-type": "application/json"}
-INIT = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
-        "params": {"protocolVersion": "2025-06-18", "capabilities": {},
-                   "clientInfo": {"name": "pytest", "version": "0"}}}
+INIT = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "pytest", "version": "0"}},
+}
 FLOW = ["list_tools", "read_book", "patch_block", "lint", "build"]
 
 
 # ---------------------------------------------------------------- 工具 ----
 
+
 def _projects(tmp_path):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     return projects
 
 
@@ -127,8 +135,12 @@ def _http_client(base, token=None):
 
 
 def _stdio_params(projects, **env):
-    return StdioServerParameters(command=sys.executable, args=["-m", "app.mcp"], cwd=BACKEND,
-                                 env={**os.environ, "PATENT_PROJECTS_DIR": str(projects), **env})
+    return StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "app.mcp"],
+        cwd=BACKEND,
+        env={**os.environ, "PATENT_PROJECTS_DIR": str(projects), **env},
+    )
 
 
 def _tool_error(res):
@@ -144,14 +156,22 @@ async def _flow(c, pid="method"):
     ast = (await c.call_tool("get_ast", {"pid": pid})).structured_content
     c1 = ast["claims"][0]
     lines = [s["text"] for s in c1["segments"]]
-    lines[0] = lines[0].replace("控制方法", "控制方法及系统", 1)
-    patched = (await c.call_tool("patch_block", {"pid": pid, "block_id": c1["id"], "markdown": "\n".join(lines)}))
+    lines[0] = lines[0].replace("私钥生成方法，", "私钥生成方法及流程，", 1)
+    patched = await c.call_tool("patch_block", {"pid": pid, "block_id": c1["id"], "markdown": "\n".join(lines)})
     markup = (await c.call_tool("read_book", {"pid": pid, "book": "claims", "mode": "markup"})).structured_content
     final = (await c.call_tool("read_book", {"pid": pid, "book": "claims"})).structured_content
     lint = (await c.call_tool("lint", {"pid": pid})).structured_content
     build = (await c.call_tool("build", {"pid": pid, "pdf": False})).structured_content
-    return {"names": names, "book": book, "block": c1, "patched": patched, "markup": markup["text"],
-            "final": final["text"], "lint": lint, "build": build}
+    return {
+        "names": names,
+        "book": book,
+        "block": c1,
+        "patched": patched,
+        "markup": markup["text"],
+        "final": final["text"],
+        "lint": lint,
+        "build": build,
+    }
 
 
 def _assert_flow(f, pid="method"):
@@ -161,8 +181,8 @@ def _assert_flow(f, pid="method"):
     patched = f["patched"].structured_content
     assert patched["mode"] == "suggest" and patched["block_id"] == "claims/1"
     assert len(f["patched"].structured_content["sha"]) == 40
-    assert "控制方法{++及系统++}，" in f["markup"]  # 默认 CriticMarkup 建议：只标差异
-    assert "控制方法及系统，" in f["final"] and "{++" not in f["final"]  # final = 接受后
+    assert "私钥生成方法{++及流程++}，" in f["markup"]  # 默认 CriticMarkup 建议：只标差异
+    assert "私钥生成方法及流程，" in f["final"] and "{++" not in f["final"]  # final = 接受后
     assert f["lint"]["counts"]["error"] == 0 and isinstance(f["lint"]["diagnostics"], list)
     assert not [d for d in f["lint"]["diagnostics"] if d["id"].startswith("critic.")]  # 建议标记本身合法
     assert f["build"]["status"] == "ok" and f["build"]["docx_url"].startswith(f"/api/projects/{pid}/builds/")
@@ -175,13 +195,29 @@ def _audit_tools(projects, pid="method"):
 
 # ---------------------------------------------------------------- 契约 ----
 
+
 def test_schema_contract_names():
     assert len(schemas.TOOL_NAMES) == 74  # 15+图源4+W4-E 9+批1生命周期37+list_audit+admin 6+批4查新 2
-    assert {"list_figures", "set_figure_order", "set_figure_width",
-            "put_figure_source", "get_figure_source"} <= set(schemas.TOOL_NAMES)
+    assert {"list_figures", "set_figure_order", "set_figure_width", "put_figure_source", "get_figure_source"} <= set(
+        schemas.TOOL_NAMES
+    )
     assert schemas.TOOL_NAMES[:15] == (
-        "list_projects", "read_book", "get_ast", "get_docs", "patch_block", "insert_block", "lint", "preflight",
-        "build", "export_xml", "add_comment", "get_history", "list_figures", "set_figure_order", "set_figure_width")
+        "list_projects",
+        "read_book",
+        "get_ast",
+        "get_docs",
+        "patch_block",
+        "insert_block",
+        "lint",
+        "preflight",
+        "build",
+        "export_xml",
+        "add_comment",
+        "get_history",
+        "list_figures",
+        "set_figure_order",
+        "set_figure_width",
+    )
     assert schemas.RESOURCE_TEMPLATE == "patent://{pid}/docs/{book}"
     assert schemas.PatchIn(pid="p", block_id="claims/1", markdown="x").direct is False
     with pytest.raises(ValueError):
@@ -215,6 +251,7 @@ def test_audit_record_and_tail(tmp_path):
 
 # ---------------------------------------------------------------- AUTH=off ----
 
+
 def test_http_streamable_at_exact_path_raw_jsonrpc(off):
     main, _ = off
     with TestClient(main.app, base_url="http://127.0.0.1:8000", client=("127.0.0.1", 40000)) as c:
@@ -225,8 +262,16 @@ def test_http_streamable_at_exact_path_raw_jsonrpc(off):
         r = c.post("/mcp", json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}, headers=h)
         tools = json.loads(r.text.split("data: ", 1)[1].split("\n", 1)[0])["result"]["tools"]
         assert [t["name"] for t in tools] == list(schemas.TOOL_NAMES)
-        r = c.post("/mcp", json={"jsonrpc": "2.0", "id": 3, "method": "tools/call",
-                                 "params": {"name": "list_projects", "arguments": {}}}, headers=h)
+        r = c.post(
+            "/mcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {"name": "list_projects", "arguments": {}},
+            },
+            headers=h,
+        )
         out = json.loads(r.text.split("data: ", 1)[1].split("\n", 1)[0])["result"]
         assert out["structuredContent"]["result"][0]["id"] == "method"  # HTTP JSON 字段是 structuredContent
         assert c.get("/mcp/").status_code != 307  # 精确路径，不是 Mount 的 /mcp/ 跳转
@@ -250,6 +295,7 @@ def test_resolve_actor_matrix_off(off):
         assert await resolve_actor(None, "::1") == (LOCAL, 200, "")
         assert (await resolve_actor(None, "192.168.1.2"))[1] == 403
         assert (await resolve_actor("pat_x", "127.0.0.1"))[1] == 401  # off 模式没有 PAT 表
+
     asyncio.run(run())
     assert isinstance(PatGate(lambda *a: None), PatGate)
 
@@ -269,6 +315,7 @@ def test_stdio_official_client_flow(off):
     async def run():
         async with Client(_stdio_params(projects)) as c:
             return await _flow(c)
+
     f = asyncio.run(run())
     _assert_flow(f)
     assert _audit_tools(projects) == ["read_book", "get_ast", "patch_block", "read_book", "read_book", "lint", "build"]
@@ -284,6 +331,7 @@ def test_http_official_client_flow(off):
     async def run():
         async with _http_client(base) as c:
             return await _flow(c)
+
     with _serve(main.app) as base:
         f = asyncio.run(run())
     _assert_flow(f)
@@ -303,36 +351,60 @@ def test_in_process_every_tool_and_resource(off):
             ast = (await c.call_tool("get_ast", {"pid": "method"})).structured_content
             out["ast_keys"] = sorted(ast)
             c1 = ast["claims"][0]
-            out["insert"] = (await c.call_tool("insert_block", {"pid": "method", "kind": "claim",
-                                                                "after_block_id": c1["id"]})).structured_content
-            out["insert_md"] = (await c.call_tool("insert_block", {
-                "pid": "method", "kind": "paragraph", "book": "description",
-                "markdown": "新增段落甲。\n新增段落乙。"})).structured_content
-            out["markup"] = (await c.call_tool("read_book", {"pid": "method", "book": "claims", "mode": "markup"})
-                             ).structured_content["text"]
+            out["insert"] = (
+                await c.call_tool("insert_block", {"pid": "method", "kind": "claim", "after_block_id": c1["id"]})
+            ).structured_content
+            out["insert_md"] = (
+                await c.call_tool(
+                    "insert_block",
+                    {
+                        "pid": "method",
+                        "kind": "paragraph",
+                        "book": "description",
+                        "markdown": "新增段落甲。\n新增段落乙。",
+                    },
+                )
+            ).structured_content
+            out["markup"] = (
+                await c.call_tool("read_book", {"pid": "method", "book": "claims", "mode": "markup"})
+            ).structured_content["text"]
             out["desc_markup"] = (await c.call_tool("get_docs", {"pid": "method"})).structured_content["description"]
             out["preflight"] = (await c.call_tool("preflight", {"pid": "method"})).structured_content
             out["xml"] = (await c.call_tool("export_xml", {"pid": "method"})).structured_content
             out["figs"] = (await c.call_tool("list_figures", {"pid": "method"})).structured_content
-            out["comment"] = (await c.call_tool("add_comment", {
-                "pid": "method", "body": "请核对步骤一的术语",
-                "anchor": {"block_id": c1["id"], "line": c1["lines"]["start"], "quote": "冻结"}})).structured_content
+            out["comment"] = (
+                await c.call_tool(
+                    "add_comment",
+                    {
+                        "pid": "method",
+                        "body": "请核对步骤一的术语",
+                        "anchor": {"block_id": c1["id"], "line": c1["lines"]["start"], "quote": "冻结"},
+                    },
+                )
+            ).structured_content
             out["history"] = (await c.call_tool("get_history", {"pid": "method", "limit": 5})).structured_content
-            out["direct"] = (await c.call_tool("patch_block", {
-                "pid": "method", "block_id": "abstract/p1", "markdown": "直接改写的摘要。",
-                "direct": True})).structured_content
+            out["direct"] = (
+                await c.call_tool(
+                    "patch_block",
+                    {"pid": "method", "block_id": "abstract/p1", "markdown": "直接改写的摘要。", "direct": True},
+                )
+            ).structured_content
             out["abstract"] = (await c.read_resource("patent://method/docs/abstract")).contents[0]
             out["err_pid"] = _tool_error(await c.call_tool("read_book", {"pid": "nope", "book": "claims"}))
-            out["err_block"] = _tool_error(await c.call_tool("patch_block", {"pid": "method", "block_id": "claims/99",
-                                                                             "markdown": "x"}))
-            out["err_kind"] = _tool_error(await c.call_tool("insert_block", {"pid": "method", "kind": "poem",
-                                                                             "book": "claims"}))
-            out["err_anchor"] = _tool_error(await c.call_tool("add_comment",
-                                                             {"pid": "method", "anchor": {}, "body": "x"}))
+            out["err_block"] = _tool_error(
+                await c.call_tool("patch_block", {"pid": "method", "block_id": "claims/99", "markdown": "x"})
+            )
+            out["err_kind"] = _tool_error(
+                await c.call_tool("insert_block", {"pid": "method", "kind": "poem", "book": "claims"})
+            )
+            out["err_anchor"] = _tool_error(
+                await c.call_tool("add_comment", {"pid": "method", "anchor": {}, "body": "x"})
+            )
             out["templates"] = [t.uri_template for t in (await c.list_resource_templates()).resource_templates]
             return out
+
     o = asyncio.run(run())
-    assert o["projects"][0]["id"] == "method" and "时间序列" in o["projects"][0]["title"]
+    assert o["projects"][0]["id"] == "method" and "指纹信息" in o["projects"][0]["title"]
     assert set(o["docs"]) == {"pid", "title", "abstract", "claims", "description"}
     assert o["docs"]["claims"].startswith("\n1.")
     assert {"claims", "description", "abstract", "books", "figures"} <= set(o["ast_keys"])
@@ -344,7 +416,7 @@ def test_in_process_every_tool_and_resource(off):
         assert o["xml"]["status"] == "ok" and o["xml"]["zip_url"].startswith("/api/projects/method/xml/")
     else:  # 无 poppler 的环境（Windows 本机）只能走到 build 错误——错误形态本身也是契约
         assert o["xml"]["status"] == "error" and o["xml"]["error"]["kind"] == "build"
-    assert len(o["figs"]["figures"]) == 6 and o["figs"]["figures"][0]["name"] and "settings" in o["figs"]
+    assert len(o["figs"]["figures"]) == 3 and o["figs"]["figures"][0]["name"] and "settings" in o["figs"]
     assert o["comment"]["author"] == {"id": None, "name": "本机"} and o["comment"]["resolved"] is False
     assert o["history"]["result"][0]["message"] and len(o["history"]["result"]) <= 5
     assert o["direct"]["mode"] == "direct"
@@ -357,10 +429,9 @@ def test_in_process_every_tool_and_resource(off):
     assert o["templates"] == [schemas.RESOURCE_TEMPLATE]
     tools = _audit_tools(projects)
     assert tools.count("read_book") == 2  # 1 次工具 + 1 次资源
-    assert [r for r in audit.tail(str(projects / "method"), 100) if r["result"] != "ok"] and \
-        {r["result"] for r in audit.tail(str(projects / "method"), 100)} == {"ok", "error:stale", "error:kind"}
-
-
+    assert [r for r in audit.tail(str(projects / "method"), 100) if r["result"] != "ok"] and {
+        r["result"] for r in audit.tail(str(projects / "method"), 100)
+    } == {"ok", "error:stale", "error:kind"}
 
 
 def test_lifecycle_tools_off(off):
@@ -385,15 +456,18 @@ def test_lifecycle_tools_off(off):
             out["templates"] = (await c.call_tool("list_templates", {})).structured_content
             await c.call_tool("add_note", {"pid": "method", "body": "mcp 笔记"})
             out["tl2"] = (await c.call_tool("get_timeline", {"pid": "method", "limit": 50})).structured_content
-            out["upd_case"] = (await c.call_tool(
-                "update_case", {"pid": "method", "fields": {"applicants": ["生命周期测试"]}})).structured_content
-            out["settings2"] = (await c.call_tool("put_settings", {"pid": "method",
-                                                                 "settings": {"ai_enabled": True}})).structured_content
+            out["upd_case"] = (
+                await c.call_tool("update_case", {"pid": "method", "fields": {"applicants": ["生命周期测试"]}})
+            ).structured_content
+            out["settings2"] = (
+                await c.call_tool("put_settings", {"pid": "method", "settings": {"ai_enabled": True}})
+            ).structured_content
             out["settings3"] = (await c.call_tool("get_settings", {"pid": "method"})).structured_content
             out["tag"] = (await c.call_tool("create_tag", {"name": "生命周期标签"})).structured_content
             out["new_pid"] = (await c.call_tool("create_project", {"title": "MCP 新建案"})).structured_content
             out["err_settings"] = _tool_error(await c.call_tool("get_settings", {"pid": "nope"}))
             return out
+
     o = asyncio.run(run())
     assert "style" in o["settings"] and "applicants" in o["summary"]
     assert isinstance(o["deadlines"]["deadlines"], list)
@@ -408,6 +482,7 @@ def test_lifecycle_tools_off(off):
     assert o["new_pid"]["pid"] and o["new_pid"]["title"] == "MCP 新建案"
     assert o["err_settings"]["kind"] == "not_found"
 
+
 def test_audit_route_reads_project_file(off):
     main, projects = off
     audit.record(str(projects / "method"), "local", "lint", {}, "ok")
@@ -417,6 +492,7 @@ def test_audit_route_reads_project_file(off):
 
 
 # ---------------------------------------------------------------- AUTH=on ----
+
 
 def _register(c, email, password="pw-123456", display_name=""):
     r = c.post("/api/auth/register", json={"email": email, "password": password, "display_name": display_name})
@@ -470,6 +546,7 @@ def test_on_pat_crud_and_gate(on):
         bad = await resolve_actor("pat_" + "0" * 32, "10.0.0.9")
         none = await resolve_actor(None, "127.0.0.1")
         return actor, status, bad[1], none[1]
+
     actor, status, bad, none = asyncio.run(run())
     assert status == 200 and actor.name == "张律师" and actor.id == created["id"] and actor.superuser is False
     assert bad == 401 and none == 401  # on 模式本机也要令牌
@@ -481,6 +558,7 @@ def test_on_pat_crud_and_gate(on):
 
     async def denied():
         return (await resolve_actor(created["token"], "10.0.0.9"))[1]
+
     assert asyncio.run(denied()) == 401
     assert su.put(f"/api/admin/users/{owner_id}", json={"is_active": True}).status_code == 200
     assert asyncio.run(denied()) == 200
@@ -510,27 +588,53 @@ def test_on_http_official_client_roles_and_audit(on):
         out = {}
         async with _http_client(base, viewer_tok) as c:
             out["viewer_flow"] = await _flow(c)
-            out["viewer_direct"] = _tool_error(await c.call_tool("patch_block", {
-                "pid": "method", "block_id": "abstract/p1", "markdown": "x", "direct": True}))
-            out["viewer_insert_direct"] = _tool_error(await c.call_tool("insert_block", {
-                "pid": "method", "kind": "paragraph", "book": "description", "direct": True}))
-            out["viewer_comment"] = (await c.call_tool("add_comment", {
-                "pid": "method", "body": "viewer 也能批注",
-                "anchor": {"block_id": "claims/1", "line": 9, "quote": "冻结"}})).structured_content
+            out["viewer_direct"] = _tool_error(
+                await c.call_tool(
+                    "patch_block", {"pid": "method", "block_id": "abstract/p1", "markdown": "x", "direct": True}
+                )
+            )
+            out["viewer_insert_direct"] = _tool_error(
+                await c.call_tool(
+                    "insert_block", {"pid": "method", "kind": "paragraph", "book": "description", "direct": True}
+                )
+            )
+            out["viewer_comment"] = (
+                await c.call_tool(
+                    "add_comment",
+                    {
+                        "pid": "method",
+                        "body": "viewer 也能批注",
+                        "anchor": {"block_id": "claims/1", "line": 9, "quote": "冻结"},
+                    },
+                )
+            ).structured_content
         async with _http_client(base, owner_tok) as c:
-            out["owner_direct"] = (await c.call_tool("patch_block", {
-                "pid": "method", "block_id": "abstract/p1", "markdown": "owner 直改摘要。",
-                "direct": True})).structured_content
+            out["owner_direct"] = (
+                await c.call_tool(
+                    "patch_block",
+                    {"pid": "method", "block_id": "abstract/p1", "markdown": "owner 直改摘要。", "direct": True},
+                )
+            ).structured_content
             out["owner_projects"] = (await c.call_tool("list_projects", {})).structured_content["result"]
         async with _http_client(base, su_tok) as c:
             out["su_projects"] = (await c.call_tool("list_projects", {})).structured_content["result"]
-            out["su_direct"] = (await c.call_tool("insert_block", {
-                "pid": "method", "kind": "paragraph", "book": "description", "markdown": "超管直插。",
-                "direct": True})).structured_content
+            out["su_direct"] = (
+                await c.call_tool(
+                    "insert_block",
+                    {
+                        "pid": "method",
+                        "kind": "paragraph",
+                        "book": "description",
+                        "markdown": "超管直插。",
+                        "direct": True,
+                    },
+                )
+            ).structured_content
         async with _http_client(base, stranger_tok) as c:
             out["stranger_projects"] = (await c.call_tool("list_projects", {})).structured_content["result"]
             out["stranger_read"] = _tool_error(await c.call_tool("read_book", {"pid": "method", "book": "claims"}))
         return out
+
     with _serve(main.app) as base:
         o = asyncio.run(run(base))
     _assert_flow(o["viewer_flow"])
@@ -559,8 +663,9 @@ def test_on_stdio_requires_pat_env(on):
             names = [t.name for t in (await c.list_tools()).tools]
             book = (await c.call_tool("read_book", {"pid": "method", "book": "abstract"})).structured_content
             return names, book
+
     names, book = asyncio.run(run())
-    assert names == list(schemas.TOOL_NAMES) and "时间序列" in book["text"]
+    assert names == list(schemas.TOOL_NAMES) and "指纹信息" in book["text"]
     assert audit.tail(str(projects / "method"), 1)[0]["who"] == "张律师"
 
     for pat, msg in ((None, "PATENT_STUDIO_PAT"), ("pat_" + "f" * 32, "无效或已撤销"), ("oops", "pat_ 开头")):
@@ -568,12 +673,20 @@ def test_on_stdio_requires_pat_env(on):
         e.pop("PATENT_STUDIO_PAT", None)
         if pat:
             e["PATENT_STUDIO_PAT"] = pat
-        r = subprocess.run([sys.executable, "-m", "app.mcp"], cwd=BACKEND, env=e, capture_output=True, text=True,
-                           encoding="utf-8", timeout=60)
+        r = subprocess.run(
+            [sys.executable, "-m", "app.mcp"],
+            cwd=BACKEND,
+            env=e,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=60,
+        )
         assert r.returncode == 2 and msg in r.stderr, (pat, r.stderr)
 
 
 # ---------------------------------------------------------------- 批3-C admin ----
+
 
 def _call_tool(name, args, actor_obj=None):
     """进程内直调工具（注入 Actor）；成功返回结果，业务错返回 {kind,message}。"""
@@ -593,8 +706,9 @@ def _call_tool(name, args, actor_obj=None):
                 res = await srv.server._tool_manager.call_tool(name, args, None)
         except ToolError as e:
             s = str(e)
-            return {"_error": json.loads(s[s.find("{"):])}
+            return {"_error": json.loads(s[s.find("{") :])}
         return res
+
     return asyncio.run(go())
 
 
@@ -606,6 +720,7 @@ def test_on_admin_tools(on):
     main, projects = on
     su, owner, viewer = _users(main)
     from app.domain import org_audit
+
     org_audit.install()  # test_w5_prep 会 events.reset()（test_org_audit 同款）
     su_id = su.get("/api/users/me").json()["id"]
     viewer_id = viewer.get("/api/users/me").json()["id"]
@@ -620,15 +735,15 @@ def test_on_admin_tools(on):
     assert all("hashed_password" not in m for m in members)
 
     # 自己降级自己 → conflict；别人降唯一超管 → 至少保留一位（两个独立闸）
-    assert "自己" in _call_tool("update_org_member",
-                              {"user_id": su_id, "is_active": False}, boss)["_error"]["message"]
+    assert "自己" in _call_tool("update_org_member", {"user_id": su_id, "is_active": False}, boss)["_error"]["message"]
     other_admin = Actor(id="u-z", name="另管", user_id="other-admin-id", superuser=True)
-    assert "至少保留" in _call_tool("update_org_member",
-                                    {"user_id": su_id, "is_superuser": False}, other_admin)["_error"]["message"]
+    assert (
+        "至少保留"
+        in _call_tool("update_org_member", {"user_id": su_id, "is_superuser": False}, other_admin)["_error"]["message"]
+    )
 
     # 授 viewer 超管 → 由 viewer 降 su（自降级闸在 su 自己身上）；admin.user 进机构审计
-    out = _call_tool("update_org_member",
-                     {"user_id": viewer_id, "is_superuser": True, "title": "合伙人"}, boss)
+    out = _call_tool("update_org_member", {"user_id": viewer_id, "is_superuser": True, "title": "合伙人"}, boss)
     assert out["is_superuser"] is True and out["title"] == "合伙人"
     promoted = Actor(id="u-v", name="小V", user_id=viewer_id, superuser=True)
     out = _call_tool("update_org_member", {"user_id": su_id, "is_superuser": False}, promoted)
@@ -637,8 +752,10 @@ def test_on_admin_tools(on):
     aud = _call_tool("list_org_audit", {"kind": "admin.user", "limit": 10}, boss)
     assert any(it["kind"] == "admin.user" for it in aud["items"])
     # org 级写落 <projects>/.studio/.studio/audit.jsonl（lifecycle ORG_DIR 存量口径）
-    rows = [json.loads(ln) for ln in
-            (projects / ".studio" / ".studio" / "audit.jsonl").read_text(encoding="utf-8").splitlines()]
+    rows = [
+        json.loads(ln)
+        for ln in (projects / ".studio" / ".studio" / "audit.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
     assert any(r["tool"] == "update_org_member" for r in rows)
 
     # 机构设置读写（merge 语义）

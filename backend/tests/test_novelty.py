@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """W19 批4 查新记录卡：GET/PUT /api/projects/{pid}/novelty + domain.novelty（.studio/novelty.json）。"""
+
 import importlib
 import json
 import os
@@ -20,8 +21,11 @@ ERR_KEYS = {"kind", "message", "line", "detail"}
 def _projects(tmp_path):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     return projects
 
 
@@ -73,7 +77,13 @@ def _err(r, status, kind="novelty"):
     return d
 
 
-HIT = {"number": "CN111000001A", "title": "一种数据处理方法", "relevance": "X", "note": "权1 新颖性风险", "link": "https://x"}
+HIT = {
+    "number": "CN111000001A",
+    "title": "一种数据处理方法",
+    "relevance": "X",
+    "note": "权1 新颖性风险",
+    "link": "https://x",
+}
 QUERY = {"query": "TACD:(数据处理)", "provider": "patsnap", "ran_at": "2026-10-01"}
 
 
@@ -98,9 +108,9 @@ def test_get_empty_then_put_roundtrip(client):
 def test_put_validation_422(client):
     c, _ = client
     for bad in (
-        {"hits": [{"number": "", "title": ""}]},                    # 无号无题
-        {"hits": [{"number": "X1", "relevance": "Z"}]},             # 非法相关度
-        {"queries": [{"query": ""}]},                                # 空检索式
+        {"hits": [{"number": "", "title": ""}]},  # 无号无题
+        {"hits": [{"number": "X1", "relevance": "Z"}]},  # 非法相关度
+        {"queries": [{"query": ""}]},  # 空检索式
     ):
         _err(c.put("/api/projects/method/novelty", json=bad), 422)
     # 形态级错误走全局 pydantic 422（kind=validation），同样不落盘
@@ -119,17 +129,22 @@ def test_corrupt_file_422(client):
 def test_record_novelty_merge(client):
     """MCP 增量语义：query 去重追加、hit 按公开号覆盖、conclusion None 不覆盖。"""
     from app.domain import novelty as nov
+
     c, d = client
     store = c.app.state.store
     rec = nov.record_novelty(store, "method", queries=[QUERY], hits=[HIT], conclusion="第一版结论")
     assert rec["hits"] == [HIT] and rec["queries"] == [QUERY] and rec["conclusion"] == "第一版结论"
 
-    rec = nov.record_novelty(store, "method", queries=[QUERY],
-                             hits=[{**HIT, "relevance": "Y"}, {"number": "CN222", "title": "另一篇", "relevance": "A"}])
+    rec = nov.record_novelty(
+        store,
+        "method",
+        queries=[QUERY],
+        hits=[{**HIT, "relevance": "Y"}, {"number": "CN222", "title": "另一篇", "relevance": "A"}],
+    )
     assert [h["number"] for h in rec["hits"]] == ["CN111000001A", "CN222"]
-    assert rec["hits"][0]["relevance"] == "Y"          # 同号覆盖
-    assert len(rec["queries"]) == 1                    # 同式同源去重
-    assert rec["conclusion"] == "第一版结论"            # None 不覆盖
+    assert rec["hits"][0]["relevance"] == "Y"  # 同号覆盖
+    assert len(rec["queries"]) == 1  # 同式同源去重
+    assert rec["conclusion"] == "第一版结论"  # None 不覆盖
     assert json.loads((d / ".studio" / "novelty.json").read_text(encoding="utf-8"))["conclusion"] == "第一版结论"
 
 

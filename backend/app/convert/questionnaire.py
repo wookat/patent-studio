@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """交底书问卷（docs/plan/09 §3.3.1）：六个可选字段，非空字段渲染为提示词里的「发明要点」段，优先于论文原文。"""
+
 import json
 from typing import TypedDict
 

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """CriticMarkup 逐字节法则（docs/plan/07 §6.3）。prep 锁定恒等/行数/幂等；C2 追加 parse→marks 用例。"""
+
 import os
 
 import pytest
@@ -56,6 +57,7 @@ def test_unknown_mode():
 
 # ---------------- C2：parse → marks（07 §4.2）----------------
 
+
 def apply_marks(text: str, marks: list[dict], pick: str) -> str:
     """frontend/src/store/review.ts applyMarks 的逐字节等价实现（同行右→左替换 [from,to)），用于 A5 对照。"""
     lines = text.split("\n")
@@ -65,24 +67,26 @@ def apply_marks(text: str, marks: list[dict], pick: str) -> str:
     for no, arr in by_line.items():
         s = lines[no - 1]
         for m in sorted(arr, key=lambda x: -x["from"]):
-            s = s[:m["from"]] + m[pick] + s[m["to"]:]
+            s = s[: m["from"]] + m[pick] + s[m["to"] :]
         lines[no - 1] = s
     return "\n".join(lines)
 
 
-SAMPLE = "\n".join([
-    "# 一种{~~方法~>装置~~}",
-    "",
-    "## 摘要",
-    "",
-    "本发明{++公开了++}一种装置{--和方法--}。{>>摘要要不要提方法？<<}",
-    "",
-    "## 权利要求书",
-    "",
-    "1.一种{==装置==}，其特征在于：",
-    "| a | {~~1~>2~~} |",
-    "$$x_{~~1~>2~~}$$",
-])
+SAMPLE = "\n".join(
+    [
+        "# 一种{~~方法~>装置~~}",
+        "",
+        "## 摘要",
+        "",
+        "本发明{++公开了++}一种装置{--和方法--}。{>>摘要要不要提方法？<<}",
+        "",
+        "## 权利要求书",
+        "",
+        "1.一种{==装置==}，其特征在于：",
+        "| a | {~~1~>2~~} |",
+        "$$x_{~~1~>2~~}$$",
+    ]
+)
 
 
 def test_parse_fields_and_offsets():
@@ -128,7 +132,10 @@ def test_parse_no_markup_is_empty():
 def test_lint_marks():
     warns = critic.lint_marks("正常 {++a++}\n{++x\ny++}\n{++a{--b--}c++}\n{--未闭合 {++ok++}")
     assert [(w["id"], w["line"]) for w in warns] == [
-        ("critic.unclosed#L2", 2), ("critic.nested#L4", 4), ("critic.unclosed#L5", 5)]
+        ("critic.unclosed#L2", 2),
+        ("critic.nested#L4", 4),
+        ("critic.unclosed#L5", 5),
+    ]
     assert {w["severity"] for w in warns} == {"warning"}
     assert all(w["source"] == "lint" and w["message"] and w["fix"] for w in warns)
     assert critic.lint_marks(SAMPLE) == []

@@ -5,6 +5,7 @@
 AUTH=on 时查/建/撤销当前用户自己的 personal_access_token：明文 pat_ + 32 hex 只在 POST 响应里出现一次，库中只存 sha256。
 /api/projects/{pid}/audit：读 .studio/audit.jsonl（最新在前）。
 """
+
 import uuid
 from datetime import UTC, datetime
 
@@ -32,8 +33,13 @@ def _unavailable():
 
 
 def _out(pat) -> dict:
-    return {"id": pat.id, "name": pat.name, "prefix": pat.prefix, "created_at": acl.iso(pat.created_at),
-            "last_used_at": acl.iso(pat.last_used_at)}
+    return {
+        "id": pat.id,
+        "name": pat.name,
+        "prefix": pat.prefix,
+        "created_at": acl.iso(pat.created_at),
+        "last_used_at": acl.iso(pat.last_used_at),
+    }
 
 
 async def _ready(user):
@@ -53,9 +59,11 @@ async def _ready(user):
 async def list_pats(user: CurrentUser):
     SessionLocal, PersonalAccessToken = await _ready(user)
     async with SessionLocal() as s:
-        rows = await s.scalars(select(PersonalAccessToken)
-                               .where(PersonalAccessToken.user_id == user.id, PersonalAccessToken.revoked_at.is_(None))
-                               .order_by(PersonalAccessToken.created_at))
+        rows = await s.scalars(
+            select(PersonalAccessToken)
+            .where(PersonalAccessToken.user_id == user.id, PersonalAccessToken.revoked_at.is_(None))
+            .order_by(PersonalAccessToken.created_at)
+        )
         return [_out(p) for p in rows]
 
 
@@ -63,8 +71,14 @@ async def list_pats(user: CurrentUser):
 async def create_pat(body: PatCreateIn, user: CurrentUser):
     SessionLocal, PersonalAccessToken = await _ready(user)
     token = new_token()
-    pat = PersonalAccessToken(id=uuid.uuid4().hex, user_id=user.id, name=body.name.strip(), prefix=token[:12],
-                              token_hash=token_hash(token), created_at=datetime.now(UTC))
+    pat = PersonalAccessToken(
+        id=uuid.uuid4().hex,
+        user_id=user.id,
+        name=body.name.strip(),
+        prefix=token[:12],
+        token_hash=token_hash(token),
+        created_at=datetime.now(UTC),
+    )
     async with SessionLocal() as s:
         s.add(pat)
         await s.commit()
@@ -76,8 +90,9 @@ async def create_pat(body: PatCreateIn, user: CurrentUser):
 async def revoke_pat(pat_id: str, user: CurrentUser):
     SessionLocal, PersonalAccessToken = await _ready(user)
     async with SessionLocal() as s:
-        pat = await s.scalar(select(PersonalAccessToken)
-                             .where(PersonalAccessToken.id == pat_id, PersonalAccessToken.user_id == user.id))
+        pat = await s.scalar(
+            select(PersonalAccessToken).where(PersonalAccessToken.id == pat_id, PersonalAccessToken.user_id == user.id)
+        )
         if pat is None:
             raise HTTPException(404, error_detail("not_found", f"PAT 不存在：{pat_id}"))
         if pat.revoked_at is None:

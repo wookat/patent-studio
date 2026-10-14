@@ -11,6 +11,7 @@ lint / run_build / run_xml_export / figures / comments / history / patent_studio
 整行增删写 `{++ ++}` / `{-- --}`，
 标记不跨行（critic.py 逐行解析）；随后仍走 patch.patch_block 重解析校验并落盘。
 """
+
 from __future__ import annotations
 
 import difflib
@@ -39,6 +40,7 @@ from patent_studio.kernel import critic, docset, patch
 from patent_studio.kernel.docset import BOOKS
 
 # ---------------------------------------------------------------- 错误 ----
+
 
 def _err(kind, message, line=None, detail=None) -> ToolError:
     d = schemas.ToolErrorDetail(kind=kind, message=message, line=line, detail=detail)
@@ -69,6 +71,7 @@ _BUSINESS = (ProjectError, patch.PatchError, HTTPException, history.HistoryError
 
 # ---------------------------------------------------------------- 身份 / 权限 ----
 
+
 def actor() -> Actor:
     return CURRENT_ACTOR.get() or LOCAL
 
@@ -94,6 +97,7 @@ async def _visible(who: Actor, pids: list[str]) -> list[str]:
 
 # ---------------------------------------------------------------- 建议模式 ----
 
+
 def _sub_line(a: str, b: str) -> str:
     """同一行的改动：公共前后缀保留在标记外（保住 `1.` / `### ` 等结构前缀），中间写 {~~旧~>新~~}。"""
     p = 0
@@ -102,14 +106,14 @@ def _sub_line(a: str, b: str) -> str:
     s = 0
     while s < len(a) - p and s < len(b) - p and a[-1 - s] == b[-1 - s]:
         s += 1
-    old, new = a[p:len(a) - s], b[p:len(b) - s]
+    old, new = a[p : len(a) - s], b[p : len(b) - s]
     if not old:
         mark = "{++%s++}" % new
     elif not new:
         mark = "{--%s--}" % old
     else:
         mark = "{~~%s~>%s~~}" % (old, new)
-    return a[:p] + mark + (a[len(a) - s:] if s else "")
+    return a[:p] + mark + (a[len(a) - s :] if s else "")
 
 
 def suggest(old_lines: list[str], new_lines: list[str]) -> list[str]:
@@ -136,6 +140,7 @@ def _settings(store, p):
 # ---------------------------------------------------------------- 案卷级工具公共骨架 ----
 # W4-E E3（docs/plan/17 §4）：tools_case / tools_figures / tools_attachments / tools_semantic 都用这两个函数，
 # 工具体重载需要（正式、实测没用）；保持“存在校验 → ACL → 工作线程 → 审计 → ToolError”一套语义。
+
 
 async def run_audited(store, pid, tool, args, fn, result_of=lambda _r: "ok"):
     """工作线程跑 fn() → 审计 → 返回；业务异常 → 审计 error:<kind> → ToolError。"""
@@ -166,6 +171,7 @@ async def open_project_for(store, pid, need="viewer"):
 
 # ---------------------------------------------------------------- 注册 ----
 
+
 def register(server, store):
     run = functools.partial(run_audited, store)
     open_project = functools.partial(open_project_for, store)
@@ -183,8 +189,10 @@ def register(server, store):
         def body():
             r = op(store.read_content(pid), _settings(store, p))
             store.save_content(pid, r.content)
-            return schemas.WriteOut(ok=True, mode="direct" if direct else "suggest", sha=history.head(p.dir),
-                                    block_id=r.block_id)
+            return schemas.WriteOut(
+                ok=True, mode="direct" if direct else "suggest", sha=history.head(p.dir), block_id=r.block_id
+            )
+
         return await run(pid, tool, args, body)
 
     # ---- 读 ----
@@ -203,8 +211,14 @@ def register(server, store):
         """读一书正文（abstract / claims / description）。
         mode：final=接受全部建议后的文本，original=拒绝后，markup=含标记原文。"""
         await open_project(pid)
-        return await run(pid, "read_book", {"book": book, "mode": mode}, lambda: schemas.BookOut(
-            pid=pid, book=book, text=critic.resolve(docset.split(store.read_content(pid)).book(book), mode)))
+        return await run(
+            pid,
+            "read_book",
+            {"book": book, "mode": mode},
+            lambda: schemas.BookOut(
+                pid=pid, book=book, text=critic.resolve(docset.split(store.read_content(pid)).book(book), mode)
+            ),
+        )
 
     @server.tool()
     async def get_ast(pid: str) -> dict[str, Any]:
@@ -219,8 +233,10 @@ def register(server, store):
 
         def body():
             ds = docset.split(store.read_content(pid))
-            return schemas.DocsOut(pid=pid, title=ds.title or "", abstract=ds.abstract, claims=ds.claims,
-                                   description=ds.description)
+            return schemas.DocsOut(
+                pid=pid, title=ds.title or "", abstract=ds.abstract, claims=ds.claims, description=ds.description
+            )
+
         return await run(pid, "get_docs", {}, body)
 
     # ---- 写 ----
@@ -237,12 +253,20 @@ def register(server, store):
             _book, _b, st, en = patch.find_block(patch._reparse(content, s), block_id)
             new = suggest(content.split("\n")[st:en], patch._block_lines(markdown))
             return patch.patch_block(content, block_id, "\n".join(new), s)
-        return await write(pid, p, "patch_block", {"block_id": block_id, "direct": direct,
-                                                   "markdown_len": len(markdown)}, direct, op)
+
+        return await write(
+            pid, p, "patch_block", {"block_id": block_id, "direct": direct, "markdown_len": len(markdown)}, direct, op
+        )
 
     @server.tool()
-    async def insert_block(pid: str, kind: str, after_block_id: str | None = None, book: schemas.Book | None = None,
-                           markdown: str | None = None, direct: bool = False) -> schemas.WriteOut:
+    async def insert_block(
+        pid: str,
+        kind: str,
+        after_block_id: str | None = None,
+        book: schemas.Book | None = None,
+        markdown: str | None = None,
+        direct: bool = False,
+    ) -> schemas.WriteOut:
         """在 after_block_id 之后（或 book 书首）插入一块
         （kind：paragraph/claim/section/subsection/equation/table/figure-ref）。
         默认整块写成 {++ ++} 建议；markdown 缺省用该类型模板。direct=true 直插（AUTH=on 需 editor+）。"""
@@ -253,13 +277,19 @@ def register(server, store):
                 return patch.insert_block(content, kind, after_block_id, book, markdown, s)
             if markdown is None:  # 先按模板插一次拿到模板行，再整块包成 {++ ++}
                 r0 = patch.insert_block(content, kind, after_block_id, book, None, s)
-                lines = r0.content.split("\n")[r0.changed_lines["start"] - 1:r0.changed_lines["end"]]
+                lines = r0.content.split("\n")[r0.changed_lines["start"] - 1 : r0.changed_lines["end"]]
             else:
                 lines = patch._block_lines(markdown)
             marked = "\n".join("{++%s++}" % ln for ln in lines)
             return patch.insert_block(content, kind, after_block_id, book, marked, s)
-        args = {"kind": kind, "after_block_id": after_block_id, "book": book, "direct": direct,
-                "markdown_len": len(markdown or "")}
+
+        args = {
+            "kind": kind,
+            "after_block_id": after_block_id,
+            "book": book,
+            "direct": direct,
+            "markdown_len": len(markdown or ""),
+        }
         return await write(pid, p, "insert_block", args, direct, op)
 
     # ---- 检查 / 构建 ----
@@ -271,13 +301,19 @@ def register(server, store):
 
         def body():
             raw = store.read_content(pid)
-            report = run_lint(critic.accept(raw), _settings(store, p), p.figs_dir, with_preflight=True,
-                              figures=store.load_figures(p.dir))
+            report = run_lint(
+                critic.accept(raw),
+                _settings(store, p),
+                p.figs_dir,
+                with_preflight=True,
+                figures=store.load_figures(p.dir),
+            )
             marks = critic.lint_marks(raw)
             report["diagnostics"].extend(marks)
             for d in marks:
                 report["counts"][d["severity"]] += 1
             return report
+
         return await run(pid, "lint", {}, body)
 
     @server.tool()
@@ -294,10 +330,19 @@ def register(server, store):
 
         def body():
             o = run_build(store, pid, None, None, pdf, mode)
-            return schemas.BuildOut(status=o.status, build_id=o.build_id, pdf_url=o.pdf_url, docx_url=o.docx_url,
-                                    diagnostics=o.diagnostics, summary=o.summary, error=o.error)
-        return await run(pid, "build", {"mode": mode, "pdf": pdf}, body,
-                         lambda o: "ok" if o.status == "ok" else f"error:{o.status}")
+            return schemas.BuildOut(
+                status=o.status,
+                build_id=o.build_id,
+                pdf_url=o.pdf_url,
+                docx_url=o.docx_url,
+                diagnostics=o.diagnostics,
+                summary=o.summary,
+                error=o.error,
+            )
+
+        return await run(
+            pid, "build", {"mode": mode, "pdf": pdf}, body, lambda o: "ok" if o.status == "ok" else f"error:{o.status}"
+        )
 
     @server.tool()
     async def export_xml(pid: str, mode: schemas.CriticMode = "final") -> dict[str, Any]:
@@ -325,6 +370,7 @@ def register(server, store):
                 items.append(c)
                 comments.save(p.dir, items)
             return c.to_dict()
+
         return await run(pid, "add_comment", {"block_id": a.block_id, "line": a.line, "body_len": len(body)}, do)
 
     @server.tool()
@@ -341,5 +387,9 @@ def register(server, store):
         if book not in BOOKS:
             raise _err("bad_request", f"book 须为 {'/'.join(BOOKS)}")
         await open_project(pid)
-        return await run(pid, "read_book", {"book": book, "mode": "markup", "resource": True},
-                         lambda: docset.split(store.read_content(pid)).book(book))
+        return await run(
+            pid,
+            "read_book",
+            {"book": book, "mode": "markup", "resource": True},
+            lambda: docset.split(store.read_content(pid)).book(book),
+        )

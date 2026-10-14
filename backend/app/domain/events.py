@@ -29,6 +29,7 @@
     member.changed                  auth.router / auth.invites         → org_audit
     admin.user                      auth.routes_admin                  → org_audit
 """
+
 import asyncio
 import inspect
 import logging
@@ -40,14 +41,28 @@ from typing import Literal, get_args
 log = logging.getLogger(__name__)
 
 EventKind = Literal[
-    "case.created", "case.status", "case.deleted",
-    "share.created", "share.revoked", "share.confirmed", "share.commented",
-    "comment.mention", "comment.assign",
-    "deadline.due", "deadline.done", "deadline.undone", "deadline.override", "deadline.nudge",
+    "case.created",
+    "case.status",
+    "case.deleted",
+    "share.created",
+    "share.revoked",
+    "share.confirmed",
+    "share.commented",
+    "comment.mention",
+    "comment.assign",
+    "deadline.due",
+    "deadline.done",
+    "deadline.undone",
+    "deadline.override",
+    "deadline.nudge",
     "oa.round",
-    "deliver.filed", "export.downloaded",
-    "ai.sent", "ai.proposal",
-    "auth.login", "member.changed", "admin.user",
+    "deliver.filed",
+    "export.downloaded",
+    "ai.sent",
+    "ai.proposal",
+    "auth.login",
+    "member.changed",
+    "admin.user",
 ]
 EVENT_KINDS: frozenset[str] = frozenset(get_args(EventKind))
 WILDCARD = "*"
@@ -103,8 +118,9 @@ def actor_of(user) -> dict | None:
     return {"id": str(user.id), "display_name": user.display_name or user.email}
 
 
-def emit(kind: str, *, pid: str | None = None, actor: dict | None = None, data: dict | None = None,
-         ts: float | None = None) -> Event:
+def emit(
+    kind: str, *, pid: str | None = None, actor: dict | None = None, data: dict | None = None, ts: float | None = None
+) -> Event:
     """派发事件；返回 Event（便于调用方写时间线 / 审计时复用 ts）。"""
     if kind not in EVENT_KINDS:
         raise ValueError(f"未知事件 {kind!r}")

@@ -6,6 +6,7 @@
 命中仅作机器初筛供代理人复核，永不产出新颖性/创造性结论（no_legal_verdict 门禁不变）；
 模型不可用或 JSON 失败时用确定性骨架兜底。方法学见 .agents/skills/patent-drafting/references/prior-art.md。
 """
+
 from __future__ import annotations
 
 from app.agent import prior_art
@@ -69,25 +70,31 @@ def _hits_block(rep: prior_art.SearchReport) -> str:
 
 
 def _render(points: list[dict], queries: list[dict], notes: list[str], rep: prior_art.SearchReport | None) -> str:
-    plines = [f"· {p.get('title', '')}｜区别点：{p.get('distinguishing_point', '')}"
-              f"｜技术问题：{p.get('technical_problem', '')}｜技术效果：{p.get('technical_effect', '')}"
-              for p in points]
+    plines = [
+        f"· {p.get('title', '')}｜区别点：{p.get('distinguishing_point', '')}"
+        f"｜技术问题：{p.get('technical_problem', '')}｜技术效果：{p.get('technical_effect', '')}"
+        for p in points
+    ]
     qlines = [f"· {q.get('source', '检索库')}：{q.get('query', '')}" for q in queries if q.get("query")]
     nlines = [f"· {n}" for n in notes if n]
     searched = rep is not None and bool(rep.providers)
     head = "查新笔记（机器初筛 · 待人工复核）" if searched else "查新笔记（待检索）"
-    intro = ("本笔记由智能体依据当前三书提取发明点并执行先行技术检索；命中为机器初筛结果，"
-             "新颖性与创造性判断留待代理人复核确认。" if searched else
-             "本笔记由智能体依据当前三书提取发明点并拟定检索式；未执行真实检索，"
-             "新颖性与创造性判断留待代理人检索确认。")
+    intro = (
+        "本笔记由智能体依据当前三书提取发明点并执行先行技术检索；命中为机器初筛结果，"
+        "新颖性与创造性判断留待代理人复核确认。"
+        if searched
+        else "本笔记由智能体依据当前三书提取发明点并拟定检索式；未执行真实检索，新颖性与创造性判断留待代理人检索确认。"
+    )
     out = head + "\n\n" + intro + "\n\n【发明点 · 三要素】\n" + ("\n".join(plines) or "· 待提取") + "\n\n"
     if searched:
-        out += _hits_block(rep) + "\n\n【检索式存档】（建议再在 CNIPA / Google Patents / 学术库人工复核；\n" \
-            "检索式与命中可经对话「归档查新」记入查新记录卡）\n" \
-            + ("\n".join(qlines) or "· 待补充")
+        out += (
+            _hits_block(rep) + "\n\n【检索式存档】（建议再在 CNIPA / Google Patents / 学术库人工复核；\n"
+            "检索式与命中可经对话「归档查新」记入查新记录卡）\n" + ("\n".join(qlines) or "· 待补充")
+        )
     else:
-        out += "【建议检索式】（建议优先在 CNIPA / Google Patents / 学术库逐条核实，勿直接采信）\n" \
-            + ("\n".join(qlines) or "· 待补充")
+        out += "【建议检索式】（建议优先在 CNIPA / Google Patents / 学术库逐条核实，勿直接采信）\n" + (
+            "\n".join(qlines) or "· 待补充"
+        )
         if rep is not None and rep.notes:
             out += "\n\n· " + "\n· ".join(rep.notes[:3])
     out += "\n\n【待确认】\n" + ("\n".join(nlines) or "· 待代理人检索后填写最接近文献与差异点")
@@ -95,13 +102,22 @@ def _render(points: list[dict], queries: list[dict], notes: list[str], rep: prio
 
 
 def _fallback(titles: list[str]) -> tuple[list[dict], list[dict], list[str]]:
-    points = [{"title": t, "distinguishing_point": "待提取", "technical_problem": "待提取",
-               "technical_effect": "待提取"} for t in titles[:3]] or [
-        {"title": "（本案尚无权项）", "distinguishing_point": "待提取", "technical_problem": "待提取",
-         "technical_effect": "待提取"}]
-    queries = [{"source": "CNIPA", "query": "待代理人依据发明点构造"},
-               {"source": "Google Patents", "query": "待代理人依据发明点构造"},
-               {"source": "Scholar", "query": "待代理人依据发明点构造"}]
+    points = [
+        {"title": t, "distinguishing_point": "待提取", "technical_problem": "待提取", "technical_effect": "待提取"}
+        for t in titles[:3]
+    ] or [
+        {
+            "title": "（本案尚无权项）",
+            "distinguishing_point": "待提取",
+            "technical_problem": "待提取",
+            "technical_effect": "待提取",
+        }
+    ]
+    queries = [
+        {"source": "CNIPA", "query": "待代理人依据发明点构造"},
+        {"source": "Google Patents", "query": "待代理人依据发明点构造"},
+        {"source": "Scholar", "query": "待代理人依据发明点构造"},
+    ]
     return points, queries, ["模型不可用，本笔记为确定性骨架：检索式与三要素待人工补全"]
 
 
@@ -110,9 +126,9 @@ async def run(ctx: RunContext) -> None:
     d = common.derive(ctx)
     titles = _claim_titles(d)
     context = _context(ctx, d)
-    messages = prompts_agent.build("s8", "novelty",
-                                   "请提取发明点与三要素并给出建议检索式与待确认项，输出 JSON。",
-                                   context=context, pid=ctx.pid)
+    messages = prompts_agent.build(
+        "s8", "novelty", "请提取发明点与三要素并给出建议检索式与待确认项，输出 JSON。", context=context, pid=ctx.pid
+    )
     data, _raw = await common.gen_json(ctx, "novelty", messages)
     if data is None:
         points, queries, notes = _fallback(titles)
@@ -125,8 +141,7 @@ async def run(ctx: RunContext) -> None:
             notes = notes + fallback_notes
         if not queries:
             queries = [{"source": s, "query": "待代理人依据发明点构造"} for s in _SOURCES]
-    qtexts = [str(q.get("query", "")) for q in queries
-              if q.get("query") and "待" not in str(q.get("query"))][:8]
+    qtexts = [str(q.get("query", "")) for q in queries if q.get("query") and "待" not in str(q.get("query"))][:8]
     rep: prior_art.SearchReport | None = None
     if prior_art.configured_providers() and qtexts:
         rep = ctx.tool("prior_art_search", prior_art.search_all, queries=qtexts, limit=5)
@@ -139,5 +154,9 @@ async def run(ctx: RunContext) -> None:
     line = d.ast["books"][book]["offset"] + anchor_block["lines"]["start"]
     quote = d.lines[line - 1].strip() or anchor_block["id"]
     common.comment(ctx, d, line, quote, body)
-    ctx.finish(points=len(points), queries=len(queries), comments=len(ctx.proposals),
-               providers=len(rep.providers) if rep else 0)
+    ctx.finish(
+        points=len(points),
+        queries=len(queries),
+        comments=len(ctx.proposals),
+        providers=len(rep.providers) if rep else 0,
+    )

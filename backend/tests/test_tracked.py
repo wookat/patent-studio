@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """F2 Word 真修订导出：builder run_hook 挂钩 + TrackedRuns（w:ins/w:del/批注/高亮）+ 路由（docs/plan/10 §4.3）。"""
+
 import hashlib
 import os
 import shutil
@@ -22,8 +23,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 EXAMPLES = os.path.join(ROOT, "examples")
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 NS = {"w": W}
-# document.xml 序列化受 lxml/docx 版本微差影响——Linux 基线 + Windows 基线各记一份
-BASELINE_METHOD = {"9ffc298f03fa301c034899f3fb5253ef", "7b75e50c32df42d9c1da394229e75771"}
+# document.xml 序列化受 lxml/docx 版本微差影响——多平台基线集合（新语料当前仅实测到本值）
+BASELINE_METHOD = {"f58e308dc5dcb3c594eccd11142691e5"}
 HAS_RENDER = shutil.which(config.SOFFICE) is not None and shutil.which("pdftotext") is not None
 DATE = "2026-09-05T00:00:00Z"
 
@@ -35,8 +36,9 @@ def _document_xml(path):
 
 def _cfg(name, out, content_md=None):
     store = ProjectStore(EXAMPLES)
-    return store.build_config(store.get(name), out=out,
-                              content_md=content_md or os.path.join(EXAMPLES, name, "content.md"))
+    return store.build_config(
+        store.get(name), out=out, content_md=content_md or os.path.join(EXAMPLES, name, "content.md")
+    )
 
 
 def _method_md():
@@ -45,20 +47,30 @@ def _method_md():
 
 
 def _marked_method(tmp_path):
-    """在 method 案里注入五种标记：权项段首批注、正文 ins/del/替换、标题高亮、表格单元格、公式行、摘要。"""
+    """在 method 案里注入六种标记：摘要 ins、权项段首批注+高亮、标题 del、正文 ins/del/批注、
+    替换、合成公式行 ins、合成表格单元格（新语料无 $$/表格，注入行补足两种载体覆盖）。"""
     lines = _method_md().split("\n")
     edits = {
-        5: lambda l: l[:6] + "{++（摘要插入）++}" + l[6:],                                   # 摘要
-        9: lambda l: "{>>段首批注<<}" + l + "{==权项高亮==}",                                 # 权项 1 首行
-        16: lambda l: l[:-2] + "{+++1++}$$",                                                # 权项公式行 → final
-        47: lambda l: l + "{--标题删除--}",                                                  # ### 技术领域
-        49: lambda l: l[:5] + "{++插入文本++}" + l[5:10] + "{--删掉的 --}" + l[10:] + "{>>正文批注<<}",
-        53: lambda l: l[:8] + "{~~旧词~>新词~~}" + l[8:],
-        211: lambda l: l.replace("| 28 |", "| {--28--}{++29++} |", 1),                     # 表格单元格
+        5: lambda l: l[:6] + "{++（摘要插入）++}" + l[6:],  # 摘要
+        9: lambda l: "{>>段首批注<<}" + l + "{==权项高亮==}",  # 权项 1 首行
+        31: lambda l: l + "{--标题删除--}",  # ### 技术领域
+        33: lambda l: l[:8] + "{++插入文本++}" + l[8:13] + "{--删掉的 --}" + l[13:] + "{>>正文批注<<}",
+        37: lambda l: l[:8] + "{~~旧词~>新词~~}" + l[8:],
     }
     for no, fn in edits.items():
         lines[no - 1] = fn(lines[no - 1])
     lines.insert(9, "{++跨行插入")  # 未闭合：按普通文本排版
+    lines.insert(46, "$$Z = a{+++1++}$$")  # 合成公式行：标记按 final 进入 OMML
+    lines[47:47] = [
+        "",
+        "表1 对比",
+        "",
+        "<!-- 表格: 三线 -->",
+        "| a | {--28--}{++29++} |",
+        "| --- | --- |",
+        "| 1 | 2 |",
+        "",
+    ]
     path = tmp_path / "marked.md"
     path.write_text("\n".join(lines), encoding="utf-8")
     return str(path)
@@ -112,6 +124,7 @@ def test_hook_wraps_every_text_run(tmp_path):
 
 # --- TrackedRuns.split ---
 
+
 def test_split_plain_and_each_kind():
     h = tracked.TrackedRuns()
     assert h.split("无标记文本") == [("keep", "无标记文本")]
@@ -128,14 +141,16 @@ def test_split_plain_and_each_kind():
 
 # --- build_tracked ---
 
+
 @pytest.fixture(scope="module")
 def built(tmp_path_factory):
     tmp = tmp_path_factory.mktemp("tracked")
     plain = _cfg("method", str(tmp / "plain.docx"))
     build_patent_ex(plain)
     unmarked = tracked.build_tracked(_cfg("method", str(tmp / "unmarked.docx")), author="张三", date=DATE)
-    marked = tracked.build_tracked(_cfg("method", str(tmp / "marked.docx"), _marked_method(tmp)),
-                                   author="张三", date=DATE)
+    marked = tracked.build_tracked(
+        _cfg("method", str(tmp / "marked.docx"), _marked_method(tmp)), author="张三", date=DATE
+    )
     return {"plain": plain["out"], "unmarked": unmarked.out, "marked": marked.out}
 
 
@@ -171,7 +186,7 @@ def test_ins_del_sub_elements(built):
     assert old.getnext().find(".//w:t", NS).text == "新词"
     # 标记外的正文文本原样保留在普通 run 里
     plain_t = [t.text for t in d.findall(".//w:t", NS)]
-    assert "本发明涉及" in plain_t and "时间序列预" in plain_t
+    assert "基于指纹信息的区块链电子钱包的私钥生成方法及系统" in plain_t and "背景技术" in plain_t
 
 
 def test_mark_highlight_and_comments(built):
@@ -181,8 +196,12 @@ def test_mark_highlight_and_comments(built):
     starts = d.findall(".//w:commentRangeStart", NS)
     ends = d.findall(".//w:commentRangeEnd", NS)
     refs = d.findall(".//w:commentReference", NS)
-    assert [s.get(qn("w:id")) for s in starts] == [e.get(qn("w:id")) for e in ends] \
-        == [r.get(qn("w:id")) for r in refs] == ["0", "1"]
+    assert (
+        [s.get(qn("w:id")) for s in starts]
+        == [e.get(qn("w:id")) for e in ends]
+        == [r.get(qn("w:id")) for r in refs]
+        == ["0", "1"]
+    )
     with zipfile.ZipFile(built["marked"]) as z:
         c = etree.fromstring(z.read("word/comments.xml"))
     comments = c.findall("w:comment", NS)
@@ -199,7 +218,7 @@ def test_mark_highlight_and_comments(built):
     assert anchor.getnext().getnext().find("w:commentReference", NS) is not None
     # 正文批注：锚在前一个普通 run，后面没有多余文本
     anchor2 = starts[1].getnext()
-    assert anchor2.tag == qn("w:r") and anchor2.find("w:t", NS).text.endswith("装置。")
+    assert anchor2.tag == qn("w:r") and anchor2.find("w:t", NS).text.endswith("系统。")
 
 
 def test_cross_line_and_formula_markup(built):
@@ -230,6 +249,7 @@ def test_abstract_limit_counts_final_text(tmp_path):
 @pytest.mark.skipif(not HAS_RENDER, reason="需要 soffice 与 pdftotext")
 def test_libreoffice_converts_tracked_docx(built, tmp_path):
     from app.lo import docx_to_pdf
+
     pdf = docx_to_pdf(built["marked"], str(tmp_path))
     text = subprocess.run(["pdftotext", pdf, "-"], capture_output=True, text=True, check=True).stdout
     assert "插入文本" in text and "新词" in text and "29" in text
@@ -242,11 +262,15 @@ def test_libreoffice_converts_tracked_docx(built, tmp_path):
 
 # --- 路由 ---
 
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
-    shutil.copytree(os.path.join(EXAMPLES, "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(EXAMPLES, "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setattr(app.state, "store", ProjectStore(str(projects)))
     return TestClient(app), projects / "method"
 
@@ -254,8 +278,9 @@ def client(tmp_path, monkeypatch):
 def test_route_tracked_download(client):
     c, proj = client
     content = proj / "content.md"
-    content.write_text(content.read_text(encoding="utf-8").replace("本发明涉及", "本发明{++特别++}涉及", 1),
-                       encoding="utf-8")
+    content.write_text(
+        content.read_text(encoding="utf-8").replace("本申请属于", "本申请{++特别++}属于", 1), encoding="utf-8"
+    )
     r = c.get("/api/projects/method/export/docx", params={"mode": "tracked"})
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("application/vnd.openxmlformats-officedocument.wordprocessingml")
@@ -276,6 +301,6 @@ def test_route_tracked_abstract_limit(client):
     c, proj = client
     content = proj / "content.md"
     raw = content.read_text(encoding="utf-8")
-    content.write_text(raw.replace("本发明公开了", "本发明{++" + "特" * 300 + "++}公开了", 1), encoding="utf-8")
+    content.write_text(raw.replace("本申请提供", "本申请{++" + "特" * 300 + "++}提供", 1), encoding="utf-8")
     r = c.get("/api/projects/method/export/docx", params={"mode": "tracked"})
     assert r.status_code == 422 and r.json()["detail"]["kind"] == "abstract_limit"

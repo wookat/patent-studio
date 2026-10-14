@@ -9,6 +9,7 @@ W5（docs/plan/21 R-PDF-05 / R-REV-02）：锚点可选带 book / line_start / l
 线程字段：parent_id（回复所属根批注；根批注为 None）、resolved_at / resolved_by、source（human | ai | client）、
 mentions（正文 `@名字` 解析出的显示名，路由层再对成员表做匹配并 emit comment.mention）。
 """
+
 import asyncio
 import json
 import os
@@ -42,7 +43,7 @@ def file_lock(project_dir: str):
 @dataclass
 class Anchor:
     block_id: str = ""
-    line: int = 0      # 全文 1-based（文件锚为 0）
+    line: int = 0  # 全文 1-based（文件锚为 0）
     quote: str = ""
     stale: bool = False
     book: str | None = None
@@ -63,17 +64,22 @@ def anchor_from_dict(a: dict) -> Anchor:
     """{block_id, line, quote} | {book, block_id, line_start, line_end?, quote?} | {file}；缺 line 时取 line_start。"""
     line_start = a.get("line_start")
     line = a.get("line", line_start)
-    return Anchor(block_id=a.get("block_id") or "", line=int(line or 0), quote=a.get("quote") or "",
-                  stale=bool(a.get("stale", False)), book=a.get("book"),
-                  line_start=int(line_start) if line_start is not None else None,
-                  line_end=int(a["line_end"]) if a.get("line_end") is not None else None,
-                  file=a.get("file"))
+    return Anchor(
+        block_id=a.get("block_id") or "",
+        line=int(line or 0),
+        quote=a.get("quote") or "",
+        stale=bool(a.get("stale", False)),
+        book=a.get("book"),
+        line_start=int(line_start) if line_start is not None else None,
+        line_end=int(a["line_end"]) if a.get("line_end") is not None else None,
+        file=a.get("file"),
+    )
 
 
 @dataclass
 class Author:
-    id: str | None     # auth=off ⇒ None；客户访客 ⇒ None
-    name: str          # auth=off ⇒ "本机"
+    id: str | None  # auth=off ⇒ None；客户访客 ⇒ None
+    name: str  # auth=off ⇒ "本机"
 
 
 LOCAL_AUTHOR = Author(id=None, name="本机")
@@ -126,9 +132,15 @@ def parse_mentions(body: str) -> list[str]:
 
 
 def _reply_from_dict(r: dict, parent_id: str) -> Reply:
-    return Reply(id=r["id"], body=r["body"], author=Author(**r["author"]), created_at=r["created_at"],
-                 parent_id=r.get("parent_id") or parent_id, source=r.get("source", "human"),
-                 mentions=list(r.get("mentions", [])))
+    return Reply(
+        id=r["id"],
+        body=r["body"],
+        author=Author(**r["author"]),
+        created_at=r["created_at"],
+        parent_id=r.get("parent_id") or parent_id,
+        source=r.get("source", "human"),
+        mentions=list(r.get("mentions", [])),
+    )
 
 
 def _from_dict(d: dict) -> Comment:
@@ -173,8 +185,16 @@ def find(comments: list[Comment], cid: str) -> Comment | None:
 
 def create(anchor: Anchor, body: str, author: Author, source: str = "human") -> Comment:
     now = time.time()
-    return Comment(id=_new_id(), anchor=anchor, body=body, author=author, created_at=now, updated_at=now,
-                   source=source, mentions=parse_mentions(body))
+    return Comment(
+        id=_new_id(),
+        anchor=anchor,
+        body=body,
+        author=author,
+        created_at=now,
+        updated_at=now,
+        source=source,
+        mentions=parse_mentions(body),
+    )
 
 
 def update(c: Comment, body: str | None = None, anchor: Anchor | None = None) -> Comment:
@@ -189,8 +209,17 @@ def update(c: Comment, body: str | None = None, anchor: Anchor | None = None) ->
 
 def reply(c: Comment, body: str, author: Author, source: str = "human") -> Comment:
     now = time.time()
-    c.replies.append(Reply(id=_new_id(), body=body, author=author, created_at=now, parent_id=c.id, source=source,
-                           mentions=parse_mentions(body)))
+    c.replies.append(
+        Reply(
+            id=_new_id(),
+            body=body,
+            author=author,
+            created_at=now,
+            parent_id=c.id,
+            source=source,
+            mentions=parse_mentions(body),
+        )
+    )
     c.updated_at = now
     return c
 
@@ -205,13 +234,22 @@ def resolve(c: Comment, resolved: bool, by: Author | None = None) -> Comment:
     return c
 
 
-def select(comments: list[Comment], *, author: str | None = None, status: str | None = None,
-           source: str | None = None, mention: str | None = None) -> list[Comment]:
+def select(
+    comments: list[Comment],
+    *,
+    author: str | None = None,
+    status: str | None = None,
+    source: str | None = None,
+    mention: str | None = None,
+) -> list[Comment]:
     """筛选：author = 作者 id 或显示名（含回复作者）；status open | resolved；source；mention = 被 @ 者（含回复）。"""
     out = comments
     if author:
-        out = [c for c in out if author in (c.author.id, c.author.name)
-               or any(author in (r.author.id, r.author.name) for r in c.replies)]
+        out = [
+            c
+            for c in out
+            if author in (c.author.id, c.author.name) or any(author in (r.author.id, r.author.name) for r in c.replies)
+        ]
     if status == "open":
         out = [c for c in out if not c.resolved]
     elif status == "resolved":
@@ -224,6 +262,7 @@ def select(comments: list[Comment], *, author: str | None = None, status: str | 
 
 
 # ---------------- 重锚 ----------------
+
 
 def _block_ranges(ast: dict) -> dict[str, tuple[int, int]]:
     """AST 块 id → 全文行闭区间 [start, end]（books[book].offset + 书内相对行）。"""

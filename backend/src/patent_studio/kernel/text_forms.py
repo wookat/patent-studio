@@ -7,6 +7,7 @@
 F6 可选变体 / F7 有益效果 / F8 附图说明 / F9 实施例转接 /
 C1 独权句式 / C2 从属起句 / C3 单元定义。
 """
+
 from __future__ import annotations
 
 import json
@@ -18,8 +19,8 @@ from functools import lru_cache
 
 _LIB_ENV = "PATENT_FORMS_LIBRARY"
 _DEFAULTS = [
-    "docs/text-corpus/forms_library.json",          # 容器 / 仓库根
-    "../docs/text-corpus/forms_library.json",       # backend/ 工作目录
+    "docs/text-corpus/forms_library.json",  # 容器 / 仓库根
+    "../docs/text-corpus/forms_library.json",  # backend/ 工作目录
 ]
 
 
@@ -80,10 +81,15 @@ def exemplar_block(role: str, k: int = 5) -> str:
 def description_block(k_per_role: int = 3) -> str:
     """说明书各节打包范例块：技术领域/背景痛点/发明内容/效果/转接各取 k 条。"""
     parts = []
-    for role, label in [("F1技术领域", "技术领域起句"), ("F3痛点转折", "背景痛点"),
-                        ("F4发明内容", "发明内容"), ("F5方面枚举", "方面枚举"),
-                        ("F6可选变体", "可选变体"), ("F7有益效果", "有益效果"),
-                        ("F9实施例转接", "实施例转接")]:
+    for role, label in [
+        ("F1技术领域", "技术领域起句"),
+        ("F3痛点转折", "背景痛点"),
+        ("F4发明内容", "发明内容"),
+        ("F5方面枚举", "方面枚举"),
+        ("F6可选变体", "可选变体"),
+        ("F7有益效果", "有益效果"),
+        ("F9实施例转接", "实施例转接"),
+    ]:
         xs = exemplars(role, k_per_role)
         if xs:
             parts.append(f"{label}：" + "；".join(f"「{s[:110]}」" for s in xs))
@@ -129,15 +135,25 @@ def claims_skeleton_block(top: int = 5) -> str:
     seqs = d.get("indep_sequences") or []
     if not seqs:
         return ""
-    name = {"method": "方法独权", "apparatus": "装置/系统/设备独权", "medium": "介质独权",
-            "model": "模型独权", "product": "程序产品独权", "chip": "芯片独权", "other": "其他独权"}
+    name = {
+        "method": "方法独权",
+        "apparatus": "装置/系统/设备独权",
+        "medium": "介质独权",
+        "model": "模型独权",
+        "product": "程序产品独权",
+        "chip": "芯片独权",
+        "other": "其他独权",
+    }
     rows = []
     for s in seqs[:top]:
         rows.append("→".join(name.get(k, k) for k in s["seq"]) + f"（{s['count']}案）")
     dep = d.get("chain_depth_dist") or {}
     dep_s = "、".join(f"{k}层:{v}案" for k, v in sorted(dep.items(), key=lambda x: int(x[0]))[:5])
-    return (f"真实权项骨架范式（{d.get('pubs', 0)}案分布）：" + "；".join(rows)
-            + (f"。从属链深分布：{dep_s}" if dep_s else ""))
+    return (
+        f"真实权项骨架范式（{d.get('pubs', 0)}案分布）："
+        + "；".join(rows)
+        + (f"。从属链深分布：{dep_s}" if dep_s else "")
+    )
 
 
 def claims_block(k: int = 4) -> str:
@@ -173,8 +189,15 @@ def claim_tree_block(query: str, top: int = 1) -> str:
     hits = [p for p in match_pubs(query, 12) if p in trees][:top]
     if not hits:
         return ""
-    kind_name = {"method": "方法", "apparatus": "装置/系统", "medium": "介质",
-                 "model": "模型", "product": "程序产品", "chip": "芯片", "other": "其他"}
+    kind_name = {
+        "method": "方法",
+        "apparatus": "装置/系统",
+        "medium": "介质",
+        "model": "模型",
+        "product": "程序产品",
+        "chip": "芯片",
+        "other": "其他",
+    }
     titles = pub_titles()
     parts = []
     for p in hits:
@@ -191,8 +214,7 @@ def claim_tree_block(query: str, top: int = 1) -> str:
             segs.append(f"独权{num}({kind})" + (f" 从属链[{chain}]" if chain else ""))
         title = titles.get(p, "")
         parts.append(f"{p}（{title}）：共{t.get('total', '?')}项；" + "；".join(segs))
-    return ("同领域真实案权项树形（架构参照——独权束种类序与从属链拓扑按此组织，非照抄内容）：\n"
-            + "\n".join(parts))
+    return "同领域真实案权项树形（架构参照——独权束种类序与从属链拓扑按此组织，非照抄内容）：\n" + "\n".join(parts)
 
 
 def oa_argue_block(claim_text: str, top: int = 3) -> str:
@@ -212,21 +234,25 @@ def oa_argue_block(claim_text: str, top: int = 3) -> str:
             break
     if not rows:
         return ""
-    return ("系统检索到的最接近授权现有技术（争辩引证参照——意见陈述中必须引用案号标注，"
-            "用于区别特征对比、公知手段举证或反向区分论述）：\n" + "\n".join(rows)
-            + "\n争辩范式（三步法）：先确定与最接近现有技术的区别特征→由区别特征确定实际解决的"
-            "技术问题→论证现有技术未给出将该区别特征应用于最接近现有技术的技术启示（对比文件"
-            "仅公开……未公开/未启示……）；惯用句式：「权利要求N与对比文件M的区别在于……，基于"
-            "该区别特征实际解决的技术问题是……，对比文件M及本领域公知常识均未给出……的技术启示」。")
+    return (
+        "系统检索到的最接近授权现有技术（争辩引证参照——意见陈述中必须引用案号标注，"
+        "用于区别特征对比、公知手段举证或反向区分论述）：\n"
+        + "\n".join(rows)
+        + "\n争辩范式（三步法）：先确定与最接近现有技术的区别特征→由区别特征确定实际解决的"
+        "技术问题→论证现有技术未给出将该区别特征应用于最接近现有技术的技术启示（对比文件"
+        "仅公开……未公开/未启示……）；惯用句式：「权利要求N与对比文件M的区别在于……，基于"
+        "该区别特征实际解决的技术问题是……，对比文件M及本领域公知常识均未给出……的技术启示」。"
+    )
 
 
 # ---------- 同领域语义检索（案级 TF-IDF 向量，勿抄内容只仿句式） ----------
+
 
 def _qvec(query: str) -> dict:
     t = re.sub(r"\s+", "", query.lower())
     v = {}
     for i in range(len(t) - 2):
-        g = t[i:i + 3]
+        g = t[i : i + 3]
         v[g] = v.get(g, 0) + 1.0
     return v
 
@@ -292,8 +318,10 @@ def match_sents(query: str, top: int = 8, roles: list[str] | None = None) -> lis
             continue
         dn = math.sqrt(sum(w * w for w in dv.values())) or 1.0
         scored.append((dot / (qn * dn), e))
-    return [{"pub": e["pub"], "role": e["role"], "text": e["text"], "score": round(s, 4)}
-            for s, e in sorted(scored, key=lambda x: x[0], reverse=True)[:top]]
+    return [
+        {"pub": e["pub"], "role": e["role"], "text": e["text"], "score": round(s, 4)}
+        for s, e in sorted(scored, key=lambda x: x[0], reverse=True)[:top]
+    ]
 
 
 def pub_titles() -> dict:
@@ -302,8 +330,7 @@ def pub_titles() -> dict:
     return sents.get("_titles", {}) if sents else {}
 
 
-def domain_exemplar_block(query: str, roles: list[str] | None = None, per_role: int = 2,
-                          top_pubs: int = 6) -> str:
+def domain_exemplar_block(query: str, roles: list[str] | None = None, per_role: int = 2, top_pubs: int = 6) -> str:
     """同领域真实案表述块：找最近似的 top_pubs 个案，按角色抽其原句。空库返回 ''。"""
     _, sents = _pub_vecs()
     if not sents:
@@ -312,9 +339,16 @@ def domain_exemplar_block(query: str, roles: list[str] | None = None, per_role: 
     if not hits:
         return ""
     roles = roles or ["C1独权句式", "C2从属起句", "F1技术领域", "F4发明内容", "F7有益效果"]
-    label = {"C1独权句式": "独权句式", "C2从属起句": "从属起句", "C3单元定义": "单元定义",
-             "F1技术领域": "技术领域起句", "F4发明内容": "发明内容", "F7有益效果": "有益效果",
-             "F9实施例转接": "实施例转接", "F3痛点转折": "背景痛点"}
+    label = {
+        "C1独权句式": "独权句式",
+        "C2从属起句": "从属起句",
+        "C3单元定义": "单元定义",
+        "F1技术领域": "技术领域起句",
+        "F4发明内容": "发明内容",
+        "F7有益效果": "有益效果",
+        "F9实施例转接": "实施例转接",
+        "F3痛点转折": "背景痛点",
+    }
     parts, seen = [], set()
     for role in roles:
         xs = []
@@ -336,6 +370,7 @@ def domain_exemplar_block(query: str, roles: list[str] | None = None, per_role: 
 
 # ---------- 语料重叠哨兵（防搬运：形可借句不可搬） ----------
 
+
 def _norm(s: str) -> str:
     s = re.sub(r"\s+", "", s)
     s = re.sub(r"权利要求\s*\d+(?:\s*(?:至|-|—|~)\s*\d+)?\s*中?任一项?(?:所述|中)的?", "{CL#}", s)
@@ -348,13 +383,14 @@ def _norm(s: str) -> str:
 
 def _h64(s: str) -> str:
     import hashlib
+
     return hashlib.blake2b(s.encode(), digest_size=8).hexdigest()
 
 
 def _shingles(s: str, n: int = 12) -> set[str]:
     if len(s) < n:
         return set()
-    gs = [s[i:i + n] for i in range(0, len(s) - n + 1, n // 2)]
+    gs = [s[i : i + n] for i in range(0, len(s) - n + 1, n // 2)]
     step = max(1, len(gs) // 12)
     return set(gs[::step])
 
@@ -369,8 +405,12 @@ def _index() -> tuple[set, set, set, set]:
         return set(), set(), set(), set()
     try:
         d = json.load(open(idx, encoding="utf-8"))
-        return (set(d.get("norms", [])), set(d.get("grams", [])),
-                set(d.get("boiler_norms", [])), set(d.get("boiler_grams", [])))
+        return (
+            set(d.get("norms", [])),
+            set(d.get("grams", [])),
+            set(d.get("boiler_norms", [])),
+            set(d.get("boiler_grams", [])),
+        )
     except Exception:
         return set(), set(), set(), set()
 
@@ -379,7 +419,8 @@ def _index() -> tuple[set, set, set, set]:
 # 不算搬运（形库自身也教这些句式）；只对「整句皆套话」豁免，套话起头带实质内容的句子仍查。
 _BOILERPLATE = re.compile(
     r"^(图\s*\d+\s*为|下面(将)?(结合|参照)\S{0,30}[。；]?$"
-    r"|以上实施(方式|例)(和具体实施方式)?(仅|只)?用于说明\S{0,25}[。；]?$)")
+    r"|以上实施(方式|例)(和具体实施方式)?(仅|只)?用于说明\S{0,25}[。；]?$)"
+)
 _BOILERPLATE_CAPTION = re.compile(r"^图\s*\d+\s*为.{0,60}[。；]?$")
 
 

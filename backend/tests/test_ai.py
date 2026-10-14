@@ -2,6 +2,7 @@
 """E1-ai-client（docs/plan/09 §9 A1–A7）：status / 隐私开关 / 失败链与并发 / chat SSE + 用量 / rewrite CriticMarkup /
 review job → 批注 / jobs 落盘与 SSE。全部走 mock 或 FakeProvider / httpx.MockTransport，不出站。
 """
+
 import asyncio
 import hashlib
 import importlib
@@ -23,8 +24,24 @@ from patent_studio.kernel import critic
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PRIMARY, HEAVY, FALLBACK = MODELS["interactive"], MODELS["heavy"], MODELS["fallback"]
-USAGE_FIELDS = {"ts", "pid", "purpose", "kind", "model", "requested_model", "fallback", "stream", "prompt_tokens",
-                "completion_tokens", "total_tokens", "ms", "ok", "error", "job_id", "user"}
+USAGE_FIELDS = {
+    "ts",
+    "pid",
+    "purpose",
+    "kind",
+    "model",
+    "requested_model",
+    "fallback",
+    "stream",
+    "prompt_tokens",
+    "completion_tokens",
+    "total_tokens",
+    "ms",
+    "ok",
+    "error",
+    "job_id",
+    "user",
+}
 
 
 def _md5(path):
@@ -44,8 +61,11 @@ def _sse_events(resp):
 def app_env(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("PATENT_STUDIO_AI_PROVIDER", "mock")
     from app import config, main
@@ -124,6 +144,7 @@ MSGS = [{"role": "user", "content": "你好"}]
 
 # ---------------- A1 status ----------------
 
+
 def test_status_mock_and_probe(client):
     c, _, _ = client
     s = c.get("/api/ai/status").json()
@@ -154,8 +175,9 @@ def test_status_no_key(client):
     assert p["reachable"] is False and "PATENT_STUDIO_AI_KEY" in p["error"]
     # 无 key 的项目路由：开关打开也不出站，503 ai_no_key
     _enable(c)
-    r = c.post("/api/projects/method/ai/rewrite",
-               json={"book": "claims", "line_start": 9, "line_end": 9, "action": "polish"})
+    r = c.post(
+        "/api/projects/method/ai/rewrite", json={"book": "claims", "line_start": 9, "line_end": 9, "action": "polish"}
+    )
     assert r.status_code == 503 and r.json()["detail"]["kind"] == "ai_no_key"
 
 
@@ -172,6 +194,7 @@ def test_status_probe_missing_model(client):
 
 
 # ---------------- A2 隐私开关 ----------------
+
 
 def test_disabled_403_zero_calls(client):
     c, _, app = client
@@ -191,6 +214,7 @@ def test_disabled_403_zero_calls(client):
 
 
 # ---------------- A3 失败链 / 重试 / 并发 ----------------
+
 
 def test_chain_timeout_goes_straight_to_fallback(tmp_path, monkeypatch):
     """实测：swe-2-medium 读超时后重试同模型只会再超时一次 ⇒ 超时不重试，直接 swe-2-high。"""
@@ -230,8 +254,11 @@ def test_chain_429_backoff_once_then_fallback(tmp_path, monkeypatch):
     assert r.fallback is True and r.model == FALLBACK and r.text == "兜底"
     assert fp.calls == [PRIMARY, PRIMARY, FALLBACK] and waits == [0]
     rows = client_mod.read_usage(str(tmp_path))
-    assert [(x["model"], x["ok"], x["fallback"]) for x in rows] == [(PRIMARY, False, False), (PRIMARY, False, False),
-                                                                    (FALLBACK, True, True)]
+    assert [(x["model"], x["ok"], x["fallback"]) for x in rows] == [
+        (PRIMARY, False, False),
+        (PRIMARY, False, False),
+        (FALLBACK, True, True),
+    ]
     assert all(x["error"].startswith("upstream: 429") for x in rows[:2])
     assert "claude" not in json.dumps(rows)
 
@@ -328,10 +355,14 @@ def test_stream_fallback_before_first_token(monkeypatch):
 
 # ---------------- OpenAICompatProvider（httpx.MockTransport，不出站） ----------------
 
+
 def _provider(handler):
     p = OpenAICompatProvider("sk-test", "https://ai.example")
-    p._client = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://ai.example",
-                                  headers={"Authorization": "Bearer sk-test"})
+    p._client = httpx.AsyncClient(
+        transport=httpx.MockTransport(handler),
+        base_url="https://ai.example",
+        headers={"Authorization": "Bearer sk-test"},
+    )
     return p
 
 
@@ -344,8 +375,13 @@ def test_openai_compat_complete_and_models():
             return httpx.Response(200, json={"data": [{"id": PRIMARY}, {"id": HEAVY}, {"id": FALLBACK}]})
         body = json.loads(req.content)
         seen["body"] = body
-        return httpx.Response(200, json={"choices": [{"message": {"content": "答复"}}],
-                                         "usage": {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12}})
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": "答复"}}],
+                "usage": {"prompt_tokens": 5, "completion_tokens": 7, "total_tokens": 12},
+            },
+        )
 
     p = _provider(handler)
 
@@ -409,13 +445,19 @@ def test_openai_compat_errors_retryable_flags():
 
 # ---------------- A4 chat SSE + 用量 ----------------
 
+
 def test_chat_sse_delta_done_usage_jsonl(client):
     c, projects, app = client
     _enable(c)
     mp = app.state.ai.provider
-    with c.stream("POST", "/api/projects/method/ai/chat",
-                  json={"messages": MSGS, "context": {"book": "claims", "line_start": 9, "line_end": 9,
-                                                      "include_preflight": True}}) as r:
+    with c.stream(
+        "POST",
+        "/api/projects/method/ai/chat",
+        json={
+            "messages": MSGS,
+            "context": {"book": "claims", "line_start": 9, "line_end": 9, "include_preflight": True},
+        },
+    ) as r:
         assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
         events = _sse_events(r)
     deltas = "".join(e["delta"] for e in events if "delta" in e)
@@ -449,6 +491,7 @@ def test_chat_sse_error_event(client):
 
 # ---------------- A5 rewrite ----------------
 
+
 def _line(projects, no):
     with open(projects / "method" / "content.md", encoding="utf-8") as f:
         return f.read().split("\n")[no - 1]
@@ -462,8 +505,10 @@ def test_rewrite_returns_whole_line_critic(client):
     new = orig.replace("一种", "一种用于", 1)
     app.state.ai = AiClient(MockProvider({"rewrite": f"{{~~{orig}~>{new}~~}}"}))
     before = _md5(projects / "method" / "content.md")
-    r = c.post("/api/projects/method/ai/rewrite",
-               json={"book": "claims", "line_start": 9, "line_end": 9, "action": "formalize"})
+    r = c.post(
+        "/api/projects/method/ai/rewrite",
+        json={"book": "claims", "line_start": 9, "line_end": 9, "action": "formalize"},
+    )
     assert r.status_code == 200, r.text
     d = r.json()
     out = d["critic_markdown"]
@@ -477,26 +522,30 @@ def test_rewrite_returns_whole_line_critic(client):
 
 
 def test_rewrite_plain_output_wrapped_as_substitution(client):
-    """模型没打标记只给了改写后的整行 ⇒ 后端包成 {~~原~>新~~}，仍由用户接受/拒绝。"""
+    """模型没打标记只给了改写后的整行 ⇒ 后端包成 {~~原~>新~~}，仍由用户接受/拒绝。
+    选区 9–11 行 = 权1 + 空行 + 权2（新语料权项行间有空行，含未改动的中部行）。"""
     c, projects, app = client
     _enable(c)
-    o1, o2 = _line(projects, 9), _line(projects, 10)
-    app.state.ai = AiClient(MockProvider({"rewrite": f"改写后的第一行\n{o2}"}))
-    r = c.post("/api/projects/method/ai/rewrite",
-               json={"book": "claims", "line_start": 9, "line_end": 10, "action": "polish"})
+    o1, o2, o3 = _line(projects, 9), _line(projects, 10), _line(projects, 11)
+    app.state.ai = AiClient(MockProvider({"rewrite": f"改写后的第一行\n{o2}\n{o3}"}))
+    r = c.post(
+        "/api/projects/method/ai/rewrite", json={"book": "claims", "line_start": 9, "line_end": 11, "action": "polish"}
+    )
     assert r.status_code == 200
     d = r.json()
     lines = d["critic_markdown"].split("\n")
-    assert len(lines) == 2 and lines[1] == o2 and lines[0] == f"{{~~{o1}~>改写后的第一行~~}}"
-    assert critic.reject(d["critic_markdown"]) == f"{o1}\n{o2}" and d["changed_lines"] == [9]
+    assert len(lines) == 3 and lines[1] == o2 and lines[2] == o3
+    assert lines[0] == f"{{~~{o1}~>改写后的第一行~~}}"
+    assert critic.reject(d["critic_markdown"]) == f"{o1}\n{o2}\n{o3}" and d["changed_lines"] == [9]
 
 
 def test_rewrite_line_count_mismatch_retry_then_502(client):
     c, _, app = client
     _enable(c)
     app.state.ai = AiClient(MockProvider({"rewrite": "行一\n行二\n行三"}))
-    r = c.post("/api/projects/method/ai/rewrite",
-               json={"book": "claims", "line_start": 9, "line_end": 9, "action": "polish"})
+    r = c.post(
+        "/api/projects/method/ai/rewrite", json={"book": "claims", "line_start": 9, "line_end": 9, "action": "polish"}
+    )
     assert r.status_code == 502 and r.json()["detail"]["kind"] == "ai_format"
     assert len(app.state.ai.provider.calls) == 2  # 纠正一轮后放弃
 
@@ -504,18 +553,22 @@ def test_rewrite_line_count_mismatch_retry_then_502(client):
 def test_rewrite_explain_and_validation(client):
     c, _, _ = client
     _enable(c)
-    r = c.post("/api/projects/method/ai/rewrite",
-               json={"book": "claims", "line_start": 9, "line_end": 9, "action": "explain"})
+    r = c.post(
+        "/api/projects/method/ai/rewrite", json={"book": "claims", "line_start": 9, "line_end": 9, "action": "explain"}
+    )
     assert r.status_code == 200 and r.json()["explanation"] and "critic_markdown" not in r.json()
-    r = c.post("/api/projects/method/ai/rewrite",
-               json={"book": "claims", "line_start": 9, "line_end": 9, "action": "nope"})
+    r = c.post(
+        "/api/projects/method/ai/rewrite", json={"book": "claims", "line_start": 9, "line_end": 9, "action": "nope"}
+    )
     assert r.status_code == 422
-    r = c.post("/api/projects/method/ai/rewrite",
-               json={"book": "claims", "line_start": 0, "line_end": 9, "action": "polish"})
+    r = c.post(
+        "/api/projects/method/ai/rewrite", json={"book": "claims", "line_start": 0, "line_end": 9, "action": "polish"}
+    )
     assert r.status_code == 422 and r.json()["detail"]["kind"] == "content"
 
 
 # ---------------- A6 review job → 批注 ----------------
+
 
 def _wait_final(c, job_id):
     with c.stream("GET", f"/api/ai/jobs/{job_id}/events") as r:
@@ -530,15 +583,31 @@ def test_review_job_creates_ai_comments(client):
     _enable(c)
     # 按批剧本：claims 一批 → 一条有效 + 一条非法锚点；description 首批 → 一条有效；其余批 → 空
     scripted = [
-        {"items": [
-            {"rule": "A26.4", "severity": "warning", "block_id": "claims/1", "quote": "其特征在于",
-             "message": "独立权利要求缺少必要技术特征", "suggestion": "补充成熟反馈队列的判定条件"},
-            {"rule": "term", "severity": "error", "block_id": "description/不存在/p9999", "message": "非法锚点"},
-        ]},
-        {"items": [
-            {"rule": "clarity", "severity": "info", "block_id": "description/技术领域/p0001", "quote": "",
-             "message": "技术领域表述可更聚焦", "suggestion": None},
-        ]},
+        {
+            "items": [
+                {
+                    "rule": "A26.4",
+                    "severity": "warning",
+                    "block_id": "claims/1",
+                    "quote": "其特征在于",
+                    "message": "独立权利要求缺少必要技术特征",
+                    "suggestion": "补充成熟反馈队列的判定条件",
+                },
+                {"rule": "term", "severity": "error", "block_id": "description/不存在/p9999", "message": "非法锚点"},
+            ]
+        },
+        {
+            "items": [
+                {
+                    "rule": "clarity",
+                    "severity": "info",
+                    "block_id": "description/技术领域/p0001",
+                    "quote": "",
+                    "message": "技术领域表述可更聚焦",
+                    "suggestion": None,
+                },
+            ]
+        },
     ]
 
     class Scripted(MockProvider):
@@ -599,6 +668,7 @@ def test_review_busy_409_and_scope_422(client):
 
 
 # ---------------- A7 jobs ----------------
+
 
 def test_jobstore_run_watch_cancel(tmp_path):
     (tmp_path / "p").mkdir()
@@ -677,6 +747,7 @@ def test_job_events_404_and_cancel_route(client):
 
 # ---------------- prompts ----------------
 
+
 def test_prompts_tags_and_messages():
     for kind in prompts.KINDS:
         assert prompts.system_for(kind).system.startswith(f"[patent-studio:{kind}]")
@@ -692,6 +763,7 @@ def test_prompts_tags_and_messages():
 
 
 # ---------------- A4b chat attach ----------------
+
 
 def test_chat_attach_text_and_rejects(client):
     c, _, _ = client
@@ -717,15 +789,26 @@ def test_chat_attach_docx_and_limit(client):
     import io as _io
 
     from docx import Document
+
     c, _, _ = client
     _enable(c)
     doc = Document()
     doc.add_paragraph("技术领域：本发明涉及电池。")
     buf = _io.BytesIO()
     doc.save(buf)
-    r = c.post("/api/projects/method/ai/chat/attach",
-               files=[("files", ("交底书.docx", buf.getvalue(),
-                                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))])
+    r = c.post(
+        "/api/projects/method/ai/chat/attach",
+        files=[
+            (
+                "files",
+                (
+                    "交底书.docx",
+                    buf.getvalue(),
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ),
+            )
+        ],
+    )
     res = r.json()["results"][0]
     assert res["ok"] is True and "电池" in res["text"]
     # >8 文件 422
@@ -741,13 +824,22 @@ def test_chat_attach_docx_and_limit(client):
 def test_chat_context_attachments(app_env):
     from app.domain.projects import ProjectStore
     from app.routes import ai as routes_ai
+
     _app, projects = app_env
     store = ProjectStore(str(projects))
     p = store.get("method")
     content = store.read_content("method")
     text, _ = routes_ai._chat_context(
-        p, content,
-        {"attachments": [{"name": "交底书.docx", "text": "发明点：固态电解质"},
-                          {"name": "无文本", "text": ""}, "非dict"]},
-        store, "method")
+        p,
+        content,
+        {
+            "attachments": [
+                {"name": "交底书.docx", "text": "发明点：固态电解质"},
+                {"name": "无文本", "text": ""},
+                "非dict",
+            ]
+        },
+        store,
+        "method",
+    )
     assert "《交底书.docx》" in text and "固态电解质" in text and "无文本" not in text

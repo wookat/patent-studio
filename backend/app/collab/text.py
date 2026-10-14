@@ -4,6 +4,7 @@
 pycrdt `Text` 的索引是 UTF-8 **字节**偏移（yrs OffsetKind::Bytes），difflib 给的是 Python 字符偏移，
 按字符切时逐段换算成字节（spike 2026-09-05：直接用字符偏移会把中文切坏，客户端报 "Unexpected case"）。
 """
+
 import difflib
 
 from pycrdt import Text

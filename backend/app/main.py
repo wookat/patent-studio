@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Patent Studio FastAPI 后端。"""
+
 import asyncio
 import copy
 import hashlib
@@ -47,8 +48,8 @@ from app.routes.convert import router as convert_router
 from app.routes.deadlines import router as deadlines_router
 from app.routes.deliver import router as deliver_router
 from app.routes.docset import router as docset_router
-from app.routes.figures import router as figures_router
 from app.routes.figlib import router as figlib_router
+from app.routes.figures import router as figures_router
 from app.routes.history import router as history_router
 from app.routes.imports import router as import_router
 from app.routes.notify import router as notify_router
@@ -169,8 +170,10 @@ async def _api_body_limit(request: Request, call_next):
 
 
 def _body_too_large() -> JSONResponse:
-    return JSONResponse(status_code=413, content={"detail": error_detail(
-        "file", f"请求体过大（上限 {_API_BODY_MAX // 1024 // 1024} MB）")})
+    return JSONResponse(
+        status_code=413,
+        content={"detail": error_detail("file", f"请求体过大（上限 {_API_BODY_MAX // 1024 // 1024} MB）")},
+    )
 
 
 @app.middleware("http")
@@ -244,8 +247,7 @@ def _jsonable(v):
 async def _request_validation(_: Request, exc: RequestValidationError):
     """请求体校验失败 → 与结构错误同形的中文 detail（登录/注册页直接展示 message；原始错误放 detail 供排查）。"""
     errors = [
-        _jsonable({k: v for k, v in e.items() if k != "ctx"}) | {"loc": list(e.get("loc", ()))}
-        for e in exc.errors()
+        _jsonable({k: v for k, v in e.items() if k != "ctx"}) | {"loc": list(e.get("loc", ()))} for e in exc.errors()
     ]
     message = "；".join(dict.fromkeys(_validation_zh(e) for e in errors)) or "请求参数不合法"
     return JSONResponse(status_code=422, content={"detail": error_detail("validation", message, detail=errors)})
@@ -313,15 +315,28 @@ _MEDIA = {"pdf": "application/pdf", "docx": "application/vnd.openxmlformats-offi
 
 
 def _project_out(p):
-    return {"id": p.id, "title": p.title, "mtime": _mtime(p), "figs": store.list_figs(p.dir), "settings": p.settings,
-            "has_settings_file": store.has_settings_file(p.id), "case": cases.summary(cases.ensure_case(p.dir))}
+    return {
+        "id": p.id,
+        "title": p.title,
+        "mtime": _mtime(p),
+        "figs": store.list_figs(p.dir),
+        "settings": p.settings,
+        "has_settings_file": store.has_settings_file(p.id),
+        "case": cases.summary(cases.ensure_case(p.dir)),
+    }
 
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "soffice": soffice_available(), "soffice_bin": config.SOFFICE,
-            "unoserver": await asyncio.to_thread(unoserver_available), "unoserver_url": config.UNOSERVER_URL,
-            "pdf_backend": last_backend(), "projects_dir": config.PROJECTS_DIR}
+    return {
+        "ok": True,
+        "soffice": soffice_available(),
+        "soffice_bin": config.SOFFICE,
+        "unoserver": await asyncio.to_thread(unoserver_available),
+        "unoserver_url": config.UNOSERVER_URL,
+        "pdf_backend": last_backend(),
+        "projects_dir": config.PROJECTS_DIR,
+    }
 
 
 @app.get("/api/projects")
@@ -333,6 +348,7 @@ async def list_projects(user: auth.CurrentUser):
     # R82-02：my_role / collaborators / last_seen 逐案查库是 3N 次往返——登录态先一次批量取回
     if config.AUTH_ON and user is not None:
         from app.auth import access, acl
+
         su = user.is_superuser
         roles_map = {} if su else await acl.roles_map_for(user.id)
         members_map = await acl.members_map_for_pids(pids)
@@ -344,15 +360,18 @@ async def list_projects(user: auth.CurrentUser):
         def collab_of(pid: str) -> list[dict]:
             return cases.collaborators_of(pid, members_map.get(pid, []), seen_map.get(pid, {}))
     else:
+
         def role_of(pid: str) -> str | None:  # noqa: ARG001
             return None
 
         def collab_of(pid: str) -> list[dict]:  # noqa: ARG001
             return []
+
     for pid in pids:
         p = store.get(pid)
-        extra = await cases.list_extra(p.dir, pid, user, states, owners=owners,
-                                       my_role=role_of(pid), collab=collab_of(pid))
+        extra = await cases.list_extra(
+            p.dir, pid, user, states, owners=owners, my_role=role_of(pid), collab=collab_of(pid)
+        )
         out.append({"id": p.id, "title": p.title, "mtime": _mtime(p), **extra})
     return out
 
@@ -463,8 +482,9 @@ async def put_settings(pid: str, body: SettingsIn):
 @app.post("/api/projects/{pid}/build")
 async def build(pid: str, body: BuildIn, user: auth.CurrentUser):
     store.get(pid)
-    outcome = await asyncio.to_thread(run_build, store, pid, body.content, body.settings, body.pdf, body.mode,
-                                      tagged=True, author=author_name(user))
+    outcome = await asyncio.to_thread(
+        run_build, store, pid, body.content, body.settings, body.pdf, body.mode, tagged=True, author=author_name(user)
+    )
     return {**outcome.to_dict(), "mode": body.mode}
 
 
@@ -525,8 +545,12 @@ async def export_xml(pid: str, body: XmlExportIn):
 @app.get("/api/projects/{pid}/xml/{xid}/zip")
 async def get_xml_zip(pid: str, xid: str):
     p = store.get(pid)
-    return FileResponse(xml_zip_path(store, pid, xid), media_type="application/zip",
-                        filename=f"CNIPA-XML-{p.title or pid}.zip", headers=_NO_STORE)
+    return FileResponse(
+        xml_zip_path(store, pid, xid),
+        media_type="application/zip",
+        filename=f"CNIPA-XML-{p.title or pid}.zip",
+        headers=_NO_STORE,
+    )
 
 
 @app.get("/api/projects/{pid}/xml/{xid}/{code}/{name}")

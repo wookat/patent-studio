@@ -7,6 +7,7 @@
 DB 位置随 PATENT_PROJECTS_DIR（同级 studio.db）；不需要 PATENT_STUDIO_AUTH=on 或 PATENT_STUDIO_SECRET。
 第一个用户自动 superuser。
 """
+
 import argparse
 import asyncio
 import sys
@@ -34,16 +35,20 @@ async def _run(args) -> int:
         if existing is not None:
             print(f"用户已存在：{args.email}（重置密码加 --reset）", file=sys.stderr)
             return 1
-        user = await manager.create(UserCreate(email=args.email, password=args.password,
-                                               display_name=args.display_name, is_superuser=args.superuser))
+        user = await manager.create(
+            UserCreate(
+                email=args.email, password=args.password, display_name=args.display_name, is_superuser=args.superuser
+            )
+        )
         await session.refresh(user)
         print(f"已创建：{user.email} superuser={user.is_superuser} db={config.DB_PATH}")
         return 0
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m app.auth.create_user", description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        prog="python -m app.auth.create_user", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("email")
     ap.add_argument("password")
     ap.add_argument("--display-name", default="")

@@ -4,6 +4,7 @@
 契约 docs/plan/05-r2-figures-preflight-design.md §3.2：POST 体与 /ast 相同 {content?, settings?}；
 GET 读盘；结构不成立 → 422 同 /ast。
 """
+
 import logging
 import time
 

@@ -4,6 +4,7 @@
 prep 只定形状；agent-core-backend 单元的 loop / tools / budget / proposals 以此为准，不得另造同名模型。
 S8（新颖性 / 创造性筛查）无合规检索源：不在 Scenario 内，不注册，不展示。
 """
+
 import time
 from typing import Literal
 
@@ -51,31 +52,92 @@ class ScenarioInfo(BaseModel):
 
 # 与 frontend/src/types/agent.ts SCENARIOS 同序同值（测试 test_w5_prep 对照）
 SCENARIOS: tuple[ScenarioInfo, ...] = (
-    ScenarioInfo(id="s1", label="交底书 → 三书初稿", hint="规划大纲后分书成稿（新案走导入管线，现案生成新块）",
-                 produces=["patch"], weight="heavy", minRole="editor"),
-    ScenarioInfo(id="s2", label="权项树批评", hint="逐独权检查支持性 / 清楚性 / 先行词，批注引 [00NN]",
-                 produces=["comment"], weight="heavy", minRole="viewer"),
-    ScenarioInfo(id="s3", label="支持性补全", hint="从批评结果补写说明书支持段（修订建议）",
-                 produces=["critic"], weight="interactive", minRole="reviewer"),
-    ScenarioInfo(id="s4", label="术语一致性", hint="确定性候选 + 选主术语，生成 {~~旧~>新~~}",
-                 produces=["critic"], weight="interactive", minRole="reviewer"),
-    ScenarioInfo(id="s5", label="附图标记对齐", hint="附图标记与说明书差分并解释",
-                 produces=["comment"], weight="interactive", minRole="viewer"),
-    ScenarioInfo(id="s6", label="摘要生成", hint="读权项与说明书生成 ≤300 字摘要",
-                 produces=["critic", "patch"], weight="interactive", minRole="reviewer"),
-    ScenarioInfo(id="s7", label="OA 争辩稿", hint="每条审查意见生成争辩要点，可选修改权项建议",
-                 produces=["comment", "critic"], weight="heavy", minRole="reviewer"),
-    ScenarioInfo(id="s8", label="查新笔记", hint="读三书提发明点与建议检索式，产出待检索查新笔记批注",
-                 produces=["comment"], weight="interactive", minRole="viewer"),
-    ScenarioInfo(id="s9", label="双语翻译", hint="分书翻译为 docs/<book>.en.md 并回译校验",
-                 produces=["patch"], weight="interactive", minRole="editor"),
-    ScenarioInfo(id="s10", label="客户简报", hint="生成 docs/brief.md 面向客户的简报",
-                 produces=["patch"], weight="interactive", minRole="editor"),
+    ScenarioInfo(
+        id="s1",
+        label="交底书 → 三书初稿",
+        hint="规划大纲后分书成稿（新案走导入管线，现案生成新块）",
+        produces=["patch"],
+        weight="heavy",
+        minRole="editor",
+    ),
+    ScenarioInfo(
+        id="s2",
+        label="权项树批评",
+        hint="逐独权检查支持性 / 清楚性 / 先行词，批注引 [00NN]",
+        produces=["comment"],
+        weight="heavy",
+        minRole="viewer",
+    ),
+    ScenarioInfo(
+        id="s3",
+        label="支持性补全",
+        hint="从批评结果补写说明书支持段（修订建议）",
+        produces=["critic"],
+        weight="interactive",
+        minRole="reviewer",
+    ),
+    ScenarioInfo(
+        id="s4",
+        label="术语一致性",
+        hint="确定性候选 + 选主术语，生成 {~~旧~>新~~}",
+        produces=["critic"],
+        weight="interactive",
+        minRole="reviewer",
+    ),
+    ScenarioInfo(
+        id="s5",
+        label="附图标记对齐",
+        hint="附图标记与说明书差分并解释",
+        produces=["comment"],
+        weight="interactive",
+        minRole="viewer",
+    ),
+    ScenarioInfo(
+        id="s6",
+        label="摘要生成",
+        hint="读权项与说明书生成 ≤300 字摘要",
+        produces=["critic", "patch"],
+        weight="interactive",
+        minRole="reviewer",
+    ),
+    ScenarioInfo(
+        id="s7",
+        label="OA 争辩稿",
+        hint="每条审查意见生成争辩要点，可选修改权项建议",
+        produces=["comment", "critic"],
+        weight="heavy",
+        minRole="reviewer",
+    ),
+    ScenarioInfo(
+        id="s8",
+        label="查新笔记",
+        hint="读三书提发明点与建议检索式，产出待检索查新笔记批注",
+        produces=["comment"],
+        weight="interactive",
+        minRole="viewer",
+    ),
+    ScenarioInfo(
+        id="s9",
+        label="双语翻译",
+        hint="分书翻译为 docs/<book>.en.md 并回译校验",
+        produces=["patch"],
+        weight="interactive",
+        minRole="editor",
+    ),
+    ScenarioInfo(
+        id="s10",
+        label="客户简报",
+        hint="生成 docs/brief.md 面向客户的简报",
+        produces=["patch"],
+        weight="interactive",
+        minRole="editor",
+    ),
 )
 SCENARIO_BY_ID: dict[str, ScenarioInfo] = {s.id: s for s in SCENARIOS}
 
 
 # ---------- 步骤事件（SSE 每帧；job.steps 存摘要，不存 gen 全文） ----------
+
 
 class StepEvent(BaseModel):
     seq: int
@@ -133,6 +195,7 @@ Patch = BlocksPatch | FilePatch
 
 class Proposal(BaseModel):
     """永不直接改 content.md 最终文本：critic → 用户点「写入为修订」；comment → 批注；patch → 用户点「应用」。"""
+
     id: str
     job_id: str
     scenario: Scenario
@@ -172,6 +235,7 @@ class ProposalApplyResult(BaseModel):
 
 class AgentJobOut(BaseModel):
     """现有 AiJob + steps / queue_key（kind 增 `agent:<scenario>`）；routes_ai 的 job JSON 即此形状。"""
+
     id: str
     kind: str
     pid: str

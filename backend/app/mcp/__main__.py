@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """`python -m app.mcp`：stdio 传输。AUTH=off 身份为 local；
 AUTH=on 读 env PATENT_STUDIO_PAT 并核验，缺失/无效 → stderr + 退出码 2。"""
+
 import asyncio
 import os
 import sys

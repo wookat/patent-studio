@@ -8,6 +8,7 @@ SMTP 不落文件：只从环境变量 PATENT_STUDIO_SMTP_URL 读出「是否配
 - `require_org_ai`：/ai/* 与 /agent/* 的路由级依赖；机构关闭 AI 时 403 kind=ai_disabled_by_org（接线归 integrate）。
 - `apply_default_collab`：新案建好后把机构默认协作设置写进 project_collab_settings（订阅 case.created，见 notify）。
 """
+
 import json
 import os
 

@@ -16,6 +16,7 @@
 错误：AttachmentsError(message, detail, status) → 路由 {status} {"kind": "attachments", message, line: null, detail}；
 越界名 / 类型 400、重名 409、超大 413、不存在 404。
 """
+
 import os
 from datetime import UTC, datetime
 from urllib.parse import quote
@@ -24,8 +25,14 @@ from app import atomic
 from app.domain.projects import ATTACHMENT_EXTS, ATTACHMENT_MAX_BYTES, ATTACHMENTS_DIR  # noqa: F401  （契约常量）
 
 KIND_OF_EXT = {
-    ".pdf": "pdf", ".docx": "docx", ".doc": "docx", ".md": "text", ".txt": "text",
-    ".png": "image", ".jpg": "image", ".zip": "zip",
+    ".pdf": "pdf",
+    ".docx": "docx",
+    ".doc": "docx",
+    ".md": "text",
+    ".txt": "text",
+    ".png": "image",
+    ".jpg": "image",
+    ".zip": "zip",
 }
 MEDIA_OF_EXT = {
     ".pdf": "application/pdf",
@@ -53,8 +60,9 @@ def check_name(name):
         raise AttachmentsError("非法文件名", name, status=400)
     ext = os.path.splitext(base)[1].lower()
     if ext not in ATTACHMENT_EXTS:
-        raise AttachmentsError(f"不支持的附件类型 {ext or '(无扩展名)'}",
-                               "允许：" + " ".join(ATTACHMENT_EXTS), status=400)
+        raise AttachmentsError(
+            f"不支持的附件类型 {ext or '(无扩展名)'}", "允许：" + " ".join(ATTACHMENT_EXTS), status=400
+        )
     return base
 
 
@@ -66,7 +74,9 @@ def _item(pid, d, name):
     st = os.stat(os.path.join(d, name))
     ext = os.path.splitext(name)[1].lower()
     return {
-        "name": name, "ext": ext, "size": st.st_size,
+        "name": name,
+        "ext": ext,
+        "size": st.st_size,
         "mtime": datetime.fromtimestamp(st.st_mtime, UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "kind": KIND_OF_EXT[ext],
         "url": f"/api/projects/{pid}/attachments/{quote(name)}",
@@ -102,7 +112,8 @@ def upload_attachments(store, pid, files):
         name = check_name(os.path.basename((filename or "").replace("\\", "/")))
         if len(data) > ATTACHMENT_MAX_BYTES:
             raise AttachmentsError(
-                f"附件过大：{name}（{_fmt_size(len(data))}，上限 {_fmt_size(ATTACHMENT_MAX_BYTES)}）", name, status=413)
+                f"附件过大：{name}（{_fmt_size(len(data))}，上限 {_fmt_size(ATTACHMENT_MAX_BYTES)}）", name, status=413
+            )
         if name in taken:
             raise AttachmentsError(f"attachments/{name} 已存在", name, status=409)
         taken.add(name)

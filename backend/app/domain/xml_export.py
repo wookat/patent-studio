@@ -4,6 +4,7 @@
 产物落在 <案子>/.studio/xml/<xid>/{100001..100005}/ 与 cnipa-xml.zip；只保留最近 KEEP_BUILDS 份。
 预览用官方 showxml.xsl 现场 XSLT 成 HTML（与国知局业务办理系统的展示样式同源）。
 """
+
 import glob
 import os
 import re
@@ -37,16 +38,29 @@ def validate_request_fields(case: Case) -> list[DeliverError]:
     errors: list[DeliverError] = []
     applicants = [a for a in case.applicants if a.strip()]
     if not applicants:
-        errors.append(DeliverError(field="applicants", code="request.applicants_missing",
-                                   message="请填写至少一个申请人（请求书必填）"))
+        errors.append(
+            DeliverError(
+                field="applicants", code="request.applicants_missing", message="请填写至少一个申请人（请求书必填）"
+            )
+        )
     inventors = [i for i in case.inventors if i.strip()]
     if not inventors:
-        errors.append(DeliverError(field="inventors", code="request.inventors_missing",
-                                   message="请填写至少一位发明人（发明专利请求书必填）"))
+        errors.append(
+            DeliverError(
+                field="inventors",
+                code="request.inventors_missing",
+                message="请填写至少一位发明人（发明专利请求书必填）",
+            )
+        )
     no = (case.dates.application_no or "").strip()
     if no and not _APPLICATION_NO_RE.match(no):
-        errors.append(DeliverError(field="dates.application_no", code="request.application_no_format",
-                                   message="申请号格式应为 4 位年份 + 类别 + 7 位流水 + 校验位，例如 2026 1 0123456.7"))
+        errors.append(
+            DeliverError(
+                field="dates.application_no",
+                code="request.application_no_format",
+                message="申请号格式应为 4 位年份 + 类别 + 7 位流水 + 校验位，例如 2026 1 0123456.7",
+            )
+        )
     return errors
 
 
@@ -64,8 +78,7 @@ def _prune(xml_root, keep):
             shutil.rmtree(d, ignore_errors=True)
 
 
-def run_xml_export(store: ProjectStore, pid: str, content: str | None, settings: dict | None,
-                   mode: str = "final"):
+def run_xml_export(store: ProjectStore, pid: str, content: str | None, settings: dict | None, mode: str = "final"):
     t0 = time.perf_counter()
     with _lock:
         project = store.get(pid)
@@ -81,13 +94,17 @@ def run_xml_export(store: ProjectStore, pid: str, content: str | None, settings:
             f.write(content)
         ok = False
         try:
-            cfg = store.build_config(project, out=os.path.join(out_dir, "unused.docx"),
-                                     content_md=content_md, settings=settings)
+            cfg = store.build_config(
+                project, out=os.path.join(out_dir, "unused.docx"), content_md=content_md, settings=settings
+            )
             res = export_cnipa_xml(cfg, out_dir, docx_to_pdf)
             ok = True
         except ProjectError as e:
-            return {"status": "error", "xid": xid,
-                    "error": {"kind": "settings", "message": str(e), "line": None, "detail": str(e)}}
+            return {
+                "status": "error",
+                "xid": xid,
+                "error": {"kind": "settings", "message": str(e), "line": None, "detail": str(e)},
+            }
         except Exception as e:  # noqa: BLE001 - 内核/渲染错误统一转成可读结果
             return {"status": "error", "xid": xid, "error": describe_error(e, content)}
         finally:
@@ -100,8 +117,7 @@ def run_xml_export(store: ProjectStore, pid: str, content: str | None, settings:
         for b in d["books"]:
             b["xml_url"] = f"{base}/{b['code']}/{b['code']}.xml"
             b["preview_url"] = f"{base}/{b['code']}/{b['code']}.html"
-        d.update(status="ok", xid=xid, zip_url=f"{base}/zip",
-                 ms=round((time.perf_counter() - t0) * 1000))
+        d.update(status="ok", xid=xid, zip_url=f"{base}/zip", ms=round((time.perf_counter() - t0) * 1000))
         return d
 
 
@@ -138,5 +154,6 @@ def xml_file(store: ProjectStore, pid: str, xid: str, code: str, name: str):
     if not os.path.isfile(p):
         raise ProjectError("产物不存在", 404)
     media = {".xml": "application/xml; charset=utf-8", ".jpg": "image/jpeg"}.get(
-        os.path.splitext(name)[1].lower(), "application/octet-stream")
+        os.path.splitext(name)[1].lower(), "application/octet-stream"
+    )
     return p, media, None

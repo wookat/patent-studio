@@ -4,6 +4,7 @@
 结构不成立（缺标题/未知 ## 章节/公式未闭合）→ 422 {"detail": {kind, message, line, detail}}，
 line 为全文行；其余错误形状沿用 main.py 的 {"detail": ...}。
 """
+
 import logging
 import time
 
@@ -39,8 +40,14 @@ def _parse(store, pid, content, settings):
         ast = parse_ast(content, s, figures=doc)
     except AstError as e:
         raise HTTPException(422, {"kind": "content", "message": str(e), "line": e.line, "detail": None})
-    log.info("ast %s: %d 行 → %d 权项 / %d 说明书块，%.1f ms", pid, content.count("\n") + 1,
-             len(ast["claims"]), len(ast["description"]), (time.perf_counter() - t0) * 1000)
+    log.info(
+        "ast %s: %d 行 → %d 权项 / %d 说明书块，%.1f ms",
+        pid,
+        content.count("\n") + 1,
+        len(ast["claims"]),
+        len(ast["description"]),
+        (time.perf_counter() - t0) * 1000,
+    )
     return ast
 
 

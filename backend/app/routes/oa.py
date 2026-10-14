@@ -19,6 +19,7 @@ PUT  /rounds/{rid}           OaRoundPatch（kind / issued_on / delivery / extens
 POST /rounds/{rid}/extend    {months: 1|2} → OaRound；累计 > 2 个月 ⇒ 409 conflict
 DELETE /rounds/{rid}         204；同时删去对应期限
 """
+
 import asyncio
 import urllib.parse
 
@@ -74,8 +75,7 @@ async def _notice_text(request: Request) -> tuple[str, str | None]:
             # 通知书 PDF 上限与附件一致（50MB）
             text = parse.pdf_text(await read_bounded(f, "oa", ATTACHMENT_MAX_BYTES))
         except parse.NoTextLayer as e:
-            raise kind_error("oa.pdf_no_text", f"{e}，请粘贴通知书文本或上传带文字层的 PDF", status=400,
-                             detail=UNIT_W5)
+            raise kind_error("oa.pdf_no_text", f"{e}，请粘贴通知书文本或上传带文字层的 PDF", status=400, detail=UNIT_W5)
         rid = form.get("round_id")
         return text, (rid if isinstance(rid, str) and rid else None)
     try:
@@ -135,8 +135,7 @@ def oa_items(pid: str, request: Request):
 async def oa_put_answer(pid: str, item_id: str, body: OaPointsIn, request: Request):
     store = request.app.state.store
     project_dir = store._dir(pid)
-    ans = next((a for a in _rounds_call(oa_answer_mod.load_answers, project_dir) if a["item_id"] == item_id),
-               None)
+    ans = next((a for a in _rounds_call(oa_answer_mod.load_answers, project_dir) if a["item_id"] == item_id), None)
     if ans is None:
         raise HTTPException(404, error_detail("oa_answer_missing", f"条目 {item_id} 尚无答复", detail=UNIT))
     ans["points"] = [p.strip() for p in body.points if p.strip()]
@@ -153,11 +152,15 @@ async def oa_export(pid: str, request: Request):
     if not answers:
         raise HTTPException(409, error_detail("oa_empty", "尚无任何 OA 答复，请先拆条并生成答复", detail=UNIT))
     claims_md = docset.split(store.read_content(pid)).claims
-    data = await asyncio.to_thread(export.export_docx, project={"title": project.title, "app_no": None},
-                                   items=items, answers=answers, claims_md=claims_md)
+    data = await asyncio.to_thread(
+        export.export_docx,
+        project={"title": project.title, "app_no": None},
+        items=items,
+        answers=answers,
+        claims_md=claims_md,
+    )
     name = urllib.parse.quote(f"意见陈述书-{project.title}.docx")
-    return Response(data, media_type=DOCX_MIME,
-                    headers={"Content-Disposition": f"attachment; filename*=UTF-8''{name}"})
+    return Response(data, media_type=DOCX_MIME, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{name}"})
 
 
 # ---------- W5 oa-import-backend：OA 轮次（docs/plan/21 §2.1 R-OA-02、§2.2 R-OA-05） ----------
@@ -180,11 +183,16 @@ def oa_rounds(pid: str, request: Request):
 @router.post("/rounds", status_code=201, response_model=OaRound)
 def create_oa_round(pid: str, body: OaRoundIn, request: Request, user: auth.CurrentUser):
     project_dir = request.app.state.store._dir(pid)
-    rnd = _rounds_call(rounds.create_round, project_dir, kind=body.kind, issued_on=body.issued_on,
-                       delivery=body.delivery)
+    rnd = _rounds_call(
+        rounds.create_round, project_dir, kind=body.kind, issued_on=body.issued_on, delivery=body.delivery
+    )
     due, _ = rounds.reply_due(rnd)
-    events.emit("oa.round", pid=pid, actor=events.actor_of(user),
-                data={"round_id": rnd["id"], "kind": rnd["kind"], "issued_on": rnd["issued_on"], "due": due})
+    events.emit(
+        "oa.round",
+        pid=pid,
+        actor=events.actor_of(user),
+        data={"round_id": rnd["id"], "kind": rnd["kind"], "issued_on": rnd["issued_on"], "due": due},
+    )
     return rounds.to_api(rnd)
 
 

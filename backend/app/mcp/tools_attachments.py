@@ -11,6 +11,7 @@
     kind=image / zip → ToolError kind="unsupported"（图片不做 OCR，zip 不解包）
   超过 max_chars 截断并 truncated=true；chars = 截断前总长。viewer+（读附件与读正文同门槛）。
 """
+
 from __future__ import annotations
 
 import os
@@ -72,8 +73,11 @@ def _pdf_text(path: str) -> str:
         raise _err("unsupported", "pdftotext 不可用（需安装 poppler-utils）", detail=os.path.basename(path))
     r = subprocess.run(["pdftotext", "-layout", path, "-"], capture_output=True, timeout=120)
     if r.returncode != 0:
-        raise _err("attachments", "pdftotext 失败：" + r.stderr.decode("utf-8", "replace").strip()[:200],
-                   detail=os.path.basename(path))
+        raise _err(
+            "attachments",
+            "pdftotext 失败：" + r.stderr.decode("utf-8", "replace").strip()[:200],
+            detail=os.path.basename(path),
+        )
     return r.stdout.decode("utf-8", "replace")
 
 
@@ -93,8 +97,9 @@ def read_text(store, pid: str, name: str, max_chars: int = 20000) -> schemas.Att
     limit = max(1, min(max_chars, MAX_CHARS_CAP))
     chars = len(text)
     truncated = chars > limit
-    return schemas.AttachmentTextOut(name=name, kind=kind, text=text[:limit] if truncated else text,
-                                     chars=chars, truncated=truncated)
+    return schemas.AttachmentTextOut(
+        name=name, kind=kind, text=text[:limit] if truncated else text, chars=chars, truncated=truncated
+    )
 
 
 def register(server, store):
@@ -102,13 +107,19 @@ def register(server, store):
     async def list_attachments_tool(pid: str) -> dict[str, Any]:
         """附件列表（同 GET /api/projects/{pid}/attachments）：现有技术 / 交底书 / 客户来件等。"""
         await open_project_for(store, pid)
-        return await run_audited(store, pid, "list_attachments", {},
-                                 lambda: _wrap(attachments.list_attachments, store, pid))
+        return await run_audited(
+            store, pid, "list_attachments", {}, lambda: _wrap(attachments.list_attachments, store, pid)
+        )
 
     @server.tool(name="read_attachment_text")
     async def read_attachment_text_tool(pid: str, name: str, max_chars: int = 20000) -> schemas.AttachmentTextOut:
         """抽取一个附件的纯文本（docx 段落 / pdf pdftotext / md·txt 原文）；图片与 zip 不支持。"""
         await open_project_for(store, pid)
-        return await run_audited(store, pid, "read_attachment_text", {"name": name, "max_chars": max_chars},
-                                 lambda: read_text(store, pid, name, max_chars),
-                                 result_of=lambda r: "ok:truncated" if r.truncated else "ok")
+        return await run_audited(
+            store,
+            pid,
+            "read_attachment_text",
+            {"name": name, "max_chars": max_chars},
+            lambda: read_text(store, pid, name, max_chars),
+            result_of=lambda r: "ok:truncated" if r.truncated else "ok",
+        )

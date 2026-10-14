@@ -3,6 +3,7 @@
 
 缺 PATENT_STUDIO_SECRET 时 import 即 RuntimeError（AUTH=on 启动失败）。
 """
+
 import uuid
 
 from fastapi import Request
@@ -22,8 +23,9 @@ if not config.AUTH_SECRET:
     raise RuntimeError("PATENT_STUDIO_AUTH=on 需要设置 PATENT_STUDIO_SECRET（JWT 签名密钥）")
 
 
-cookie_transport = CookieTransport(cookie_name=COOKIE_NAME, cookie_max_age=SESSION_SECONDS,
-                                   cookie_secure=config.COOKIE_SECURE)
+cookie_transport = CookieTransport(
+    cookie_name=COOKIE_NAME, cookie_max_age=SESSION_SECONDS, cookie_secure=config.COOKIE_SECURE
+)
 
 
 class SessionJWTStrategy(JWTStrategy):

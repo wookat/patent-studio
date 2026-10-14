@@ -13,6 +13,7 @@
   job 运行期间不写 content.md / docs/*.md。
 - 失败：AiError / 其他异常 → done{error} 事件后向上抛，JobStore 记 status=error。
 """
+
 import asyncio
 import inspect
 import json
@@ -62,8 +63,19 @@ def has_legal_verdict(text: str) -> bool:
 class RunContext:
     """场景 handler 的唯一入口：ctx.plan / tool / clip / gen / check / propose。"""
 
-    def __init__(self, *, store, jobs: JobStore, ai: AiClient, pid: str, scenario: str, params: dict, job: Job,
-                 who: str | None = None, actor: dict | None = None):
+    def __init__(
+        self,
+        *,
+        store,
+        jobs: JobStore,
+        ai: AiClient,
+        pid: str,
+        scenario: str,
+        params: dict,
+        job: Job,
+        who: str | None = None,
+        actor: dict | None = None,
+    ):
         self.store = store
         self.jobs = jobs
         self.ai = ai
@@ -140,8 +152,9 @@ class RunContext:
         self.sent_chars += sum(len(m.get("content") or "") for m in messages)
         self.calls += 1
         if stream:
-            cs = await self.ai.chat(messages, purpose, stream=True, project_dir=self.project_dir, job_id=self.job.id,
-                                    user=self.who)
+            cs = await self.ai.chat(
+                messages, purpose, stream=True, project_dir=self.project_dir, job_id=self.job.id, user=self.who
+            )
             try:
                 async for delta in cs:
                     self._event("gen_delta", {"text": delta})
@@ -152,8 +165,10 @@ class RunContext:
             r = await self.ai.chat(messages, purpose, project_dir=self.project_dir, job_id=self.job.id, user=self.who)
         if r.model in FORBIDDEN_MODELS:
             raise RuntimeError(f"禁用模型：{r.model}")
-        self.usage = Usage(prompt=self.usage.prompt + r.usage.prompt_tokens,
-                           completion=self.usage.completion + r.usage.completion_tokens)
+        self.usage = Usage(
+            prompt=self.usage.prompt + r.usage.prompt_tokens,
+            completion=self.usage.completion + r.usage.completion_tokens,
+        )
         self.last_model = r.model
         return r
 
@@ -164,17 +179,36 @@ class RunContext:
         self._event("check", {"name": name, "ok": cr.ok, "why": why})
         return cr
 
-    def propose(self, kind: ProposalKind, anchor: Anchor, *, critic_markdown: str | None = None,
-                comment_body: str | None = None, patch: Patch | None = None,
-                checks: list[CheckResult] | None = None, model: str | None = None) -> Proposal:
+    def propose(
+        self,
+        kind: ProposalKind,
+        anchor: Anchor,
+        *,
+        critic_markdown: str | None = None,
+        comment_body: str | None = None,
+        patch: Patch | None = None,
+        checks: list[CheckResult] | None = None,
+        model: str | None = None,
+    ) -> Proposal:
         self.check_cancel()
-        prop = Proposal(id=proposals.new_id(), job_id=self.job.id, scenario=self.scenario, kind=kind, anchor=anchor,
-                        critic_markdown=critic_markdown, comment_body=comment_body, patch=patch,
-                        checks=list(checks or []), model=model or self.last_model or "", usage=self.usage,
-                        created_at=time.time())
+        prop = Proposal(
+            id=proposals.new_id(),
+            job_id=self.job.id,
+            scenario=self.scenario,
+            kind=kind,
+            anchor=anchor,
+            critic_markdown=critic_markdown,
+            comment_body=comment_body,
+            patch=patch,
+            checks=list(checks or []),
+            model=model or self.last_model or "",
+            usage=self.usage,
+            created_at=time.time(),
+        )
         self.proposals.append(prop)
-        self._event("proposal", {"id": prop.id, "kind": kind, "anchor": anchor.model_dump(),
-                                 "preview": proposals.preview(prop)})
+        self._event(
+            "proposal", {"id": prop.id, "kind": kind, "anchor": anchor.model_dump(), "preview": proposals.preview(prop)}
+        )
         return prop
 
 
@@ -201,8 +235,19 @@ class PlanContext(plans.RunContext):
     """agent-scenarios 的 plans.RunContext 接到 JobStore 运行时：事件写 job.steps（tool 键对齐前端的 name）、
     取消看 job.status、提案 id 全局唯一；plans.finish() 的 done 帧由 run_scenario 在提案落盘后统一发出。"""
 
-    def __init__(self, *, store, jobs: JobStore, ai: AiClient, pid: str, scenario: str, params: dict, job: Job,
-                 who: str | None = None, actor: dict | None = None):
+    def __init__(
+        self,
+        *,
+        store,
+        jobs: JobStore,
+        ai: AiClient,
+        pid: str,
+        scenario: str,
+        params: dict,
+        job: Job,
+        who: str | None = None,
+        actor: dict | None = None,
+    ):
         self.jobs = jobs
         self.job = job
         self.who = who
@@ -211,8 +256,16 @@ class PlanContext(plans.RunContext):
         self.checks: list[CheckResult] = []
         self.finish_data: dict = {}
         self.sent_chars = 0
-        super().__init__(store=store, pid=pid, ai=ai, scenario=scenario, job_id=job.id, params=params, user=who,
-                         cancelled=self._job_interrupted)
+        super().__init__(
+            store=store,
+            pid=pid,
+            ai=ai,
+            scenario=scenario,
+            job_id=job.id,
+            params=params,
+            user=who,
+            cancelled=self._job_interrupted,
+        )
 
     @property
     def agent_id(self) -> str:
@@ -258,23 +311,44 @@ class PlanContext(plans.RunContext):
 
 # ---------------------------------------------------------------- 主循环 ----
 
-async def run_scenario(pid: str, scenario: str, params: dict, job: Job, *, store, jobs: JobStore, ai: AiClient,
-                       who: str | None = None, actor: dict | None = None) -> dict:
+
+async def run_scenario(
+    pid: str,
+    scenario: str,
+    params: dict,
+    job: Job,
+    *,
+    store,
+    jobs: JobStore,
+    ai: AiClient,
+    who: str | None = None,
+    actor: dict | None = None,
+) -> dict:
     handler = registry.get(scenario) or default_handler
     ctx: RunContext | PlanContext
     if plans.is_plan_handler(handler):
-        ctx = PlanContext(store=store, jobs=jobs, ai=ai, pid=pid, scenario=scenario, params=params, job=job, who=who,
-                          actor=actor)
+        ctx = PlanContext(
+            store=store, jobs=jobs, ai=ai, pid=pid, scenario=scenario, params=params, job=job, who=who, actor=actor
+        )
     else:
-        ctx = RunContext(store=store, jobs=jobs, ai=ai, pid=pid, scenario=scenario, params=params, job=job, who=who,
-                         actor=actor)
+        ctx = RunContext(
+            store=store, jobs=jobs, ai=ai, pid=pid, scenario=scenario, params=params, job=job, who=who, actor=actor
+        )
     try:
         await handler(ctx)
     except asyncio.CancelledError:
         raise
     except Exception as e:
-        jobs.add_step(job.id, "done", {"proposals": [p.id for p in ctx.proposals], "usage": ctx.usage.model_dump(),
-                                       "truncated": ctx.truncated, "error": f"{e.__class__.__name__}: {e}"})
+        jobs.add_step(
+            job.id,
+            "done",
+            {
+                "proposals": [p.id for p in ctx.proposals],
+                "usage": ctx.usage.model_dump(),
+                "truncated": ctx.truncated,
+                "error": f"{e.__class__.__name__}: {e}",
+            },
+        )
         raise
     by = ctx.agent_id
     for prop in ctx.proposals:
@@ -283,14 +357,34 @@ async def run_scenario(pid: str, scenario: str, params: dict, job: Job, *, store
         if prop.kind == "comment":
             await proposals.apply(store, pid, prop.id, who=by, actor=actor)
     ids = [p.id for p in ctx.proposals]
-    events.emit("ai.sent", pid=pid, actor=actor,
-                data={"job_id": job.id, "scenario": scenario, "calls": ctx.calls, "chars": ctx.sent_chars,
-                      "model": ctx.last_model, "usage": ctx.usage.model_dump(), "truncated": ctx.truncated})
+    events.emit(
+        "ai.sent",
+        pid=pid,
+        actor=actor,
+        data={
+            "job_id": job.id,
+            "scenario": scenario,
+            "calls": ctx.calls,
+            "chars": ctx.sent_chars,
+            "model": ctx.last_model,
+            "usage": ctx.usage.model_dump(),
+            "truncated": ctx.truncated,
+        },
+    )
     extra = ctx.finish_data if isinstance(ctx, PlanContext) else {}
-    result = {"scenario": scenario, "proposals": ids, "usage": ctx.usage.model_dump(), "truncated": ctx.truncated,
-              "checks": [c.model_dump() for c in ctx.checks], **extra}
-    jobs.add_step(job.id, "done", {**extra, "proposals": ids, "usage": ctx.usage.model_dump(),
-                                   "truncated": ctx.truncated, "calls": ctx.calls})
+    result = {
+        "scenario": scenario,
+        "proposals": ids,
+        "usage": ctx.usage.model_dump(),
+        "truncated": ctx.truncated,
+        "checks": [c.model_dump() for c in ctx.checks],
+        **extra,
+    }
+    jobs.add_step(
+        job.id,
+        "done",
+        {**extra, "proposals": ids, "usage": ctx.usage.model_dump(), "truncated": ctx.truncated, "calls": ctx.calls},
+    )
     return result
 
 
@@ -304,8 +398,11 @@ FILE_TARGETS = {"s9": "docs/{book}.en.md", "s10": "docs/brief.md"}
 
 def _block_ranges(ast: dict) -> dict[str, tuple[str, int, int]]:
     out: dict[str, tuple[str, int, int]] = {}
-    for book, blocks in (("abstract", ast["abstract"]["paragraphs"]), ("claims", ast["claims"]),
-                         ("description", ast["description"])):
+    for book, blocks in (
+        ("abstract", ast["abstract"]["paragraphs"]),
+        ("claims", ast["claims"]),
+        ("description", ast["description"]),
+    ):
         off = ast["books"][book]["offset"]
         for b in blocks:
             out[b["id"]] = (book, off + b["lines"]["start"], off + b["lines"]["end"])
@@ -340,8 +437,10 @@ async def default_handler(ctx: RunContext) -> None:
 
 async def _comment_plan(ctx: RunContext, d, ranges, lines) -> None:
     tree = await ctx.tool("get_claim_tree", tools_semantic.claim_tree, d=d)
-    batch = [{"block_id": c["id"], "text": "\n".join(lines[ranges[c["id"]][1] - 1:ranges[c["id"]][2]])}
-             for c in d.ast["claims"]]
+    batch = [
+        {"block_id": c["id"], "text": "\n".join(lines[ranges[c["id"]][1] - 1 : ranges[c["id"]][2]])}
+        for c in d.ast["claims"]
+    ]
     context = ctx.clip(json.dumps([n.model_dump() for n in tree], ensure_ascii=False))
     msgs = prompts.review_messages(batch, "claims", context)
     role = "critique" if ctx.info.weight == "heavy" else "draft"
@@ -370,8 +469,13 @@ async def _comment_plan(ctx: RunContext, d, ranges, lines) -> None:
         verdict = ctx.check("no_legal_verdict", not bad, "含结论式法律措辞" if bad else "")
         if not verdict.ok:
             continue
-        ctx.propose("comment", BlockAnchor(book=book, block_id=bid, line_start=hit, line_end=hit), comment_body=body,
-                    checks=[anchor_ok, verdict], model=r.model)
+        ctx.propose(
+            "comment",
+            BlockAnchor(book=book, block_id=bid, line_start=hit, line_end=hit),
+            comment_body=body,
+            checks=[anchor_ok, verdict],
+            model=r.model,
+        )
 
 
 async def _critic_plan(ctx: RunContext, d, ranges, lines) -> None:
@@ -381,10 +485,14 @@ async def _critic_plan(ctx: RunContext, d, ranges, lines) -> None:
         ctx.check("anchor_hit", False, f"{BOOK_NAMES[book]}没有可修订的块")
         return
     _book, a, b = ranges[block["id"]]
-    orig = lines[a - 1:b]
-    text = await ctx.tool("read_book", lambda book: "\n".join(lines[d.ast["books"][book]["offset"]:
-                                                                    d.ast["books"][book]["offset"]
-                                                                    + d.ast["books"][book]["length"]]), book=book)
+    orig = lines[a - 1 : b]
+    text = await ctx.tool(
+        "read_book",
+        lambda book: "\n".join(
+            lines[d.ast["books"][book]["offset"] : d.ast["books"][book]["offset"] + d.ast["books"][book]["length"]]
+        ),
+        book=book,
+    )
     context = ctx.clip(f"当前书：{BOOK_NAMES[book]}\n{text}")
     msgs = prompts.rewrite_messages("polish", "\n".join(orig), context)
     r = await ctx.gen(msgs, "draft")
@@ -395,20 +503,34 @@ async def _critic_plan(ctx: RunContext, d, ranges, lines) -> None:
     if marked is None:
         # 降级为批注（§6.2 失败：check 不通过 → 1 次 format_retry → 仍不通过降级 comment）
         ck = ctx.check("lint", False, "AI 输出行数与原文不一致")
-        ctx.propose("comment", BlockAnchor(book=book, block_id=block["id"], line_start=a, line_end=b),
-                    comment_body=critic.accept(r.text).strip()[:500], checks=[ck], model=r.model)
+        ctx.propose(
+            "comment",
+            BlockAnchor(book=book, block_id=block["id"], line_start=a, line_end=b),
+            comment_body=critic.accept(r.text).strip()[:500],
+            checks=[ck],
+            model=r.model,
+        )
         return
     lint_ok = ctx.check("lint", not critic.lint_marks(marked), "")
     rt_ok = ctx.check("roundtrip", critic.reject(marked) == "\n".join(orig), "")
     if lint_ok.ok and rt_ok.ok:
-        ctx.propose("critic", BlockAnchor(book=book, block_id=block["id"], line_start=a, line_end=b),
-                    critic_markdown=marked, checks=[lint_ok, rt_ok], model=r.model)
+        ctx.propose(
+            "critic",
+            BlockAnchor(book=book, block_id=block["id"], line_start=a, line_end=b),
+            critic_markdown=marked,
+            checks=[lint_ok, rt_ok],
+            model=r.model,
+        )
 
 
 async def _patch_plan(ctx: RunContext, d, ranges, lines) -> None:
-    claims_text = await ctx.tool("read_book", lambda book: "\n".join(
-        lines[d.ast["books"][book]["offset"]:d.ast["books"][book]["offset"] + d.ast["books"][book]["length"]]),
-        book="claims")
+    claims_text = await ctx.tool(
+        "read_book",
+        lambda book: "\n".join(
+            lines[d.ast["books"][book]["offset"] : d.ast["books"][book]["offset"] + d.ast["books"][book]["length"]]
+        ),
+        book="claims",
+    )
     context = ctx.clip(f"权利要求书：\n{claims_text}")
     if ctx.info.weight == "heavy":
         outline = "给出补写说明书新段落的要点大纲（JSON 数组，每项一句）。"
@@ -423,8 +545,9 @@ async def _patch_plan(ctx: RunContext, d, ranges, lines) -> None:
     target = FILE_TARGETS.get(ctx.scenario)
     if target:
         file = target.format(book=ctx.params.get("book") or "claims")
-        ctx.propose("patch", FileAnchor(file=file), patch=FilePatch(file=file, content=text + "\n"), checks=[fmt],
-                    model=r.model)
+        ctx.propose(
+            "patch", FileAnchor(file=file), patch=FilePatch(file=file, content=text + "\n"), checks=[fmt], model=r.model
+        )
         return
     paras = [b for b in d.ast["description"] if b["kind"] == "paragraph"]
     if not paras:
@@ -432,9 +555,13 @@ async def _patch_plan(ctx: RunContext, d, ranges, lines) -> None:
         return
     last = paras[-1]
     _book, a, b = ranges[last["id"]]
-    ctx.propose("patch", BlockAnchor(book="description", block_id=last["id"], line_start=b, line_end=b),
-                patch=BlocksPatch(blocks=[PatchBlock(after_block_id=last["id"], markdown=text)]), checks=[fmt],
-                model=r.model)
+    ctx.propose(
+        "patch",
+        BlockAnchor(book="description", block_id=last["id"], line_start=b, line_end=b),
+        patch=BlocksPatch(blocks=[PatchBlock(after_block_id=last["id"], markdown=text)]),
+        checks=[fmt],
+        model=r.model,
+    )
 
 
 __all__ = ["RunContext", "default_handler", "has_legal_verdict", "run_scenario"]

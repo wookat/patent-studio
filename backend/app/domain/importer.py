@@ -5,6 +5,7 @@
 写 figs/ 并得到 content.md → store.save_content（进历史）→ 图片宽度与字面下划线标识符写入 settings；
 style（用户部分采纳的建议）优先，否则 apply_styles 时合入全部 style 建议。
 """
+
 import gc
 import os
 import shutil
@@ -19,12 +20,14 @@ UNIT = docx_import.UNIT
 def _rmtree_robust(path: str) -> None:
     """Windows 上 .studio/history 的 git object 文件带只读位 + 可能残留句柄：
     chmod 回写 + gc 收句柄重试，否则 rmtree 静默失败留半成品案目录。"""
+
     def _onexc(fn, p, _exc):
         try:
             os.chmod(p, 0o666)
             fn(p)
         except OSError:
             pass
+
     for _ in range(3):
         shutil.rmtree(path, ignore_errors=False, onexc=_onexc)
         if not os.path.exists(path):
@@ -34,8 +37,15 @@ def _rmtree_robust(path: str) -> None:
     shutil.rmtree(path, ignore_errors=True)
 
 
-def import_project(store: ProjectStore, data: bytes, filename: str, pid: str | None, title: str | None,
-                   apply_styles: bool, style: dict | None = None) -> tuple[str, docx_import.ImportReport]:
+def import_project(
+    store: ProjectStore,
+    data: bytes,
+    filename: str,
+    pid: str | None,
+    title: str | None,
+    apply_styles: bool,
+    style: dict | None = None,
+) -> tuple[str, docx_import.ImportReport]:
     """返回 (pid, report)；路由再用 store.get(pid) 组装 ProjectDetail。"""
     stem = os.path.splitext(os.path.basename(filename or ""))[0]
     pid = pid or store.unique_pid(id_slug(stem, 60, "imported"))

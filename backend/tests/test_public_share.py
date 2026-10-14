@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """share-confirm-backend：客户免登录审阅链接 + 确认定稿 + 水印 PDF（docs/plan/21 §1.3 A6 / R-REV-05 / R-CHK-08）。
 夹具复用 test_auth（on / client / _register / _login / _assert_501）。"""
+
 import asyncio
 import io
 import json
@@ -51,6 +52,7 @@ def _events(kind):
 
 # ---------------- off ----------------
 
+
 def test_off_links_501_and_public_404(client):
     c, _ = client
     _assert_501(c.get("/api/projects/method/public-links"), "C1-auth")
@@ -61,12 +63,23 @@ def test_off_links_501_and_public_404(client):
 
 # ---------------- 链接 CRUD ----------------
 
+
 def test_create_list_revoke_links(on, tmp_path):
     anon, su = _team(on)
     created = _events("share.created")
     link = _link(su, scope="comment", ttl_days=3)
-    assert set(link) >= {"token", "pid", "scope", "allow_download", "expires_at", "revoked", "created_by", "created_at",
-                         "visits", "last_visit_at"}
+    assert set(link) >= {
+        "token",
+        "pid",
+        "scope",
+        "allow_download",
+        "expires_at",
+        "revoked",
+        "created_by",
+        "created_at",
+        "visits",
+        "last_visit_at",
+    }
     assert link["scope"] == "comment" and link["revoked"] is False and link["created_by"]["display_name"] == "所长"
     assert abs(link["expires_at"] - (datetime.now(UTC) + timedelta(days=3)).timestamp()) < 60
     assert [e.data["token"] for e in created] == [link["token"]]
@@ -94,6 +107,7 @@ def test_link_cannot_widen_case_settings(on):
 
 
 # ---------------- 匿名读取 ----------------
+
 
 def test_anonymous_reads_pdf_ast_css_comments_and_logs_access(on, tmp_path):
     anon, su = _team(on)
@@ -144,27 +158,33 @@ def test_pending_revisions_not_rendered_as_final_by_default(on, tmp_path, monkey
     anon, su = _team(on)
     projects = tmp_path / "projects"
     content = su.get("/api/projects/method/content").json()["content"]
-    assert "预测模型部署期" in content
-    marked = content.replace("预测模型部署期", "{++碳++}预测模型{++的++}部署期", 1)
+    assert "电子钱包" in content
+    marked = content.replace("电子钱包", "{++碳++}电子{++的++}钱包", 1)
     assert su.put("/api/projects/method/content", json={"content": marked}).status_code == 200
     # 预览构建按 final 落盘（旧行为：客户 PDF 直接拿它 ⇒ 未决插入成了定稿）
     stale = _write_pdf(projects, pages=1)
     with open(stale.parent / "content.md", "w", encoding="utf-8") as f:
         f.write(marked.replace("{++碳++}", "碳").replace("{++的++}", "的"))
 
+    # 新语料 studio.json 的 sub_except 为空 → 显式写一条白名单验证 meta 回显
+    studio = projects / "method" / "studio.json"
+    s = json.loads(studio.read_text(encoding="utf-8"))
+    s["sub_except"] = ["x_t"]
+    studio.write_text(json.dumps(s, ensure_ascii=False), encoding="utf-8")
+
     link = _link(su)
     assert link["baseline"] == "original"
     tok = link["token"]
     m = anon.get(f"/api/public/{tok}/meta").json()
     assert m["baseline"] == "original" and m["pending_revisions"] == 2
-    # 客户页版面按 studio.json sub_except 渲染行内下标（默认白名单来自 projects.DEFAULT_SUB_EXCEPT）
-    assert isinstance(m["sub_except"], list) and m["sub_except"]
+    # 客户页版面按 studio.json sub_except 渲染行内下标
+    assert m["sub_except"] == ["x_t"]
 
     def flat(books):
         return json.dumps(books, ensure_ascii=False)
 
     ast = anon.get(f"/api/public/{tok}/layout-ast").json()
-    assert "预测模型部署期" in flat(ast) and "碳预测模型的部署期" not in flat(ast) and "{++" not in flat(ast)
+    assert "电子钱包" in flat(ast) and "碳电子的钱包" not in flat(ast) and "{++" not in flat(ast)
 
     # PDF：陈旧 final 构建的 content.md 与 original 正文不一致 ⇒ 按 original 构建一次（这里替身 _build 只造文件）
     built = []
@@ -196,7 +216,7 @@ def test_pending_revisions_not_rendered_as_final_by_default(on, tmp_path, monkey
     m2 = anon.get(f"/api/public/{tok2}/meta").json()
     assert m2["baseline"] == "final" and m2["pending_revisions"] == 2
     ast2 = anon.get(f"/api/public/{tok2}/layout-ast").json()
-    assert "碳预测模型的部署期" in flat(ast2) and "{++" not in flat(ast2)
+    assert "碳电子的钱包" in flat(ast2) and "{++" not in flat(ast2)
     r2 = anon.get(f"/api/public/{tok2}/pdf")
     assert r2.status_code == 200 and len(PdfReader(io.BytesIO(r2.content)).pages) == 1 and built == ["original"]
 
@@ -250,12 +270,18 @@ def test_expired_410_unknown_404(on):
 
 # ---------------- 客户批注 / 确认 ----------------
 
+
 def test_client_comment_and_scope(on, tmp_path):
     anon, su = _team(on)
     tok = _link(su, scope="comment")["token"]
-    r = anon.post(f"/api/public/{tok}/comments",
-                  json={"name": "王总", "anchor": {"book": "claims", "block_id": "claims/1", "line": 9,
-                                                  "quote": "其特征在于"}, "body": "这里的「装置」要不要改成「系统」？"})
+    r = anon.post(
+        f"/api/public/{tok}/comments",
+        json={
+            "name": "王总",
+            "anchor": {"book": "claims", "block_id": "claims/1", "line": 9, "quote": "其特征在于"},
+            "body": "这里的「装置」要不要改成「系统」？",
+        },
+    )
     assert r.status_code == 201, r.text
     c = r.json()
     assert c["source"] == "client" and c["author"] == {"id": None, "name": "王总"}
@@ -267,8 +293,9 @@ def test_client_comment_and_scope(on, tmp_path):
     # comment 链接不能确认；read 链接不能批注
     assert anon.post(f"/api/public/{tok}/confirm", json={"name": "王总"}).json()["detail"]["kind"] == "share.scope"
     ro = _link(su, scope="read")["token"]
-    r = anon.post(f"/api/public/{ro}/comments", json={"name": "王总", "anchor": {"block_id": "claims/1", "line": 9},
-                                                       "body": "x"})
+    r = anon.post(
+        f"/api/public/{ro}/comments", json={"name": "王总", "anchor": {"block_id": "claims/1", "line": 9}, "body": "x"}
+    )
     assert r.status_code == 403 and r.json()["detail"]["kind"] == "share.scope"
     # 缺 name ⇒ 422 validation
     r = anon.post(f"/api/public/{tok}/comments", json={"anchor": {"block_id": "claims/1", "line": 9}, "body": "x"})
@@ -283,8 +310,11 @@ def test_confirm_appends_case_and_timeline_and_emits(on, tmp_path):
     confirmed = _events("share.confirmed")
     before = len(su.get("/api/projects/method/timeline").json()["items"])
 
-    r = anon.post(f"/api/public/{tok}/confirm", json={"name": "王总", "note": "同意定稿"},
-                  headers={"User-Agent": "client-ua", "X-Forwarded-For": "203.0.113.9, 10.0.0.1"})
+    r = anon.post(
+        f"/api/public/{tok}/confirm",
+        json={"name": "王总", "note": "同意定稿"},
+        headers={"User-Agent": "client-ua", "X-Forwarded-For": "203.0.113.9, 10.0.0.1"},
+    )
     assert r.status_code == 200, r.text
     out = r.json()
     assert out["name"] == "王总" and out["note"] == "同意定稿" and out["version"] >= 1 and len(out["sha"]) >= 7
@@ -328,6 +358,7 @@ def test_confirm_appends_case_and_timeline_and_emits(on, tmp_path):
 
 
 # ---------------- 纯函数 ----------------
+
 
 def test_watermark_text_and_stamp():
     assert public_share.watermark_text("abcdef123456", datetime(2026, 9, 6).date()) == "审阅版 · abcdef · 2026-09-06"

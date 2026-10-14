@@ -9,6 +9,7 @@ streamable_http_app() 拿到新的会话管理器并 run()；端点是精确路�
 AUTH=off：host=127.0.0.1 → SDK 自动开启 DNS 重绑定保护（Host 只允许 127.0.0.1 / localhost / [::1]），与 PatGate 的
 本机限制一致。AUTH=on：远程部署，Host 不可预知，交给 PatGate 的 PAT 校验，不开重绑定保护。
 """
+
 import contextlib
 
 from starlette.routing import Route

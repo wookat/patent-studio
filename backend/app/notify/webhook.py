@@ -5,6 +5,7 @@ PATENT_STUDIO_NOTIFY_WEBHOOK → 日志通道兜底（INFO 落日志，永不丢
 payload：{title, body, pid, href, kind, ts}——兼容 Server酱/Bark/企微通用 JSON
 接收端与自建网关；外发失败只记日志不抛。
 """
+
 import asyncio
 import json
 import logging
@@ -39,15 +40,17 @@ def configured(pid: str | None = None) -> bool:
 def _post(url: str, payload: dict) -> None:
     try:
         req = urllib.request.Request(
-            url, data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={"Content-Type": "application/json"}, method="POST")
+            url,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         urllib.request.urlopen(req, timeout=8).close()
     except Exception as e:  # 外发失败不炸站内信
         log.warning("notify webhook post failed: %s", e)
 
 
-def send(*, title: str, body: str = "", kind: str = "", pid: str | None = None,
-         href: str | None = None) -> None:
+def send(*, title: str, body: str = "", kind: str = "", pid: str | None = None, href: str | None = None) -> None:
     url = url_for(pid)
     payload = {"title": title, "body": body, "kind": kind, "pid": pid, "href": href}
     if not url:
@@ -62,12 +65,19 @@ def send(*, title: str, body: str = "", kind: str = "", pid: str | None = None,
 
 def send_test(url: str) -> tuple[bool, str]:
     """「发送测试」按钮：同步 POST 一条 ping，返回 (ok, 错误信息)。"""
-    payload = {"title": "Patent Studio 通知外发测试", "body": "webhook 通道联通成功",
-               "kind": "test", "ts": int(__import__("time").time())}
+    payload = {
+        "title": "Patent Studio 通知外发测试",
+        "body": "webhook 通道联通成功",
+        "kind": "test",
+        "ts": int(__import__("time").time()),
+    }
     try:
         req = urllib.request.Request(
-            url, data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers={"Content-Type": "application/json"}, method="POST")
+            url,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         code = urllib.request.urlopen(req, timeout=8).status
         return 200 <= code < 300, f"HTTP {code}"
     except Exception as e:

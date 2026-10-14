@@ -3,6 +3,7 @@
 
 fixture 预期见 tests/fixtures/preflight/README.md；行号一律全文行（书内行 + docset 书偏移）。
 """
+
 import json
 import os
 import shutil
@@ -22,20 +23,34 @@ FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures", 
 ONE_FIG = {"spec_figures": [["fig1.png", 15.0]]}
 
 RULES = {
-    "abstract.limit": "error", "claims.structure": "error", "claims.forward_ref": "error",
-    "claims.multi_not_alternative": "warning", "claims.multi_multi": "warning", "claims.cycle": "error",
-    "equation.no_lead": "warning", "figures.ref_missing": "error", "figures.unreferenced": "warning",
-    "figures.caption_missing": "warning", "figures.drawings_unfiled": "warning",
-    "spec.meta_wording": "warning", "figures.caption_dup": "warning",
+    "abstract.limit": "error",
+    "claims.structure": "error",
+    "claims.forward_ref": "error",
+    "claims.multi_not_alternative": "warning",
+    "claims.multi_multi": "warning",
+    "claims.cycle": "error",
+    "equation.no_lead": "warning",
+    "figures.ref_missing": "error",
+    "figures.unreferenced": "warning",
+    "figures.caption_missing": "warning",
+    "figures.drawings_unfiled": "warning",
+    "spec.meta_wording": "warning",
+    "figures.caption_dup": "warning",
     "figures.effect_chart": "warning",
     "spec.paper_tone": "warning",
     "numerals.inconsistent": "warning",
-    "numerals.legend_conflict": "warning", "claims.unsupported_term": "warning",
+    "numerals.legend_conflict": "warning",
+    "claims.unsupported_term": "warning",
     # W5 R-CHK-02 / R-FIG-02（形式项默认 warning，仅 spec.section_missing 为 error）
-    "spec.section_missing": "error", "spec.section_order": "warning", "spec.promo_wording": "warning",
-    "claims.figure_ref": "warning", "claims.no_characterized": "warning", "claims.promo_wording": "warning",
+    "spec.section_missing": "error",
+    "spec.section_order": "warning",
+    "spec.promo_wording": "warning",
+    "claims.figure_ref": "warning",
+    "claims.no_characterized": "warning",
+    "claims.promo_wording": "warning",
     "abstract.elements_missing": "warning",
-    "numerals.mark_not_in_spec": "warning", "numerals.spec_not_in_marks": "warning",
+    "numerals.mark_not_in_spec": "warning",
+    "numerals.spec_not_in_marks": "warning",
     "claims.gradient": "warning",
 }
 
@@ -73,6 +88,7 @@ def rules(report):
 
 # ---- 形状 ----
 
+
 def test_report_shape():
     text, r = fixture("figures.md", json.load(open(os.path.join(FIXTURES, "figures.studio.json"), encoding="utf-8")))
     assert r["version"] == preflight.VERSION == 1
@@ -94,6 +110,7 @@ def test_report_shape():
 
 
 # ---- cycle.md：claims.cycle + claims.forward_ref ----
+
 
 def test_cycle_fixture():
     text, r = fixture("cycle.md")
@@ -138,24 +155,27 @@ def test_multi_multi_and_equation_no_lead():
 def test_eq_inline():
     """往复轮130：定义/计算式嵌句中作行内式 → spec.eq_inline；独占行编号式不报。"""
     text = read(os.path.join(FIXTURES, "cycle.md"))
-    text = text.replace("### 具体实施方式\n\n",
-                        "### 具体实施方式\n\n得分表示为 $$A=QK^T/\\sqrt{d}$$，其中 A 为得分矩阵。\n\n", 1)
+    text = text.replace(
+        "### 具体实施方式\n\n", "### 具体实施方式\n\n得分表示为 $$A=QK^T/\\sqrt{d}$$，其中 A 为得分矩阵。\n\n", 1
+    )
     r = preflight.run(parse_ast(text, ONE_FIG), ONE_FIG)
     (eq,) = items(r, "spec.eq_inline")
     assert eq["book"] == "description" and "行内" not in eq["message"] or True
     assert "独占一行" in eq["message"]
     # 独立行式号式不报
-    text2 = text.replace("得分表示为 $$A=QK^T/\\sqrt{d}$$，其中 A 为得分矩阵。",
-                         "得分表示为：\n\n$$A=QK^T/\\sqrt{d}$$式(1)\n\n其中 A 为得分矩阵。")
+    text2 = text.replace(
+        "得分表示为 $$A=QK^T/\\sqrt{d}$$，其中 A 为得分矩阵。",
+        "得分表示为：\n\n$$A=QK^T/\\sqrt{d}$$式(1)\n\n其中 A 为得分矩阵。",
+    )
     r2 = preflight.run(parse_ast(text2, ONE_FIG), ONE_FIG)
     assert not items(r2, "spec.eq_inline")
     # 变体不报：行内短符号引用 / 标记包裹独立式 / 前置式号 / 尾标（式(1)）
     variants = [
-        "得到token序列 $$x=(x_1,\\ldots,x_T)$$，其中 x_i 为token。",           # 短式行内引用不报？——长式体仍报
-        "序列为 $$x_i$$，其中 i 为序号。",                                    # 短符号引用不报
-        "{++$$E_i=E^{tok}_i+E^{seg}_i$$式(1)++}",                              # 标记包裹独立式不报
-        "式(1) $$q(x_t|x_{t-1})=N(\\sqrt{1-\\beta_t}x_{t-1},\\beta_t I)$$",       # 前置式号不报
-        "数量N满足 $$N=HW/P^{2}$$（式(1)），其中 P 为块边长。",                  # 尾标（式(1)）不报
+        "得到token序列 $$x=(x_1,\\ldots,x_T)$$，其中 x_i 为token。",  # 短式行内引用不报？——长式体仍报
+        "序列为 $$x_i$$，其中 i 为序号。",  # 短符号引用不报
+        "{++$$E_i=E^{tok}_i+E^{seg}_i$$式(1)++}",  # 标记包裹独立式不报
+        "式(1) $$q(x_t|x_{t-1})=N(\\sqrt{1-\\beta_t}x_{t-1},\\beta_t I)$$",  # 前置式号不报
+        "数量N满足 $$N=HW/P^{2}$$（式(1)），其中 P 为块边长。",  # 尾标（式(1)）不报
     ]
     expected = [True, False, False, False, False]
     base3 = read(os.path.join(FIXTURES, "cycle.md"))
@@ -168,12 +188,12 @@ def test_eq_inline():
 def test_claims_gradient():
     """往复轮38：同簇 ≥3 从权全平铺引独权→claims.gradient；含链式递进则不报。"""
     text = read(os.path.join(FIXTURES, "cycle.md"))
-    flat = (text
-            .replace("3.根据权利要求4所述的方法，其特征在于，所述序列为等间隔序列。",
-                     "3.根据权利要求1所述的方法，其特征在于，所述序列为等间隔序列。\n\n"
-                     "4.根据权利要求1所述的方法，其特征在于，所述序列为整数序列。\n\n"
-                     "5.根据权利要求1所述的方法，其特征在于，所述序列按预设周期采样。")
-            .replace("4.根据权利要求3所述的方法，其特征在于，所述序列为整数序列。", ""))
+    flat = text.replace(
+        "3.根据权利要求4所述的方法，其特征在于，所述序列为等间隔序列。",
+        "3.根据权利要求1所述的方法，其特征在于，所述序列为等间隔序列。\n\n"
+        "4.根据权利要求1所述的方法，其特征在于，所述序列为整数序列。\n\n"
+        "5.根据权利要求1所述的方法，其特征在于，所述序列按预设周期采样。",
+    ).replace("4.根据权利要求3所述的方法，其特征在于，所述序列为整数序列。", "")
     r = preflight.run(parse_ast(flat, ONE_FIG), ONE_FIG)
     (g,) = items(r, "claims.gradient")
     assert g["book"] == "claims" and g["block_id"] == "claims/1" and "4 项从属权利要求" in g["message"]
@@ -198,13 +218,15 @@ def test_abstract_limit_ignores_critic_deleted():
     text = read(os.path.join(FIXTURES, "cycle.md")).replace(
         "本发明涉及测试技术领域，公开了一种测试方法，解决现有测试结果不准确的问题；该方法包括采集与比对步骤，提高了测试效率。",
         "{--占位数十字的已删除摘要文本占位数十字的已删除摘要文本占位数十字的已删除摘要文本--}"
-        "{++本发明涉及测试技术领域，公开了一种测试方法，解决现有测试结果不准确的问题；该方法包括采集与比对步骤，提高了测试效率。++}")
+        "{++本发明涉及测试技术领域，公开了一种测试方法，解决现有测试结果不准确的问题；该方法包括采集与比对步骤，提高了测试效率。++}",
+    )
     settings = {**ONE_FIG, "abstract_limit": 60}
     r = preflight.run(parse_ast(text, settings), settings)
     assert not items(r, "abstract.limit")
 
 
 # ---- numerals.md ----
+
 
 def test_numerals_fixture():
     text, r = fixture("numerals.md")
@@ -226,8 +248,11 @@ def test_numerals_exclude_units_and_chains():
     text = read(os.path.join(FIXTURES, "numerals.md"))
     old = "如图1所示，测试系统包括数据接入模块101与预处理模块101，数据接入模块101接收数据。"
     assert old in text
-    text = text.replace(old, "如图1所示，数据接入模块101处理168条记录，得分0/800，H∈{96,336}，共 2048 维，"
-                             "步骤401至409依次执行，控制器1032、1033协同，精度 0.125，占比 100%，共 300 条。")
+    text = text.replace(
+        old,
+        "如图1所示，数据接入模块101处理168条记录，得分0/800，H∈{96,336}，共 2048 维，"
+        "步骤401至409依次执行，控制器1032、1033协同，精度 0.125，占比 100%，共 300 条。",
+    )
     r = preflight.run(parse_ast(text, ONE_FIG), ONE_FIG)
     rows = {row["num"]: row for row in r["numerals"]}
     assert set(rows) == {"101", "102", "1032", "1033"} | {str(n) for n in range(401, 410)}
@@ -237,6 +262,7 @@ def test_numerals_exclude_units_and_chains():
 
 
 # ---- figures.md + figures.studio.json ----
+
 
 def test_figures_fixture():
     settings = json.load(open(os.path.join(FIXTURES, "figures.studio.json"), encoding="utf-8"))
@@ -269,19 +295,26 @@ def test_scan_refs_full_lines():
     abstract_line = next(ln for ln in text.splitlines() if ln.startswith("本发明涉及"))
     text2 = text.replace(abstract_line + "\n", "一种测试装置，见图1。\n", 1)
     refs2 = preflight.scan_refs(parse_ast(text2, ONE_FIG))
-    assert refs2[0] == {"book": "abstract", "line": line_of(text2, "见图1"), "num": 1,
-                        "text": "一种测试装置，见图1。", "block_id": refs2[0]["block_id"]}
+    assert refs2[0] == {
+        "book": "abstract",
+        "line": line_of(text2, "见图1"),
+        "num": 1,
+        "text": "一种测试装置，见图1。",
+        "block_id": refs2[0]["block_id"],
+    }
     ast2 = parse_ast(text2, ONE_FIG)
     assert refs2[0]["line"] == ast2["books"]["abstract"]["offset"] + ast2["abstract"]["paragraphs"][0]["lines"]["start"]
 
 
 def test_figures_effect_chart():
     """附图题注疑似指标/效果类图 → figures.effect_chart；示意图题注不报。"""
-    text = ("# 一种测试方法\n\n## 摘要\n\n本发明提供一种测试方法。\n\n## 权利要求书\n\n"
-            "1.一种测试方法，其特征在于：包括步骤A。\n\n## 说明书\n\n### 技术领域\n\n本发明涉及测试领域。\n\n"
-            "### 背景技术\n\n现有方法存在不足。\n\n### 发明内容\n\n本发明提供一种测试方法，如图1所示。\n\n"
-            "### 附图说明\n\n图1为不同方法在基准数据集上的准确率对比图。\n\n"
-            "### 具体实施方式\n\n实施例一如图1所示。\n")
+    text = (
+        "# 一种测试方法\n\n## 摘要\n\n本发明提供一种测试方法。\n\n## 权利要求书\n\n"
+        "1.一种测试方法，其特征在于：包括步骤A。\n\n## 说明书\n\n### 技术领域\n\n本发明涉及测试领域。\n\n"
+        "### 背景技术\n\n现有方法存在不足。\n\n### 发明内容\n\n本发明提供一种测试方法，如图1所示。\n\n"
+        "### 附图说明\n\n图1为不同方法在基准数据集上的准确率对比图。\n\n"
+        "### 具体实施方式\n\n实施例一如图1所示。\n"
+    )
     r = preflight.run(parse_ast(text, ONE_FIG), ONE_FIG)
     (ec,) = items(r, "figures.effect_chart")
     assert ec["severity"] == "warning" and "准确率" in ec["message"]
@@ -292,14 +325,14 @@ def test_figures_effect_chart():
 def test_figures_none_configured():
     _, r = fixture("cycle.md", settings=None)
     # 往复轮8：图1已在附图说明声明——引用已声明未传的图不报 ref_missing（unfiled 已覆盖）
-    assert [it["rule"] for it in r["items"] if it["rule"].startswith("figures.")] == [
-        "figures.drawings_unfiled"]
+    assert [it["rule"] for it in r["items"] if it["rule"].startswith("figures.")] == ["figures.drawings_unfiled"]
 
 
 def test_drawings_section_declarations_are_warnings_not_errors():
     """附图说明里的图号是声明（起草期可先于文件存在）→ warning；正文引用缺失仍是 error。"""
     text = read(os.path.join(FIXTURES, "cycle.md")).replace(
-        "图1为本发明实施例的流程图。", "图2为本发明实施例的流程图。")
+        "图1为本发明实施例的流程图。", "图2为本发明实施例的流程图。"
+    )
     r = preflight.run(parse_ast(text, None), {})
     got = {(it["rule"], it["severity"]) for it in r["items"] if it["rule"].startswith("figures.")}
     assert got == {("figures.ref_missing", "error"), ("figures.drawings_unfiled", "warning")}
@@ -307,6 +340,7 @@ def test_drawings_section_declarations_are_warnings_not_errors():
 
 
 # ---- support.md ----
+
 
 def test_support_fixture():
     text, r = fixture("support.md")
@@ -321,7 +355,8 @@ def test_support_fixture():
 
 def test_support_longest_prefix():
     text = read(os.path.join(FIXTURES, "support.md")).replace(
-        "通过所述量子纠缠器获取输入数据并输出结果", "通过所述输入数据处理器获取所述的输入数据并输出结果", 1)
+        "通过所述量子纠缠器获取输入数据并输出结果", "通过所述输入数据处理器获取所述的输入数据并输出结果", 1
+    )
     r = preflight.run(parse_ast(text, ONE_FIG), ONE_FIG)
     assert not items(r, "claims.unsupported_term")
     # 「所述输入数据处理器获取」与「所述的输入数据」都以最长前缀「输入数据」归为同一行
@@ -332,7 +367,8 @@ def test_support_longest_prefix():
 def test_support_strips_claim_grammar_prefix():
     """「所述被随机掩蔽」的「被」是权项语法——剥前导助词后匹配说明书「随机掩蔽」即视为有支撑。"""
     text = read(os.path.join(FIXTURES, "support.md")).replace(
-        "通过所述量子纠缠器获取输入数据并输出结果", "通过所述被输入数据处理器获取输入数据并输出结果", 1)
+        "通过所述量子纠缠器获取输入数据并输出结果", "通过所述被输入数据处理器获取输入数据并输出结果", 1
+    )
     r = preflight.run(parse_ast(text, ONE_FIG), ONE_FIG)
     assert not items(r, "claims.unsupported_term")
     (row,) = r["support_map"]
@@ -342,25 +378,31 @@ def test_support_strips_claim_grammar_prefix():
 
 # ---- 两案基线（05-r2 §1/§4）----
 
-@pytest.mark.parametrize("pid,expected", [
-    ("method", ["claims.multi_multi"]),
-    ("system", ["claims.gradient", "claims.unsupported_term"]),
-])
+
+@pytest.mark.parametrize(
+    "pid,expected",
+    [
+        ("method", ["figures.caption_missing"] * 3),
+        ("system", ["abstract.elements_missing"] + ["figures.caption_missing"] * 6 + ["numerals.inconsistent"] * 4),
+    ],
+)
 def test_examples_baseline(pid, expected):
-    """W5 基线锁定：两案新增形式项 / 标记表规则命中 0 条（增量上限 warning ≤3、error 0 由 test_preflight_w5 断言）。"""
+    """W5 基线锁定：b12a541 换语料后重录。两案 error 0；method 3 图缺题注；
+    system 摘要要素缺 + 6 图缺题注 + 4 条标记名不一致（均为语料真命中）。"""
     r = example(pid)
     assert r["counts"]["error"] == 0, r["items"]
     assert [it["rule"] for it in r["items"]] == expected, r["items"]
     assert r["counts"]["warning"] == len(expected)
     if pid == "method":
-        (mm,) = r["items"]
-        assert "权利要求 9" in mm["message"] and mm["detail"] == "被引用的多项从属权利要求：8"
-        row = next(x for x in r["numerals"] if x["num"] == "1034")
-        assert row["consistent"] is True and row["legend"] == "投注财富门控控制器"
+        assert all("在附图说明中没有题注" in it["message"] for it in r["items"])
+        assert r["numerals"] == []
     else:
-        it = next(x for x in r["items"] if x["rule"] == "claims.unsupported_term")
-        assert "权利要求 10" in it["message"] and it["detail"] == "程序"
-    assert all(f["caption_line"] and f["refs"] for f in r["figures"])
+        it = next(x for x in r["items"] if x["rule"] == "numerals.inconsistent")
+        assert "203" in it["message"]
+        ae = next(x for x in r["items"] if x["rule"] == "abstract.elements_missing")
+        assert "细则第 23 条" in ae["message"]
+    # 新语料附图说明均无题注（caption_line 无），但每图都被正文「图N」引用
+    assert all(f["refs"] for f in r["figures"])
 
 
 @pytest.mark.parametrize("pid", ["method", "system"])
@@ -379,6 +421,7 @@ def _timed(ast, settings):
 
 
 # ---- lint 并入 ----
+
 
 def test_lint_merges_preflight_with_prefix():
     text = read(os.path.join(FIXTURES, "numerals.md"))
@@ -414,12 +457,16 @@ def test_lint_skips_preflight_when_ast_fails():
 
 # ---- 路由 ----
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(EXAMPLES, "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(EXAMPLES, "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     import importlib
 
@@ -434,9 +481,9 @@ def test_route_get_reads_disk(client):
     r = client.get("/api/projects/method/preflight")
     assert r.status_code == 200
     body = r.json()
-    assert body["version"] == 1 and body["counts"] == {"error": 0, "warning": 1, "info": 0}
-    assert [it["rule"] for it in body["items"]] == ["claims.multi_multi"]
-    assert len(body["figures"]) == 6 and len(body["claim_tree"]) == 11
+    assert body["version"] == 1 and body["counts"] == {"error": 0, "warning": 3, "info": 0}
+    assert [it["rule"] for it in body["items"]] == ["figures.caption_missing"] * 3
+    assert len(body["figures"]) == 3 and len(body["claim_tree"]) == 10
 
 
 def test_route_post_content_and_settings(client):
@@ -445,7 +492,10 @@ def test_route_post_content_and_settings(client):
     r = client.post("/api/projects/method/preflight", json={"content": text, "settings": settings})
     assert r.status_code == 200
     assert sorted(it["rule"] for it in r.json()["items"]) == [
-        "figures.caption_missing", "figures.ref_missing", "figures.unreferenced"]
+        "figures.caption_missing",
+        "figures.ref_missing",
+        "figures.unreferenced",
+    ]
     r = client.post("/api/projects/method/preflight", json={})
     assert r.status_code == 200 and r.json() == client.get("/api/projects/method/preflight").json()
 
@@ -463,7 +513,8 @@ def test_drawings_caption_meta_flagged():
     """往复轮7：图注混入撰写性/存疑措辞（模型把「建议核对」「暂按」「疑似」写进法律文件）→ warning。"""
     text = read(os.path.join(FIXTURES, "cycle.md")).replace(
         "图1为本发明实施例的流程图。",
-        "图1为本发明实施例的流程图。\n\n交底书未作说明，建议核对图面措辞，该图疑似为流程示意。")
+        "图1为本发明实施例的流程图。\n\n交底书未作说明，建议核对图面措辞，该图疑似为流程示意。",
+    )
     r = preflight.run(parse_ast(text, None), {})
     metas = items(r, "spec.meta_wording")
     assert len(metas) == 1
@@ -500,8 +551,8 @@ def test_paper_tone_flagged_and_clean():
 def test_drawings_duplicate_declaration_flagged():
     """往复轮7：同一图号在附图说明里被写两行图注（实测模型输出「图1为总体流程图」「图1为流程示意图」并存）。"""
     text = read(os.path.join(FIXTURES, "cycle.md")).replace(
-        "图1为本发明实施例的流程图。",
-        "图1为本发明实施例的流程图。\n\n图1为系统架构示意图。")
+        "图1为本发明实施例的流程图。", "图1为本发明实施例的流程图。\n\n图1为系统架构示意图。"
+    )
     r = preflight.run(parse_ast(text, None), {})
     dups = items(r, "figures.caption_dup")
     assert len(dups) == 1 and "图1" in dups[0]["message"]
@@ -517,8 +568,7 @@ def test_ref_to_declared_unfiled_no_error():
 
 def test_ref_to_undeclared_still_error():
     """正文引用未在附图说明声明的图号仍是错误。"""
-    text = read(os.path.join(FIXTURES, "cycle.md")).replace(
-        "如图1所示", "如图2所示")
+    text = read(os.path.join(FIXTURES, "cycle.md")).replace("如图1所示", "如图2所示")
     r = preflight.run(parse_ast(text, {}), {})
     errs = [i for i in items(r, "figures.ref_missing") if "图2" in i["message"]]
     assert errs and errs[0]["severity"] == "error"
@@ -528,8 +578,8 @@ def test_numerals_verb_prefix_and_legend_canon():
     """往复轮8：「送入编码器101」前缀动词不污染名称；正文通称与图例全称按包含关系归一。"""
     text = read(os.path.join(FIXTURES, "cycle.md"))
     text = text.replace(
-        "图1为本发明实施例的流程图。",
-        "图1为本发明实施例的流程图。\n\n元件标号说明：101为双向编码器堆叠。")
+        "图1为本发明实施例的流程图。", "图1为本发明实施例的流程图。\n\n元件标号说明：101为双向编码器堆叠。"
+    )
     text += "\n\n将特征序列送入编码器101处理，编码器101输出表示。"
     r = preflight.run(parse_ast(text, {}), {})
     assert not items(r, "numerals.inconsistent")
@@ -537,9 +587,7 @@ def test_numerals_verb_prefix_and_legend_canon():
 
 def test_numerals_truly_different_names_flagged():
     text = read(os.path.join(FIXTURES, "cycle.md"))
-    text = text.replace(
-        "图1为本发明实施例的流程图。",
-        "图1为本发明实施例的流程图。\n\n元件标号说明：101为编码器。")
+    text = text.replace("图1为本发明实施例的流程图。", "图1为本发明实施例的流程图。\n\n元件标号说明：101为编码器。")
     text += "\n\n解码模块101与编码器101配合工作。"
     r = preflight.run(parse_ast(text, {}), {})
     # 「编码器」⊂图例归一，「解码模块」无包含关系 → 应报
@@ -548,12 +596,14 @@ def test_numerals_truly_different_names_flagged():
 
 def test_numerals_arithmetic_dimension_literals_not_marks():
     """ddpm-13 实案：除以255/乘以255/256×256 尺寸链是数值字面量不是标号用例。"""
-    text = ("# 一种图像处理方法\n\n## 摘要\n\n一种图像处理方法。\n\n## 权利要求书\n\n1.一种图像处理方法。\n\n"
-            "## 说明书\n\n"
-            "图像输入前先将 uint8 整型像素值除以255映射至区间[0,1]，输出时再乘以255并取整。"
-            "对256×256输入规模，LSUN数据集256×256分辨率图像按批次读取。"
-            "在32×32×3的图像与256×256×3的图像上分别验证。"
-            "\n\n图1为本方法的流程图。\n\n元件标号说明：101为编码器。\n\n编码器101接收图像。")
+    text = (
+        "# 一种图像处理方法\n\n## 摘要\n\n一种图像处理方法。\n\n## 权利要求书\n\n1.一种图像处理方法。\n\n"
+        "## 说明书\n\n"
+        "图像输入前先将 uint8 整型像素值除以255映射至区间[0,1]，输出时再乘以255并取整。"
+        "对256×256输入规模，LSUN数据集256×256分辨率图像按批次读取。"
+        "在32×32×3的图像与256×256×3的图像上分别验证。"
+        "\n\n图1为本方法的流程图。\n\n元件标号说明：101为编码器。\n\n编码器101接收图像。"
+    )
     r = preflight.run(parse_ast(text, {}), {})
     rows = {row["num"]: row for row in r["numerals"]}
     assert set(rows) == {"101"}

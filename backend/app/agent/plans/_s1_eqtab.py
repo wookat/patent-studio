@@ -1,4 +1,5 @@
 """s1 拆分件（按职责搬出；名照旧私有下划线，s1.py 经 star re-export 保持原命名空间）。"""
+
 from __future__ import annotations
 
 import re
@@ -7,19 +8,20 @@ import re
 def _lazy_run(*a, **kw):
     # 与 s1.run 互递归——懒导入破环（模块层 from .s1 会与 s1 的 star re-export 成环）
     from app.agent.plans import s1 as _s1
+
     return _s1.run(*a, **kw)
 
 
 _CAPTION_LINE = re.compile(r"^\s*图\s*(\d+)\s*[为是系]")
 
 
-_EQ_DECL = re.compile(
-    r"(?:\$\$([^$]+)\$\$|\$([^$\n]+)\$)\s*([（(]?\s*式?\s*[（(]\s*(\d+)\s*[)）])")
+_EQ_DECL = re.compile(r"(?:\$\$([^$]+)\$\$|\$([^$\n]+)\$)\s*([（(]?\s*式?\s*[（(]\s*(\d+)\s*[)）])")
 
 
 _EQ_TAG = re.compile(
     r"\$\$([^$]*?)(?:\\tag\{\s*式?\s*[（(]?\s*(\d+)\s*[)）]?\s*\}"
-    r"|\\q?quad\s*\{?\s*式?\s*[（(]?\s*(\d+)\s*[)）]?\s*\}?)([^$]*?)\$\$")
+    r"|\\q?quad\s*\{?\s*式?\s*[（(]?\s*(\d+)\s*[)）]?\s*\}?)([^$]*?)\$\$"
+)
 
 
 _EQ_REF = re.compile(r"式\s*[（(]\s*(\d+)\s*[)）]")
@@ -27,7 +29,8 @@ _EQ_REF = re.compile(r"式\s*[（(]\s*(\d+)\s*[)）]")
 
 _EQ_TAG_RE = re.compile(
     r"\\tag\{\s*式?\s*[（(]?\s*(\d+)\s*[)）]?\s*\}"
-    r"|\\q?quad\s*\{?\s*式?\s*[（(]?\s*(\d+)\s*[)）]?\s*\}?")
+    r"|\\q?quad\s*\{?\s*式?\s*[（(]?\s*(\d+)\s*[)）]?\s*\}?"
+)
 
 
 # 题注识别亦收裸表号桩 `{++表4++}`（bert-14 实案连发 表4/5/6 秃行）——
@@ -38,8 +41,7 @@ _TAB_CAPTION = re.compile(r"^\s*(?:\{[+x\-<>]{2}\s*)?表\s*(\d+)(?:\s|(?=\+\+|--
 _TAB_REF = re.compile(r"表\s*(\d+)")
 
 
-_TEXT_EQ = re.compile(
-    r"^(?P<body>[^\n。；：、「」]{4,300}?)[\s　]*式\s*[（(]\s*(?P<num>\d+)\s*[)）]\s*$")
+_TEXT_EQ = re.compile(r"^(?P<body>[^\n。；：、「」]{4,300}?)[\s　]*式\s*[（(]\s*(?P<num>\d+)\s*[)）]\s*$")
 
 
 _TEXT_EQ_OP = re.compile(r"[=＝∝∈~∼±×÷≈≤≥≡⇒→←]")
@@ -47,16 +49,13 @@ _TEXT_EQ_OP = re.compile(r"[=＝∝∈~∼±×÷≈≤≥≡⇒→←]")
 
 # 行首式号声明+行内公式形：`式(1)：$…$` / `式(1)：$$…$$`——式号应居中独立行而非左贴
 # （bert-12 实施方式式(1)-(5)全此形，且带 {++…++} 标记包裹）
-_TEXT_EQ_LEAD = re.compile(
-    r"^式\s*[（(]\s*(?P<num>\d+)\s*[)）]\s*[：:]\s*\$(?P<body>.+?)\$\s*[。\.；;]?\s*$")
+_TEXT_EQ_LEAD = re.compile(r"^式\s*[（(]\s*(?P<num>\d+)\s*[)）]\s*[：:]\s*\$(?P<body>.+?)\$\s*[。\.；;]?\s*$")
 
 
-_TEXT_EQ_LEAD_DISP = re.compile(
-    r"式\s*[（(]\s*(?P<num>\d+)\s*[)）]\s*[：:]\s*\$\$(?P<body>.+?)\$\$")
+_TEXT_EQ_LEAD_DISP = re.compile(r"式\s*[（(]\s*(?P<num>\d+)\s*[)）]\s*[：:]\s*\$\$(?P<body>.+?)\$\$")
 
 
-_TEXT_EQ_MATHY = re.compile(
-    r"[_^{}\\√∑∏∫‖⊙⊗∘′″²³¹⁰⁴⁵⁶⁷⁸⁹⁻⁺ⁿᵗˡ]|softmax|exp|log|min|max|\w_|[α-ωΑ-Ω]")
+_TEXT_EQ_MATHY = re.compile(r"[_^{}\\√∑∏∫‖⊙⊗∘′″²³¹⁰⁴⁵⁶⁷⁸⁹⁻⁺ⁿᵗˡ]|softmax|exp|log|min|max|\w_|[α-ωΑ-Ω]")
 
 
 def _text_eq_to_latex(body: str) -> str:
@@ -72,37 +71,79 @@ def _text_eq_to_latex(body: str) -> str:
             depth += body[j] == "("
             depth -= body[j] == ")"
             j += 1
-        return r"\sqrt{" + body[i:j - 1] + "}" + body[j:]
+        return r"\sqrt{" + body[i : j - 1] + "}" + body[j:]
 
     while True:
         m = re.search(r"√\s*\(", body)
         if not m:
             break
-        body = body[:m.start()] + _sqrt_paren(m)
+        body = body[: m.start()] + _sqrt_paren(m)
     body = re.sub(r"√\s*([A-Za-z0-9_\{\}]+)", r"\\sqrt{\1}", body)
-    body = re.sub(r"([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿᵗˡ])",
-                  lambda m: "^" + {"⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
-                                   "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
-                                   "⁺": "+", "⁻": "-", "ⁿ": "n", "ᵗ": "t", "ˡ": "l"}[m.group(1)],
-                  body)
-    for u, lt in (("∑", r"\sum "), ("∏", r"\prod "), ("∫", r"\int "),
-                  ("⊙", r"\odot "), ("⊗", r"\otimes "), ("∘", r"\circ "),
-                  ("≈", r"\approx "), ("≤", r"\leq "), ("≥", r"\geq "), ("≠", r"\neq "),
-                  ("∝", r"\propto "), ("∈", r"\in "), ("⊆", r"\subseteq "),
-                  ("‖", r"\|"), ("−", "-"), ("×", r"\times "), ("·", r"\cdot "),
-                  ("α", r"\alpha "), ("β", r"\beta "), ("ε", r"\varepsilon "),
-                  ("γ", r"\gamma "), ("δ", r"\delta "), ("η", r"\eta "),
-                  ("θ", r"\theta "), ("λ", r"\lambda "), ("μ", r"\mu "),
-                  ("σ", r"\sigma "), ("φ", r"\phi "), ("ω", r"\omega "),
-                  ("Δ", r"\Delta "), ("∇", r"\nabla "), ("π", r"\pi ")):
+    body = re.sub(
+        r"([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿᵗˡ])",
+        lambda m: (
+            "^"
+            + {
+                "⁰": "0",
+                "¹": "1",
+                "²": "2",
+                "³": "3",
+                "⁴": "4",
+                "⁵": "5",
+                "⁶": "6",
+                "⁷": "7",
+                "⁸": "8",
+                "⁹": "9",
+                "⁺": "+",
+                "⁻": "-",
+                "ⁿ": "n",
+                "ᵗ": "t",
+                "ˡ": "l",
+            }[m.group(1)]
+        ),
+        body,
+    )
+    for u, lt in (
+        ("∑", r"\sum "),
+        ("∏", r"\prod "),
+        ("∫", r"\int "),
+        ("⊙", r"\odot "),
+        ("⊗", r"\otimes "),
+        ("∘", r"\circ "),
+        ("≈", r"\approx "),
+        ("≤", r"\leq "),
+        ("≥", r"\geq "),
+        ("≠", r"\neq "),
+        ("∝", r"\propto "),
+        ("∈", r"\in "),
+        ("⊆", r"\subseteq "),
+        ("‖", r"\|"),
+        ("−", "-"),
+        ("×", r"\times "),
+        ("·", r"\cdot "),
+        ("α", r"\alpha "),
+        ("β", r"\beta "),
+        ("ε", r"\varepsilon "),
+        ("γ", r"\gamma "),
+        ("δ", r"\delta "),
+        ("η", r"\eta "),
+        ("θ", r"\theta "),
+        ("λ", r"\lambda "),
+        ("μ", r"\mu "),
+        ("σ", r"\sigma "),
+        ("φ", r"\phi "),
+        ("ω", r"\omega "),
+        ("Δ", r"\Delta "),
+        ("∇", r"\nabla "),
+        ("π", r"\pi "),
+    ):
         body = body.replace(u, lt)
     return body
 
 
 # $ 界定符外的裸 LaTeX 命令串——ddpm-r85 实案 [0048] `\bar{\alpha}t` 原样印进正文；
 # 命令串（`\|…\|^2`、`\bar{\alpha}t`、`\sqrt{…}`）自反斜杠起吃到 CJK/空白边界
-_BARE_LATEX = re.compile(
-    r"\\(?=[a-zA-Z\\|{}()_^\[\]])[^\s\u4e00-\u9fff。，、；：！？「」（）]*")
+_BARE_LATEX = re.compile(r"\\(?=[a-zA-Z\\|{}()_^\[\]])[^\s\u4e00-\u9fff。，、；：！？「」（）]*")
 
 
 _MATH_SPAN = re.compile(r"\$\$[^$]+\$\$|\$[^$\n]+\$")
@@ -113,7 +154,7 @@ def _wrap_bare_latex(text: str) -> str:
     out: list[str] = []
     i = 0
     for m in _MATH_SPAN.finditer(text):
-        out.append(_BARE_LATEX.sub(lambda mm: "$" + mm.group(0) + "$", text[i:m.start()]))
+        out.append(_BARE_LATEX.sub(lambda mm: "$" + mm.group(0) + "$", text[i : m.start()]))
         out.append(m.group(0))
         i = m.end()
     out.append(_BARE_LATEX.sub(lambda mm: "$" + mm.group(0) + "$", text[i:]))
@@ -143,8 +184,12 @@ def _wrap_text_formulas(text: str) -> str:
             out.append(f"$${_text_eq_to_latex(m.group('body'))}$$式({m.group('num')})")
             continue
         # 无式号裸公式段：整行数学密度高且无句读——`z_0=[x_class; …]` 形
-        if ("=" in s or "＝" in s) and len(s) <= 240 and _TEXT_EQ_MATHY.search(s) \
-                and not re.search(r"[。；：、「」的在了将经并按]", s):
+        if (
+            ("=" in s or "＝" in s)
+            and len(s) <= 240
+            and _TEXT_EQ_MATHY.search(s)
+            and not re.search(r"[。；：、「」的在了将经并按]", s)
+        ):
             out.append(f"$${_text_eq_to_latex(s)}$$")
             continue
         out.append(p)
@@ -155,9 +200,11 @@ def _eq_decls_ordered(text: str) -> list[tuple[str, str, tuple[int, int]]]:
     """段内 式(N) 声明按位置序——$$..$$式(N)、$$..$$（式(N)）、LaTeX 内嵌编号
     $$..\\tag{N}..$$（resnet-10 实案同号异式漏网形）三形皆收。
     返回 [(号, 公式体, 标记片段 span)]——span 供出现级改写。"""
+
     def _norm(s: str) -> str:
         s = re.sub(r"\\tag\{\s*\d+\s*\}|\\q?quad\s*\{?\s*[（(]?\s*\d+\s*[)）]?\s*\}?", "", s)
         return re.sub(r"\s+", "", s).replace("\\{", "{").replace("\\}", "}")
+
     out: list[tuple[int, str, str, tuple[int, int]]] = []
     for m in _EQ_DECL.finditer(text):
         body = _norm(m.group(1) or m.group(2) or "")
@@ -210,8 +257,7 @@ def _eq_renumber(text: str, taken: dict[str, str]) -> str:
             canon_of[body] = str(nxt)
             s, e = span
             edits.append((s, e, re.sub(r"\d+", str(nxt), text[s:e], count=1)))
-        elif n not in ledger and n.isdigit() and int(n) > max(
-                [int(x) for x in ledger if x.isdigit()] + [0]) + 1:
+        elif n not in ledger and n.isdigit() and int(n) > max([int(x) for x in ledger if x.isdigit()] + [0]) + 1:
             # 跳号补位——声明号越过台账最大号（vit-10 实案 式11 断档直接写式12），
             # 顺位补到下一空号并把同号引用一并改写
             s, e = span
@@ -255,14 +301,11 @@ def _retable(text: str, taken: set[str]) -> str:
             nxt += 1
         taken.add(str(nxt))
         # 重写本段题注 + 至下一题注段之间的引用
-        out[i] = _TAB_REF.sub(
-            lambda mm, n=n, m=nxt: "表" + str(m) if mm.group(1) == n else mm.group(0), p)
+        out[i] = _TAB_REF.sub(lambda mm, n=n, m=nxt: "表" + str(m) if mm.group(1) == n else mm.group(0), p)
         for j in range(i + 1, len(paras)):
             if _TAB_CAPTION.match(paras[j]):
                 break
-            out[j] = _TAB_REF.sub(
-                lambda mm, n=n, m=nxt: "表" + str(m) if mm.group(1) == n else mm.group(0),
-                out[j])
+            out[j] = _TAB_REF.sub(lambda mm, n=n, m=nxt: "表" + str(m) if mm.group(1) == n else mm.group(0), out[j])
     return "\n\n".join(out)
 
 
@@ -295,12 +338,10 @@ def _table_refs_missing(text: str) -> list[str]:
 # 表引用语义错配——bert-15 实案「测试指标如表1所示」但 表1=编码器结构（指标在表4）；
 # bert-14「评测结果如表1所示」表1=规模配置（结果在表3）。词表按题注/语境分档，
 # 异档引用在存在唯一同档替代表时确定性改号
-_TAB_EVAL_WORDS = ("结果", "指标", "评测", "测试", "性能", "对比", "准确", "精度",
-                   "误差", "优于", "基线", "提升")
+_TAB_EVAL_WORDS = ("结果", "指标", "评测", "测试", "性能", "对比", "准确", "精度", "误差", "优于", "基线", "提升")
 
 
-_TAB_STRUCT_WORDS = ("配置", "构成", "结构", "参数", "规则", "策略", "组成", "维度",
-                     "设置", "规模", "定义", "取值")
+_TAB_STRUCT_WORDS = ("配置", "构成", "结构", "参数", "规则", "策略", "组成", "维度", "设置", "规模", "定义", "取值")
 
 
 def _fix_semantic_tab_refs(text: str) -> str:
@@ -313,12 +354,16 @@ def _fix_semantic_tab_refs(text: str) -> str:
             caps.setdefault(m.group(1), p.strip())
     if len(caps) < 2:
         return text
-    eval_caps = [n for n, c in caps.items()
-                 if any(w in c for w in _TAB_EVAL_WORDS)
-                 and not any(w in c for w in _TAB_STRUCT_WORDS)]
-    struct_caps = [n for n, c in caps.items()
-                   if any(w in c for w in _TAB_STRUCT_WORDS)
-                   and not any(w in c for w in _TAB_EVAL_WORDS)]
+    eval_caps = [
+        n
+        for n, c in caps.items()
+        if any(w in c for w in _TAB_EVAL_WORDS) and not any(w in c for w in _TAB_STRUCT_WORDS)
+    ]
+    struct_caps = [
+        n
+        for n, c in caps.items()
+        if any(w in c for w in _TAB_STRUCT_WORDS) and not any(w in c for w in _TAB_EVAL_WORDS)
+    ]
     out: list[str] = []
     for p in text.split("\n\n"):
         if _TAB_CAPTION.match(p.strip()):
@@ -337,11 +382,9 @@ def _fix_semantic_tab_refs(text: str) -> str:
             cap = caps[n]
             cap_eval = any(w in cap for w in _TAB_EVAL_WORDS)
             cap_struct = any(w in cap for w in _TAB_STRUCT_WORDS)
-            if p_eval and cap_struct and not cap_eval \
-                    and len(eval_caps) == 1 and eval_caps[0] != n:
+            if p_eval and cap_struct and not cap_eval and len(eval_caps) == 1 and eval_caps[0] != n:
                 return "表" + eval_caps[0]
-            if not p_eval and cap_eval and not cap_struct \
-                    and len(struct_caps) == 1 and struct_caps[0] != n:
+            if not p_eval and cap_eval and not cap_struct and len(struct_caps) == 1 and struct_caps[0] != n:
                 return "表" + struct_caps[0]
             return mm.group(0)
 
@@ -413,8 +456,10 @@ def _strip_detached_tables(text: str) -> str:
             # 同表两发去重——bert-14 实案模型把整表发两遍（题注黏连段内一遍 +
             # 紧随的独立完整表一遍）；行集合为既有合法表子集即重复残件
             sig = frozenset(
-                ln for l in p.split("\n")
-                if (ln := re.sub(r"[\s|]+", " ", l).strip()) and not re.match(r"^[\-:\s]+$", ln))
+                ln
+                for l in p.split("\n")
+                if (ln := re.sub(r"[\s|]+", " ", l).strip()) and not re.match(r"^[\-:\s]+$", ln)
+            )
             if sig and any(sig <= s or sig == s for s in legal_sigs):
                 continue
             legal_sigs.append(sig)
@@ -448,8 +493,8 @@ def _pipe_cols(line: str) -> int:
 def _tbl_sig(p: str) -> frozenset:
     """表块行签名——行去 | 归一、剔分隔线的 frozenset，用于重发判定。"""
     return frozenset(
-        ln for l in p.split("\n")
-        if (ln := re.sub(r"[\s|]+", " ", l).strip()) and not re.match(r"^[\-:\s]+$", ln))
+        ln for l in p.split("\n") if (ln := re.sub(r"[\s|]+", " ", l).strip()) and not re.match(r"^[\-:\s]+$", ln)
+    )
 
 
 def _zone_member(paras: list[str], gone: set, i: int) -> bool:
@@ -478,8 +523,7 @@ def _rejoin_split_tables(text: str) -> str:
     _paras: list[str] = []
     for p in paras:
         lines = p.split("\n")
-        if len(lines) > 1 and _TAB_CAPTION.match(lines[0].strip()) \
-                and _is_table_block("\n".join(lines[1:])):
+        if len(lines) > 1 and _TAB_CAPTION.match(lines[0].strip()) and _is_table_block("\n".join(lines[1:])):
             _paras += [lines[0], "\n".join(lines[1:])]
         else:
             _paras.append(p)
@@ -499,8 +543,11 @@ def _rejoin_split_tables(text: str) -> str:
             pj = paras[j]
             # 单行 | 残段且前无题注 → 孤儿表头（已被题注领走的表头跳过，
             # 不终止扫描——vit-10 实案 表1 表头在 表2 题注之前隔 40+ 段）
-            if (_single_pipe_frag(pj) and _pipe_cols(pj) == cols
-                    and (j == 0 or not _TAB_CAPTION.match(paras[j - 1].strip()))):
+            if (
+                _single_pipe_frag(pj)
+                and _pipe_cols(pj) == cols
+                and (j == 0 or not _TAB_CAPTION.match(paras[j - 1].strip()))
+            ):
                 paras[j] = pj + "\n" + p  # 表头+分隔线+数据行
                 gone.add(i)
                 break
@@ -520,6 +567,7 @@ def _rejoin_split_tables(text: str) -> str:
         elif sa < sb:
             gone.add(a)
     paras = [p for i, p in enumerate(paras) if i not in gone]
+
     # C：文末完整表（头行+数据、无题注）按头行逐字相同绑回题注表头——
     # bert-14 实案三表均被双发（题注表头空壳 + 文末完整体），列数相同会让
     # Pass B 错配到最近题注；头行等值绑定是精确口径，补分隔线成完整表。
@@ -591,12 +639,14 @@ def _rejoin_split_tables(text: str) -> str:
         head = nxt.lstrip().split("\n")[0]
         # 并入行集去重：块首行若与表头同行（完整表残件）剥首行，分隔线行丢弃，
         # 已在表体内的行不再追加以防双发污染
-        body = [l for l in p.split("\n")
-                if _norm(l) and _norm(l) != _norm(head)
-                and not re.match(r"^\s*\|?\s*:?-{2,}", l)]
-        base = (nxt if len(nxt.split("\n")) > 1 and re.match(
-                r"^\s*\|?\s*:?-{2,}", nxt.split("\n")[1])
-                else nxt + "\n" + "|" + "---|" * cols)
+        body = [
+            l for l in p.split("\n") if _norm(l) and _norm(l) != _norm(head) and not re.match(r"^\s*\|?\s*:?-{2,}", l)
+        ]
+        base = (
+            nxt
+            if len(nxt.split("\n")) > 1 and re.match(r"^\s*\|?\s*:?-{2,}", nxt.split("\n")[1])
+            else nxt + "\n" + "|" + "---|" * cols
+        )
         known = _tbl_sig(base)
         body = [l for l in body if _norm(l) not in known]
         if body:
@@ -676,17 +726,15 @@ def _wrap_pipe_frag_tables(text: str) -> str:
     # 两条归位锚：a) 题注在但表体缺（bert-12 实案同型）→ 表块直插题注段后；
     # b) 悬空引用（无题注 表N）→ 配裸题注随引用段归位。题注锚优先——题在体丢
     # 比引用悬空的判定更硬。
-    caps_idx = {i: _TAB_CAPTION.match(p.strip()).group(1)
-                for i, p in enumerate(kept) if _TAB_CAPTION.match(p.strip())}
-    capless = [caps_idx[i] for i in sorted(caps_idx)
-               if i + 1 >= len(kept) or not _is_table_block(kept[i + 1])]
-    open_refs = [n for n in dict.fromkeys(
-        m.group(1) for m in _TAB_REF.finditer("\n\n".join(kept)))
-        if n not in caps_idx.values()]
+    caps_idx = {i: _TAB_CAPTION.match(p.strip()).group(1) for i, p in enumerate(kept) if _TAB_CAPTION.match(p.strip())}
+    capless = [caps_idx[i] for i in sorted(caps_idx) if i + 1 >= len(kept) or not _is_table_block(kept[i + 1])]
+    open_refs = [
+        n for n in dict.fromkeys(m.group(1) for m in _TAB_REF.finditer("\n\n".join(kept))) if n not in caps_idx.values()
+    ]
     if not capless and not open_refs:
         return text
-    pair_cap: dict[int, str] = {}   # 题注段下标 → 表块
-    pair_ref: dict[str, str] = {}   # 表号 → 表块（随引用段归位）
+    pair_cap: dict[int, str] = {}  # 题注段下标 → 表块
+    pair_ref: dict[str, str] = {}  # 表号 → 表块（随引用段归位）
     drop: set[int] = set()
     for start, run in cands:
         cells = _strip_math(run[0]).count("|") + 1
@@ -729,9 +777,11 @@ def _caption_orphan_tables(text: str, missing: list[str]) -> str:
     paras = text.split("\n\n")
     starts = _uncaptioned_table_starts(paras)
     # 裸「表N」段且无表体随其后 → 编号残件（错插序号/模型占位行同型）
-    bare = {i for i, p in enumerate(paras)
-            if re.fullmatch(r"表\s*\d+", p.strip())
-            and (i + 1 >= len(paras) or not _is_table_block(paras[i + 1]))}
+    bare = {
+        i
+        for i, p in enumerate(paras)
+        if re.fullmatch(r"表\s*\d+", p.strip()) and (i + 1 >= len(paras) or not _is_table_block(paras[i + 1]))
+    }
     if not starts and not bare and not any(_single_pipe_frag(p) for p in paras):
         return text
     nums = list(missing)
@@ -744,8 +794,7 @@ def _caption_orphan_tables(text: str, missing: list[str]) -> str:
     out: list[str] = []
     for i, p in enumerate(paras):
         prev = paras[i - 1].strip() if i > 0 else ""
-        if _single_pipe_frag(p) and not (
-                _TAB_CAPTION.match(prev) or (i > 0 and _is_table_block(paras[i - 1]))):
+        if _single_pipe_frag(p) and not (_TAB_CAPTION.match(prev) or (i > 0 and _is_table_block(paras[i - 1]))):
             continue  # 孤头残段剥除
         if i in bare:
             continue
@@ -783,9 +832,9 @@ def _dedupe_captions(text: str) -> str:
             n = m.group(1)
             if n not in best or len(l) > len(lines[best[n]]):
                 best[n] = i
-    return "\n".join(l for i, l in enumerate(lines)
-                    if not _CAPTION_LINE.match(l)
-                    or i == best[_CAPTION_LINE.match(l).group(1)])
+    return "\n".join(
+        l for i, l in enumerate(lines) if not _CAPTION_LINE.match(l) or i == best[_CAPTION_LINE.match(l).group(1)]
+    )
 
 
 def _explode_caption_paras(paras: list) -> list:
@@ -803,6 +852,7 @@ def _explode_caption_paras(paras: list) -> list:
         if seg:
             out.append("\n".join(seg))
     return out
+
 
 __all__ = [
     "_BARE_LATEX",

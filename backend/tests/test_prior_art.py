@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """prior_art provider 层：凭证门控、query 归一化、命中归一化、单源失败降级、命中表渲染。"""
+
 from __future__ import annotations
 
 import httpx
@@ -58,9 +59,15 @@ def _resp(payload):
 
 def test_patsnap_hits_normalized(monkeypatch):
     monkeypatch.setattr(config, "PATSNAP_KEY", "sk-x")
-    payload = {"status": True, "error_code": 0,
-               "data": {"results": [{"pn": "CN114715946A", "title": "一种改性锂电池正极材料",
-                                     "pbdt": "20220705", "authority": "CN"}]}}
+    payload = {
+        "status": True,
+        "error_code": 0,
+        "data": {
+            "results": [
+                {"pn": "CN114715946A", "title": "一种改性锂电池正极材料", "pbdt": "20220705", "authority": "CN"}
+            ]
+        },
+    }
     seen = {}
 
     def fake_post(url, **kw):
@@ -72,22 +79,38 @@ def test_patsnap_hits_normalized(monkeypatch):
     monkeypatch.setattr(prior_art.httpx, "post", fake_post)
     hits = prior_art._patsnap("锂电池 AND 正极", 5)
     assert seen["auth"] == "Bearer sk-x" and seen["body"]["query_text"] == "TACD: (锂电池 AND 正极)"
-    assert hits == [prior_art.Hit(number="CN114715946A", title="一种改性锂电池正极材料",
-                                  date="2022-07-05", authority="CN", source="PatSnap",
-                                  link="https://patents.google.com/patent/CN114715946A/en")]
+    assert hits == [
+        prior_art.Hit(
+            number="CN114715946A",
+            title="一种改性锂电池正极材料",
+            date="2022-07-05",
+            authority="CN",
+            source="PatSnap",
+            link="https://patents.google.com/patent/CN114715946A/en",
+        )
+    ]
 
 
 def test_patsnap_error_status_raises(monkeypatch):
     monkeypatch.setattr(config, "PATSNAP_KEY", "sk-x")
-    monkeypatch.setattr(prior_art.httpx, "post",
-                        lambda url, **kw: _resp({"status": False, "error_code": 1, "error_msg": "bad"}))
+    monkeypatch.setattr(
+        prior_art.httpx, "post", lambda url, **kw: _resp({"status": False, "error_code": 1, "error_msg": "bad"})
+    )
     with pytest.raises(RuntimeError):
         prior_art._patsnap("x", 5)
 
 
 def test_openalex_hits_normalized(monkeypatch):
-    payload = {"results": [{"doi": "https://doi.org/10.1/x", "display_name": "Cathode paper",
-                            "publication_date": "2021-03-04", "id": "W1"}]}
+    payload = {
+        "results": [
+            {
+                "doi": "https://doi.org/10.1/x",
+                "display_name": "Cathode paper",
+                "publication_date": "2021-03-04",
+                "id": "W1",
+            }
+        ]
+    }
     seen = {}
 
     def fake_get(url, **kw):
@@ -106,9 +129,14 @@ def test_search_all_merges_dedups_and_degrades(monkeypatch):
     monkeypatch.setattr(config, "PRIOR_ART_PROVIDERS", "patsnap,openalex")
     h1 = prior_art.Hit("CN1", "t1", "2020-01-01", "CN", "PatSnap", "l1")
     h2 = prior_art.Hit("doi:x", "t2", "2020-02-02", "NPL", "OpenAlex", "l2")
-    monkeypatch.setattr(prior_art, "_FUNCS",
-                        {"patsnap": lambda q, limit: [h1],
-                         "openalex": lambda q, limit: [prior_art.Hit("CN1", "dup", "", "", "OpenAlex", ""), h2]})
+    monkeypatch.setattr(
+        prior_art,
+        "_FUNCS",
+        {
+            "patsnap": lambda q, limit: [h1],
+            "openalex": lambda q, limit: [prior_art.Hit("CN1", "dup", "", "", "OpenAlex", ""), h2],
+        },
+    )
     rep = prior_art.search_all(["q1", "q2"], limit=5)
     assert rep.providers == ["patsnap", "openalex"]
     assert [h.number for h in rep.hits["q1"]] == ["CN1", "doi:x"]  # CN1 去重一次
@@ -149,9 +177,20 @@ def test_render_searched_vs_pending():
     pts = [{"title": "p", "distinguishing_point": "d", "technical_problem": "q", "technical_effect": "e"}]
     qs = [{"source": "PatSnap", "query": "锂电池 AND 正极"}]
     rep = prior_art.SearchReport(
-        hits={"锂电池 AND 正极": [prior_art.Hit("CN114715946A", "正极材料", "2022-07-05", "CN", "PatSnap",
-                                              "https://patents.google.com/patent/CN114715946A/en")]},
-        providers=["patsnap"])
+        hits={
+            "锂电池 AND 正极": [
+                prior_art.Hit(
+                    "CN114715946A",
+                    "正极材料",
+                    "2022-07-05",
+                    "CN",
+                    "PatSnap",
+                    "https://patents.google.com/patent/CN114715946A/en",
+                )
+            ]
+        },
+        providers=["patsnap"],
+    )
     body = s8._render(pts, qs, ["n"], rep)
     assert "机器初筛" in body and "CN114715946A" in body and "检索命中" in body
     body2 = s8._render(pts, qs, [], None)

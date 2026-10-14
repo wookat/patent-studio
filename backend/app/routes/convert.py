@@ -7,6 +7,7 @@ target=new ⇒ 需 ai_ack=true（无 pid 可查开关，前端勾选即明示外
 target=pid ⇒ require_enabled(pid)，任务完成后 history.commit_draft（工作区不动）。
 抽取在请求内同步完成（格式/大小/扫描件错误直接 4xx），AI 生成在后台 Job 里。
 """
+
 import asyncio
 import os
 
@@ -28,19 +29,29 @@ _ATTACHMENT_PID = Form("")
 _QUESTIONNAIRE = Form("{}", alias="questionnaire")
 _TARGET = Form("new")
 _AI_ACK = Form(False)
+
+
 def new_pid(store, filename: str) -> str:
     stem = os.path.splitext(os.path.basename(filename or ""))[0]
     return store.unique_pid(id_slug(stem, 40, "convert"))
 
 
 @router.post("/api/projects/convert", status_code=202)
-async def convert(request: Request, user: auth.CurrentUser, file: UploadFile | None = _FILE,
-                  attachment: str = _ATTACHMENT, attachment_pid: str = _ATTACHMENT_PID,
-                  questionnaire_json: str = _QUESTIONNAIRE, target: str = _TARGET, ai_ack: bool = _AI_ACK):
+async def convert(
+    request: Request,
+    user: auth.CurrentUser,
+    file: UploadFile | None = _FILE,
+    attachment: str = _ATTACHMENT,
+    attachment_pid: str = _ATTACHMENT_PID,
+    questionnaire_json: str = _QUESTIONNAIRE,
+    target: str = _TARGET,
+    ai_ack: bool = _AI_ACK,
+):
     store, ai, jobs = request.app.state.store, request.app.state.ai, request.app.state.jobs
     if (file is None) == (not attachment):
-        raise HTTPException(422, error_detail("source", "需且只需一个输入：上传 file，或 attachment_pid + attachment",
-                                              detail=UNIT))
+        raise HTTPException(
+            422, error_detail("source", "需且只需一个输入：上传 file，或 attachment_pid + attachment", detail=UNIT)
+        )
     try:
         q = questionnaire.parse(questionnaire_json)
     except questionnaire.QuestionnaireError as e:
@@ -48,8 +59,9 @@ async def convert(request: Request, user: auth.CurrentUser, file: UploadFile | N
     is_new = target in ("", "new")
     if is_new:
         if not ai_ack:
-            raise HTTPException(403, error_detail("ai_disabled", "转换会把文件内容发送到 AI 中转站，请先勾选确认",
-                                                  detail=UNIT))
+            raise HTTPException(
+                403, error_detail("ai_disabled", "转换会把文件内容发送到 AI 中转站，请先勾选确认", detail=UNIT)
+            )
     else:
         # target 是表单字段不在路径参数里，project_access 不生效——必须手工校验目标案写权限
         await auth.check_access(request, user, target, "editor")
@@ -90,8 +102,17 @@ async def convert(request: Request, user: auth.CurrentUser, file: UploadFile | N
             raise HTTPException(409, error_detail("job_busy", "本案已有转换任务在进行中", detail=UNIT))
 
     def factory():
-        return pipeline.run(store=store, ai=ai, pid=pid, is_new=is_new, filename=filename, extracted=extracted,
-                            questionnaire=q, progress=lambda p, m: jobs.progress(job.id, p, m), job_id=job.id)
+        return pipeline.run(
+            store=store,
+            ai=ai,
+            pid=pid,
+            is_new=is_new,
+            filename=filename,
+            extracted=extracted,
+            questionnaire=q,
+            progress=lambda p, m: jobs.progress(job.id, p, m),
+            job_id=job.id,
+        )
 
     jobs.run(job, factory)
     return job.to_dict()

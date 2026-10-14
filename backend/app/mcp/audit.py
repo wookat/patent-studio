@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """审计日志 <project>/.studio/audit.jsonl（docs/plan/10 §3.5）：一行一条 {ts, who, tool, args, result}。"""
+
 import json
 import os
 import time
@@ -13,8 +14,13 @@ def path(project_dir: str) -> str:
 
 def record(project_dir: str, who: str, tool: str, args: dict, result: str) -> dict:
     """args 只放标量摘要（如 block_id、direct、markdown_len），不放整段正文。result = ok | error:<kind>。"""
-    entry = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "who": who, "tool": tool,
-             "args": args, "result": result}
+    entry = {
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "who": who,
+        "tool": tool,
+        "args": args,
+        "result": result,
+    }
     p = path(project_dir)
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "a", encoding="utf-8") as f:

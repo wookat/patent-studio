@@ -14,6 +14,7 @@
   送达日 / 延期 / 节假日顺延都由 deadlines.compute 计算；期限 id = OaRound.deadline_id（"oa-<n>"），重复登记幂等覆盖，
   人工改期（source=manual）的条目不覆盖。
 """
+
 import hashlib
 import json
 import os
@@ -26,10 +27,18 @@ from app.domain import cases
 
 ROUNDS_DIR = os.path.join(".studio", "oa", "rounds")
 MAIL_DAYS = compute.MAIL_DAYS
-RULE_OF = {"first": "oa_first_reply", "subsequent": "oa_subsequent_reply", "reexam": "reexam_notice_reply",
-           "rejection": "reexam_request"}
-KIND_LABEL = {"first": "第一次审查意见通知书", "subsequent": "审查意见通知书", "reexam": "复审通知书",
-              "rejection": "驳回决定"}
+RULE_OF = {
+    "first": "oa_first_reply",
+    "subsequent": "oa_subsequent_reply",
+    "reexam": "reexam_notice_reply",
+    "rejection": "reexam_request",
+}
+KIND_LABEL = {
+    "first": "第一次审查意见通知书",
+    "subsequent": "审查意见通知书",
+    "reexam": "复审通知书",
+    "rejection": "驳回决定",
+}
 DELIVERY_LABEL = {"electronic": "电子送达", "mail": "邮寄送达"}
 
 
@@ -41,6 +50,7 @@ class RoundError(Exception):
 
 
 # ---------- 文件 ----------
+
 
 def rounds_dir(project_dir: str) -> str:
     return os.path.join(project_dir, ROUNDS_DIR)
@@ -83,17 +93,34 @@ def save_round(project_dir: str, rnd: dict) -> dict:
 def create_round(project_dir: str, *, kind: str, issued_on: str, delivery: str) -> dict:
     n = max((r["n"] for r in list_rounds(project_dir)), default=0) + 1
     rnd = {
-        "n": n, "id": str(n), "kind": kind, "issued_on": _iso(issued_on), "delivery": delivery,
-        "notice_text_sha": None, "items": [], "reply_refs": [], "filed_on": None, "extensions": [],
-        "deadline_id": f"oa-{n}", "created_at": time.time(),
+        "n": n,
+        "id": str(n),
+        "kind": kind,
+        "issued_on": _iso(issued_on),
+        "delivery": delivery,
+        "notice_text_sha": None,
+        "items": [],
+        "reply_refs": [],
+        "filed_on": None,
+        "extensions": [],
+        "deadline_id": f"oa-{n}",
+        "created_at": time.time(),
     }
     register_deadline(project_dir, rnd)
     return save_round(project_dir, rnd)
 
 
-def update_round(project_dir: str, rid: str, *, kind: str | None = None, issued_on: str | None = None,
-                 delivery: str | None = None, extension_months: int | None = None,
-                 filed_on: str | None = None, reply_refs: list[str] | None = None) -> dict:
+def update_round(
+    project_dir: str,
+    rid: str,
+    *,
+    kind: str | None = None,
+    issued_on: str | None = None,
+    delivery: str | None = None,
+    extension_months: int | None = None,
+    filed_on: str | None = None,
+    reply_refs: list[str] | None = None,
+) -> dict:
     rnd = load_round(project_dir, rid)
     if kind is not None:
         rnd["kind"] = kind
@@ -153,13 +180,20 @@ def delete_round(project_dir: str, rid: str) -> None:
 def to_api(rnd: dict) -> dict:
     """schemas.OaRound 形状（items 只给条数；全文用 GET /rounds/{rid}）。"""
     return {
-        "id": rnd["id"], "kind": rnd["kind"], "issued_on": rnd["issued_on"], "delivery": rnd["delivery"],
-        "deadline_id": rnd["deadline_id"], "items": len(rnd["items"]), "extensions": rnd["extensions"],
-        "filed_on": rnd["filed_on"], "created_at": rnd["created_at"],
+        "id": rnd["id"],
+        "kind": rnd["kind"],
+        "issued_on": rnd["issued_on"],
+        "delivery": rnd["delivery"],
+        "deadline_id": rnd["deadline_id"],
+        "items": len(rnd["items"]),
+        "extensions": rnd["extensions"],
+        "filed_on": rnd["filed_on"],
+        "created_at": rnd["created_at"],
     }
 
 
 # ---------- 期限 ----------
+
 
 def _iso(v: str) -> str:
     try:
@@ -181,8 +215,12 @@ def _extension_months(rnd: dict) -> int:
 
 
 def reply_due(rnd: dict) -> tuple[str, bool]:
-    computed = compute.compute(compute.rule(RULE_OF[rnd["kind"]]), date.fromisoformat(rnd["issued_on"]),
-                               delivery=rnd["delivery"], extension_months=_extension_months(rnd))
+    computed = compute.compute(
+        compute.rule(RULE_OF[rnd["kind"]]),
+        date.fromisoformat(rnd["issued_on"]),
+        delivery=rnd["delivery"],
+        extension_months=_extension_months(rnd),
+    )
     return computed.due.isoformat(), computed.holidays_verified
 
 
@@ -196,8 +234,18 @@ def register_deadline(project_dir: str, rnd: dict) -> cases.Deadline:
     else:
         action = f"答复{KIND_LABEL[rnd['kind']]}"
         note = f"{action}（发文 {rnd['issued_on']}，{DELIVERY_LABEL[rnd['delivery']]}{ext}）"
-    return deadlines.add(os.path.basename(os.path.normpath(project_dir)), RULE_OF[rnd["kind"]], rnd["issued_on"], {
-        "delivery": rnd["delivery"], "round_id": rnd["id"], "deadline_id": rnd["deadline_id"],
-        "extension_months": _extension_months(rnd), "done": rnd["filed_on"] is not None, "note": note,
-        "title": f"{action}（第 {rnd['n']} 轮）",
-    }, project_dir=project_dir)
+    return deadlines.add(
+        os.path.basename(os.path.normpath(project_dir)),
+        RULE_OF[rnd["kind"]],
+        rnd["issued_on"],
+        {
+            "delivery": rnd["delivery"],
+            "round_id": rnd["id"],
+            "deadline_id": rnd["deadline_id"],
+            "extension_months": _extension_months(rnd),
+            "done": rnd["filed_on"] is not None,
+            "note": note,
+            "title": f"{action}（第 {rnd['n']} 轮）",
+        },
+        project_dir=project_dir,
+    )

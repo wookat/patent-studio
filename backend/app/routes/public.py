@@ -14,6 +14,7 @@
     POST confirm          需 scope=confirm → case.json.confirmations[] + emit share.confirmed
 不暴露 export / docx / attachments / 源码。
 """
+
 import asyncio
 from urllib.parse import quote
 
@@ -39,6 +40,7 @@ router = APIRouter(tags=["public"])
 
 class PublicLinkIn(PublicShareLinkIn):
     """schemas.PublicShareLinkIn + allow_comment（False ⇒ scope 收为 read）。"""
+
     allow_comment: bool | None = None
 
 
@@ -52,6 +54,7 @@ QUOTE_MAX = 120  # 通知正文里的批注摘录长度
 
 class PublicCommentIn(BaseModel):
     """{name, anchor, body}；guest_name 为 schemas.PublicCommentIn 的同义字段。"""
+
     anchor: PublicAnchor
     body: str = Field(min_length=1, max_length=4000)
     name: str | None = Field(default=None, min_length=1, max_length=64)
@@ -86,6 +89,7 @@ async def _grant(token: str, request: Request) -> public_share.Grant:
 
 # ---------------- 链接管理 ----------------
 
+
 @router.get("/api/projects/{pid}/public-links", response_model=list[PublicShareLink])
 async def list_public_links(pid: str, request: Request):
     if not config.AUTH_ON:
@@ -99,9 +103,15 @@ async def create_public_link(pid: str, body: PublicLinkIn, request: Request, use
     if not config.AUTH_ON or user is None:
         raise _off()
     request.app.state.store.get(pid)
-    return await public_share.create_link(pid, user, scope=body.scope, ttl_days=body.ttl_days,
-                                          allow_download=body.allow_download, allow_comment=body.allow_comment,
-                                          baseline=body.baseline)
+    return await public_share.create_link(
+        pid,
+        user,
+        scope=body.scope,
+        ttl_days=body.ttl_days,
+        allow_download=body.allow_download,
+        allow_comment=body.allow_comment,
+        baseline=body.baseline,
+    )
 
 
 @router.delete("/api/projects/{pid}/public-links/{token}", status_code=204)
@@ -114,6 +124,7 @@ async def revoke_public_link(pid: str, token: str, request: Request, user: Curre
 
 
 # ---------------- 免登录审阅 ----------------
+
 
 @router.get("/api/public/{token}/meta", response_model=PublicMetaOut)
 async def public_meta(token: str, request: Request):
@@ -132,8 +143,11 @@ async def public_pdf(token: str, request: Request):
         raise kind_error("not_found", "PDF 尚未生成，请稍后再试")
     data, ok = await asyncio.to_thread(public_share.watermarked_pdf, path, token)
     disposition = "attachment" if g.allow_download else "inline"
-    headers = {"Content-Disposition": f"{disposition}; filename*=UTF-8''{quote(project.title + '.pdf')}",
-               "Cache-Control": "no-store", "X-Watermark": "footer" if ok else "unavailable"}
+    headers = {
+        "Content-Disposition": f"{disposition}; filename*=UTF-8''{quote(project.title + '.pdf')}",
+        "Cache-Control": "no-store",
+        "X-Watermark": "footer" if ok else "unavailable",
+    }
     return Response(data, media_type="application/pdf", headers=headers)
 
 
@@ -154,8 +168,11 @@ async def public_ast(token: str, request: Request):
 async def public_layout_css(token: str, request: Request):
     g = await _grant(token, request)
     p = request.app.state.store.get(g.pid)
-    return Response(render_css(merge_style(p.settings.get("style"))), media_type="text/css; charset=utf-8",
-                    headers={"Cache-Control": "no-cache"})
+    return Response(
+        render_css(merge_style(p.settings.get("style"))),
+        media_type="text/css; charset=utf-8",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @router.get("/api/public/{token}/comments")
@@ -173,12 +190,20 @@ async def add_public_comment(token: str, body: PublicCommentIn, request: Request
     async with comments_mod.ledger_lock(d):
         with comments_mod.file_lock(d):  # R92：跨进程写锁（见 comments.file_lock）
             comments = comments_mod.load(d)
-            c = comments_mod.create(comments_mod.anchor_from_dict(body.anchor.model_dump()), body.body,
-                                    comments_mod.Author(id=None, name=body.guest()), source="client")
+            c = comments_mod.create(
+                comments_mod.anchor_from_dict(body.anchor.model_dump()),
+                body.body,
+                comments_mod.Author(id=None, name=body.guest()),
+                source="client",
+            )
             comments.append(c)
             comments_mod.save(d, comments)
-    events.emit("share.commented", pid=g.pid, actor=None,
-                data={"token": g.token, "cid": c.id, "name": body.guest(), "quote": body.body[:QUOTE_MAX]})
+    events.emit(
+        "share.commented",
+        pid=g.pid,
+        actor=None,
+        data={"token": g.token, "cid": c.id, "name": body.guest(), "quote": body.body[:QUOTE_MAX]},
+    )
     return c.to_dict()
 
 

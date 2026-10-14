@@ -3,6 +3,7 @@
 GET /deliver 清单（六项、真实 at/size）、POST /deliver/bundle（zip 内容 + manifest.json、失败 422 不留半 zip、
 无 LibreOffice 跳 PDF）、GET /deliver/bundle.zip、auth on 下 viewer 可读可打包。
 """
+
 import io
 import json
 import os
@@ -119,8 +120,13 @@ def test_bundle_without_libreoffice_skips_pdf(client, monkeypatch):
     with zipfile.ZipFile(_studio(tmp, "deliver", "bundle.zip")) as z:
         names = set(z.namelist())
         m = json.loads(z.read("manifest.json"))
-    assert names == {f"申请文件-{title}.docx", f"CNIPA-XML-{title}.zip", f"申请文件-{title}-修订.docx",
-                     f"附图-{title}.zip", "manifest.json"}
+    assert names == {
+        f"申请文件-{title}.docx",
+        f"CNIPA-XML-{title}.zip",
+        f"申请文件-{title}-修订.docx",
+        f"附图-{title}.zip",
+        "manifest.json",
+    }
     assert m["pid"] == "method" and m["pdf_skipped"] is True and m["mode"] == "final"
     assert [it["kind"] for it in m["items"]] == list(KINDS)
     assert not os.path.exists(_studio(tmp, "deliver", "bundle.zip.tmp"))
@@ -150,8 +156,14 @@ def test_bundle_full_and_download(client):
         assert any(n.endswith("100001.xml") for n in inner.namelist())
         figs = zipfile.ZipFile(io.BytesIO(zf.read(f"附图-{title}.zip")))
         assert figs.namelist()
-    assert names == {f"申请文件-{title}.docx", f"申请文件-{title}.pdf", f"CNIPA-XML-{title}.zip",
-                     f"申请文件-{title}-修订.docx", f"附图-{title}.zip", "manifest.json"}
+    assert names == {
+        f"申请文件-{title}.docx",
+        f"申请文件-{title}.pdf",
+        f"CNIPA-XML-{title}.zip",
+        f"申请文件-{title}-修订.docx",
+        f"附图-{title}.zip",
+        "manifest.json",
+    }
     assert m["pdf_skipped"] is False
     assert {it["kind"]: it for it in m["items"]}["xml"]["url"] == items["xml"]["url"]
 
@@ -178,6 +190,7 @@ def test_on_viewer_can_read_manifest_and_bundle(on):
 
 # ---------- W5 preflight-backend：字段级错误 + CPC 未验文案（docs/plan/21 §2.1 R-CHK-05 / §1.3 A12） ----------
 
+
 def test_errors_missing_applicants_first(client):
     """examples/method 的 case.json 默认无申请人/发明人：errors[0].field == 'applicants'，且清单同步带 errors[]。"""
     c, tmp = client
@@ -195,8 +208,14 @@ def test_errors_missing_applicants_first(client):
 
 def test_errors_clear_after_case_filled_and_application_no_format(client):
     c, tmp = client
-    r = c.put("/api/projects/method/case", json={"applicants": ["某某科技有限公司"], "inventors": ["张三"],
-                                                 "dates": {"application_no": "2026 1 0123456.7"}})
+    r = c.put(
+        "/api/projects/method/case",
+        json={
+            "applicants": ["某某科技有限公司"],
+            "inventors": ["张三"],
+            "dates": {"application_no": "2026 1 0123456.7"},
+        },
+    )
     assert r.status_code == 200, r.text
     assert c.get("/api/projects/method/deliver/errors").json() == {"errors": []}
     r = c.put("/api/projects/method/case", json={"dates": {"application_no": "CN2026-abc"}})

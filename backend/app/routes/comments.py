@@ -6,6 +6,7 @@ GET /comments 在返回前按当前 AST 重锚（结构不成立时原样返回�
 正文含 `@名字` ⇒ 解析 mentions；AUTH=on 时对成员 display_name / email / user_id 匹配，命中 ⇒ emit comment.mention
 （events.py 的枚举名；规格 R-REV-03 写作 comment.mentioned）；off 时无成员表，只记 mentions 不发事件。
 """
+
 import logging
 from typing import Literal
 
@@ -30,6 +31,7 @@ class CriticIn(BaseModel):
 
 class AnchorIn(BaseModel):
     """{block_id, line, quote} | {book, block_id, line_start, line_end?, quote?} | {file}。"""
+
     block_id: str = ""
     line: int | None = None
     quote: str = ""
@@ -125,8 +127,19 @@ async def emit_mentions(pid: str, user, c: Comment, body_mentions: list[str], re
     ids = await mentioned_user_ids(pid, body_mentions)
     if ids:
         # cid 是 notify 契约键（notify docstring comment.mention {cid,...}）；comment_id 保留做台账/调试可读
-        emit_mentions_for(pid, user, {"cid": c.id, "comment_id": c.id, "reply_id": reply_id, "mentions": body_mentions,
-                                      "user_ids": ids, "block_id": c.anchor.block_id, "file": c.anchor.file})
+        emit_mentions_for(
+            pid,
+            user,
+            {
+                "cid": c.id,
+                "comment_id": c.id,
+                "reply_id": reply_id,
+                "mentions": body_mentions,
+                "user_ids": ids,
+                "block_id": c.anchor.block_id,
+                "file": c.anchor.file,
+            },
+        )
 
 
 @router.post("/critic")
@@ -152,12 +165,18 @@ def load_reanchored(store, pid: str) -> list[Comment]:
 
 
 @router.get("/comments")
-async def list_comments(pid: str, request: Request, author: str | None = None,
-                        status: Literal["open", "resolved", "all"] = "all",
-                        source: Literal["human", "ai", "client"] | None = None, mention: str | None = None):
+async def list_comments(
+    pid: str,
+    request: Request,
+    author: str | None = None,
+    status: Literal["open", "resolved", "all"] = "all",
+    source: Literal["human", "ai", "client"] | None = None,
+    mention: str | None = None,
+):
     comments = load_reanchored(request.app.state.store, pid)
-    return [c.to_dict() for c in store_mod.select(comments, author=author, status=status, source=source,
-                                                   mention=mention)]
+    return [
+        c.to_dict() for c in store_mod.select(comments, author=author, status=status, source=source, mention=mention)
+    ]
 
 
 @router.post("/comments", status_code=201)

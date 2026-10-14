@@ -10,6 +10,7 @@
 db / acl 在函数内 import：与 auth/__init__.py 同理——AUTH=off 时不加载 fastapi-users / engine，
 且测试按新 DB_PATH 重载时会丢弃 app.auth.db / acl 再 import，模块级绑定会指向旧库。
 """
+
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
@@ -86,19 +87,34 @@ async def list_access(pid: str) -> dict:
     members = {m["user_id"]: m for m in await acl.list_members(pid)}
     online = rooms.online_user_ids(pid)
     async with SessionLocal() as s:
-        rows = await s.execute(select(ProjectAccess, User).join(User, User.id == ProjectAccess.user_id)
-                               .where(ProjectAccess.project_id == pid).order_by(ProjectAccess.last_seen.desc()))
+        rows = await s.execute(
+            select(ProjectAccess, User)
+            .join(User, User.id == ProjectAccess.user_id)
+            .where(ProjectAccess.project_id == pid)
+            .order_by(ProjectAccess.last_seen.desc())
+        )
         viewed = []
         for acc, u in rows:
             uid = str(u.id)
             role = members[uid]["role"] if uid in members else ("owner" if u.is_superuser else None)
-            viewed.append({"user": acl.member_out(u, role), "first_seen": acl.iso(acc.first_seen),
-                           "last_seen": acl.iso(acc.last_seen), "count": acc.count, "online": uid in online})
-        pending = list(await s.scalars(select(PendingInvite).where(PendingInvite.project_id == pid)
-                                       .order_by(PendingInvite.created_at)))
+            viewed.append(
+                {
+                    "user": acl.member_out(u, role),
+                    "first_seen": acl.iso(acc.first_seen),
+                    "last_seen": acl.iso(acc.last_seen),
+                    "count": acc.count,
+                    "online": uid in online,
+                }
+            )
+        pending = list(
+            await s.scalars(
+                select(PendingInvite).where(PendingInvite.project_id == pid).order_by(PendingInvite.created_at)
+            )
+        )
     seen = {row["user"]["user_id"] for row in viewed}
-    not_viewed = [{"user": m, "email": m["email"], "via": "member"} for m in members.values()
-                  if m["user_id"] not in seen]
+    not_viewed = [
+        {"user": m, "email": m["email"], "via": "member"} for m in members.values() if m["user_id"] not in seen
+    ]
     seen |= set(members)
     for accepted in (await acl.accepted_by(pid)).values():
         for a in accepted:

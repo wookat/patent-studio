@@ -2,6 +2,7 @@
 """单元 E2-terms（docs/plan/09 §3.2 / §8 A8–A10）：terms.json CRUD、确定性候选抽取、术语 lint 纯函数、
 一键统一 CriticMarkup、preflight 支持性别名归一、路由与零漂移。
 """
+
 import importlib
 import json
 import os
@@ -23,8 +24,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 EXAMPLES = os.path.join(ROOT, "examples")
 
 TERMS = [
-    {"name": "传感单元", "aliases": ["传感器", "感测单元"], "en": "sensing unit", "definition": None,
-     "first_line": None},
+    {
+        "name": "传感单元",
+        "aliases": ["传感器", "感测单元"],
+        "en": "sensing unit",
+        "definition": None,
+        "first_line": None,
+    },
     {"name": "基础预测模型", "aliases": ["预测模型"], "en": None, "definition": None, "first_line": None},
 ]
 
@@ -77,16 +83,20 @@ def read_example(pid):
 
 # ---------------- validate ----------------
 
+
 def test_validate_ok():
     terms.validate([terms.normalize(t) for t in TERMS])
 
 
-@pytest.mark.parametrize("bad,msg", [
-    ([{"name": ""}], "缺少主名"),
-    ([{"name": "a"}, {"name": "a"}], "重复"),
-    ([{"name": "a", "aliases": ["b"]}, {"name": "b"}], "重名"),
-    ([{"name": "a", "aliases": ["x"]}, {"name": "b", "aliases": ["x"]}], "同时属于"),
-])
+@pytest.mark.parametrize(
+    "bad,msg",
+    [
+        ([{"name": ""}], "缺少主名"),
+        ([{"name": "a"}, {"name": "a"}], "重复"),
+        ([{"name": "a", "aliases": ["b"]}, {"name": "b"}], "重名"),
+        ([{"name": "a", "aliases": ["x"]}, {"name": "b", "aliases": ["x"]}], "同时属于"),
+    ],
+)
 def test_validate_rejects(bad, msg):
     with pytest.raises(terms.TermsError) as ei:
         terms.validate([terms.normalize(t) for t in bad])
@@ -102,6 +112,7 @@ def test_load_save_roundtrip(tmp_path):
 
 
 # ---------------- lint_terms ----------------
+
 
 @pytest.mark.parametrize("pid", ["method", "system"])
 def test_examples_no_terms_zero_diagnostics(pid):
@@ -125,13 +136,23 @@ def test_lint_terms_hits_and_replace():
     abstract = lines.index("一种测试方法，所述传感器采集数据并送入基础预测模型（sensor）；预测模型输出结果。") + 1
     claim = next(i for i, ln in enumerate(lines, 1) if ln.startswith("1.一种测试方法"))
     bg = next(i for i, ln in enumerate(lines, 1) if ln.startswith("现有技术中传感器"))
-    assert set(by) == {(abstract, "传感器"), (abstract, "预测模型"), (claim, "感测单元"), (bg, "传感器"),
-                       (bg, "预测模型")}
+    assert set(by) == {
+        (abstract, "传感器"),
+        (abstract, "预测模型"),
+        (claim, "感测单元"),
+        (bg, "传感器"),
+        (bg, "预测模型"),
+    }
     d = by[(abstract, "传感器")]
     assert d == {
-        "id": f"terms.alias#{abstract}:传感器", "severity": "warning", "source": "lint",
-        "message": "「传感器」是术语「传感单元」的别名，请统一为主名", "line": abstract, "section": "摘要",
-        "fix": "改为「传感单元」", "replace": {"from": "传感器", "to": "传感单元"},
+        "id": f"terms.alias#{abstract}:传感器",
+        "severity": "warning",
+        "source": "lint",
+        "message": "「传感器」是术语「传感单元」的别名，请统一为主名",
+        "line": abstract,
+        "section": "摘要",
+        "fix": "改为「传感单元」",
+        "replace": {"from": "传感器", "to": "传感单元"},
     }
     assert by[(claim, "感测单元")]["section"] == "权利要求书"
     assert by[(bg, "传感器")]["section"] == "说明书/背景技术"
@@ -157,6 +178,7 @@ def test_lint_terms_in_app_lint_uses_replace_shape():
 
 
 # ---------------- unify ----------------
+
 
 def test_unify_accept_equals_direct_replace_and_reject_restores():
     out, changed = terms.unify(FIXTURE, TERMS)
@@ -187,8 +209,10 @@ def test_unify_skips_existing_marks_and_is_idempotent():
     assert twice == once and changed2 == []
     text = "已有{~~传感器~>传感单元~~}建议与{--传感器--}删除、{++预测模型++}插入，{>>传感器批注<<}再传感器。"
     out, ch = terms.unify(text, TERMS)
-    assert out == ("已有{~~传感器~>传感单元~~}建议与{--传感器--}删除、{++预测模型++}插入，"
-                   "{>>传感器批注<<}再{~~传感器~>传感单元~~}。")
+    assert out == (
+        "已有{~~传感器~>传感单元~~}建议与{--传感器--}删除、{++预测模型++}插入，"
+        "{>>传感器批注<<}再{~~传感器~>传感单元~~}。"
+    )
     assert ch == [1]
 
 
@@ -208,8 +232,12 @@ def test_unify_examples_zero_drift_and_roundtrip(pid):
     assert terms.unify(content, [{"name": "甲", "aliases": ["乙丙丁戊"]}]) == (content, [])
     ds = docset.split(content)
     assert docset.assemble(ds) == content
-    out, changed = terms.unify(content, [{"name": "成熟反馈队列", "aliases": ["成熟队列"]}] if pid == "method"
-                               else [{"name": "预测引擎模块", "aliases": ["预测引擎"]}])
+    out, changed = terms.unify(
+        content,
+        [{"name": "成熟反馈队列", "aliases": ["成熟队列"]}]
+        if pid == "method"
+        else [{"name": "预测引擎模块", "aliases": ["预测引擎"]}],
+    )
     assert critic.reject(out) == content
     ds2 = docset.split(out)
     assert docset.assemble(ds2) == out
@@ -218,6 +246,7 @@ def test_unify_examples_zero_drift_and_roundtrip(pid):
 
 
 # ---------------- extract ----------------
+
 
 def test_extract_fixture_sources_and_first_line():
     cands = terms.extract(critic.accept(FIXTURE), {"spec_figures": [["fig1.png", 15.0]]})
@@ -234,20 +263,23 @@ def test_extract_fixture_sources_and_first_line():
 
 
 def test_extract_freq_threshold_and_skips():
-    text = ("# 标题\n\n## 摘要\n\n量子纠缠器与量子纠缠器。\n\n```\n量子纠缠器 量子纠缠器\n```\n\n"
-            "$$ 量子纠缠器 $$\n\n光子探测器一次。")
+    text = (
+        "# 标题\n\n## 摘要\n\n量子纠缠器与量子纠缠器。\n\n```\n量子纠缠器 量子纠缠器\n```\n\n"
+        "$$ 量子纠缠器 $$\n\n光子探测器一次。"
+    )
     cands = {c["name"]: c for c in terms.extract(text)}
     assert cands["量子纠缠器"]["count"] == 2 and cands["量子纠缠器"]["lines"] == [5]
     assert "光子探测器" not in cands
     assert cands["量子纠缠器"]["source"] == "freq"
 
 
-@pytest.mark.parametrize("pid,expect", [
-    ("method", {"时间序列预测模型部署期可信自适应控制方法": "claim", "成熟反馈队列": "figure-label",
-                "信任系数": "freq"}),
-    ("system", {"时间序列预测模型可信部署监控与自动降级系统": "claim", "预测引擎模块": "figure-label",
-                "安全锚输出": "freq"}),
-])
+@pytest.mark.parametrize(
+    "pid,expect",
+    [
+        ("method", {"基于指纹信息的区块链电子钱包的私钥生成方法": "claim", "私钥": "freq"}),
+        ("system", {"神经网络模型的可视化建模方法": "claim", "存储单元": "figure-label", "节点": "freq"}),
+    ],
+)
 def test_extract_examples(pid, expect):
     content, settings = read_example(pid)
     cands = terms.extract(critic.accept(content), settings)
@@ -260,6 +292,7 @@ def test_extract_examples(pid, expect):
 
 
 # ---------------- preflight 支持性 · 别名归一（09 §4 / A10）----------------
+
 
 def test_preflight_support_alias_normalization():
     # 权项写别名「所述感测单元」，说明书只写主名「传感单元」
@@ -276,13 +309,15 @@ def test_preflight_support_alias_normalization():
 
 # ---------------- 路由 ----------------
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
     for pid in ("method", "system"):
-        shutil.copytree(os.path.join(EXAMPLES, pid), projects / pid,
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            os.path.join(EXAMPLES, pid), projects / pid, ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*")
+        )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("PATENT_STUDIO_AI_PROVIDER", "mock")
     from app import config, main
@@ -298,11 +333,14 @@ def test_terms_crud_routes(client):
     c, projects, _ = client
     r = c.get("/api/projects/method/terms")
     assert r.status_code == 200 and r.json() == {"version": 1, "terms": []}
-    r = c.put("/api/projects/method/terms",
-              json={"terms": [{"name": " 传感单元 ", "aliases": ["传感器", ""], "en": "sensing unit"}]})
+    r = c.put(
+        "/api/projects/method/terms",
+        json={"terms": [{"name": " 传感单元 ", "aliases": ["传感器", ""], "en": "sensing unit"}]},
+    )
     assert r.status_code == 200
-    assert r.json()["terms"] == [{"name": "传感单元", "aliases": ["传感器"], "en": "sensing unit", "definition": None,
-                                  "first_line": None}]
+    assert r.json()["terms"] == [
+        {"name": "传感单元", "aliases": ["传感器"], "en": "sensing unit", "definition": None, "first_line": None}
+    ]
     assert (projects / "method" / "terms.json").is_file()
     assert c.get("/api/projects/method/terms").json() == r.json()
     r = c.put("/api/projects/method/terms", json={"terms": [{"name": "a", "aliases": ["b"]}, {"name": "b"}]})
@@ -340,8 +378,7 @@ def test_terms_extract_ai_requires_enabled_and_uses_mock(client):
 
         async def chat(self, messages, purpose, **kw):
             self.calls.append((messages, purpose, kw))
-            fixture = os.path.join(os.path.dirname(os.path.abspath(ai_pkg.__file__)), "fixtures",
-                                   "terms_extract.json")
+            fixture = os.path.join(os.path.dirname(os.path.abspath(ai_pkg.__file__)), "fixtures", "terms_extract.json")
             with open(fixture, encoding="utf-8") as f:
                 return ChatResult(text=f.read(), model="swe-2-max", usage=Usage(0, 0, 0), ms=1, fallback=False)
 
@@ -362,7 +399,14 @@ def test_terms_unify_route_no_disk_write(client):
     c, projects, _ = client
     content_path = projects / "method" / "content.md"
     before = content_path.read_bytes()
-    c.put("/api/projects/method/terms", json={"terms": TERMS})
+    # 新语料无 TERMS 中别名 → 追加一条语料内真实出现的别名，unify json={}（磁盘内容）才有命中
+    c.put(
+        "/api/projects/method/terms",
+        json={
+            "terms": TERMS
+            + [{"name": "数字钱包", "aliases": ["电子钱包"], "en": None, "definition": None, "first_line": None}]
+        },
+    )
     r = c.post("/api/projects/method/terms/unify", json={"content": FIXTURE})
     assert r.status_code == 200
     body = r.json()
@@ -376,8 +420,9 @@ def test_terms_unify_route_no_disk_write(client):
     assert content_path.read_bytes() == before
     r = c.post("/api/projects/method/terms/unify", json={"content": FIXTURE, "names": ["不存在"]})
     assert r.status_code == 422 and r.json()["detail"]["kind"] == "terms"
-    r = c.post("/api/projects/method/terms/unify",
-               json={"content": FIXTURE, "names": ["基础预测模型"], "books": ["abstract"]})
+    r = c.post(
+        "/api/projects/method/terms/unify", json={"content": FIXTURE, "names": ["基础预测模型"], "books": ["abstract"]}
+    )
     assert r.json()["count"] == 1 and len(r.json()["changed_lines"]) == 1
 
 
@@ -390,7 +435,8 @@ def test_corrupt_terms_json_422(client):
     assert c.post("/api/projects/method/terms/unify", json={"content": "x"}).status_code == 422
     # 畸形 first_line 同样 422
     (projects / "method" / "terms.json").write_text(
-        '{"version":1,"terms":[{"name":"x","first_line":"abc"}]}', encoding="utf-8")
+        '{"version":1,"terms":[{"name":"x","first_line":"abc"}]}', encoding="utf-8"
+    )
     assert c.get("/api/projects/method/terms").status_code == 422
     # PUT 覆盖腐坏文件 → 自愈（原子写）
     r = c.put("/api/projects/method/terms", json={"terms": [{"name": "传感单元"}]})

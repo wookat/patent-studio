@@ -9,6 +9,7 @@
   workdays（调休上班的周末）算工作日；
 - 年表缺失或 verified=false 时只按周末顺延，并把 holidays_verified=False 带出去（响应里的 holidays_missing）。
 """
+
 import calendar
 import json
 import os
@@ -60,8 +61,15 @@ def _load_rules() -> dict[str, Rule]:
         data = json.load(f)
     out: dict[str, Rule] = {}
     for r in data["rules"]:
-        out[r["id"]] = Rule(id=r["id"], kind=r["kind"], title=r["title"], base_date=r["base_date"],
-                            offset=r["offset"], delivery=r["delivery"], legal_basis=LegalBasis(**r["legal_basis"]))
+        out[r["id"]] = Rule(
+            id=r["id"],
+            kind=r["kind"],
+            title=r["title"],
+            base_date=r["base_date"],
+            offset=r["offset"],
+            delivery=r["delivery"],
+            legal_basis=LegalBasis(**r["legal_basis"]),
+        )
     return out
 
 
@@ -135,8 +143,14 @@ def raw_due(rule_: Rule, base: date, *, anniversary_of: date | None = None) -> d
     return base + timedelta(days=off["days"])
 
 
-def compute(rule_: Rule, base: date, *, delivery: Delivery | None = None,
-            anniversary_of: date | None = None, extension_months: int = 0) -> Computed:
+def compute(
+    rule_: Rule,
+    base: date,
+    *,
+    delivery: Delivery | None = None,
+    anniversary_of: date | None = None,
+    extension_months: int = 0,
+) -> Computed:
     """base = 规则 base_date 所指的日期（event 类规则为发文日，delivery 决定推定送达日）。
     extension_months：已批准的延长期限月数（细则第六条，OA 答复累计 ≤ 2 个月），先加月再顺延。"""
     start = deemed_received(base, delivery or "electronic") if rule_.delivery else base

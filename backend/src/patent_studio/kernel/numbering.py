@@ -6,6 +6,7 @@
   公式（e）与章节/小节标题（h/s）不计号。
 输入为 content.load_md / parse_md 返回的 spec 列表。
 """
+
 from dataclasses import dataclass
 
 

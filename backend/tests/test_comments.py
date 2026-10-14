@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """C2：批注线程存储/重锚 + /critic、/comments 路由 + 含标记样例三模式构建与 XML 导出（07 §4.2、§6）。"""
+
 import io
 import json
 import os
@@ -23,21 +24,23 @@ def _read(pid):
 
 
 def marked_method():
-    """examples/method 加五种标记：标题替换、摘要插入/删除/批注、权1 高亮、公式替换、表格无（案子无表）。"""
+    """examples/method 加六种标记：标题替换、摘要插入/删除/批注、权1 高亮、权2 词语替换
+    （新语料无公式块，改打从属权项替换）。"""
     lines = _read("method").split("\n")
-    assert lines[0].startswith("# ") and lines[4].startswith("本发明公开了")
-    lines[0] = lines[0].replace("方法及装置", "{~~方法及装置~>方法及系统~~}")
-    lines[4] = lines[4].replace("本发明公开了一种", "本发明{++首次++}公开了{--一种--}{>>摘要首句待商议<<}", 1)
+    assert lines[0].startswith("# ") and lines[4].startswith("本申请提供")
+    lines[0] = lines[0].replace("私钥生成方法及系统", "{~~私钥生成方法及系统~>私钥生成方法~~}")
+    lines[4] = lines[4].replace("本申请提供一种", "本申请{++首次++}提供{--一种--}{>>摘要首句待商议<<}", 1)
     i = next(k for k, ln in enumerate(lines) if ln.startswith("1.一种"))
     lines[i] = lines[i].replace("其特征在于", "{==其特征在于==}", 1)
-    j = next(k for k, ln in enumerate(lines) if ln.startswith("$$"))
-    lines[j] = lines[j].replace("$$", "$$Z_{~~old~>new~~}=", 1)
+    j = next(k for k, ln in enumerate(lines) if ln.startswith("2.根据"))
+    lines[j] = lines[j].replace("确定该像素点为端点还是分叉点", "确定该像素点为{~~端点~>中点~~}还是分叉点", 1)
     src = "\n".join(lines)
     assert critic.has_markup(src) and len(critic.parse(src)) == 6
     return src
 
 
 # ---------------- 存储 ----------------
+
 
 def test_load_missing_is_empty(tmp_path):
     assert cm.load(str(tmp_path)) == []
@@ -61,36 +64,41 @@ def test_save_load_roundtrip_and_json_shape(tmp_path):
 def test_reanchor_quote_moves_and_stale():
     content = _read("method")
     ast = parse_ast(content)
-    # 摘要段（全文第 5 行）里选中一句
-    a = cm.Anchor("abstract/p1", 5, "冻结基础预测模型并设定安全锚输出")
+    # 摘要段（全文第 5 行）里选中一句（新语料此句在摘要/权项/说明书多次复现，
+    # 故「搬块」子项先全量剥离再注入权1，保证目标唯一）
+    q = "对用户指纹进行图像采集"
+    a = cm.Anchor("abstract/p1", 5, q)
     b = cm.Anchor("claims/1", 9, "这句话不存在于全文")
     c = cm.Anchor("description/no-such-block", 300, "")
     cs = [cm.create(x, "x", cm.LOCAL_AUTHOR) for x in (a, b, c)]
     cm.reanchor(cs, ast, content)
     assert (cs[0].anchor.line, cs[0].anchor.stale) == (5, False)
-    assert (cs[1].anchor.line, cs[1].anchor.stale) == (9, True)          # 块存在、引文丢失：保留 line 标 stale
-    assert (cs[2].anchor.line, cs[2].anchor.stale) == (300, True)        # 块不存在
+    assert (cs[1].anchor.line, cs[1].anchor.stale) == (9, True)  # 块存在、引文丢失：保留 line 标 stale
+    assert (cs[2].anchor.line, cs[2].anchor.stale) == (300, True)  # 块不存在
     # 摘要前插入两行 → 引文下移两行，块 id 不变、stale 清除
     moved = content.replace("## 摘要\n", "## 摘要\n\n\n", 1)
     cs[0].anchor.line = 5
     cm.reanchor(cs[:1], parse_ast(moved), moved)
     assert (cs[0].anchor.block_id, cs[0].anchor.line, cs[0].anchor.stale) == ("abstract/p1", 7, False)
     # 引文搬到别的块（权1 末尾）→ 按全文搜到并改 block_id
-    head = "1.一种时间序列预测模型"
-    claim_moved = content.replace("冻结基础预测模型并设定安全锚输出", "", 1)
-    claim_moved = claim_moved.replace(head, head + "（冻结基础预测模型并设定安全锚输出）", 1)
+    head = "1.一种基于指纹信息的区块链电子钱包的私钥生成方法"
+    claim_moved = content.replace(q, "").replace(head, head + "（" + q + "）", 1)
     cm.reanchor(cs[:1], parse_ast(claim_moved), claim_moved)
     assert cs[0].anchor.block_id == "claims/1" and cs[0].anchor.stale is False
 
 
 # ---------------- 路由 ----------------
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*", "reviews"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*", "reviews"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("LO_PROFILE_DIR", str(tmp_path / "lo"))
     import importlib
@@ -111,9 +119,23 @@ def test_critic_route_body_and_saved(client):
     c, _ = client
     r = c.post("/api/projects/method/critic", json={"content": "A{++B++}C"})
     assert r.status_code == 200
-    assert r.json() == {"marks": [{"id": "1:1", "kind": "ins", "line": 1, "from": 1, "to": 8,
-                                   "a": "", "b": "B", "final": "B", "original": "",
-                                   "author": None, "at": None}]}
+    assert r.json() == {
+        "marks": [
+            {
+                "id": "1:1",
+                "kind": "ins",
+                "line": 1,
+                "from": 1,
+                "to": 8,
+                "a": "",
+                "b": "B",
+                "final": "B",
+                "original": "",
+                "author": None,
+                "at": None,
+            }
+        ]
+    }
     assert c.post("/api/projects/method/critic", json={}).json() == {"marks": []}  # 两案无标记
 
 
@@ -124,7 +146,7 @@ def test_critic_marks_carry_author_and_time(client):
     c, projects = client
     d = str(projects / "method")
     content = c.get("/api/projects/method/content").json()["content"]
-    new = content.replace("本发明公开了一种", "本发明{++首次++}公开了{~~一种~>一类~~}", 1)
+    new = content.replace("本申请提供一种", "本申请{++首次++}提供{~~一种~>一类~~}", 1)
     # 落盘钩子（save_content 内）：新出现的标记按当前写入者记录
     with review_meta.writer("张代理"):
         review_meta.record(d, content, new)
@@ -132,7 +154,7 @@ def test_critic_marks_carry_author_and_time(client):
     assert len(meta) == 2 and {v["author"] for v in meta.values()} == {"张代理"}
     at0 = next(iter(meta.values()))["at"]
     # 再改一处、只多一条：老标记的时间不变，新标记归新作者；显式 author 参数优先于上下文
-    newer = new.replace("模型", "{--模型--}", 1)
+    newer = new.replace("私钥", "{--私钥--}", 1)
     review_meta.record(d, new, newer, author="李审核")
     marks = review_meta.attach(d, critic.parse(newer))
     by_kind = {m["kind"]: m for m in marks}
@@ -150,13 +172,15 @@ def test_critic_marks_carry_author_and_time(client):
 def test_comments_crud_reply_resolve(client):
     c, projects = client
     assert c.get("/api/projects/method/comments").json() == []
-    r = c.post("/api/projects/method/comments",
-               json={"anchor": {"block_id": "abstract/p1", "line": 5, "quote": "安全锚输出"}, "body": "术语统一"})
+    r = c.post(
+        "/api/projects/method/comments",
+        json={"anchor": {"block_id": "abstract/p1", "line": 5, "quote": "对用户指纹进行图像采集"}, "body": "术语统一"},
+    )
     assert r.status_code == 201, r.text
     cmt = r.json()
     cid = cmt["id"]
     assert cmt["author"] == {"id": None, "name": "本机"} and cmt["resolved"] is False and cmt["replies"] == []
-    assert cmt["anchor"] == {"block_id": "abstract/p1", "line": 5, "quote": "安全锚输出", "stale": False}
+    assert cmt["anchor"] == {"block_id": "abstract/p1", "line": 5, "quote": "对用户指纹进行图像采集", "stale": False}
     assert (projects / "method" / "reviews" / "comments.json").is_file()
 
     r = c.patch(f"/api/projects/method/comments/{cid}", json={"body": "术语统一为「安全锚」"})
@@ -186,7 +210,7 @@ def test_comment_body_max_length(client):
     """站内批注与公开批注同口径 4000（CommentIn/ReplyIn/CommentPatch）。"""
     c, _ = client
     over = "x" * 4001
-    anchor = {"anchor": {"block_id": "abstract/p1", "line": 5, "quote": "安全锚输出"}}
+    anchor = {"anchor": {"block_id": "abstract/p1", "line": 5, "quote": "对用户指纹进行图像采集"}}
     assert c.post("/api/projects/method/comments", json={**anchor, "body": over}).status_code == 422
     r = c.post("/api/projects/method/comments", json={**anchor, "body": "ok"})
     cid = r.json()["id"]
@@ -197,7 +221,7 @@ def test_comment_body_max_length(client):
 def test_comments_list_reanchors_after_edit(client):
     c, _ = client
     content = c.get("/api/projects/method/content").json()["content"]
-    anchor = {"block_id": "abstract/p1", "line": 5, "quote": "安全锚输出"}
+    anchor = {"block_id": "abstract/p1", "line": 5, "quote": "对用户指纹进行图像采集"}
     cid = c.post("/api/projects/method/comments", json={"anchor": anchor, "body": "x"}).json()["id"]
     c.put("/api/projects/method/content", json={"content": content.replace("## 摘要\n", "## 摘要\n\n", 1)})
     (cmt,) = c.get("/api/projects/method/comments").json()
@@ -205,6 +229,7 @@ def test_comments_list_reanchors_after_edit(client):
 
 
 # ---------------- 含标记样例：三模式构建 + XML final ----------------
+
 
 def test_marked_sample_builds_in_three_modes(client):
     c, _ = client
@@ -217,10 +242,10 @@ def test_marked_sample_builds_in_three_modes(client):
         assert j["status"] == "ok", (mode, j.get("error"))
         assert j["mode"] == mode
         out[mode] = j
-    # 摘要字数：final 多「首次」少「一种」；original 与两案原文一致（253）；markup 含标记符号
-    assert out["original"]["summary"]["abstract_chars"] == 253
-    assert out["final"]["summary"]["abstract_chars"] == 253
-    assert out["markup"]["summary"]["abstract_chars"] > 253
+    # 摘要字数：final 多「首次」少「一种」；original 与两案原文一致（286）；markup 含标记符号
+    assert out["original"]["summary"]["abstract_chars"] == 286
+    assert out["final"]["summary"]["abstract_chars"] == 286
+    assert out["markup"]["summary"]["abstract_chars"] > 286
     # 结构 lint 在 accept 文本上跑：三模式下 critic 标记本身不产生结构诊断
     assert all(d["id"].startswith("critic.") is False for d in out["final"]["diagnostics"])
 
@@ -265,11 +290,19 @@ def test_marked_sample_xml_export_final(client):
 
 # ---------------- W5 share-confirm-backend：锚点扩展 / 线程 / 提及 / 筛选 ----------------
 
+
 def test_w5_anchor_shapes_and_mentions():
     a = cm.anchor_from_dict({"book": "claims", "block_id": "claims/1", "line_start": 9, "line_end": 10, "quote": "q"})
     assert a.line == 9 and a.book == "claims" and a.line_end == 10
-    assert a.to_dict() == {"block_id": "claims/1", "line": 9, "quote": "q", "stale": False, "book": "claims",
-                           "line_start": 9, "line_end": 10}
+    assert a.to_dict() == {
+        "block_id": "claims/1",
+        "line": 9,
+        "quote": "q",
+        "stale": False,
+        "book": "claims",
+        "line_start": 9,
+        "line_end": 10,
+    }
     f = cm.anchor_from_dict({"file": "docs/figures.md"})
     assert f.file == "docs/figures.md" and f.block_id == "" and f.to_dict()["file"] == "docs/figures.md"
     legacy = cm.anchor_from_dict({"block_id": "abstract/p1", "line": 5, "quote": "x", "stale": True})
@@ -287,9 +320,16 @@ def test_w5_anchor_shapes_and_mentions():
     content = _read("method")
     assert cm.reanchor([c], parse_ast(content), content) == [c] and c.anchor.stale is False  # file 锚不重锚
     # 老 JSON（无新字段）仍能读
-    old = {"id": "x", "anchor": {"block_id": "claims/1", "line": 9, "quote": "q", "stale": False}, "body": "b",
-           "author": {"id": None, "name": "本机"}, "created_at": 1.0, "updated_at": 1.0, "resolved": False,
-           "replies": [{"id": "r", "body": "rb", "author": {"id": None, "name": "本机"}, "created_at": 1.0}]}
+    old = {
+        "id": "x",
+        "anchor": {"block_id": "claims/1", "line": 9, "quote": "q", "stale": False},
+        "body": "b",
+        "author": {"id": None, "name": "本机"},
+        "created_at": 1.0,
+        "updated_at": 1.0,
+        "resolved": False,
+        "replies": [{"id": "r", "body": "rb", "author": {"id": None, "name": "本机"}, "created_at": 1.0}],
+    }
     loaded = cm._from_dict(old)
     assert loaded.source == "human" and loaded.mentions == [] and loaded.replies[0].parent_id == "x"
 
@@ -312,9 +352,14 @@ def test_w5_select_filters():
 
 def test_w5_routes_thread_reopen_filters(client):
     c, projects = client
-    r = c.post("/api/projects/method/comments",
-               json={"anchor": {"book": "claims", "block_id": "claims/1", "line_start": 9, "quote": "其特征在于"},
-                     "body": "@张律师 权1 主题", "source": "ai"})
+    r = c.post(
+        "/api/projects/method/comments",
+        json={
+            "anchor": {"book": "claims", "block_id": "claims/1", "line_start": 9, "quote": "其特征在于"},
+            "body": "@张律师 权1 主题",
+            "source": "ai",
+        },
+    )
     assert r.status_code == 201, r.text
     a = r.json()
     assert a["source"] == "ai" and a["mentions"] == ["张律师"] and a["anchor"]["book"] == "claims"
@@ -352,13 +397,16 @@ def test_comment_ledger_writes_serialized(client, monkeypatch):
     from app.routes import comments as rc
 
     c, _ = client
-    cid = c.post("/api/projects/method/comments",
-                 json={"anchor": {"block_id": "b1", "line": 1, "quote": "q"}, "body": "一"}).json()["id"]
+    cid = c.post(
+        "/api/projects/method/comments", json={"anchor": {"block_id": "b1", "line": 1, "quote": "q"}, "body": "一"}
+    ).json()["id"]
 
     orig = rc._comment_perm
+
     async def slow_perm(*a, **k):
         await asyncio.sleep(0.05)
         return await orig(*a, **k)
+
     monkeypatch.setattr(rc, "_comment_perm", slow_perm)
 
     req = type("Req", (), {"app": c.app})()
@@ -366,8 +414,9 @@ def test_comment_ledger_writes_serialized(client, monkeypatch):
 
     async def go():
         # 无锁时：delete 的 load 在 create 写入前完成、其 save 又会把 create 的新条目冲掉 ⇒ 终态 []
-        await asyncio.gather(rc.delete_comment("method", cid, req, None),
-                             rc.create_comment("method", body_in, req, None))
+        await asyncio.gather(
+            rc.delete_comment("method", cid, req, None), rc.create_comment("method", body_in, req, None)
+        )
 
     asyncio.run(go())
     got = c.get("/api/projects/method/comments").json()
@@ -386,8 +435,9 @@ def test_comments_file_lock_serializes_writers(tmp_path):
     def add(i):
         with comments.file_lock(d):
             items = comments.load(d)
-            items.append(comments.create(comments.Anchor(block_id="b", line=1, quote="q"),
-                                         f"c{i}", comments.LOCAL_AUTHOR))
+            items.append(
+                comments.create(comments.Anchor(block_id="b", line=1, quote="q"), f"c{i}", comments.LOCAL_AUTHOR)
+            )
             comments.save(d, items)
 
     with ThreadPoolExecutor(4) as ex:

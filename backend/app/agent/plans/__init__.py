@@ -14,6 +14,7 @@ RunContext 是本单元给 agent-core loop 的最小契约（loop 可继承或�
   emit(kind, data) / tool(name, fn, **args) / gen(step, messages, purpose) / check(result) / propose(...)
   proposals, events, usage, truncated, calls, project_dir
 """
+
 from __future__ import annotations
 
 import time
@@ -90,10 +91,19 @@ class BudgetExceeded(Exception):
 
 
 class RunContext:
-    def __init__(self, *, store, pid: str, ai: AiClient, scenario: str, job_id: str | None = None,
-                 params: dict | None = None, user: str | None = None,
-                 emit: Callable[[StepEvent], None] | None = None,
-                 cancelled: Callable[[], bool] | None = None):
+    def __init__(
+        self,
+        *,
+        store,
+        pid: str,
+        ai: AiClient,
+        scenario: str,
+        job_id: str | None = None,
+        params: dict | None = None,
+        user: str | None = None,
+        emit: Callable[[StepEvent], None] | None = None,
+        cancelled: Callable[[], bool] | None = None,
+    ):
         self.store = store
         self.pid = pid
         self.ai = ai
@@ -132,8 +142,15 @@ class RunContext:
 
     def start(self, plan: Plan) -> None:
         self.plan = plan
-        self.emit("plan", {"scenario": plan.scenario, "steps": plan.labels, "model_route": plan.model_route,
-                           "budget_key": plan.budget_key})
+        self.emit(
+            "plan",
+            {
+                "scenario": plan.scenario,
+                "steps": plan.labels,
+                "model_route": plan.model_route,
+                "budget_key": plan.budget_key,
+            },
+        )
 
     # ---- 工具步：同步内部函数 + 审计 ----
     def tool(self, name: str, fn: Callable, **args):
@@ -153,8 +170,9 @@ class RunContext:
 
     # ---- 生成槽 ----
     def clip(self, text: str, key: str | None = None) -> str:
-        limit = min(BUDGET_CHARS.get(key or (self.plan.budget_key if self.plan else "interactive"), 8_000),
-                    CONTEXT_MAX_CHARS)
+        limit = min(
+            BUDGET_CHARS.get(key or (self.plan.budget_key if self.plan else "interactive"), 8_000), CONTEXT_MAX_CHARS
+        )
         if len(text) <= limit:
             return text
         self.truncated = True
@@ -167,8 +185,10 @@ class RunContext:
         purpose = purpose or (self.plan.model_route if self.plan else "interactive")
         self.calls += 1
         res = await self.ai.chat(messages, purpose, project_dir=self.project_dir, job_id=self.job_id, user=self.user)
-        self.usage = Usage(prompt=self.usage.prompt + res.usage.prompt_tokens,
-                           completion=self.usage.completion + res.usage.completion_tokens)
+        self.usage = Usage(
+            prompt=self.usage.prompt + res.usage.prompt_tokens,
+            completion=self.usage.completion + res.usage.completion_tokens,
+        )
         self.model = res.model
         self.emit("gen_delta", {"step": step, "text": res.text, "model": res.model})
         return res
@@ -182,24 +202,53 @@ class RunContext:
         """提案 id；运行时（agent-core loop）覆盖为全局唯一 id。"""
         return f"prop_{self.scenario}_{len(self.proposals) + 1:04d}"
 
-    def propose(self, kind: ProposalKind, anchor: Anchor, *, critic_markdown: str | None = None,
-                comment_body: str | None = None, patch: Patch | None = None,
-                checks_: list[CheckResult] | None = None, usage: Usage | None = None) -> Proposal:
-        p = Proposal(id=self.new_proposal_id(), job_id=self.job_id,
-                     scenario=self.scenario, kind=kind, anchor=anchor, critic_markdown=critic_markdown,
-                     comment_body=comment_body, patch=patch, checks=list(checks_ or []),
-                     model=self.model or "deterministic", usage=usage or Usage(), created_at=time.time())
+    def propose(
+        self,
+        kind: ProposalKind,
+        anchor: Anchor,
+        *,
+        critic_markdown: str | None = None,
+        comment_body: str | None = None,
+        patch: Patch | None = None,
+        checks_: list[CheckResult] | None = None,
+        usage: Usage | None = None,
+    ) -> Proposal:
+        p = Proposal(
+            id=self.new_proposal_id(),
+            job_id=self.job_id,
+            scenario=self.scenario,
+            kind=kind,
+            anchor=anchor,
+            critic_markdown=critic_markdown,
+            comment_body=comment_body,
+            patch=patch,
+            checks=list(checks_ or []),
+            model=self.model or "deterministic",
+            usage=usage or Usage(),
+            created_at=time.time(),
+        )
         self.proposals.append(p)
-        self.emit("proposal", {"id": p.id, "kind": kind, "anchor": anchor.model_dump(),
-                               "preview": _preview(critic_markdown or comment_body or
-                                                   (patch.model_dump_json() if patch else ""))})
+        self.emit(
+            "proposal",
+            {
+                "id": p.id,
+                "kind": kind,
+                "anchor": anchor.model_dump(),
+                "preview": _preview(critic_markdown or comment_body or (patch.model_dump_json() if patch else "")),
+            },
+        )
         return p
 
     def finish(self, error: str | None = None, **extra) -> CheckResult:
         guard = checks.no_direct_write(self._snapshot, checks.snapshot(self.project_dir))
         self.check(guard)
-        data = {"proposals": [p.id for p in self.proposals], "usage": self.usage.model_dump(),
-                "truncated": self.truncated, "calls": self.calls, **extra}
+        data = {
+            "proposals": [p.id for p in self.proposals],
+            "usage": self.usage.model_dump(),
+            "truncated": self.truncated,
+            "calls": self.calls,
+            **extra,
+        }
         if error:
             data["error"] = error
         self.emit("done", data)
@@ -207,8 +256,10 @@ class RunContext:
 
 
 def _scalar(args: dict) -> dict:
-    return {k: (v if isinstance(v, (int, float, bool, str)) and len(str(v)) <= 80 else f"<{type(v).__name__}>")
-            for k, v in args.items()}
+    return {
+        k: (v if isinstance(v, (int, float, bool, str)) and len(str(v)) <= 80 else f"<{type(v).__name__}>")
+        for k, v in args.items()
+    }
 
 
 def _preview(text: str, n: int = 120) -> str:
@@ -216,6 +267,7 @@ def _preview(text: str, n: int = 120) -> str:
 
 
 # ---------------------------------------------------------------- 注册 ----
+
 
 def _modules():
     from app.agent.plans import s1, s2, s3, s4, s5, s6, s7, s8, s9, s10

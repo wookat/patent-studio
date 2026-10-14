@@ -7,6 +7,7 @@
   固定档案而非散进批注。相关度用 ECLA 分类：X 破坏新颖性 / Y 影响创造性 / A 背景 / P 申请日前后之间。
   AUTH=on 需 editor+。
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -38,13 +39,13 @@ def register(server, store):
         return await run_audited(store, pid, "get_novelty", {}, lambda: _load(store, pid))
 
     @server.tool(name="record_novelty")
-    async def record_novelty_tool(pid: str, queries: list[dict] | None = None,
-                                  hits: list[dict] | None = None,
-                                  conclusion: str | None = None) -> dict[str, Any]:
+    async def record_novelty_tool(
+        pid: str, queries: list[dict] | None = None, hits: list[dict] | None = None, conclusion: str | None = None
+    ) -> dict[str, Any]:
         """增量登记查新发现（检索式/对比文件/结论）。s8 或对话检索跑完应把结果记这里；
         对比文件相关度 X/Y/A/P（ECLA）。conclusion 不传则保留已有结论。AUTH=on 需 editor+。"""
-        args = {"queries": len(queries or []), "hits": len(hits or []),
-                "conclusion": conclusion is not None}
+        args = {"queries": len(queries or []), "hits": len(hits or []), "conclusion": conclusion is not None}
         await open_for_write(store, pid, "editor", "record_novelty", args)
-        return await run_audited(store, pid, "record_novelty", args,
-                                 lambda: _record(store, pid, queries, hits, conclusion))
+        return await run_audited(
+            store, pid, "record_novelty", args, lambda: _record(store, pid, queries, hits, conclusion)
+        )

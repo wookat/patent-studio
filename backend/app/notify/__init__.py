@@ -19,6 +19,7 @@ proposal.applied|dismissed 分别对应 deadline.due / comment.mention / comment
 
 写入是同步的（sink.py）；读取 / 已读走 SQLAlchemy async（与 acl / access 同一套会话）。
 """
+
 import asyncio
 import logging
 import os
@@ -39,8 +40,9 @@ TITLE_MAX = 200
 LIST_LIMIT_MAX = 200
 
 
-def project_href(pid: str, *, c: str | None = None, focus: str | None = None, panel: str | None = None,
-                 dl: str | None = None) -> str:
+def project_href(
+    pid: str, *, c: str | None = None, focus: str | None = None, panel: str | None = None, dl: str | None = None
+) -> str:
     """工作台 hash（lib/hash.ts 契约）：#/p/<pid>?panel=<伴随栏 id>&dl=<期限 id>&c=<批注 id>&focus=<块 id>。"""
     q = "&".join(f"{k}={v}" for k, v in (("panel", panel), ("dl", dl), ("c", c), ("focus", focus)) if v)
     return f"#/p/{pid}" + (f"?{q}" if q else "")
@@ -77,8 +79,18 @@ def case_owner(pid: str | None) -> uuid.UUID | None:
 
 # ---------------------------------------------------------------- 写 ----
 
-def create(user_ids, kind: str, title: str, *, body: str = "", pid: str | None = None, href: str | None = None,
-           actor_id: uuid.UUID | None = None, ts: float | None = None) -> int:
+
+def create(
+    user_ids,
+    kind: str,
+    title: str,
+    *,
+    body: str = "",
+    pid: str | None = None,
+    href: str | None = None,
+    actor_id: uuid.UUID | None = None,
+    ts: float | None = None,
+) -> int:
     """给一组用户各写一条未读通知；去重、跳过发起人自己与非法 id；返回写入条数。off 模式不写。"""
     if not config.AUTH_ON or kind not in KINDS:
         return 0
@@ -90,10 +102,20 @@ def create(user_ids, kind: str, title: str, *, body: str = "", pid: str | None =
         if uid is None or uid in seen or uid == actor_id:
             continue
         seen.add(uid)
-        rows.append({
-            "id": sink.new_id(), "user_id": uid, "kind": kind, "title": title[:TITLE_MAX], "body": body,
-            "href": href, "project_id": pid, "actor_user_id": actor_id, "read_at": None, "created_at": now,
-        })
+        rows.append(
+            {
+                "id": sink.new_id(),
+                "user_id": uid,
+                "kind": kind,
+                "title": title[:TITLE_MAX],
+                "body": body,
+                "href": href,
+                "project_id": pid,
+                "actor_user_id": actor_id,
+                "read_at": None,
+                "created_at": now,
+            }
+        )
     from app.auth.models import Notification as Row
 
     n = sink.write(Row, rows)
@@ -144,6 +166,7 @@ async def _mail_users(user_ids: list[uuid.UUID], title: str, body: str) -> None:
 
 # ---------------------------------------------------------------- 订阅者 ----
 
+
 def _recipients(data: dict) -> list:
     if data.get("user_ids"):
         return list(data["user_ids"])
@@ -171,16 +194,32 @@ def on_deadline_due(ev: events.Event) -> None:
 def on_comment_mention(ev: events.Event) -> None:
     d = ev.data
     href = project_href(ev.pid, c=d.get("cid")) if ev.pid else None
-    create(_recipients(d), "mention", f"{_actor_name(ev)} 在批注中提到了你", body=d.get("quote") or d.get("body") or "",
-           pid=ev.pid, href=href, actor_id=_actor_id(ev), ts=ev.ts)
+    create(
+        _recipients(d),
+        "mention",
+        f"{_actor_name(ev)} 在批注中提到了你",
+        body=d.get("quote") or d.get("body") or "",
+        pid=ev.pid,
+        href=href,
+        actor_id=_actor_id(ev),
+        ts=ev.ts,
+    )
 
 
 def on_comment_assign(ev: events.Event) -> None:
     d = ev.data
     href = project_href(ev.pid, c=d.get("cid")) if ev.pid else None
     body = f"截止 {d['due']}" if d.get("due") else (d.get("quote") or "")
-    create(_recipients(d), "assign", f"{_actor_name(ev)} 指派你审阅", body=body, pid=ev.pid, href=href,
-           actor_id=_actor_id(ev), ts=ev.ts)
+    create(
+        _recipients(d),
+        "assign",
+        f"{_actor_name(ev)} 指派你审阅",
+        body=body,
+        pid=ev.pid,
+        href=href,
+        actor_id=_actor_id(ev),
+        ts=ev.ts,
+    )
 
 
 def _notify_case_staff(ev: events.Event, kind: str, title: str, body: str, href: str | None) -> None:
@@ -221,15 +260,21 @@ def on_share_confirmed(ev: events.Event) -> None:
     d = ev.data
     name = d.get("name") or "客户"
     ver = f"第 {d['version']} 版" if d.get("version") is not None else "当前版本"
-    _notify_case_staff(ev, "confirm", f"{name} 已确认{ver}", d.get("note") or "",
-                       project_href(ev.pid) if ev.pid else None)
+    _notify_case_staff(
+        ev, "confirm", f"{name} 已确认{ver}", d.get("note") or "", project_href(ev.pid) if ev.pid else None
+    )
 
 
 def on_share_commented(ev: events.Event) -> None:
     d = ev.data
     name = d.get("name") or "客户"
-    _notify_case_staff(ev, "mention", f"客户 {name} 提交了批注", d.get("quote") or "",
-                       project_href(ev.pid, c=d.get("cid")) if ev.pid else None)
+    _notify_case_staff(
+        ev,
+        "mention",
+        f"客户 {name} 提交了批注",
+        d.get("quote") or "",
+        project_href(ev.pid, c=d.get("cid")) if ev.pid else None,
+    )
 
 
 def on_ai_proposal(ev: events.Event) -> None:
@@ -241,12 +286,25 @@ def on_ai_proposal(ev: events.Event) -> None:
     verb = "已采纳" if action == "applied" else "已忽略"
     what = d.get("title") or d.get("proposal_id") or "AI 建议"
     href = project_href(ev.pid, focus=d.get("block_id")) if ev.pid else None
-    create(to, "ai", f"{_actor_name(ev)} {verb} AI 建议：{what}", body=d.get("summary") or "", pid=ev.pid, href=href,
-           actor_id=_actor_id(ev), ts=ev.ts)
+    create(
+        to,
+        "ai",
+        f"{_actor_name(ev)} {verb} AI 建议：{what}",
+        body=d.get("summary") or "",
+        pid=ev.pid,
+        href=href,
+        actor_id=_actor_id(ev),
+        ts=ev.ts,
+    )
 
 
-_MEMBER_ROLE_LABEL = {"owner": "所有者", "agent": "代理人", "editor": "编辑者",
-                      "reviewer": "审阅者", "viewer": "查看者"}
+_MEMBER_ROLE_LABEL = {
+    "owner": "所有者",
+    "agent": "代理人",
+    "editor": "编辑者",
+    "reviewer": "审阅者",
+    "viewer": "查看者",
+}
 
 
 def on_member_changed(ev: events.Event) -> None:
@@ -266,8 +324,15 @@ def on_member_changed(ev: events.Event) -> None:
         create([uid], "system", f"你已被移出案件「{name}」", pid=ev.pid, actor_id=_actor_id(ev), ts=ev.ts)
     else:
         label = _MEMBER_ROLE_LABEL.get(role, role)
-        create([uid], "system", f"{_actor_name(ev)} 将你在「{name}」的角色变更为{label}",
-               pid=ev.pid, href=project_href(ev.pid), actor_id=_actor_id(ev), ts=ev.ts)
+        create(
+            [uid],
+            "system",
+            f"{_actor_name(ev)} 将你在「{name}」的角色变更为{label}",
+            pid=ev.pid,
+            href=project_href(ev.pid),
+            actor_id=_actor_id(ev),
+            ts=ev.ts,
+        )
 
 
 def on_case_created(ev: events.Event) -> None:
@@ -298,18 +363,26 @@ def install() -> None:
 
 # ---------------------------------------------------------------- 读 / 已读 ----
 
+
 def _out(row, actor) -> Notification:
     from app.auth import acl
 
     return Notification(
-        id=row.id, kind=row.kind, title=row.title, body=row.body, href=row.href, pid=row.project_id,
+        id=row.id,
+        kind=row.kind,
+        title=row.title,
+        body=row.body,
+        href=row.href,
+        pid=row.project_id,
         actor=Actor(**events.actor_of(actor)) if actor is not None else None,
-        read=row.read_at is not None, created_at=acl.utc(row.created_at).timestamp(),
+        read=row.read_at is not None,
+        created_at=acl.utc(row.created_at).timestamp(),
     )
 
 
-async def list_for(user_id: uuid.UUID, *, unread_only: bool = False, limit: int = 50,
-                   before_id: str | None = None) -> NotificationListResponse:
+async def list_for(
+    user_id: uuid.UUID, *, unread_only: bool = False, limit: int = 50, before_id: str | None = None
+) -> NotificationListResponse:
     """通知流分页：before_id 游标取该条之后（更旧）的一页。排序 created_at DESC + id ASC 决胜——
     游标谓词 `created_at < ac OR (= AND id > aid)`。锚点缺失/不属本用户 ⇒ 回落第一页（前端按 id 去重）。"""
     from sqlalchemy import and_, func, or_, select
@@ -327,14 +400,19 @@ async def list_for(user_id: uuid.UUID, *, unread_only: bool = False, limit: int 
         if before_id is not None:
             anchor = await s.get(Row, before_id)
             if anchor is not None and anchor.user_id == user_id:
-                q = q.where(or_(Row.created_at < anchor.created_at,
-                                and_(Row.created_at == anchor.created_at, Row.id > anchor.id)))
+                q = q.where(
+                    or_(
+                        Row.created_at < anchor.created_at,
+                        and_(Row.created_at == anchor.created_at, Row.id > anchor.id),
+                    )
+                )
         # limit+1 探针判断 has_more
         rows = (await s.execute(q.order_by(Row.created_at.desc(), Row.id).limit(limit + 1))).all()
         has_more = len(rows) > limit
         rows = rows[:limit]
-        unread = await s.scalar(select(func.count()).select_from(Row).where(Row.user_id == user_id,
-                                                                              Row.read_at.is_(None)))
+        unread = await s.scalar(
+            select(func.count()).select_from(Row).where(Row.user_id == user_id, Row.read_at.is_(None))
+        )
         return NotificationListResponse(items=[_out(r, u) for r, u in rows], unread=unread or 0, has_more=has_more)
 
 
@@ -374,7 +452,8 @@ async def mark_all_read(user_id: uuid.UUID) -> int:
 
     await init_db()
     async with SessionLocal() as s:
-        r = await s.execute(update(Row).where(Row.user_id == user_id, Row.read_at.is_(None))
-                            .values(read_at=datetime.now(UTC)))
+        r = await s.execute(
+            update(Row).where(Row.user_id == user_id, Row.read_at.is_(None)).values(read_at=datetime.now(UTC))
+        )
         await s.commit()
         return r.rowcount or 0

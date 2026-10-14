@@ -4,6 +4,7 @@
 latest-wins：每个案子维护递增 seq；请求进入即分配 seq；拿到全局构建锁后若已被更新的请求
 超越，直接返回 superseded，不再浪费 soffice 时间。
 """
+
 import glob
 import logging
 import os
@@ -66,10 +67,16 @@ def safe_lint(store: ProjectStore, project, content: str, settings: dict | None)
 def with_build_error(diagnostics: list[dict], error: dict) -> list[dict]:
     """把构建错误镜像为一条 source=build 的 diagnostic，放在最前；同一问题的 lint 项同行时去重。"""
     twin = _KIND_TO_LINT.get(error.get("kind", ""))
-    rest = [d for d in diagnostics
-            if not (twin and d["id"].split("#")[0] == twin and d.get("line") == error.get("line"))]
-    mirror = {"id": f"build.{error.get('kind', 'build')}", "severity": "error", "source": "build",
-              "message": error.get("message", "构建失败"), "line": error.get("line")}
+    rest = [
+        d for d in diagnostics if not (twin and d["id"].split("#")[0] == twin and d.get("line") == error.get("line"))
+    ]
+    mirror = {
+        "id": f"build.{error.get('kind', 'build')}",
+        "severity": "error",
+        "source": "build",
+        "message": error.get("message", "构建失败"),
+        "line": error.get("line"),
+    }
     if error.get("detail"):
         mirror["detail"] = error["detail"]
     return [mirror, *rest]
@@ -108,9 +115,17 @@ def _prune_builds(builds_dir, keep):
             shutil.rmtree(d, ignore_errors=True)
 
 
-def run_build(store: ProjectStore, pid: str, content: str | None, settings: dict | None,
-              want_pdf: bool = True, mode: str = "final", *, tagged: bool = False,
-              author: str = tracked.DEFAULT_AUTHOR) -> BuildOutcome:
+def run_build(
+    store: ProjectStore,
+    pid: str,
+    content: str | None,
+    settings: dict | None,
+    want_pdf: bool = True,
+    mode: str = "final",
+    *,
+    tagged: bool = False,
+    author: str = tracked.DEFAULT_AUTHOR,
+) -> BuildOutcome:
     """mode（07 §6.3）：final/original 按接受/拒绝后的文本排版；markup 走 Word 原生修订（w:ins/w:del，
     LibreOffice 以作者色下划线 / 删除线 + 页边改动竖线渲染，与 Word「所有标记」一致）；lint 恒按 final 文本检查。
 
@@ -120,8 +135,9 @@ def run_build(store: ProjectStore, pid: str, content: str | None, settings: dict
     t0 = time.perf_counter()
     with _build_lock:
         if mine < latest_seq(pid):
-            return BuildOutcome(status="superseded", seq=mine,
-                                timings={"queue_ms": round((time.perf_counter() - t0) * 1000)})
+            return BuildOutcome(
+                status="superseded", seq=mine, timings={"queue_ms": round((time.perf_counter() - t0) * 1000)}
+            )
         t_lock = time.perf_counter()
         project = store.get(pid)
         if content is None:
@@ -143,6 +159,7 @@ def run_build(store: ProjectStore, pid: str, content: str | None, settings: dict
             # 构建前把新/更新过的图源渲成 figs/<stem>.png 并收进 figures.md
             try:
                 from app.domain import figures as figures_mod
+
                 figures_mod.promote_figure_sources(store, pid)
                 # 晋级改写了 figures.md——project.settings 是 store.get 时按旧清单
                 # 物化的派生视图，不刷新则本次构建仍嵌晋级前的占位图（bert-12 实案：
@@ -167,22 +184,42 @@ def run_build(store: ProjectStore, pid: str, content: str | None, settings: dict
         except ProjectError as e:
             timings["total_ms"] = round((time.perf_counter() - t0) * 1000)
             error = {"kind": "settings", "message": str(e), "line": None, "detail": str(e)}
-            return BuildOutcome(status="error", build_id=build_id, seq=mine, timings=timings, error=error,
-                                diagnostics=with_build_error(diagnostics, error))
+            return BuildOutcome(
+                status="error",
+                build_id=build_id,
+                seq=mine,
+                timings=timings,
+                error=error,
+                diagnostics=with_build_error(diagnostics, error),
+            )
         except Exception as e:  # noqa: BLE001 - 所有内核/转换错误都要转成可读结果
             timings["total_ms"] = round((time.perf_counter() - t0) * 1000)
             error = describe_error(e, content)
-            return BuildOutcome(status="error", build_id=build_id, seq=mine, timings=timings, error=error,
-                                diagnostics=with_build_error(diagnostics, error))
+            return BuildOutcome(
+                status="error",
+                build_id=build_id,
+                seq=mine,
+                timings=timings,
+                error=error,
+                diagnostics=with_build_error(diagnostics, error),
+            )
         finally:
             _prune_builds(builds_dir, config.KEEP_BUILDS)
         timings["total_ms"] = round((time.perf_counter() - t0) * 1000)
         log.info("build %s/%s %s", pid, build_id, " ".join(f"{k}={v}" for k, v in timings.items()))
         base = f"/api/projects/{pid}/builds/{build_id}"
         return BuildOutcome(
-            status="ok", build_id=build_id, seq=mine, timings=timings,
-            summary={"title": res.title, "abstract_chars": res.abstract_chars, "claims": res.claims,
-                     "paragraphs": res.paragraphs, "pages": pages},
+            status="ok",
+            build_id=build_id,
+            seq=mine,
+            timings=timings,
+            summary={
+                "title": res.title,
+                "abstract_chars": res.abstract_chars,
+                "claims": res.claims,
+                "paragraphs": res.paragraphs,
+                "pages": pages,
+            },
             pdf_url=f"{base}/out.pdf" if want_pdf else None,
             docx_url=f"{base}/out.docx",
             diagnostics=diagnostics,

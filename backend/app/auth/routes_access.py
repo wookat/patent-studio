@@ -5,6 +5,7 @@ AUTH=off ⇒ 三条路由 501（errors.not_implemented，detail = 单元名，�
 门槛：/access GET owner（ROUTE_ROLE）；/collab-settings GET viewer、PUT 在路由内 `auth.require_role("owner")`。
 AUTH_ON 在请求时读（不在 import 时分支）：测试按 on/off 重载 config 时本模块不会被重新 import。
 """
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 

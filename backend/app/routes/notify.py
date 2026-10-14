@@ -11,6 +11,7 @@
 机构审计 / 机构设置路由在 auth/routes/admin.py（与成员表、机构名同一 router）。
 import 本模块即完成事件订阅安装（main.py 只 include router，不另接线）。
 """
+
 import json
 import os
 import uuid
@@ -23,8 +24,15 @@ from app.domain import events, org_audit
 from app.domain.cases import case_path
 from app.domain.projects import ProjectError
 from app.errors import kind_error
-from app.schemas import (Notification, NotificationListResponse, NudgeIn, NudgeResult,
-                         ReadAllResult, WebhookTestIn, WebhookTestResult)
+from app.schemas import (
+    Notification,
+    NotificationListResponse,
+    NudgeIn,
+    NudgeResult,
+    ReadAllResult,
+    WebhookTestIn,
+    WebhookTestResult,
+)
 
 UNIT = "notify-audit-backend"
 router = APIRouter(tags=["notify"], dependencies=[Depends(require_login)])
@@ -43,8 +51,9 @@ def _raw_case(project_dir: str) -> dict:
 
 
 @router.get("/api/notify", response_model=NotificationListResponse)
-async def list_notifications(user: CurrentUser, unread: bool = False, limit: int = 50,
-                             before_id: str | None = None) -> NotificationListResponse:
+async def list_notifications(
+    user: CurrentUser, unread: bool = False, limit: int = 50, before_id: str | None = None
+) -> NotificationListResponse:
     if user is None:
         return NotificationListResponse(items=[], unread=0)
     return await notify.list_for(user.id, unread_only=unread, limit=limit, before_id=before_id)
@@ -92,10 +101,22 @@ async def nudge(pid: str, body: NudgeIn, request: Request, user: CurrentUser) ->
             if d.get("id") == body.deadline_id:
                 what = f"{d.get('title') or d.get('note') or d.get('kind')}（{d.get('due')}）"
     title = f"{user.display_name or user.email} 催办：{what}"
-    ev = events.emit("deadline.nudge", pid=pid, actor=events.actor_of(user),
-                     data={"user_id": str(target_id), "deadline_id": body.deadline_id, "message": body.message or ""})
-    n = notify.create([target_id], "nudge", title, body=body.message or "", pid=pid,
-                      href=notify.project_href(pid, panel="deadlines", dl=body.deadline_id), actor_id=user.id, ts=ev.ts)
+    ev = events.emit(
+        "deadline.nudge",
+        pid=pid,
+        actor=events.actor_of(user),
+        data={"user_id": str(target_id), "deadline_id": body.deadline_id, "message": body.message or ""},
+    )
+    n = notify.create(
+        [target_id],
+        "nudge",
+        title,
+        body=body.message or "",
+        pid=pid,
+        href=notify.project_href(pid, panel="deadlines", dl=body.deadline_id),
+        actor_id=user.id,
+        ts=ev.ts,
+    )
     return NudgeResult(notified=n)
 
 
@@ -103,7 +124,9 @@ async def nudge(pid: str, body: NudgeIn, request: Request, user: CurrentUser) ->
 async def webhook_test(pid: str, body: WebhookTestIn, request: Request) -> WebhookTestResult:
     """「发送测试」：向给定 URL 或已存 settings.notify_webhook_url 同步 POST 一条 ping。"""
     import asyncio
+
     from app.notify import webhook
+
     url = (body.url or "").strip() or webhook.url_for(pid)
     if not url:
         raise kind_error("validation", "未配置 webhook URL——先填地址或保存到集成设置")

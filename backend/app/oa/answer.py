@@ -7,6 +7,7 @@ answer(...) 返回 {item_id, points, claim_edits, amend_summary}：
   再过 critic.lint_marks 与 patch.patch_block 试装（不落盘）；不合法的建议丢进 warnings。
   写回由前端经既有 POST /api/projects/{pid}/blocks/{block_id}（patch.py）完成，用户接受/拒绝。
 """
+
 import difflib
 import json
 import os
@@ -59,8 +60,11 @@ def load_items_bundle(project_dir: str) -> dict:
     此前 items.json/答复文件只写不读：POST /parse 的响应是唯一获取途径，页面一刷新
     oaItems 就只剩轮次行上的条数而没有条目本体（D-OA-1）。"""
     raw = _items_raw(project_dir)
-    return {"items": raw.get("items") or [], "warnings": raw.get("warnings") or [],
-            "answers": load_answers(project_dir)}
+    return {
+        "items": raw.get("items") or [],
+        "warnings": raw.get("warnings") or [],
+        "answers": load_answers(project_dir),
+    }
 
 
 def save_answer(project_dir: str, ans: dict) -> None:
@@ -83,6 +87,7 @@ def load_answers(project_dir: str) -> list[dict]:
 
 
 # ---------------- CriticMarkup 生成 ----------------
+
 
 def _mark_line(old: str, new: str) -> str:
     if old == new:
@@ -129,6 +134,7 @@ def to_critic(original: str, revised: str) -> str:
 
 # ---------------- 权项上下文与建议校验 ----------------
 
+
 def claim_blocks(content: str) -> dict[int, dict]:
     """{权项号: {block_id, line, text}}；text 为块原文（多行以 \\n 连接）。"""
     ast = parse_ast(content)
@@ -137,8 +143,7 @@ def claim_blocks(content: str) -> dict[int, dict]:
     out = {}
     for c in ast["claims"]:
         a, b = c["lines"]["start"], c["lines"]["end"]
-        out[c["num"]] = {"block_id": c["id"], "line": off + a,
-                         "text": "\n".join(lines[off + a - 1: off + b])}
+        out[c["num"]] = {"block_id": c["id"], "line": off + a, "text": "\n".join(lines[off + a - 1 : off + b])}
     return out
 
 
@@ -181,8 +186,15 @@ def normalize_edits(content: str, edits: list, claims: dict[int, dict]) -> tuple
             continue
         if line == blk["text"]:
             continue
-        out.append({"claim": num, "block_id": blk["block_id"], "line": blk["line"], "critic_line": line,
-                    "original": blk["text"]})
+        out.append(
+            {
+                "claim": num,
+                "block_id": blk["block_id"],
+                "line": blk["line"],
+                "critic_line": line,
+                "original": blk["text"],
+            }
+        )
     return out, warnings
 
 
@@ -198,10 +210,12 @@ def _context(content: str, item: dict, claims: dict[int, dict]) -> str:
 
 
 def _user(item: dict) -> str:
-    return ("下面是一条审查意见，请给出申请人的答复要点（逐点，面向审查员的意见陈述），\n"
-            "并对被指出的权利要求提出修改建议：\n"
-            "claim_edits 中每项 {claim: 权项号, critic_line: 该权项修改后的完整正文（可用 CriticMarkup 标出改动）}；"
-            "不需要修改就给空数组；amend_summary 用一两句话概括修改。\n\n审查意见：\n" + item["text"])
+    return (
+        "下面是一条审查意见，请给出申请人的答复要点（逐点，面向审查员的意见陈述），\n"
+        "并对被指出的权利要求提出修改建议：\n"
+        "claim_edits 中每项 {claim: 权项号, critic_line: 该权项修改后的完整正文（可用 CriticMarkup 标出改动）}；"
+        "不需要修改就给空数组；amend_summary 用一两句话概括修改。\n\n审查意见：\n" + item["text"]
+    )
 
 
 async def answer(*, store, ai, pid: str, item: dict, job_id: str | None = None) -> dict:

@@ -1,4 +1,5 @@
 """s1 拆分件（按职责搬出；名照旧私有下划线，s1.py 经 star re-export 保持原命名空间）。"""
+
 from __future__ import annotations
 
 import re
@@ -7,7 +8,8 @@ import re
 # 「N至M」区间展开 + 「N或M」「N、M」列举逐项收齐；从属权项以「根据/如/按照…权利要求」起句识别
 _CLAIM_REF_ANY = re.compile(
     r"权利要求\s*(\d+)\s*(?:至|到|-|~|～|—)\s*(\d+)"
-    r"|权利要求\s*(\d+)((?:\s*(?:或|和|及|、)\s*\d+)*)")
+    r"|权利要求\s*(\d+)((?:\s*(?:或|和|及|、)\s*\d+)*)"
+)
 
 
 _CLAIM_DEP_LEAD = re.compile(r"^\s*(?:根据|如|按照|依据|依照|按)\s*权利要求")
@@ -32,8 +34,7 @@ def _claim_ref_nums(text: str, self_num: int) -> set[int]:
 def _multi_multi_violations(claims: list[str]) -> list[tuple[int, list[int]]]:
     """多项从属权项（引≥2项的从属）再引多项从属权——§22 违规对；独权型引用（四型束）不算。"""
     refs = {i + 1: _claim_ref_nums(c, i + 1) for i, c in enumerate(claims)}
-    dep = {n for n, c in enumerate(claims, 1)
-           if _CLAIM_DEP_LEAD.match(_CLAIM_NUM_PREFIX.sub("", c))}
+    dep = {n for n, c in enumerate(claims, 1) if _CLAIM_DEP_LEAD.match(_CLAIM_NUM_PREFIX.sub("", c))}
     multi_dep = {n for n in dep if len(refs[n]) > 1}
     return [(n, sorted(refs[n] & multi_dep)) for n in sorted(multi_dep) if refs[n] & multi_dep]
 
@@ -42,7 +43,8 @@ def _multi_multi_violations(claims: list[str]) -> list[tuple[int, list[int]]]:
 # 被惰性匹配先撞上「模型」误归装置族，四型束缺型核对与载体并立检出双双被绕过
 _CLAIM_SUBJECT = re.compile(
     r"一种[^,，；;]{0,40}?(存储介质|程序产品|电子设备|装置|系统|模型|方法|设备)"
-    r"(?=[,，；;:：]|其特征|包括|$)")
+    r"(?=[,，；;:：]|其特征|包括|$)"
+)
 
 
 def _type_bundle_missing(claims: list[str]) -> list[str]:
@@ -57,9 +59,15 @@ def _type_bundle_missing(claims: list[str]) -> list[str]:
         if not m:
             continue
         w = m.group(1)
-        fams.add("介质" if w in ("存储介质", "程序产品") else
-                 "装置" if w in ("装置", "系统", "模型") else
-                 "设备" if w in ("电子设备", "设备") else w)
+        fams.add(
+            "介质"
+            if w in ("存储介质", "程序产品")
+            else "装置"
+            if w in ("装置", "系统", "模型")
+            else "设备"
+            if w in ("电子设备", "设备")
+            else w
+        )
     return [f for f in ("方法", "装置", "设备", "介质") if f not in fams]
 
 
@@ -85,7 +93,8 @@ def _no_characterizing(claims: list[str]) -> list[int]:
 
 
 _CLAIM_DEP_REF_HEAD = re.compile(
-    r"^(根据|如|按照|依照)权利要求[0-9０-９至—\-或和以及之中任一项\s]+所述的[^，。；：]{1,80}?([，,：:])")
+    r"^(根据|如|按照|依照)权利要求[0-9０-９至—\-或和以及之中任一项\s]+所述的[^，。；：]{1,80}?([，,：:])"
+)
 
 
 _CLAIM_IND_FEATURE = re.compile(r"(包括|包含|具有|由|步骤如下|包括以下|采用)")
@@ -102,18 +111,18 @@ def _insert_characterizing(claim: str) -> str:
     if "其特征在于" in c:
         return c
     pre_m = re.match(r"^\s*(\d+[.、．)]?\s*)", c)
-    pre, body = (pre_m.group(1), c[pre_m.end():]) if pre_m else ("", c)
+    pre, body = (pre_m.group(1), c[pre_m.end() :]) if pre_m else ("", c)
     m = _CLAIM_DEP_REF_HEAD.match(body)
     if m:
-        head, rest = body[: m.start(2)], body[m.end(2):]
+        head, rest = body[: m.start(2)], body[m.end(2) :]
         rest = re.sub(r"^\s*(其中|另|此外|进一步地|进一步的|进一步|所述之|所述)[，,、]?", "", rest, count=1)
         return f"{pre}{head}，其特征在于，{rest}"
     m = _CLAIM_IND_FEATURE.search(body)
     if m and m.start() >= 6:
-        return pre + body[: m.start()] + "其特征在于，" + body[m.start():]
+        return pre + body[: m.start()] + "其特征在于，" + body[m.start() :]
     m = re.search(r"[，,]", body)
     if m:
-        return pre + body[: m.end()] + "其特征在于，" + body[m.end():]
+        return pre + body[: m.end()] + "其特征在于，" + body[m.end() :]
     return pre + body + "，其特征在于，"
 
 
@@ -121,8 +130,7 @@ def _flat_gradient_violations(claims: list[str]) -> list[tuple[int, int]]:
     """从权无梯度——与 preflight claims.gradient 同口径：同一独权的从权簇（含链式子孙）
     ≥3 项而无一引用在先从权 = 平铺星形。返回 [(独权号, 簇大小)]。"""
     refs = {i + 1: _claim_ref_nums(c, i + 1) for i, c in enumerate(claims)}
-    dep = {n for n, c in enumerate(claims, 1)
-           if _CLAIM_DEP_LEAD.match(_CLAIM_NUM_PREFIX.sub("", c))}
+    dep = {n for n, c in enumerate(claims, 1) if _CLAIM_DEP_LEAD.match(_CLAIM_NUM_PREFIX.sub("", c))}
     children: dict[int, list[int]] = {}
     for n in dep:
         for t in refs[n]:
@@ -147,9 +155,15 @@ def _claim_family(head: str) -> str | None:
     if not m:
         return None
     w = m.group(1)
-    return ("介质" if w in ("存储介质", "程序产品") else
-            "装置" if w in ("装置", "系统", "模型") else
-            "设备" if w in ("电子设备", "设备") else w)
+    return (
+        "介质"
+        if w in ("存储介质", "程序产品")
+        else "装置"
+        if w in ("装置", "系统", "模型")
+        else "设备"
+        if w in ("电子设备", "设备")
+        else w
+    )
 
 
 def _claim_families(claims: list[str]) -> list[str | None]:
@@ -180,9 +194,15 @@ def _claim_families(claims: list[str]) -> list[str | None]:
                 m = re.search(r"(存储介质|程序产品|电子设备|装置|系统|模型|方法|设备)", heads[n - 1])
                 if m:
                     w = m.group(1)
-                    fams[n - 1] = ("介质" if w in ("存储介质", "程序产品") else
-                                   "装置" if w in ("装置", "系统", "模型") else
-                                   "设备" if w in ("电子设备", "设备") else w)
+                    fams[n - 1] = (
+                        "介质"
+                        if w in ("存储介质", "程序产品")
+                        else "装置"
+                        if w in ("装置", "系统", "模型")
+                        else "设备"
+                        if w in ("电子设备", "设备")
+                        else w
+                    )
         else:
             fams[n - 1] = _claim_family(heads[n - 1])
     return fams
@@ -190,8 +210,7 @@ def _claim_families(claims: list[str]) -> list[str | None]:
 
 # 载体权「…任一项所述方法」引用——只许指向方法族权项；ddpm-r84 实案权3/4 引用
 # 「权利要求1至2任一项所述方法」而权2为系统独权，非方法权项被拽进方法引用范围
-_CARRIER_METHOD_REF = re.compile(
-    r"权利要求[\s\d至到\-~～—、或和及]*任一项?所述方法|权利要求\s*\d+\s*所述方法")
+_CARRIER_METHOD_REF = re.compile(r"权利要求[\s\d至到\-~～—、或和及]*任一项?所述方法|权利要求\s*\d+\s*所述方法")
 
 
 def _carrier_method_ref_violations(claims: list[str]) -> list[int]:
@@ -261,7 +280,9 @@ def _normalize_claim_order(claims: list[str]) -> list[str]:
                     return f"权利要求{a}{conn.group(0) if conn else '至'}{b}"
                 tail = re.sub(r"\d+", lambda x: str(remap.get(int(x.group(0)), int(x.group(0)))), m.group(4) or "")
                 return f"权利要求{remap.get(int(m.group(3)), int(m.group(3)))}{tail}"
+
             return _CLAIM_REF_ANY.sub(sub, text)
+
         reordered = [_reno(str(c)) for c in reordered]
     else:
         reordered = [str(c) for c in claims]
@@ -277,10 +298,10 @@ def _normalize_claim_order(claims: list[str]) -> list[str]:
         if any(1 <= t <= len(reordered) and fams[t - 1] != "方法" for t in range(lo, hi + 1)):
             block = "权利要求" + "、".join(map(str, mnums)) + "任一项"
         reordered = [
-            _CARRIER_METHOD_REF.sub(block + "所述方法", c) if i + 1 in bad else c
-            for i, c in enumerate(reordered)]
-    return [f"{i + 1}.{_CLAIM_NUM_PREFIX.sub('', c, count=1).lstrip()}"
-            for i, c in enumerate(reordered)]
+            _CARRIER_METHOD_REF.sub(block + "所述方法", c) if i + 1 in bad else c for i, c in enumerate(reordered)
+        ]
+    return [f"{i + 1}.{_CLAIM_NUM_PREFIX.sub('', c, count=1).lstrip()}" for i, c in enumerate(reordered)]
+
 
 __all__ = [
     "_CARRIER_METHOD_REF",

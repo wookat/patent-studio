@@ -3,6 +3,7 @@
 mock 供应商 / 提示词 / 任务表可用、lint 的 terms 钩子零漂移。
 各单元的功能测试见 test_ai / test_terms / test_convert / test_oa。
 """
+
 import asyncio
 import importlib
 import os
@@ -19,12 +20,16 @@ from app.domain.lint import lint
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("PATENT_STUDIO_AI_PROVIDER", "mock")
     from app import config, main
@@ -108,7 +113,7 @@ def test_prompts_and_mock_provider():
     review = asyncio.run(mp.complete(MODELS["heavy"], prompts.build("review", "审阅"), timeout=300))[0]
     data = prompts.parse_json(review, prompts.SCHEMAS["review"])
     assert data["items"][0]["rule"] == "A26.4"
-    assert prompts.parse_json("```json\n{\"items\": []}\n```", prompts.SCHEMAS["review"]) == {"items": []}
+    assert prompts.parse_json('```json\n{"items": []}\n```', prompts.SCHEMAS["review"]) == {"items": []}
     with pytest.raises(ValueError):
         prompts.parse_json("{}", prompts.SCHEMAS["review"])
     # 尾随/前导评论救回首个完整对象（vit-8 实案 BudgetExceeded 根修）

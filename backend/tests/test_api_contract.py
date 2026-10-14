@@ -2,6 +2,7 @@
 """W5 骨架锁（docs/plan/21 §7.4.8）：错误码表、事件总线、schemas、agent 场景表 / 注册表（S8 禁止）、
 JobStore steps / queue_key FIFO / 取消语义、W5 占位路由 501 形状 + ACL 映射、新表建表、CNIPA 资产 MD5 基线、
 OA PDF 与 agent 事件 fixture。单元落地后把对应 501 断言改成正式契约测试（各自的 test_*.py）。"""
+
 import asyncio
 import hashlib
 import json
@@ -24,6 +25,7 @@ FIX = os.path.join(BACKEND, "tests", "fixtures")
 
 # ---------------------------------------------------------------- errors ----
 
+
 def test_error_kinds_and_status_map():
     from fastapi import HTTPException
 
@@ -41,6 +43,7 @@ def test_error_kinds_and_status_map():
 
 
 # ---------------------------------------------------------------- events ----
+
 
 def test_event_bus_sync_async_wildcard_and_isolation():
     from app.domain import events
@@ -100,23 +103,52 @@ def test_create_project_emits_case_created_and_runs_hooks(client):
 
 # ---------------------------------------------------------------- schemas ----
 
+
 def test_schemas_shapes_match_frontend_types():
     """字段名 / 枚举值与 frontend/src/types/w5.ts 一致（前后端共享形状；单元不得另造同名模型）。"""
     from app import schemas as s
 
-    d = s.DeadlineItem(id="d1", pid="p", title="答复 OA1", kind="oa_reply", due="2026-03-01", source="auto",
-                       status="due_soon", days_left=10, legal_basis=s.LegalBasis(text="细则", url="https://x"))
+    d = s.DeadlineItem(
+        id="d1",
+        pid="p",
+        title="答复 OA1",
+        kind="oa_reply",
+        due="2026-03-01",
+        source="auto",
+        status="due_soon",
+        days_left=10,
+        legal_basis=s.LegalBasis(text="细则", url="https://x"),
+    )
     dd = d.model_dump()
-    assert {"case_no", "base_date", "rule", "override_reason", "owner", "client", "done", "done_at",
-            "extensions"} <= set(dd)
+    assert {
+        "case_no",
+        "base_date",
+        "rule",
+        "override_reason",
+        "owner",
+        "client",
+        "done",
+        "done_at",
+        "extensions",
+    } <= set(dd)
     assert dd["done"] is False and dd["extensions"] == []
-    assert set(s.DeadlineKind.__args__) == {"oa_reply", "exam_request", "priority", "annual_fee", "review_due",
-                                            "divisional", "reexam", "publication", "custom"}
+    assert set(s.DeadlineKind.__args__) == {
+        "oa_reply",
+        "exam_request",
+        "priority",
+        "annual_fee",
+        "review_due",
+        "divisional",
+        "reexam",
+        "publication",
+        "custom",
+    }
     assert set(s.DeadlineStatus.__args__) == {"upcoming", "due_soon", "overdue", "done"}
     n = s.Notification(id="n1", kind="mention", title="t", created_at=1.0)
     assert n.read is False and n.body == "" and n.href is None
-    link = s.PublicShareLink(token="t" * 32, pid="p", scope="confirm", created_by={"id": "u", "display_name": "甲"},
-                             created_at=1.0)
+    link = s.PublicShareLink(
+        token="t" * 32, pid="p", scope="confirm", created_by={"id": "u", "display_name": "甲"}, created_at=1.0
+    )
     assert link.allow_download is False and link.visits == 0
     with pytest.raises(ValidationError):
         s.PublicShareLinkIn(scope="write")
@@ -126,10 +158,19 @@ def test_schemas_shapes_match_frontend_types():
     assert s.BuildTagged().pdf_tagged is False
     # 与前端领域契约的字面量枚举逐一对齐（文本级校验，防止某一侧改了枚举值另一侧不知道）
     tdir = os.path.join(BACKEND, "..", "frontend", "src", "types")
-    ts = "".join(open(os.path.join(tdir, n), encoding="utf-8").read()
-                 for n in ("deadlines.ts", "notify.ts", "public-share.ts", "oa.ts"))
-    for name in ("DeadlineKind", "DeadlineStatus", "DeadlineRange", "NotificationKind", "PublicShareScope",
-                 "OaRoundKind", "OaDelivery"):
+    ts = "".join(
+        open(os.path.join(tdir, n), encoding="utf-8").read()
+        for n in ("deadlines.ts", "notify.ts", "public-share.ts", "oa.ts")
+    )
+    for name in (
+        "DeadlineKind",
+        "DeadlineStatus",
+        "DeadlineRange",
+        "NotificationKind",
+        "PublicShareScope",
+        "OaRoundKind",
+        "OaDelivery",
+    ):
         m = re.search(rf"export type {name} = ([^\n]+)", ts)
         assert m, name
         front = set(re.findall(r"'([^']+)'", m.group(1)))
@@ -137,6 +178,7 @@ def test_schemas_shapes_match_frontend_types():
 
 
 # ---------------------------------------------------------------- agent ----
+
 
 def test_agent_scenarios_s8_unsealed_and_registry():
     """s8 解封（契约刻意变更）：待检索查新笔记场景，不伪造检索结论。"""
@@ -175,6 +217,7 @@ def test_agent_events_fixture_is_valid_step_stream():
 
 
 # ---------------------------------------------------------------- jobs ----
+
 
 def test_jobstore_steps_fifo_and_cancel(tmp_path):
     from app.ai.jobs import JobStore
@@ -292,9 +335,12 @@ def test_watch_steps_ends_on_terminal(tmp_path):
 # ---------------------------------------------------------------- routes ----
 
 W5_LANDED = {
-    "deadlines-backend": [("GET", "/api/deadlines"), ("POST", "/api/projects/{pid}/deadlines/compute"),
-                          ("PUT", "/api/projects/{pid}/deadlines/d1"),
-                          ("POST", "/api/projects/{pid}/deadlines/d1/done")],
+    "deadlines-backend": [
+        ("GET", "/api/deadlines"),
+        ("POST", "/api/projects/{pid}/deadlines/compute"),
+        ("PUT", "/api/projects/{pid}/deadlines/d1"),
+        ("POST", "/api/projects/{pid}/deadlines/d1/done"),
+    ],
 }
 
 
@@ -343,11 +389,15 @@ def test_w5_on_public_is_anonymous_and_tables_exist(on):
     names = {r[0] for r in sqlite3.connect(config.DB_PATH).execute("select name from sqlite_master where type='table'")}
     assert {"notifications", "public_share_links", "org_audit_events"} <= names
     idx = {r[0] for r in sqlite3.connect(config.DB_PATH).execute("select name from sqlite_master where type='index'")}
-    assert {"ix_notifications_user_read_created", "ix_public_share_links_project_revoked",
-            "ix_org_audit_events_ts_kind"} <= idx
+    assert {
+        "ix_notifications_user_read_created",
+        "ix_public_share_links_project_revoked",
+        "ix_org_audit_events_ts_kind",
+    } <= idx
 
 
 # ---------------------------------------------------------------- fixtures / golden ----
+
 
 def test_cnipa_assets_md5_golden():
     root = os.path.join(BACKEND, "src", "patent_studio", "kernel", "cnipa_dtd")

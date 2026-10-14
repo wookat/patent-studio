@@ -6,6 +6,7 @@
 - HTTP（AUTH=on）：ACL —— viewer 调 set_case_status / set_figure_width 403（error:forbidden 进审计），owner 可写，
   语义工具 viewer 可读；set_case_status 的 git 提交作者 = PAT 绑定用户。
 """
+
 import asyncio
 import importlib
 import json
@@ -26,12 +27,14 @@ SEMANTIC = ("get_claim_tree", "get_support_map", "get_figures", "get_terms", "co
 def _pdf(text: str) -> bytes:
     """最小的未压缩单页 PDF（Helvetica，ASCII 正文），pdftotext 可读。"""
     stream = f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET"
-    objs = ["<< /Type /Catalog /Pages 2 0 R >>",
-            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
-            "/Resources << /Font << /F1 5 0 R >> >> >>",
-            f"<< /Length {len(stream)} >>\nstream\n{stream}\nendstream",
-            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"]
+    objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        "/Resources << /Font << /F1 5 0 R >> >> >>",
+        f"<< /Length {len(stream)} >>\nstream\n{stream}\nendstream",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
     out, offs = "%PDF-1.4\n", []
     for i, o in enumerate(objs, 1):
         offs.append(len(out.encode()))
@@ -47,8 +50,11 @@ def _projects(tmp_path):
     projects = tmp_path / "projects"
     projects.mkdir()
     for pid in ("method", "system"):
-        shutil.copytree(os.path.join(ROOT, "examples", pid), projects / pid,
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            os.path.join(ROOT, "examples", pid),
+            projects / pid,
+            ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+        )
     att = projects / "method" / "attachments"
     att.mkdir()
     shutil.copy(DOCX_FIXTURE, att / "prior.docx")
@@ -61,6 +67,7 @@ def _projects(tmp_path):
 def _call(c, name, args):
     async def go():
         return (await c.call_tool(name, args)).structured_content
+
     return go()
 
 
@@ -76,6 +83,7 @@ def _rows(sc):
 
 # ---------------------------------------------------------------- stdio / AUTH=off ----
 
+
 def test_stdio_case_and_attachments_both_projects(tmp_path, monkeypatch):
     projects = _projects(tmp_path)
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
@@ -88,21 +96,26 @@ def test_stdio_case_and_attachments_both_projects(tmp_path, monkeypatch):
                 out[f"case_{pid}"] = await _call(c, "get_case", {"pid": pid})
             out["set"] = await _call(c, "set_case_status", {"pid": "method", "status": "filed", "note": "递交完成"})
             out["set_same"] = test_mcp._tool_error(
-                await c.call_tool("set_case_status", {"pid": "method", "status": "filed"}))
+                await c.call_tool("set_case_status", {"pid": "method", "status": "filed"})
+            )
             out["set_bad"] = await c.call_tool("set_case_status", {"pid": "method", "status": "nope"})
             out["after"] = await _call(c, "get_case", {"pid": "method"})
             out["atts"] = await _call(c, "list_attachments", {"pid": "method"})
             out["atts_sys"] = await _call(c, "list_attachments", {"pid": "system"})
             for n in ("prior.docx", "note.md", "prior.pdf"):
                 out[n] = await _call(c, "read_attachment_text", {"pid": "method", "name": n})
-            out["md_cut"] = await _call(c, "read_attachment_text",
-                                        {"pid": "method", "name": "note.md", "max_chars": 20})
+            out["md_cut"] = await _call(
+                c, "read_attachment_text", {"pid": "method", "name": "note.md", "max_chars": 20}
+            )
             out["png"] = test_mcp._tool_error(
-                await c.call_tool("read_attachment_text", {"pid": "method", "name": "pic.png"}))
+                await c.call_tool("read_attachment_text", {"pid": "method", "name": "pic.png"})
+            )
             out["missing"] = test_mcp._tool_error(
-                await c.call_tool("read_attachment_text", {"pid": "method", "name": "x.docx"}))
+                await c.call_tool("read_attachment_text", {"pid": "method", "name": "x.docx"})
+            )
             out["bad_pid"] = test_mcp._tool_error(await c.call_tool("get_case", {"pid": "nope"}))
         return out
+
     o = asyncio.run(run())
 
     for pid in ("method", "system"):
@@ -112,23 +125,42 @@ def test_stdio_case_and_attachments_both_projects(tmp_path, monkeypatch):
     assert o["set_bad"].is_error  # Literal 校验：非法状态在参数层被拒
     assert o["bad_pid"]["kind"] == "not_found"
     log = history.log(str(projects / "method"))
-    assert log and log[0]["message"].startswith("case:") and "drafting" in log[0]["message"] \
-        and "filed" in log[0]["message"] and "递交完成" in log[0]["message"]
+    assert (
+        log
+        and log[0]["message"].startswith("case:")
+        and "drafting" in log[0]["message"]
+        and "filed" in log[0]["message"]
+        and "递交完成" in log[0]["message"]
+    )
 
     assert [a["name"] for a in o["atts"]["items"]] == ["note.md", "pic.png", "prior.docx", "prior.pdf"]
     assert o["atts_sys"] == {"items": []}
-    assert o["prior.docx"]["kind"] == "docx" and "示例装置" in o["prior.docx"]["text"] \
-        and "权利要求1所述的示例装置" in o["prior.docx"]["text"] and not o["prior.docx"]["truncated"]
+    assert (
+        o["prior.docx"]["kind"] == "docx"
+        and "示例装置" in o["prior.docx"]["text"]
+        and "权利要求1所述的示例装置" in o["prior.docx"]["text"]
+        and not o["prior.docx"]["truncated"]
+    )
     assert o["note.md"]["kind"] == "text" and o["note.md"]["text"].startswith("# 交底书")
-    assert o["prior.pdf"]["kind"] == "pdf" and "Prior art PS-E3 hello" in o["prior.pdf"]["text"]
+    if shutil.which("pdftotext"):  # pdf 抽取依赖 poppler-utils，本机缺失时走 unsupported 分支
+        assert o["prior.pdf"]["kind"] == "pdf" and "Prior art PS-E3 hello" in o["prior.pdf"]["text"]
+    else:  # 无 poppler：工具按 unsupported 失败关闭（审计行已断言 error:unsupported）
+        assert o["prior.pdf"] is None
     assert o["md_cut"]["truncated"] and len(o["md_cut"]["text"]) == 20 and o["md_cut"]["chars"] == o["note.md"]["chars"]
     assert o["png"]["kind"] == "unsupported" and o["png"]["detail"] == "pic.png"
     assert o["missing"]["kind"] == "not_found"
 
     rows = {(r["tool"], r["result"]) for r in audit.tail(str(projects / "method"), 200)}
-    assert {("get_case", "ok"), ("set_case_status", "ok"), ("set_case_status", "error:conflict"),
-            ("list_attachments", "ok"), ("read_attachment_text", "ok"), ("read_attachment_text", "ok:truncated"),
-            ("read_attachment_text", "error:unsupported"), ("read_attachment_text", "error:not_found")} <= rows
+    assert {
+        ("get_case", "ok"),
+        ("set_case_status", "ok"),
+        ("set_case_status", "error:conflict"),
+        ("list_attachments", "ok"),
+        ("read_attachment_text", "ok"),
+        ("read_attachment_text", "ok:truncated"),
+        ("read_attachment_text", "error:unsupported"),
+        ("read_attachment_text", "error:not_found"),
+    } <= rows
 
 
 def test_stdio_semantic_tools_both_projects(tmp_path, monkeypatch):
@@ -142,93 +174,91 @@ def test_stdio_semantic_tools_both_projects(tmp_path, monkeypatch):
             for pid in ("method", "system"):
                 for name in SEMANTIC[:4]:
                     out[f"{pid}.{name}"] = _rows(await _call(c, name, {"pid": pid}))
-            out["m.pack8"] = await _call(c, "context_pack", {"pid": "method", "claim_id": "8"})
+            out["m.pack7"] = await _call(c, "context_pack", {"pid": "method", "claim_id": "7"})
             out["m.pack3"] = await _call(c, "context_pack", {"pid": "method", "claim_id": "claims/3"})
-            out["m.pack8_small"] = await _call(c, "context_pack", {"pid": "method", "claim_id": "8", "max_chars": 3000})
-            out["s.pack10"] = await _call(c, "context_pack", {"pid": "system", "claim_id": "10", "max_chars": 40000})
-            out["s.pack6"] = await _call(c, "context_pack", {"pid": "system", "claim_id": "6"})
+            out["s.pack3_small"] = await _call(c, "context_pack", {"pid": "system", "claim_id": "3", "max_chars": 3000})
+            out["s.pack3"] = await _call(c, "context_pack", {"pid": "system", "claim_id": "3", "max_chars": 40000})
+            out["s.pack2"] = await _call(c, "context_pack", {"pid": "system", "claim_id": "2"})
             out["nf"] = test_mcp._tool_error(await c.call_tool("context_pack", {"pid": "method", "claim_id": "99"}))
             out["nf2"] = test_mcp._tool_error(await c.call_tool("context_pack", {"pid": "method", "claim_id": "abc"}))
             out["bad_pid"] = test_mcp._tool_error(await c.call_tool("get_terms", {"pid": "nope"}))
         return out
+
     o = asyncio.run(run())
 
-    # 权利要求树：独立项为根（M3 / S2），从属项嵌套；多引用只挂最小引用项下（M1）
+    # 权利要求树：独立项（无引用/多引用择一）为根，从属项嵌套（新语料：M=10 权 S=3 权）
     def flat(nodes):
         for n in nodes:
             yield n
             yield from flat(n["children"])
+
     m_tree = o["method.get_claim_tree"]
-    assert [n["num"] for n in m_tree] == [1, 10, 11]
-    assert sorted(n["num"] for n in flat(m_tree)) == list(range(1, 12))
+    assert [n["num"] for n in m_tree] == [1, 8, 9, 10]
+    assert sorted(n["num"] for n in flat(m_tree)) == list(range(1, 11))
     by = {n["num"]: n for n in flat(m_tree)}
-    assert by[8]["refs"] == [2, 3, 4, 5, 6] and by[3]["refs"] == [2]  # M1 / M2
-    assert 8 in [c["num"] for c in by[2]["children"]] and 3 in [c["num"] for c in by[2]["children"]]
-    assert by[9]["issues"] and by[9]["issues"][0]["rule"] == "claims.multi_multi"  # M9
+    assert by[2]["refs"] == [1] and by[3]["refs"] == [2] and by[6]["refs"] == [5]
+    assert by[10]["refs"] == list(range(1, 8))  # 权10 择一引用 1～7 → 独立根
+    assert [c["num"] for c in by[1]["children"]] == [2, 5, 7]
+    assert [c["num"] for c in by[2]["children"]] == [3, 4] and [c["num"] for c in by[5]["children"]] == [6]
+    assert all(not n["issues"] for n in by.values())  # 新语料权项无引用类诊断
     assert by[1]["text"].startswith("1.一种") and by[1]["category"].endswith("方法")
     s_tree = o["system.get_claim_tree"]
-    assert [n["num"] for n in s_tree] == [1, 9, 10]
+    assert [n["num"] for n in s_tree] == [1, 3]
     by_s = {n["num"]: n for n in flat(s_tree)}
-    assert by_s[9]["category"] == "计算机设备" and by_s[9]["refs"] == list(range(1, 9))  # S3
-    assert [i["rule"] for i in by_s[10]["issues"]] == ["claims.unsupported_term"]  # S9
-    assert all(c["refs"] == [1] for c in by_s[1]["children"]) and len(by_s[1]["children"]) == 7  # S1
+    assert [c["num"] for c in by_s[1]["children"]] == [2] and by_s[2]["refs"] == [1]
+    assert by_s[1]["text"].startswith("1.神经网络模型的可视化建模方法")
 
-    # 支持性
+    # 支持性：新语料权项术语均有说明书支持
     rows = o["system.get_support_map"]
     assert set(rows[0]) == set(schemas.SupportRow.model_fields)
-    bad = [r for r in rows if not r["supported"]]
-    assert [(r["term"], r["claims"]) for r in bad] == [("程序", [10])]
+    assert all(r["supported"] for r in rows)
     assert all(r["supported"] for r in o["method.get_support_map"])
 
-    # 附图标记表：figures × numerals（M7 / M8 / S6 / S7 / S8）
+    # 附图标记表：figures × numerals（新语料 M=3 图无标记；S=6 图带标记号段）
     m_figs = {f["num"]: f for f in o["method.get_figures"]}
-    assert sorted(m_figs) == [1, 2, 3, 4, 5, 6] and m_figs[3]["file"] == "fig3.emf" and m_figs[3]["caption"]
-    m3 = {m["num"]: m for m in m_figs[3]["markers"]}
-    assert m3["1032"]["legend"] == "检索安全门控控制器" and m3["1032"]["consistent"]
-    assert m3["1034"]["consistent"] is True and m3["1034"]["names"] == ["投注财富门控控制器"]  # M10：轮8 图例归一
-    m4 = {m["num"]: m["legend"] for m in m_figs[4]["markers"]}
-    assert m4["402"] == "告警状态" and m4["401"] == "正常运行状态"
+    assert sorted(m_figs) == [1, 2, 3] and m_figs[1]["file"] == "fig1.png" and m_figs[1]["caption"] is not None
     s_figs = {f["num"]: f for f in o["system.get_figures"]}
-    s1 = {m["num"]: m["legend"] for m in s_figs[1]["markers"]}
-    assert s1["107"] == "回放编排模块" and s1["109"] == "审计模块"
-    s5 = {m["num"]: m["legend"] for m in s_figs[5]["markers"]}
-    assert (s5["501"], s5["502"], s5["503"]) == ("腐蚀注入", "告警触发", "降级期")
-    assert {m["num"]: m["legend"] for m in s_figs[2]["markers"]}["201"] == "无状态查询旁路"  # 只在标记表段出现
+    assert sorted(s_figs) == [1, 2, 3, 4, 5, 6]
+    assert [m["num"] for m in s_figs[3]["markers"]] == ["204", "206"]
+    assert [m["num"] for m in s_figs[4]["markers"]] == ["218", "220", "221", "223"]
+    assert [m["num"] for m in s_figs[5]["markers"]] == ["601", "602", "603", "604"]
+    assert [m["num"] for m in s_figs[6]["markers"]] == ["601", "602", "603", "604"]
 
-    # 术语：定义句取说明书 / 权项「X 为 …」（M4 / S4），claims 来自 support_map
-    for pid in ("method", "system"):
-        t = {r["name"]: r for r in o[f"{pid}.get_terms"]}
-        assert set(t["安全锚输出"]) == set(schemas.TermRow.model_fields)
-        assert "冻结基础预测模型的预测输出" in t["安全锚输出"]["definition"] and t["安全锚输出"]["definition_line"]
-        assert 1 in t["安全锚输出"]["claims"]
-    assert o["system.get_terms"] and {r["name"] for r in o["system.get_terms"]} >= {"风险轴", "信任系数"}
+    # 术语：定义句取说明书/权项「X 为 …」，claims 来自 support_map
+    tm = {r["name"]: r for r in o["method.get_terms"]}
+    assert set(tm["私钥生成方法作"]) == set(schemas.TermRow.model_fields)
+    assert "智能合约" in tm["私钥生成方法作"]["definition"] and tm["私钥生成方法作"]["definition_line"]
+    assert tm["私钥生成方法作"]["claims"] == [10]
+    assert tm["私钥生成方法"]["claims"] == [2, 3, 4, 5, 6, 7]
+    ts_ = {r["name"]: r for r in o["system.get_terms"]}
+    assert "接口" in ts_["深度学习框架"]["definition"] and ts_["深度学习框架"]["claims"] == [1, 3]
+    assert {r["name"] for r in o["system.get_terms"]} >= {"可视化控件", "节点集合", "依赖关系集合"}
 
     # context_pack：正文 + 依赖链 + 支持段落（段号）+ 附图 + 术语 + 未决批注 + 诊断
-    p8 = o["m.pack8"]
-    assert set(p8) == set(schemas.ContextPack.model_fields) and p8["pid"] == "method"
-    assert p8["claim"]["num"] == 8 and p8["claim"]["children"] == []
-    assert [c["num"] for c in p8["chain"]] == [1, 2]
-    assert any(i["rule"] == "chain.alternative" for i in p8["chain"][-1]["issues"])
-    assert p8["support"] and all(s["para_no"].startswith("[00") and s["text"] and s["terms"] for s in p8["support"])
-    assert p8["support"] == sorted(p8["support"], key=lambda s: s["line"])
-    assert {f["num"] for f in p8["figures"]} <= {1, 2, 3, 4, 5, 6} and p8["figures"]
-    assert {t["name"] for t in p8["terms"]} >= {"成熟反馈队列", "信任系数"}
-    assert p8["comments"] == [] and _size(p8) <= 12000
+    p7 = o["m.pack7"]
+    assert set(p7) == set(schemas.ContextPack.model_fields) and p7["pid"] == "method"
+    assert p7["claim"]["num"] == 7 and p7["claim"]["children"] == []
+    assert [c["num"] for c in p7["chain"]] == [1]
+    assert p7["support"] and all(s["para_no"].startswith("[00") and s["text"] and s["terms"] for s in p7["support"])
+    assert p7["support"] == sorted(p7["support"], key=lambda s: s["line"])
+    assert p7["comments"] == [] and _size(p7) <= 12000
     assert o["m.pack3"]["claim"]["num"] == 3 and [c["num"] for c in o["m.pack3"]["chain"]] == [1, 2]
-    small = o["m.pack8_small"]
-    assert small["truncated"] and small["claim"] == p8["claim"] and small["chain"] == p8["chain"]
-    assert len(small["support"]) < len(p8["support"]) and _size(small) <= 3000 + 600
-    p10 = o["s.pack10"]
-    assert [c["num"] for c in p10["chain"]] == [1] and not p10["truncated"]
-    assert [i["rule"] for i in p10["issues"] if i["block_id"] == "claims/10"] == ["claims.unsupported_term"]
-    p6 = o["s.pack6"]
-    assert p6["claim"]["num"] == 6 and any("回放编排" in s["text"] for s in p6["support"])  # S10 类支持段
-    assert 4 in {f["num"] for f in p6["figures"]}  # 图 4 = 回放编排流程图
+    p3s = o["s.pack3"]
+    assert [c["num"] for c in p3s["chain"]] == [] and not p3s["truncated"]
+    assert {f["num"] for f in p3s["figures"]} == {5, 6}  # 权3（装置）支持段引用图5/图6
+    small = o["s.pack3_small"]
+    assert small["truncated"] and small["claim"] == p3s["claim"] and small["chain"] == p3s["chain"]
+    assert len(small["support"]) < len(p3s["support"]) and _size(small) <= 3000 + 600
+    p2 = o["s.pack2"]
+    assert p2["claim"]["num"] == 2 and [c["num"] for c in p2["chain"]] == [1]
+    assert any("深度学习框架" in s["text"] for s in p2["support"])
     assert o["nf"]["kind"] == "not_found" and o["nf2"]["kind"] == "not_found" and o["bad_pid"]["kind"] == "not_found"
 
     rows = {(r["tool"], r["result"]) for r in audit.tail(str(projects / "method"), 200)}
-    assert {(n, "ok") for n in SEMANTIC} <= rows and ("context_pack", "ok:truncated") in rows
-    assert ("context_pack", "error:not_found") in rows
+    assert {(n, "ok") for n in SEMANTIC} <= rows and ("context_pack", "error:not_found") in rows
+    # 截断调用落在 system 案 → 审计也记在 system 侧
+    srows = {(r["tool"], r["result"]) for r in audit.tail(str(projects / "system"), 200)}
+    assert ("context_pack", "ok:truncated") in srows
 
 
 def test_stdio_context_pack_comments_unresolved_only(tmp_path, monkeypatch):
@@ -239,17 +269,31 @@ def test_stdio_context_pack_comments_unresolved_only(tmp_path, monkeypatch):
 
     async def run():
         async with Client(test_mcp._stdio_params(projects)) as c:
-            keep = await _call(c, "add_comment", {"pid": "method", "body": "冷启动阶段的定义要写进说明书",
-                                                  "anchor": {"block_id": "claims/8", "line": 37, "quote": "冷启动"}})
-            done = await _call(c, "add_comment", {"pid": "method", "body": "已处理",
-                                                  "anchor": {"block_id": "claims/8", "line": 37, "quote": "冷启动"}})
-            other = await _call(c, "add_comment", {"pid": "method", "body": "别的权项",
-                                                   "anchor": {"block_id": "claims/2", "line": 15, "quote": "根据"}})
+            keep = await _call(
+                c,
+                "add_comment",
+                {
+                    "pid": "method",
+                    "body": "冷启动阶段的定义要写进说明书",
+                    "anchor": {"block_id": "claims/8", "line": 37, "quote": "冷启动"},
+                },
+            )
+            done = await _call(
+                c,
+                "add_comment",
+                {"pid": "method", "body": "已处理", "anchor": {"block_id": "claims/8", "line": 37, "quote": "冷启动"}},
+            )
+            other = await _call(
+                c,
+                "add_comment",
+                {"pid": "method", "body": "别的权项", "anchor": {"block_id": "claims/2", "line": 15, "quote": "根据"}},
+            )
             store = comments.load(d)
             comments.resolve(next(x for x in store if x.id == done["id"]), True)
             comments.save(d, store)
             pack = await _call(c, "context_pack", {"pid": "method", "claim_id": "8"})
             return keep, done, other, pack
+
     keep, done, other, pack = asyncio.run(run())
     assert [c["id"] for c in pack["comments"]] == [keep["id"]]
     assert pack["comments"][0]["text"] == "冷启动阶段的定义要写进说明书" and pack["comments"][0]["book"] == "claims"
@@ -257,6 +301,7 @@ def test_stdio_context_pack_comments_unresolved_only(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------- HTTP / AUTH=on ----
+
 
 def _reload_on(tmp_path, monkeypatch):
     """test_mcp._reload_app 之后再重载四个工具模块 + server + main：它们持有的 tools.open_project_for /
@@ -288,15 +333,19 @@ def test_on_http_acl_and_author(tmp_path, monkeypatch):
                 out["v_atts"] = await _call(c, "list_attachments", {"pid": "method"})
                 out["v_pack"] = await _call(c, "context_pack", {"pid": "method", "claim_id": "1"})
                 out["v_set"] = test_mcp._tool_error(
-                    await c.call_tool("set_case_status", {"pid": "method", "status": "filed"}))
+                    await c.call_tool("set_case_status", {"pid": "method", "status": "filed"})
+                )
                 out["v_width"] = test_mcp._tool_error(
-                    await c.call_tool("set_figure_width", {"pid": "method", "name": "fig1.emf", "width": 10}))
+                    await c.call_tool("set_figure_width", {"pid": "method", "name": "fig1.png", "width": 10})
+                )
                 out["v_order"] = test_mcp._tool_error(
-                    await c.call_tool("set_figure_order", {"pid": "method", "order": []}))
+                    await c.call_tool("set_figure_order", {"pid": "method", "order": []})
+                )
             async with test_mcp._http_client(base, owner_tok) as c:
                 out["o_set"] = await _call(c, "set_case_status", {"pid": "method", "status": "filed"})
-                out["o_width"] = await _call(c, "set_figure_width", {"pid": "method", "name": "fig1.emf", "width": 10})
+                out["o_width"] = await _call(c, "set_figure_width", {"pid": "method", "name": "fig1.png", "width": 10})
             return out
+
         with test_mcp._serve(main.app) as base:
             o = asyncio.run(run(base))
     finally:
@@ -304,13 +353,13 @@ def test_on_http_acl_and_author(tmp_path, monkeypatch):
             monkeypatch.delenv(k)
         _reload_after_on()
 
-    assert o["v_case"]["status"] == "drafting" and len(o["v_figs"]["figures"]) == 6
+    assert o["v_case"]["status"] == "drafting" and len(o["v_figs"]["figures"]) == 3
     assert [a["name"] for a in o["v_atts"]["items"]] == ["note.md", "pic.png", "prior.docx", "prior.pdf"]
     assert o["v_pack"]["claim"]["num"] == 1 and o["v_pack"]["chain"] == []
     assert o["v_set"]["kind"] == "forbidden" and "agent" in o["v_set"]["message"]
     assert o["v_width"]["kind"] == "forbidden" and o["v_order"]["kind"] == "forbidden"
     assert o["o_set"]["status"] == "filed"
-    assert any(f["name"] == "fig1.emf" and f["width"] == 10 for f in o["o_width"]["figures"])
+    assert any(f["name"] == "fig1.png" and f["width"] == 10 for f in o["o_width"]["figures"])
     d = str(projects / "method")
     case_commit = next(v for v in history.log(d) if v["message"].startswith("case:"))
     assert case_commit["author"] == "张律师"  # PAT 绑定用户 = 状态事件作者（同 REST）

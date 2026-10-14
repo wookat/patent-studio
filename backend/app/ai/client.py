@@ -9,6 +9,7 @@
 并发：模块级 asyncio.Semaphore(config.AI_CONCURRENCY，缺省 2)，流式请求持有到流结束。
 用量：<project>/.studio/ai-usage.jsonl 每次上游请求一行（§2.4 字段；失败尝试 ok=false 也记）。
 """
+
 import asyncio
 import json
 import os
@@ -54,8 +55,15 @@ class AiError(Exception):
     """kind → HTTP：no_key 503 / timeout 504 / upstream 502 / format 502 / disabled 403。
     retryable 仅 timeout / 429 / 5xx / 连接错误；upstream_status 为中转站原始 HTTP 码（非 HTTP 错误为 None）。"""
 
-    def __init__(self, kind: ErrorKind, message: str, status: int = 502, *, retryable: bool = False,
-                 upstream_status: int | None = None):
+    def __init__(
+        self,
+        kind: ErrorKind,
+        message: str,
+        status: int = 502,
+        *,
+        retryable: bool = False,
+        upstream_status: int | None = None,
+    ):
         super().__init__(message)
         self.kind = kind
         self.status = status
@@ -99,11 +107,13 @@ class ChatResult:
 class Provider(Protocol):
     name: str
 
-    async def complete(self, model: str, messages: list[dict], *, timeout: float,
-                       max_tokens: int | None, temperature: float) -> tuple[str, Usage]: ...
+    async def complete(
+        self, model: str, messages: list[dict], *, timeout: float, max_tokens: int | None, temperature: float
+    ) -> tuple[str, Usage]: ...
 
-    def stream(self, model: str, messages: list[dict], *, timeout: float,
-               max_tokens: int | None, temperature: float) -> AsyncIterator[str | Usage]: ...
+    def stream(
+        self, model: str, messages: list[dict], *, timeout: float, max_tokens: int | None, temperature: float
+    ) -> AsyncIterator[str | Usage]: ...
 
     async def list_models(self) -> list[str]: ...
 
@@ -114,8 +124,9 @@ def _http_error(e: httpx.HTTPError) -> AiError:
     if isinstance(e, httpx.HTTPStatusError):
         code = e.response.status_code
         body = e.response.text[:200]
-        return AiError("upstream", f"AI 中转站返回 {code}：{body}", 502, retryable=code == 429 or code >= 500,
-                       upstream_status=code)
+        return AiError(
+            "upstream", f"AI 中转站返回 {code}：{body}", 502, retryable=code == 429 or code >= 500, upstream_status=code
+        )
     return AiError("upstream", f"无法连接 AI 中转站：{e}", 502, retryable=True)
 
 
@@ -144,8 +155,15 @@ class OpenAICompatProvider:
         try:
             r = await self._client.post(
                 "/v1/chat/completions",
-                json=self._body(model, messages, max_tokens=max_tokens, temperature=temperature,
-                                stream=False, tools=tools, tool_choice=tool_choice),
+                json=self._body(
+                    model,
+                    messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=False,
+                    tools=tools,
+                    tool_choice=tool_choice,
+                ),
                 timeout=httpx.Timeout(timeout, connect=CONNECT_TIMEOUT),
             )
             r.raise_for_status()
@@ -161,20 +179,35 @@ class OpenAICompatProvider:
         return msg, Usage.from_json(data.get("usage"))
 
     async def complete(self, model, messages, *, timeout, max_tokens, temperature):
-        msg, usage = await self._post_message(model, messages, timeout=timeout, max_tokens=max_tokens,
-                                            temperature=temperature, tools=None, tool_choice=None)
+        msg, usage = await self._post_message(
+            model,
+            messages,
+            timeout=timeout,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            tools=None,
+            tool_choice=None,
+        )
         return msg.get("content") or "", usage
 
     async def complete_tools(self, model, messages, *, tools, timeout, max_tokens, temperature):
         """带 OpenAI tools 表的完成：返回 (message dict 原样含 tool_calls, usage)。"""
-        return await self._post_message(model, messages, timeout=timeout, max_tokens=max_tokens,
-                                        temperature=temperature, tools=tools, tool_choice="auto")
+        return await self._post_message(
+            model,
+            messages,
+            timeout=timeout,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            tools=tools,
+            tool_choice="auto",
+        )
 
     async def stream(self, model, messages, *, timeout, max_tokens, temperature):
         usage = Usage()
         try:
             async with self._client.stream(
-                "POST", "/v1/chat/completions",
+                "POST",
+                "/v1/chat/completions",
                 json=self._body(model, messages, max_tokens=max_tokens, temperature=temperature, stream=True),
                 timeout=httpx.Timeout(timeout, connect=CONNECT_TIMEOUT),
             ) as r:
@@ -214,14 +247,38 @@ class OpenAICompatProvider:
         return [m["id"] for m in items or [] if isinstance(m, dict) and m.get("id")]
 
 
-def usage_record(*, pid: str | None, purpose: str, kind: str, model: str, requested_model: str, fallback: bool,
-                 stream: bool, usage: Usage, ms: int, ok: bool, error: str | None = None,
-                 job_id: str | None = None, user: str | None = None) -> dict:
+def usage_record(
+    *,
+    pid: str | None,
+    purpose: str,
+    kind: str,
+    model: str,
+    requested_model: str,
+    fallback: bool,
+    stream: bool,
+    usage: Usage,
+    ms: int,
+    ok: bool,
+    error: str | None = None,
+    job_id: str | None = None,
+    user: str | None = None,
+) -> dict:
     """§2.4 一行的字段全集；append_usage 负责落盘。"""
     return {
-        "ts": time.time(), "pid": pid, "purpose": purpose, "kind": kind,
-        "model": model, "requested_model": requested_model, "fallback": fallback, "stream": stream,
-        **asdict(usage), "ms": ms, "ok": ok, "error": error, "job_id": job_id, "user": user,
+        "ts": time.time(),
+        "pid": pid,
+        "purpose": purpose,
+        "kind": kind,
+        "model": model,
+        "requested_model": requested_model,
+        "fallback": fallback,
+        "stream": stream,
+        **asdict(usage),
+        "ms": ms,
+        "ok": ok,
+        "error": error,
+        "job_id": job_id,
+        "user": user,
     }
 
 
@@ -283,15 +340,24 @@ class AiClient:
     async def _backoff(attempt: int) -> None:
         """同一模型重试前等待 BACKOFF_S · 2^attempt（链上只重试 1 次 ⇒ 实际只等一次）。"""
         if BACKOFF_S > 0:
-            await asyncio.sleep(BACKOFF_S * (2 ** attempt))
+            await asyncio.sleep(BACKOFF_S * (2**attempt))
 
     def _record(self, project_dir, **kw):
         if project_dir:
             append_usage(project_dir, usage_record(**kw))
 
-    async def chat(self, messages: list[dict], purpose: Purpose, *, stream: bool = False,
-                   project_dir: str | None = None, max_tokens: int | None = None, temperature: float = 0.0,
-                   job_id: str | None = None, user: str | None = None):
+    async def chat(
+        self,
+        messages: list[dict],
+        purpose: Purpose,
+        *,
+        stream: bool = False,
+        project_dir: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float = 0.0,
+        job_id: str | None = None,
+        user: str | None = None,
+    ):
         """async with _SEM → 主模型 → 重试 1 次（仅 retryable）→ swe-2-high → AiError。
         stream=False 返回 ChatResult；stream=True 返回 ChatStream（AsyncIterator[str]，全程持有 _SEM）。"""
         if not self.key_present:
@@ -305,8 +371,12 @@ class AiClient:
     def _meta(self, messages, purpose, project_dir, stream, job_id, user):
         return {
             "pid": os.path.basename(project_dir) if project_dir else None,
-            "purpose": purpose, "kind": prompts.kind_of(messages) or "chat",
-            "requested_model": MODELS[purpose], "stream": stream, "job_id": job_id, "user": user,
+            "purpose": purpose,
+            "kind": prompts.kind_of(messages) or "chat",
+            "requested_model": MODELS[purpose],
+            "stream": stream,
+            "job_id": job_id,
+            "user": user,
         }
 
     async def _complete(self, messages, purpose, project_dir, max_tokens, temperature, job_id, user) -> ChatResult:
@@ -326,11 +396,20 @@ class AiClient:
                 t0 = time.monotonic()
                 try:
                     text, usage = await self.provider.complete(
-                        model, messages, timeout=timeout, max_tokens=max_tokens, temperature=temperature)
+                        model, messages, timeout=timeout, max_tokens=max_tokens, temperature=temperature
+                    )
                 except AiError as e:
                     ms = int((time.monotonic() - t0) * 1000)
-                    self._record(project_dir, model=model, fallback=fallback, usage=Usage(), ms=ms, ok=False,
-                                 error=f"{e.kind}: {e}", **meta)
+                    self._record(
+                        project_dir,
+                        model=model,
+                        fallback=fallback,
+                        usage=Usage(),
+                        ms=ms,
+                        ok=False,
+                        error=f"{e.kind}: {e}",
+                        **meta,
+                    )
                     last = e
                     skip_retry = self._skip_retry(e)
                     continue
@@ -361,7 +440,8 @@ class AiClient:
                 started = False
                 try:
                     async for item in self.provider.stream(
-                            model, messages, timeout=timeout, max_tokens=max_tokens, temperature=temperature):
+                        model, messages, timeout=timeout, max_tokens=max_tokens, temperature=temperature
+                    ):
                         if isinstance(item, Usage):
                             usage = item
                             continue
@@ -370,8 +450,16 @@ class AiClient:
                         yield item
                 except AiError as e:
                     ms = int((time.monotonic() - t0) * 1000)
-                    self._record(project_dir, model=model, fallback=fallback, usage=Usage(), ms=ms, ok=False,
-                                 error=f"{e.kind}: {e}", **meta)
+                    self._record(
+                        project_dir,
+                        model=model,
+                        fallback=fallback,
+                        usage=Usage(),
+                        ms=ms,
+                        ok=False,
+                        error=f"{e.kind}: {e}",
+                        **meta,
+                    )
                     if started:
                         raise
                     last = e
@@ -385,17 +473,31 @@ class AiClient:
             assert last is not None
             raise last
 
-    async def chat_tools(self, messages: list[dict], purpose: Purpose, tools: list[dict], *,
-                         project_dir: str | None = None, max_tokens: int | None = None,
-                         temperature: float = 0.0, user: str | None = None) -> "ToolResult":
+    async def chat_tools(
+        self,
+        messages: list[dict],
+        purpose: Purpose,
+        tools: list[dict],
+        *,
+        project_dir: str | None = None,
+        max_tokens: int | None = None,
+        temperature: float = 0.0,
+        user: str | None = None,
+    ) -> "ToolResult":
         """tool-loop 单轮：与 _complete 同链（主模型→重试→fallback），返回 assistant message 原样
         （content + 可选 tool_calls）。provider 不支持 tools（如 mock）⇒ 退化为纯文本轮。"""
         fn = getattr(self.provider, "complete_tools", None)
         if fn is None:
-            r = await self.chat(messages, purpose, project_dir=project_dir, max_tokens=max_tokens,
-                                temperature=temperature, user=user)
-            return ToolResult(message={"role": "assistant", "content": r.text}, model=r.model,
-                              usage=r.usage, ms=r.ms, fallback=r.fallback)
+            r = await self.chat(
+                messages, purpose, project_dir=project_dir, max_tokens=max_tokens, temperature=temperature, user=user
+            )
+            return ToolResult(
+                message={"role": "assistant", "content": r.text},
+                model=r.model,
+                usage=r.usage,
+                ms=r.ms,
+                fallback=r.fallback,
+            )
         if not self.key_present:
             raise AiError("no_key", "未配置 PATENT_STUDIO_AI_KEY，无法调用 AI 中转站", 503)
         meta = self._meta(messages, purpose, project_dir, False, None, user)
@@ -413,12 +515,21 @@ class AiClient:
                     retries += 1
                 t0 = time.monotonic()
                 try:
-                    msg, usage = await fn(model, messages, tools=tools, timeout=timeout,
-                                          max_tokens=max_tokens, temperature=temperature)
+                    msg, usage = await fn(
+                        model, messages, tools=tools, timeout=timeout, max_tokens=max_tokens, temperature=temperature
+                    )
                 except AiError as e:
                     ms = int((time.monotonic() - t0) * 1000)
-                    self._record(project_dir, model=model, fallback=fallback, usage=Usage(), ms=ms, ok=False,
-                                 error=f"{e.kind}: {e}", **meta)
+                    self._record(
+                        project_dir,
+                        model=model,
+                        fallback=fallback,
+                        usage=Usage(),
+                        ms=ms,
+                        ok=False,
+                        error=f"{e.kind}: {e}",
+                        **meta,
+                    )
                     last = e
                     skip_retry = self._skip_retry(e)
                     continue

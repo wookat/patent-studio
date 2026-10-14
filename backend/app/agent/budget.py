@@ -7,6 +7,7 @@ S2 12k，S7 16k，S1 20k），硬上限 CONTEXT_MAX_CHARS=40k 字符；任何送
 `.studio/ai-usage.jsonl` 里今天（本地日历日）成功调用的 total_tokens；超出时 heavy 场景 429 budget，
 interactive（chat / rewrite / S4 / S5 / S6）放行。
 """
+
 import time
 
 from app import config
@@ -45,8 +46,11 @@ def _same_day(ts: float, now: float) -> bool:
 
 def today_rows(project_dir: str, now: float | None = None) -> list[dict]:
     now = time.time() if now is None else now
-    return [r for r in read_usage(project_dir)
-            if r.get("ok", True) and isinstance(r.get("ts"), (int, float)) and _same_day(float(r["ts"]), now)]
+    return [
+        r
+        for r in read_usage(project_dir)
+        if r.get("ok", True) and isinstance(r.get("ts"), (int, float)) and _same_day(float(r["ts"]), now)
+    ]
 
 
 def today_tokens(project_dir: str, now: float | None = None) -> int:
@@ -66,9 +70,23 @@ def check_heavy(project_dir: str, settings: dict | None) -> None:
     """heavy 场景入队前调用：日预算耗尽 ⇒ 429 budget。interactive 不调用本函数。"""
     if exhausted(project_dir, settings):
         st = status(project_dir, settings)
-        raise kind_error("budget", f"本案今日 AI 预算已用尽（{st['today_tokens']}/{st['budget']} tokens），"
-                                   "重任务明天再试或调高 ai_daily_tokens", detail=st)
+        raise kind_error(
+            "budget",
+            f"本案今日 AI 预算已用尽（{st['today_tokens']}/{st['budget']} tokens），"
+            "重任务明天再试或调高 ai_daily_tokens",
+            detail=st,
+        )
 
 
-__all__ = ["CAPS", "HARD_CAP", "INTERACTIVE_CHARS", "cap_for", "check_heavy", "clip", "daily_budget",
-           "exhausted", "status", "today_tokens"]
+__all__ = [
+    "CAPS",
+    "HARD_CAP",
+    "INTERACTIVE_CHARS",
+    "cap_for",
+    "check_heavy",
+    "clip",
+    "daily_budget",
+    "exhausted",
+    "status",
+    "today_tokens",
+]

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """MCPServer 实例（mcp 2.x；原 FastMCP）。stdio 与 Streamable HTTP 共用同一实例与同一套工具。"""
+
 from mcp.server.mcpserver import MCPServer
 
 from app import config
@@ -25,6 +26,14 @@ INSTRUCTIONS = (
 store = ProjectStore(config.PROJECTS_DIR)
 server = MCPServer("patent-studio", instructions=INSTRUCTIONS, version="0.1.0")
 # 注册顺序即 list_tools 顺序，须与 schemas.TOOL_NAMES 一致
-for mod in (tools, tools_figures, tools_case, tools_attachments, tools_semantic, tools_lifecycle,
-            tools_admin, tools_novelty):
+for mod in (
+    tools,
+    tools_figures,
+    tools_case,
+    tools_attachments,
+    tools_semantic,
+    tools_lifecycle,
+    tools_admin,
+    tools_novelty,
+):
     mod.register(server, store)

@@ -5,6 +5,7 @@
 确定性前置：依赖树内各权项的 preflight 诊断（claims.* 规则）与 checks.antecedent 直接产 comment，不经模型。
 模型产出 items[{line, quote, message}]；每条过 anchor_hit + no_legal_verdict 才成为 comment。
 """
+
 from __future__ import annotations
 
 import json
@@ -31,11 +32,11 @@ PLAN = Plan(
     output_kind=("comment",),
 )
 
-_SAFE_RULE = {"claims.multi_multi": "建议改为引用单项或拆分为多项从属权利要求，"
-                                    "请核对是否符合审查指南对多项从属的要求。",
-              "claims.unsupported_term": "疑似该术语在说明书中没有对应记载，"
-                                         "建议补写对应实施例或统一为说明书已有写法，请核对。",
-              "claims.antecedent": "疑似缺少先行基础，建议在本项或所引用的权利要求中先行引入该特征，请核对。"}
+_SAFE_RULE = {
+    "claims.multi_multi": "建议改为引用单项或拆分为多项从属权利要求，请核对是否符合审查指南对多项从属的要求。",
+    "claims.unsupported_term": "疑似该术语在说明书中没有对应记载，建议补写对应实施例或统一为说明书已有写法，请核对。",
+    "claims.antecedent": "疑似缺少先行基础，建议在本项或所引用的权利要求中先行引入该特征，请核对。",
+}
 
 
 def _walk(node: ClaimNode):
@@ -75,8 +76,12 @@ def _pack_text(pack) -> str:
     parts = [f"独立权利要求 {claim.num}（{claim.category}，第 {claim.line} 行）：\n{claim.text}"]
     if pack.chain:
         parts.append("依赖链：\n" + "\n".join(f"[权 {c.num} 第 {c.line} 行] {c.text}" for c in pack.chain))
-    parts.append("说明书支持段落：\n" + "\n".join(
-        f"{s['para_no']}（第 {s['line']} 行，涉及：{'、'.join(s['terms'])}）{s['text']}" for s in pack.support))
+    parts.append(
+        "说明书支持段落：\n"
+        + "\n".join(
+            f"{s['para_no']}（第 {s['line']} 行，涉及：{'、'.join(s['terms'])}）{s['text']}" for s in pack.support
+        )
+    )
     if pack.terms:
         parts.append("术语表：\n" + "\n".join(f"{t.name}：{t.definition or '（无定义）'}" for t in pack.terms))
     if pack.issues:
@@ -101,8 +106,14 @@ async def run(ctx: RunContext) -> None:
         pack = ctx.tool("context_pack", ts.context_pack, d=d, claim_id=str(root.num), max_chars=12000)
         if pack.truncated:
             ctx.truncated = True
-        messages = prompts_agent.build("s2", "critique", "请给出这条独立权利要求及其从属项的批评意见 JSON。",
-                                       context=ctx.clip(_pack_text(pack)), pid=ctx.pid, claim=root.num)
+        messages = prompts_agent.build(
+            "s2",
+            "critique",
+            "请给出这条独立权利要求及其从属项的批评意见 JSON。",
+            context=ctx.clip(_pack_text(pack)),
+            pid=ctx.pid,
+            claim=root.num,
+        )
         data, raw = await common.gen_json(ctx, "critique", messages)
         if data is None:
             # 格式两次都不合约束：降级为整块批注，正文照样过措辞门
@@ -115,8 +126,11 @@ async def run(ctx: RunContext) -> None:
             try:
                 line, quote, body = int(it["line"]), str(it["quote"]), str(it["message"])
             except (KeyError, TypeError, ValueError):
-                ctx.check(checks.CheckResult(name="format", ok=False,
-                                             why=f"items 条目缺字段：{json.dumps(it, ensure_ascii=False)[:80]}"))
+                ctx.check(
+                    checks.CheckResult(
+                        name="format", ok=False, why=f"items 条目缺字段：{json.dumps(it, ensure_ascii=False)[:80]}"
+                    )
+                )
                 continue
             if common.comment(ctx, d, line, quote, body) is not None:
                 total += 1

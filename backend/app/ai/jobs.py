@@ -11,6 +11,7 @@ W5（docs/plan/21 §6.2）：
 - add_step(job_id, kind, data) 追加步骤并推给 watch_steps() 订阅者；gen_delta 只推不存。
 - cancel() 对排队中任务同样有效（出队 → interrupted）；运行中任务 CancelledError 传到每一步与 AI 流。
 """
+
 import asyncio
 import glob
 import json
@@ -72,8 +73,9 @@ class JobStore:
 
     def create(self, kind: str, pid: str, queue_key: str | None = None) -> Job:
         now = time.time()
-        job = Job("job_" + secrets.token_hex(6), kind, pid, "queued", 0.0, "排队中", None, None, now, now,
-                  queue_key=queue_key)
+        job = Job(
+            "job_" + secrets.token_hex(6), kind, pid, "queued", 0.0, "排队中", None, None, now, now, queue_key=queue_key
+        )
         self._jobs[job.id] = job
         self._persist(job)
         return job
@@ -194,12 +196,15 @@ class JobStore:
                 self.update(job, status="interrupted", message="已取消")
             raise
         except AiError as e:
-            self.update(self._jobs[job_id], status="error", message="失败",
-                        error=error_detail(f"ai_{e.kind}", str(e)))
+            self.update(self._jobs[job_id], status="error", message="失败", error=error_detail(f"ai_{e.kind}", str(e)))
         except Exception as e:  # noqa: BLE001 — 任务失败必须落成 error，不能让 Task 静默吞掉
             log.exception("AI 任务 %s 失败", job_id)
-            self.update(self._jobs[job_id], status="error", message="失败",
-                        error=error_detail("internal", f"{e.__class__.__name__}: {e}"))
+            self.update(
+                self._jobs[job_id],
+                status="error",
+                message="失败",
+                error=error_detail("internal", f"{e.__class__.__name__}: {e}"),
+            )
         else:
             job = self._jobs[job_id]
             if job.status not in FINAL:

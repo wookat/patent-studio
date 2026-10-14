@@ -6,6 +6,7 @@ key = kind + 原文侧 + 新文侧（标记内容本身，不含行号——行�
 同一内容在两处出现共享一条元数据（同一人同一批改动，可接受）。
 落盘时已不存在的 key 顺手清掉，文件随未决修订的多少收缩。
 """
+
 import contextvars
 import json
 import os

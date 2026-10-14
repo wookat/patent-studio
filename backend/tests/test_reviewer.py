@@ -4,6 +4,7 @@
   original(new) == original(base) 且 tokens(base) ⊆ tokens(new)；整行 {++…++} 视为插入行。
 路由级用例（reviewer PUT /content 加 {++x++} ⇒ 200，改字 ⇒ 403）复用 test_auth 的 on / _register / _login。
 """
+
 import pytest
 import test_auth
 from fastapi.testclient import TestClient
@@ -100,7 +101,7 @@ def test_reviewer_routes_docs(on):
     book = rev.get("/api/projects/method/docs/abstract").json()["content"]
 
     body = book.rstrip("\n")
-    r = rev.put("/api/projects/method/docs/abstract", json={"content": body + "{++（补充）++}" + book[len(body):]})
+    r = rev.put("/api/projects/method/docs/abstract", json={"content": body + "{++（补充）++}" + book[len(body) :]})
     assert r.status_code == 200, r.text
     assert "{++（补充）++}" in rev.get("/api/projects/method/docs/abstract").json()["content"]
     _403_reviewer(rev.put("/api/projects/method/docs/abstract", json={"content": "x"}))
@@ -115,25 +116,30 @@ def test_reviewer_routes_blocks(on):
     content = rev.get("/api/projects/method/content").json()["content"]
     lines = content.split("\n")
     off = ast["books"]["claims"]["offset"]
-    md = "\n".join(lines[off + block["lines"]["start"] - 1: off + block["lines"]["end"]])
+    md = "\n".join(lines[off + block["lines"]["start"] - 1 : off + block["lines"]["end"]])
 
     # 块补丁：块内加插入 / 批注 ⇒ 200 且落盘
-    r = rev.post(f"/api/projects/method/blocks/{block['id']}",
-                 json={"markdown": md + "{++；还包括步骤 Z++}{>>请补充步骤 Z<<}"})
+    r = rev.post(
+        f"/api/projects/method/blocks/{block['id']}", json={"markdown": md + "{++；还包括步骤 Z++}{>>请补充步骤 Z<<}"}
+    )
     assert r.status_code == 200, r.text
     assert "{++；还包括步骤 Z++}" in rev.get("/api/projects/method/content").json()["content"]
     # 直接改块 / 删块 / 裸插块 ⇒ 403，都没落盘
     saved = rev.get("/api/projects/method/content").json()["content"]
     _403_reviewer(rev.post(f"/api/projects/method/blocks/{block['id']}", json={"markdown": "1. 改了"}))
     _403_reviewer(rev.delete(f"/api/projects/method/blocks/{block['id']}"))
-    _403_reviewer(rev.post("/api/projects/method/blocks",
-                           json={"kind": "claim", "after_block_id": block["id"], "book": "claims",
-                                 "markdown": "2. 裸新权项。"}))
+    _403_reviewer(
+        rev.post(
+            "/api/projects/method/blocks",
+            json={"kind": "claim", "after_block_id": block["id"], "book": "claims", "markdown": "2. 裸新权项。"},
+        )
+    )
     assert rev.get("/api/projects/method/content").json()["content"] == saved
     # 整块 {++…++} 经 POST /blocks 插入（insert_block 补的分隔空行随块计入）⇒ 200 且落盘
-    r = rev.post("/api/projects/method/blocks",
-                 json={"kind": "claim", "after_block_id": block["id"], "book": "claims",
-                       "markdown": "{++2. 建议新增权项。++}"})
+    r = rev.post(
+        "/api/projects/method/blocks",
+        json={"kind": "claim", "after_block_id": block["id"], "book": "claims", "markdown": "{++2. 建议新增权项。++}"},
+    )
     assert r.status_code == 200, r.text
     saved = rev.get("/api/projects/method/content").json()["content"]
     assert "\n{++2. 建议新增权项。++}\n" in saved
@@ -153,10 +159,10 @@ def test_critic_unsaved_marks_get_current_author_immediately(on):
     别人的旧标记不受影响。"""
     su, rev, _view = _setup(on)
     content = rev.get("/api/projects/method/content").json()["content"]
-    first = content.replace("本发明公开了一种", "本发明{++首次++}公开了一种", 1)
+    first = content.replace("本申请提供一种", "本申请{++首次++}提供一种", 1)
     assert su.put("/api/projects/method/content", json={"content": first}).status_code == 200
 
-    draft = first.replace("公开了一种", "公开了{~~一种~>一类~~}", 1)
+    draft = first.replace("提供一种", "提供{~~一种~>一类~~}", 1)
     marks = rev.post("/api/projects/method/critic", json={"content": draft}).json()["marks"]
     by_kind = {m["kind"]: m for m in marks}
     assert by_kind["ins"]["author"] == "su@example.com"

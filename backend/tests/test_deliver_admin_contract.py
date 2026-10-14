@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """W4-E 骨架锁（docs/plan/17）：E1 递交包 / E2 账户·管理 / E3 MCP 工具三单元的占位路由形状、User 加列迁移、
 工具名表与注册顺序、理解实验题库与判分器。单元实现后把对应 501 断言改成正式契约测试（各自的 test_*.py）。"""
+
 import asyncio
 import importlib
 import json
@@ -24,6 +25,7 @@ BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ---------------------------------------------------------------- E1 ----
 
+
 def test_e1_deliver_manifest_and_role(client):
     """E1 已落地（详见 test_deliver.py）：GET 清单 200 六项；未打包时 bundle.zip 404。"""
     c, _ = client
@@ -44,6 +46,7 @@ def test_e1_manifest_kinds_match_urls():
 
 
 # ---------------------------------------------------------------- E2 ----
+
 
 def test_e2_off_placeholders(client):
     c, _ = client
@@ -69,6 +72,7 @@ def test_e2_user_read_has_profile_fields_and_login_stamps(on):
     async def stamp():
         async with SessionLocal() as s:
             return (await s.get(User, uuid.UUID(u["id"]))).last_login_at
+
     assert asyncio.run(stamp()) is not None  # on_after_login 写最近登录
 
 
@@ -121,14 +125,17 @@ def test_e2_inactive_user_cannot_login_and_session_dies(on):
             user = await s.get(User, uuid.UUID(u["id"]))
             user.is_active = False
             await s.commit()
+
     asyncio.run(disable())
     assert c.get("/api/users/me").status_code == 401
-    r = TestClient(on.app).post("/api/auth/cookie/login",
-                                data={"username": "staff@example.com", "password": "pw-123456"})
+    r = TestClient(on.app).post(
+        "/api/auth/cookie/login", data={"username": "staff@example.com", "password": "pw-123456"}
+    )
     assert r.status_code == 400
 
 
 # ---------------------------------------------------------------- E3 ----
+
 
 def test_e3_tool_names_registration_order_and_no_duplicates():
     from app.mcp import server as mcp_server
@@ -151,20 +158,24 @@ def test_e3_tools_implemented_and_missing_pid_is_not_found(tmp_path, monkeypatch
     async def run():
         out = {}
         async with Client(test_mcp._stdio_params(projects)) as c:
-            for name, args in (("get_case", {"pid": "method"}),
-                               ("set_case_status", {"pid": "method", "status": "filed"}),
-                               ("list_attachments", {"pid": "method"}),
-                               ("get_claim_tree", {"pid": "method"}),
-                               ("get_support_map", {"pid": "method"}),
-                               ("get_figures", {"pid": "method"}),
-                               ("get_terms", {"pid": "method"}),
-                               ("context_pack", {"pid": "method", "claim_id": "1"})):
+            for name, args in (
+                ("get_case", {"pid": "method"}),
+                ("set_case_status", {"pid": "method", "status": "filed"}),
+                ("list_attachments", {"pid": "method"}),
+                ("get_claim_tree", {"pid": "method"}),
+                ("get_support_map", {"pid": "method"}),
+                ("get_figures", {"pid": "method"}),
+                ("get_terms", {"pid": "method"}),
+                ("context_pack", {"pid": "method", "claim_id": "1"}),
+            ):
                 out[name] = await c.call_tool(name, args)
             out["read_attachment_text"] = test_mcp._tool_error(
-                await c.call_tool("read_attachment_text", {"pid": "method", "name": "x.docx"}))
+                await c.call_tool("read_attachment_text", {"pid": "method", "name": "x.docx"})
+            )
             out["missing"] = test_mcp._tool_error(await c.call_tool("get_claim_tree", {"pid": "nope"}))
             out["figs"] = (await c.call_tool("list_figures", {"pid": "method"})).structured_content
         return out
+
     out = asyncio.run(run())
     for name in schemas.TOOL_NAMES[19:28]:  # W4-E 9 件（W16 图源 4 件在其前；其后为批1 生命周期面，另测）
         if name == "read_attachment_text":
@@ -172,7 +183,7 @@ def test_e3_tools_implemented_and_missing_pid_is_not_found(tmp_path, monkeypatch
         else:
             assert not out[name].is_error and out[name].structured_content is not None, name
     assert out["missing"]["kind"] == "not_found"
-    assert len(out["figs"]["figures"]) == 6  # 搬家后附图工具行为不变
+    assert len(out["figs"]["figures"]) == 3  # 搬家后附图工具行为不变
 
 
 def test_e3_context_pack_schema_fields():

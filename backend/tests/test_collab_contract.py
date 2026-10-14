@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """W4-B 骨架锁（docs/plan/14）：角色表、AUTH=off 下单元路由 501 形状、共享面（accepted_by / PUT members/{uid} /
 collab mode / reviewer 直接改字 403 / 在线来源）。单元细节见 test_access / test_reviewer / test_invites。"""
+
 import test_auth
 from fastapi.testclient import TestClient
 from test_auth import _assert_501, _login, _register
@@ -12,14 +13,17 @@ client = test_auth.client  # pytest fixture
 on = test_auth.on  # pytest fixture
 
 
-
 def test_reviewer_between_viewer_and_editor():
     assert ROLES == ("viewer", "reviewer", "editor", "agent", "owner")
     assert ROLE_RANK["viewer"] < ROLE_RANK["reviewer"] < ROLE_RANK["editor"] < ROLE_RANK["agent"] < ROLE_RANK["owner"]
     assert role_at_least("reviewer", "viewer") and not role_at_least("reviewer", "editor")
     # 源文档写路由：读仍 viewer，写放 reviewer 进门（正文校验在路由内 check_source_write）
-    for path in ("/api/projects/{pid}/content", "/api/projects/{pid}/docs/{book}",
-                 "/api/projects/{pid}/blocks", "/api/projects/{pid}/blocks/{block_id:path}"):
+    for path in (
+        "/api/projects/{pid}/content",
+        "/api/projects/{pid}/docs/{book}",
+        "/api/projects/{pid}/blocks",
+        "/api/projects/{pid}/blocks/{block_id:path}",
+    ):
         assert required_role("GET", path) == "viewer"
         assert required_role("PUT", path) == "reviewer" and required_role("POST", path) == "reviewer"
     assert required_role("GET", "/api/projects/{pid}/access") == "owner"
@@ -35,8 +39,9 @@ def test_off_placeholders_are_501_with_unit_name(client):
     _assert_501(c.get("/api/projects/method/collab-settings"), "B1-access-log")
     _assert_501(c.put("/api/projects/method/collab-settings", json={"allow_download": False}), "B1-access-log")
     _assert_501(c.get("/api/projects/method/invites"), "B2-reviewer-invites")
-    _assert_501(c.post("/api/projects/method/invites", json={"email": "a@b.cn", "role": "reviewer"}),
-                "B2-reviewer-invites")
+    _assert_501(
+        c.post("/api/projects/method/invites", json={"email": "a@b.cn", "role": "reviewer"}), "B2-reviewer-invites"
+    )
     _assert_501(c.put("/api/projects/method/invites/a@b.cn", json={"role": "viewer"}), "B2-reviewer-invites")
     _assert_501(c.delete("/api/projects/method/invites/a@b.cn"), "B2-reviewer-invites")
     _assert_501(c.put("/api/projects/method/members/x", json={"role": "viewer"}))

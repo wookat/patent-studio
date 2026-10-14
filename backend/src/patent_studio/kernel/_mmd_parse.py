@@ -1,4 +1,5 @@
 """拆分件：按职责搬出；公开名经显式 import 收回原模块命名空间。"""
+
 from __future__ import annotations
 
 import re
@@ -7,14 +8,15 @@ from dataclasses import dataclass, field
 _NODE = re.compile(
     r"^\s*(?P<id>[A-Za-z_][\w]*)\s*"
     r"(?:\(\((?P<circle>.*?)\)\)|\((?P<round>.*?)\)|\[/(?P<vstrip>.*?)/\]|"
-    r"\[(?P<box>.*?)\]|\{(?P<diamond>.*?)\})?\s*$")
+    r"\[(?P<box>.*?)\]|\{(?P<diamond>.*?)\})?\s*$"
+)
 
 
 _EDGE_RES = (
-    re.compile(r"^(?P<l>.+?)\s*(?P<bi><)?--\s+(?P<lab>[^|>-][^->]*?)\s*-->\s*(?P<r>.+)$"),   # A -- 文本 --> B
-    re.compile(r"^(?P<l>.+?)\s*-\.\s*(?P<lab>[^.]+?)\s*\.-+>\s*(?P<r>.+)$"),        # A -.文本.-> B（恒虚线）
+    re.compile(r"^(?P<l>.+?)\s*(?P<bi><)?--\s+(?P<lab>[^|>-][^->]*?)\s*-->\s*(?P<r>.+)$"),  # A -- 文本 --> B
+    re.compile(r"^(?P<l>.+?)\s*-\.\s*(?P<lab>[^.]+?)\s*\.-+>\s*(?P<r>.+)$"),  # A -.文本.-> B（恒虚线）
     re.compile(r"^(?P<l>.+?)\s*(?P<bi><)?(?P<op>-+>|\.-+>|-\.-+>)\s*\|(?P<lab>[^|]*)\|\s*(?P<r>.+)$"),
-    re.compile(r"^(?P<l>.+?)\s*(?P<bi><)?(?P<op>-\.-+>|\.-+>|-+>|=+>|--)\s*(?P<r>.+)$"),         # --> / -.-> / ==> / --
+    re.compile(r"^(?P<l>.+?)\s*(?P<bi><)?(?P<op>-\.-+>|\.-+>|-+>|=+>|--)\s*(?P<r>.+)$"),  # --> / -.-> / ==> / --
 )
 
 
@@ -31,10 +33,11 @@ _SUBGRAPH = re.compile(r"^\s*subgraph\s+(?P<id>[A-Za-z_][\w]*)\s*(?:\[(?P<label>
 
 
 _CHAIN_SEP = re.compile(
-    r"\s*(--\s+[^|>-][^->]*?\s*-->"                    # -- 文本 -->
-    r"|-\.\s*[^.]+?\s*\.-+>"                            # -. 文本 .->
-    r"|(?:-+>|\.-+>|-\.-+>)\s*\|[^|]*\|"                 # -->|文本| / -.->|文本|
-    r"|-\.-+>|\.-+>|<*-+>|=+>|<*--)\s*")                   # -.-> / ..> / --> / ==> / --
+    r"\s*(--\s+[^|>-][^->]*?\s*-->"  # -- 文本 -->
+    r"|-\.\s*[^.]+?\s*\.-+>"  # -. 文本 .->
+    r"|(?:-+>|\.-+>|-\.-+>)\s*\|[^|]*\|"  # -->|文本| / -.->|文本|
+    r"|-\.-+>|\.-+>|<*-+>|=+>|<*--)\s*"
+)  # -.-> / ..> / --> / ==> / --
 
 
 def _split_edge_chain(ln):
@@ -47,15 +50,17 @@ def _split_edge_chain(ln):
         return None
     out = []
     for i, m in enumerate(seps):
-        left = ln[:m.start()] if i == 0 else ln[seps[i - 1].end():m.start()]
-        right = ln[m.end():seps[i + 1].start() if i + 1 < len(seps) else len(ln)]
+        left = ln[: m.start()] if i == 0 else ln[seps[i - 1].end() : m.start()]
+        right = ln[m.end() : seps[i + 1].start() if i + 1 < len(seps) else len(ln)]
         left, right = left.strip(), right.strip()
         if not left or not right:
             return None
         seg = m.group(0)
-        lab_m = (re.match(r"\s*--\s+(?P<t>[^|>-][^->]*?)\s*-->\s*$", seg)
-                 or re.match(r"\s*-\.\s*(?P<t>[^.]+?)\s*\.-+>\s*$", seg)
-                 or re.search(r"\|(?P<t>[^|]*)\|", seg))
+        lab_m = (
+            re.match(r"\s*--\s+(?P<t>[^|>-][^->]*?)\s*-->\s*$", seg)
+            or re.match(r"\s*-\.\s*(?P<t>[^.]+?)\s*\.-+>\s*$", seg)
+            or re.search(r"\|(?P<t>[^|]*)\|", seg)
+        )
         lab = _unquote(lab_m.group("t") or "") if lab_m else ""
         out.append((left, lab, right, "<-" in seg, _edge_dashed(seg)))
     return out
@@ -76,10 +81,10 @@ class _Node:
 @dataclass
 class _Graph:
     direction: str = "TB"
-    nodes: dict = field(default_factory=dict)   # id → _Node
-    edges: list = field(default_factory=list)   # (a, b, label)
-    bidir: set = field(default_factory=set)     # A <--> B 双向边 (a,b)
-    dashed: set = field(default_factory=set)    # -.-> 虚线边 (a,b)（数据/参数传递线）
+    nodes: dict = field(default_factory=dict)  # id → _Node
+    edges: list = field(default_factory=list)  # (a, b, label)
+    bidir: set = field(default_factory=set)  # A <--> B 双向边 (a,b)
+    dashed: set = field(default_factory=set)  # -.-> 虚线边 (a,b)（数据/参数传递线）
     clusters: dict = field(default_factory=dict)  # id → {label, members:set}
 
 
@@ -95,12 +100,18 @@ def _node_of(seg):
     m = _NODE.match(seg.strip())
     if not m:
         return None
-    label = next((m.group(k) for k in ("circle", "round", "vstrip", "box", "diamond")
-                  if m.group(k) is not None), None)
-    shape = ("diamond" if m.group("diamond") is not None else
-             "circ" if m.group("circle") is not None else
-             "vstrip" if m.group("vstrip") is not None else
-             "round" if m.group("round") is not None else "box")
+    label = next((m.group(k) for k in ("circle", "round", "vstrip", "box", "diamond") if m.group(k) is not None), None)
+    shape = (
+        "diamond"
+        if m.group("diamond") is not None
+        else "circ"
+        if m.group("circle") is not None
+        else "vstrip"
+        if m.group("vstrip") is not None
+        else "round"
+        if m.group("round") is not None
+        else "box"
+    )
     return m.group("id"), (_unquote(label) if label is not None else m.group("id")), shape
 
 
@@ -132,8 +143,8 @@ def parse_mmd(src):
             continue
         chain = _split_edge_chain(ln)
         if chain is not None and all(
-                _node_of(t) for edge in chain
-                for seg in (edge[0], edge[2]) for t in seg.split("&")):
+            _node_of(t) for edge in chain for seg in (edge[0], edge[2]) for t in seg.split("&")
+        ):
             for sa, lab, sb, bi, dsh in chain:
                 # `&` 扇出/扇入：A --> B & C 拆为逐边（授权件分流/汇流画法基础）
                 a_nodes = [_node_of(t) for t in sa.split("&")]
@@ -141,8 +152,9 @@ def parse_mmd(src):
                 for nd in a_nodes + b_nodes:
                     nid, lab_tx, shp = nd
                     if nid not in g.nodes:
-                        g.nodes[nid] = _Node(label=lab_tx, shape=shp,
-                                             cluster=cluster_stack[-1] if cluster_stack else None)
+                        g.nodes[nid] = _Node(
+                            label=lab_tx, shape=shp, cluster=cluster_stack[-1] if cluster_stack else None
+                        )
                     if cluster_stack:
                         g.clusters[cluster_stack[-1]]["members"].add(nid)
                 for a in a_nodes:
@@ -166,13 +178,13 @@ def parse_mmd(src):
                         lid_pool.append(nd[0])
                         nid, lab_tx, shp = nd
                         if nid not in g.nodes:
-                            g.nodes[nid] = _Node(label=lab_tx, shape=shp,
-                                                 cluster=cluster_stack[-1] if cluster_stack else None)
+                            g.nodes[nid] = _Node(
+                                label=lab_tx, shape=shp, cluster=cluster_stack[-1] if cluster_stack else None
+                            )
                         if cluster_stack:
                             g.clusters[cluster_stack[-1]]["members"].add(nid)
                 _op = em.groupdict().get("op") or ""
-                _dsh = (_op.startswith(("-.", "."))
-                        or _EDGE_RES.index(pat) == 1)  # -.文本.-> 型整式即虚线
+                _dsh = _op.startswith(("-.", ".")) or _EDGE_RES.index(pat) == 1  # -.文本.-> 型整式即虚线
                 for s in lefts:
                     for t in rights:
                         a, b = _node_of(s), _node_of(t)
@@ -187,8 +199,9 @@ def parse_mmd(src):
             nd = _node_of(ln)
             if nd:
                 nid, lab_tx, shp = nd
-                g.nodes.setdefault(nid, _Node(label=lab_tx, shape=shp,
-                                              cluster=cluster_stack[-1] if cluster_stack else None))
+                g.nodes.setdefault(
+                    nid, _Node(label=lab_tx, shape=shp, cluster=cluster_stack[-1] if cluster_stack else None)
+                )
                 if cluster_stack:
                     g.clusters[cluster_stack[-1]]["members"].add(nid)
     if not g.nodes:
@@ -242,8 +255,9 @@ def validate_graph(g):
     level: 'warn' 大概率画错 / 'info' 惯例提醒。模型看不见渲染，这些就是它的眼睛。"""
     out = []
     if g is None:
-        return [{"code": "unparseable", "level": "warn",
-                 "detail": "图源没有可解析的节点或边——检查 flowchart 头与节点写法"}]
+        return [
+            {"code": "unparseable", "level": "warn", "detail": "图源没有可解析的节点或边——检查 flowchart 头与节点写法"}
+        ]
     ids = set(g.nodes)
     deg_in = {i: 0 for i in ids}
     deg_out = {i: 0 for i in ids}
@@ -255,8 +269,13 @@ def validate_graph(g):
         adj[b].add(a)
     iso = [nid for nid in ids if deg_in[nid] == 0 and deg_out[nid] == 0]
     if iso:
-        out.append({"code": "isolated", "level": "warn",
-                    "detail": "未连通节点：" + "、".join(g.nodes[i].label for i in iso[:6])})
+        out.append(
+            {
+                "code": "isolated",
+                "level": "warn",
+                "detail": "未连通节点：" + "、".join(g.nodes[i].label for i in iso[:6]),
+            }
+        )
     # 弱连通分量 >1 → 图碎成几摊，渲染器会并排摆开但语义上是断的
     seen = set()
     parts = 0
@@ -272,16 +291,13 @@ def validate_graph(g):
                     seen.add(v)
                     stack.append(v)
     if parts > 1:
-        out.append({"code": "disconnected", "level": "warn",
-                    "detail": f"图分裂为 {parts} 个不连通分量"})
+        out.append({"code": "disconnected", "level": "warn", "detail": f"图分裂为 {parts} 个不连通分量"})
     sources = [nid for nid in ids if deg_in[nid] == 0 and deg_out[nid] > 0]
     sinks = [nid for nid in ids if deg_out[nid] == 0 and deg_in[nid] > 0]
     if g.edges and not sources:
-        out.append({"code": "no_entry", "level": "warn",
-                    "detail": "无入度0起点——流程没有源头（纯环或断链）"})
+        out.append({"code": "no_entry", "level": "warn", "detail": "无入度0起点——流程没有源头（纯环或断链）"})
     if g.edges and not sinks:
-        out.append({"code": "no_exit", "level": "warn",
-                    "detail": "无出度0终点——流程没有收口"})
+        out.append({"code": "no_exit", "level": "warn", "detail": "无出度0终点——流程没有收口"})
     marks = {}
     for nid, n in g.nodes.items():
         m = _MARK_RE.match(n.label)
@@ -289,14 +305,23 @@ def validate_graph(g):
             marks.setdefault(m.group(2), []).append(m.group(1).strip() or nid)
     dups = [k for k, v in marks.items() if len(v) > 1]
     if dups:
-        out.append({"code": "dup_mark", "level": "warn",
-                    "detail": "元件标号重号：" + "、".join(dups[:6])})
+        out.append({"code": "dup_mark", "level": "warn", "detail": "元件标号重号：" + "、".join(dups[:6])})
     if g.edges and not marks:
-        out.append({"code": "no_marks", "level": "info",
-                    "detail": "无元件标号——结构图惯例是每层/单元带三位标号（如 注意力模块 301）"})
+        out.append(
+            {
+                "code": "no_marks",
+                "level": "info",
+                "detail": "无元件标号——结构图惯例是每层/单元带三位标号（如 注意力模块 301）",
+            }
+        )
     if 0 < len(g.nodes) < 4 and len(g.edges) > 0:
-        out.append({"code": "sparse", "level": "info",
-                    "detail": f"仅 {len(g.nodes)} 节点——授权件惯例 15-30 元件级，检查是否三步抽象"})
+        out.append(
+            {
+                "code": "sparse",
+                "level": "info",
+                "detail": f"仅 {len(g.nodes)} 节点——授权件惯例 15-30 元件级，检查是否三步抽象",
+            }
+        )
     return out
 
 
@@ -309,6 +334,7 @@ def describe_graph(g):
     for a, b, _ in g.edges:
         deg_out[a] += 1
         deg_in[b] += 1
+
     def lab(i):
         return g.nodes[i].label
 
@@ -329,6 +355,7 @@ def describe_graph(g):
     if sinks:
         bits.append("终点 " + "、".join(lab(i) for i in sinks[:4]))
     return "；".join(bits)
+
 
 __all__ = [
     "_CHAIN_SEP",

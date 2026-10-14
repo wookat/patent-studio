@@ -9,6 +9,7 @@ loop 用 `get()` 取；两单元只经此表耦合，不互相 import。
 - 重复注册同一场景抛 ValueError（防两单元撞车），测试可 `reset()`。
 - `available()` = 已注册场景的 ScenarioInfo（GET /agent/scenarios 用），顺序按 SCENARIOS。
 """
+
 from collections.abc import Awaitable, Callable
 from typing import Any
 

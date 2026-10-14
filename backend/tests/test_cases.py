@@ -3,6 +3,7 @@
 PUT /case、POST /case/status（history 事件）、标签 CRUD（级联）、用户视角 list-state、永久删除、退出、批量。
 auth off（单机）与 on（viewer / editor / agent / owner / 超管）都覆盖；骨架级用例在 test_w4a_prep.py。
 """
+
 import importlib
 import json
 import os
@@ -45,8 +46,11 @@ def _projects(tmp_path):
     projects = tmp_path / "projects"
     projects.mkdir()
     for pid in ("method", "system"):
-        shutil.copytree(os.path.join(ROOT, "examples", pid), projects / pid,
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            os.path.join(ROOT, "examples", pid),
+            projects / pid,
+            ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+        )
     return projects
 
 
@@ -85,8 +89,10 @@ def _messages(project_dir):
 
 def test_put_case_patches_only_given_fields_and_commits(client):
     c, projects = client
-    r = c.put("/api/projects/method/case", json={"case_no": "P-001", "client": "甲方",
-                                                  "deadlines": [{"kind": "filing", "due": "2099-01-01"}]})
+    r = c.put(
+        "/api/projects/method/case",
+        json={"case_no": "P-001", "client": "甲方", "deadlines": [{"kind": "filing", "due": "2099-01-01"}]},
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["case_no"] == "P-001" and body["client"] == "甲方" and body["status"] == "drafting"
@@ -110,12 +116,25 @@ def test_put_case_dates_persist_and_unknown_date_keys_rejected(client):
     """审计 I-2：申请日 / 公开日 / 实审 / 授权日走 dates.*，写后重读不丢；
     旧的顶层 filing_date 类字段名 422 而不是 200 丢弃。"""
     c, _projects = client
-    r = c.put("/api/projects/method/case", json={"dates": {
-        "filed": "2026-03-01", "publication": "2027-09-01", "exam_request": "2026-03-02", "grant": "2028-01-01"}})
+    r = c.put(
+        "/api/projects/method/case",
+        json={
+            "dates": {
+                "filed": "2026-03-01",
+                "publication": "2027-09-01",
+                "exam_request": "2026-03-02",
+                "grant": "2028-01-01",
+            }
+        },
+    )
     assert r.status_code == 200, r.text
     got = c.get("/api/projects/method/case").json()["dates"]
     assert (got["filed"], got["publication"], got["exam_request"], got["grant"]) == (
-        "2026-03-01", "2027-09-01", "2026-03-02", "2028-01-01")
+        "2026-03-01",
+        "2027-09-01",
+        "2026-03-02",
+        "2028-01-01",
+    )
     # 只改一个子字段，其余日期不动
     assert c.put("/api/projects/method/case", json={"dates": {"grant": None}}).status_code == 200
     got = c.get("/api/projects/method/case").json()["dates"]
@@ -135,7 +154,10 @@ def test_status_transitions_write_history_events(client):
     assert c.post("/api/projects/method/case/status", json={"status": "granted", "note": "已授权"}).status_code == 200
     assert c.post("/api/projects/method/case/status", json={"status": "intake"}).status_code == 200
     assert _messages(projects / "method") == [
-        "case: status granted → intake", "case: status review → granted · 已授权", "case: status drafting → review"]
+        "case: status granted → intake",
+        "case: status review → granted · 已授权",
+        "case: status drafting → review",
+    ]
     assert history.last_author(str(projects / "method")) == history.DEFAULT_AUTHOR
     assert cases.load_case(str(projects / "method")).status == "intake"
     assert c.get("/api/projects").json()[0]["case"]["status"] == "intake"
@@ -229,8 +251,9 @@ def test_list_state_delete_and_leave_off(client):
 
 def test_bulk_mixed_results_off(client):
     c, projects = client
-    r = c.post("/api/projects/bulk", json={"pids": ["method", "nope", "system"], "action": "status",
-                                          "status": "review"})
+    r = c.post(
+        "/api/projects/bulk", json={"pids": ["method", "nope", "system"], "action": "status", "status": "review"}
+    )
     assert r.status_code == 200, r.text
     res = r.json()["results"]
     assert [x["ok"] for x in res] == [True, False, True] and "nope" in res[1]["error"]
@@ -240,8 +263,10 @@ def test_bulk_mixed_results_off(client):
     r = c.post("/api/projects/bulk", json={"pids": ["method"], "action": "status", "status": "review"})
     assert r.json()["results"] == [{"pid": "method", "ok": True}] and len(_messages(projects / "method")) == n
 
-    r = c.post("/api/projects/bulk", json={"pids": ["method", "system"], "action": "tags",
-                                          "add_tags": ["AI"], "remove_tags": ["x"]})
+    r = c.post(
+        "/api/projects/bulk",
+        json={"pids": ["method", "system"], "action": "tags", "add_tags": ["AI"], "remove_tags": ["x"]},
+    )
     assert all(x["ok"] for x in r.json()["results"])
     assert cases.load_case(str(projects / "system")).tags == ["AI"]
     assert _messages(projects / "system")[0] == "case: update tags"
@@ -253,11 +278,17 @@ def test_bulk_mixed_results_off(client):
 
     r = c.post("/api/projects/bulk", json={"pids": ["method", "system"], "action": "list_state", "state": "archived"})
     assert all(x["ok"] for x in r.json()["results"])
-    assert {r["id"]: r["list_state"] for r in c.get("/api/projects").json()} == {"method": "archived",
-                                                                                 "system": "archived"}
+    assert {r["id"]: r["list_state"] for r in c.get("/api/projects").json()} == {
+        "method": "archived",
+        "system": "archived",
+    }
     # 缺参数 422；非法 action 422
-    for bad in ({"pids": ["method"], "action": "status"}, {"pids": ["method"], "action": "list_state"},
-                {"pids": ["method"], "action": "tags"}, {"pids": ["method"], "action": "rename"}):
+    for bad in (
+        {"pids": ["method"], "action": "status"},
+        {"pids": ["method"], "action": "list_state"},
+        {"pids": ["method"], "action": "tags"},
+        {"pids": ["method"], "action": "rename"},
+    ):
         assert c.post("/api/projects/bulk", json=bad).status_code == 422, bad
 
 
@@ -295,9 +326,11 @@ def test_on_write_routes_require_agent(on):
     main, projects = on
     users, c = _team(main)
     for who in ("viewer", "editor"):
-        for r in (c[who].put("/api/projects/method/case", json={"client": "x"}),
-                  c[who].post("/api/projects/method/case/status", json={"status": "review"}),
-                  c[who].post("/api/projects/method/list-state", json={"state": "archived"})):
+        for r in (
+            c[who].put("/api/projects/method/case", json={"client": "x"}),
+            c[who].post("/api/projects/method/case/status", json={"status": "review"}),
+            c[who].post("/api/projects/method/list-state", json={"state": "archived"}),
+        ):
             assert r.status_code == 403 and r.json()["detail"]["kind"] == "forbidden", r.text
         assert c[who].get("/api/projects/method/case").status_code == 200  # 读仍可
     assert c["agent"].put("/api/projects/method/case", json={"client": "甲方"}).status_code == 200
@@ -307,8 +340,11 @@ def test_on_write_routes_require_agent(on):
     assert c["boss"].post("/api/projects/method/case/status", json={"status": "filed"}).status_code == 200
     log = history.log(str(projects / "method"))
     assert [(v["message"], v["author"]) for v in log] == [
-        ("case: status final → filed", "boss"), ("case: status review → final", "owner2"),
-        ("case: status drafting → review", "agent"), ("case: update client", "agent")]
+        ("case: status final → filed", "boss"),
+        ("case: status review → final", "owner2"),
+        ("case: status drafting → review", "agent"),
+        ("case: update client", "agent"),
+    ]
     assert c["viewer"].get("/api/projects").json()[0]["last_modified_by"] == "boss"
     # system 未授权：agent 连读都 403
     assert c["agent"].post("/api/projects/system/case/status", json={"status": "review"}).status_code == 403
@@ -399,8 +435,9 @@ def test_on_bulk_checks_each_project(on):
     main, projects = on
     users, c = _team(main)
     # agent：method 有 agent 角色，system 无权限 ⇒ 混合结果，不回滚
-    r = c["agent"].post("/api/projects/bulk", json={"pids": ["method", "system", "nope"], "action": "status",
-                                                    "status": "review"})
+    r = c["agent"].post(
+        "/api/projects/bulk", json={"pids": ["method", "system", "nope"], "action": "status", "status": "review"}
+    )
     res = r.json()["results"]
     assert res[0] == {"pid": "method", "ok": True}
     assert res[1]["ok"] is False and "权限不足" in res[1]["error"]
@@ -410,18 +447,26 @@ def test_on_bulk_checks_each_project(on):
     r = c["editor"].post("/api/projects/bulk", json={"pids": ["method"], "action": "list_state", "state": "archived"})
     assert r.json()["results"][0]["ok"] is False
     # 超管全过；list_state 落在超管自己的视角
-    r = c["boss"].post("/api/projects/bulk", json={"pids": ["method", "system"], "action": "list_state",
-                                                   "state": "archived"})
+    r = c["boss"].post(
+        "/api/projects/bulk", json={"pids": ["method", "system"], "action": "list_state", "state": "archived"}
+    )
     assert all(x["ok"] for x in r.json()["results"])
     assert {row["id"]: row["list_state"] for row in c["boss"].get("/api/projects").json()} == {
-        "method": "archived", "system": "archived"}
+        "method": "archived",
+        "system": "archived",
+    }
     assert c["agent"].get("/api/projects").json()[0]["list_state"] == "active"
-    r = c["boss"].post("/api/projects/bulk", json={"pids": ["method"], "action": "owner",
-                                                   "owner_user_id": users["agent"]})
+    r = c["boss"].post(
+        "/api/projects/bulk", json={"pids": ["method"], "action": "owner", "owner_user_id": users["agent"]}
+    )
     assert r.json()["results"][0]["ok"]
     assert cases.load_case(str(projects / "method")).owner_user_id == users["agent"]
-    assert TestClient(main.app).post("/api/projects/bulk", json={"pids": ["method"], "action": "status",
-                                                                  "status": "review"}).status_code == 401
+    assert (
+        TestClient(main.app)
+        .post("/api/projects/bulk", json={"pids": ["method"], "action": "status", "status": "review"})
+        .status_code
+        == 401
+    )
 
 
 def test_on_import_docx_sets_case_owner_and_acl(on):
@@ -489,8 +534,7 @@ def test_case_file_lock_serializes_writers(tmp_path):
 def test_related_cases_round_trip_and_divisional_backlink(client):
     """W19 批7 ⑪c：related 经 PUT /case 落地持久化；parent_pid 建分案自动双向互链。"""
     c, projects = client
-    r = c.put("/api/projects/method/case", json={
-        "related": [{"pid": "sys", "kind": "associated", "note": "同族"}]})
+    r = c.put("/api/projects/method/case", json={"related": [{"pid": "sys", "kind": "associated", "note": "同族"}]})
     assert r.status_code == 200, r.text
     got = c.get("/api/projects/method/case").json()
     assert got["related"] == [{"pid": "sys", "kind": "associated", "note": "同族"}]

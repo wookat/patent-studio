@@ -5,6 +5,7 @@ status（?probe=1 ⇒ GET /v1/models 5 s 核对三模型）；chat SSE（delta/u
 CriticMarkup，不落盘）；review 后台任务（JSON → 批注 author=ai，锚 block_id）；jobs 查询 / SSE / 列表 / 取消；usage。
 所有带 pid 的生成类路由先 ai.require_enabled(store, pid, UNIT)：关闭时 403 ai_disabled 且零上游调用。
 """
+
 import asyncio
 import json
 import logging
@@ -41,25 +42,32 @@ UNIT = "E1-ai-client"
 
 BOOKS = ("abstract", "claims", "description")
 BOOK_NAMES = {"abstract": "摘要", "claims": "权利要求书", "description": "说明书"}
-CHAT_BOOK_LIMIT = 8000   # 当前书全文 ≤ 8k 字直接给，超出取选区 ±CHAT_AROUND 行
+CHAT_BOOK_LIMIT = 8000  # 当前书全文 ≤ 8k 字直接给，超出取选区 ±CHAT_AROUND 行
 CHAT_AROUND = 60
-REVIEW_BATCH = 60        # description 每批块数（claims 全量一批）
-CHAT_ATTACH_MAX_FILES = 8     # 单条消息最多附件数
+REVIEW_BATCH = 60  # description 每批块数（claims 全量一批）
+CHAT_ATTACH_MAX_FILES = 8  # 单条消息最多附件数
 CHAT_ATTACH_TEXT_LIMIT = 24000  # 单附件抽文本上限（超出截断，truncated 标记）
 CHAT_ATTACH_IMG_EXTS = {"png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "tif", "tiff"}
 CHAT_ATTACH_BIN_EXTS = {"zip", "rar", "7z", "exe", "dll", "so", "bin", "xlsx", "pptx", "doc", "xls", "ppt"}
 AI_AUTHOR = comments_mod.Author(id="ai", name="AI 审阅")
-RULE_LABELS = {"A26.3": "公开充分", "A26.4": "支持性", "A22.2": "新颖性", "A22.3": "创造性",
-               "term": "术语", "support": "支持性", "clarity": "清楚"}
+RULE_LABELS = {
+    "A26.3": "公开充分",
+    "A26.4": "支持性",
+    "A22.2": "新颖性",
+    "A22.3": "创造性",
+    "term": "术语",
+    "support": "支持性",
+    "clarity": "清楚",
+}
 SSE_HEADERS = {"Cache-Control": "no-store", "X-Accel-Buffering": "no"}
 
 
 class ChatIn(BaseModel):
     messages: list[dict]
     context: dict | None = None
-    agent: bool = True                    # False ⇒ 旧单轮问答（不带工具）
-    resume: dict | None = None            # 确认卡回执：{assistant, calls}（首个 call 即被裁决者）
-    approved: bool = False                # resume 时该 call 是否被用户批准
+    agent: bool = True  # False ⇒ 旧单轮问答（不带工具）
+    resume: dict | None = None  # 确认卡回执：{assistant, calls}（首个 call 即被裁决者）
+    approved: bool = False  # resume 时该 call 是否被用户批准
 
 
 class RewriteIn(BaseModel):
@@ -111,8 +119,11 @@ def _ast_or_422(content: str, settings: dict):
 def _block_ranges(ast: dict) -> dict[str, tuple[int, int]]:
     """块 id → 全文行闭区间（与 comments.reanchor 同一算法）。"""
     out: dict[str, tuple[int, int]] = {}
-    for book, blocks in (("abstract", ast["abstract"]["paragraphs"]), ("claims", ast["claims"]),
-                         ("description", ast["description"])):
+    for book, blocks in (
+        ("abstract", ast["abstract"]["paragraphs"]),
+        ("claims", ast["claims"]),
+        ("description", ast["description"]),
+    ):
         off = ast["books"][book]["offset"]
         for b in blocks:
             out[b["id"]] = (off + b["lines"]["start"], off + b["lines"]["end"])
@@ -121,12 +132,19 @@ def _block_ranges(ast: dict) -> dict[str, tuple[int, int]]:
 
 # ---------------- status ----------------
 
+
 @router.get("/api/ai/status")
 async def ai_status(request: Request, probe: bool = False):
     ai: AiClient = request.app.state.ai
-    out = {"provider": ai.provider.name, "key_present": ai.key_present, "models": dict(MODELS),
-           "org_ai_enabled": _org_ai_enabled(),
-           "reachable": None, "checked_at": None, "error": None}
+    out = {
+        "provider": ai.provider.name,
+        "key_present": ai.key_present,
+        "models": dict(MODELS),
+        "org_ai_enabled": _org_ai_enabled(),
+        "reachable": None,
+        "checked_at": None,
+        "error": None,
+    }
     if not probe:
         return out
     out["checked_at"] = time.time()
@@ -148,6 +166,7 @@ async def ai_status(request: Request, probe: bool = False):
 
 
 # ---------------- chat（SSE） ----------------
+
 
 def _semantic_part(store, pid: str, ctx: dict) -> list[str]:
     """context.terms / checks / claim_tree：true ⇒ 服务端派生（语义工具直接调用）；列表/对象 ⇒ 前端已算好，原样附上。"""
@@ -203,8 +222,11 @@ def _chat_context(p, content: str, ctx: dict | None, store=None, pid: str | None
         parts.extend(_semantic_part(store, pid, ctx))
     atts = ctx.get("attachments")
     if isinstance(atts, list):
-        segs = [f"附件：《{str(a.get('name') or '附件')}》\n{str(a['text'])}" for a in atts[:CHAT_ATTACH_MAX_FILES]
-                if isinstance(a, dict) and a.get("text")]
+        segs = [
+            f"附件：《{str(a.get('name') or '附件')}》\n{str(a['text'])}"
+            for a in atts[:CHAT_ATTACH_MAX_FILES]
+            if isinstance(a, dict) and a.get("text")
+        ]
         if segs:
             parts.append("随消息附带的资料：\n" + "\n\n".join(segs))
     return budget.clip("\n\n".join(parts), None)
@@ -243,8 +265,13 @@ def _attach_one(data: bytes, name: str) -> dict:
     if not text:
         return {"name": name, "ok": False, "error": "文件无可读文本"}
     clipped = text[:CHAT_ATTACH_TEXT_LIMIT]
-    return {"name": name, "ok": True, "text": clipped, "chars": len(clipped),
-            "truncated": len(text) > CHAT_ATTACH_TEXT_LIMIT or None}
+    return {
+        "name": name,
+        "ok": True,
+        "text": clipped,
+        "chars": len(clipped),
+        "truncated": len(text) > CHAT_ATTACH_TEXT_LIMIT or None,
+    }
 
 
 @router.post("/api/projects/{pid}/ai/chat/attach", dependencies=[Depends(require_org_ai)])
@@ -272,6 +299,7 @@ async def ai_chat(pid: str, body: ChatIn, request: Request, user: CurrentUser):
     if body.agent and getattr(ai.provider, "complete_tools", None) is not None:
         # 网关支持 tools API ⇒ agent 工具循环；不支持（如 mock）⇒ 落旧单轮流式
         from app.agent import chat_engine
+
         msgs = prompts.chat_messages(body.messages, context + chat_engine.AGENT_SUFFIX)
         if len(msgs) < 2 and not body.resume:
             raise HTTPException(422, error_detail("content", "messages 至少一条 user 消息", detail=UNIT))
@@ -281,6 +309,7 @@ async def ai_chat(pid: str, body: ChatIn, request: Request, user: CurrentUser):
                 if "done" in ev:
                     ev["truncated"] = truncated
                 yield _sse(ev)
+
         return StreamingResponse(agent_gen(), media_type="text/event-stream", headers=SSE_HEADERS)
 
     msgs = prompts.chat_messages(body.messages, context)
@@ -297,8 +326,16 @@ async def ai_chat(pid: str, body: ChatIn, request: Request, user: CurrentUser):
                 yield _sse({"delta": delta})
             r: ChatResult = stream.result
             yield _sse({"usage": asdict(r.usage)})
-            yield _sse({"done": True, "model": r.model, "usage": asdict(r.usage), "fallback": r.fallback, "ms": r.ms,
-                        "truncated": truncated})
+            yield _sse(
+                {
+                    "done": True,
+                    "model": r.model,
+                    "usage": asdict(r.usage),
+                    "fallback": r.fallback,
+                    "ms": r.ms,
+                    "truncated": truncated,
+                }
+            )
         except AiError as e:
             yield _sse({"error": {"kind": f"ai_{e.kind}", "message": str(e)}})
         finally:
@@ -308,6 +345,7 @@ async def ai_chat(pid: str, body: ChatIn, request: Request, user: CurrentUser):
 
 
 # ---------------- rewrite ----------------
+
 
 def _as_critic(orig: list[str], out: str) -> str | None:
     """模型输出 → 覆盖整段的 CriticMarkup；行数不同 ⇒ None。
@@ -340,33 +378,50 @@ async def ai_rewrite(pid: str, body: RewriteIn, request: Request, user: CurrentU
     lines = content.split("\n")
     s, e = body.line_start, body.line_end
     if not (1 <= s <= e <= len(lines)):
-        raise HTTPException(422, error_detail("content", f"行区间 [{s}, {e}] 超出全文 1–{len(lines)}",
-                                              line=s, detail=UNIT))
-    orig = lines[s - 1:e]
-    ctx = f"当前书：{BOOK_NAMES[body.book]}；选区第 {s}–{e} 行。选区前后文（供理解，不要改写）：\n" + \
-        _numbered(lines, s - 20, e + 20)
+        raise HTTPException(
+            422, error_detail("content", f"行区间 [{s}, {e}] 超出全文 1–{len(lines)}", line=s, detail=UNIT)
+        )
+    orig = lines[s - 1 : e]
+    ctx = f"当前书：{BOOK_NAMES[body.book]}；选区第 {s}–{e} 行。选区前后文（供理解，不要改写）：\n" + _numbered(
+        lines, s - 20, e + 20
+    )
     msgs = prompts.rewrite_messages(body.action, "\n".join(orig), ctx, body.instruction)
     who = _who(user)
     try:
         r: ChatResult = await ai.chat(msgs, "interactive", project_dir=p.dir, user=who)
         if body.action == "explain":
-            return {"explanation": r.text.strip(), "line_start": s, "line_end": e,
-                    "model": r.model, "usage": asdict(r.usage), "fallback": r.fallback}
+            return {
+                "explanation": r.text.strip(),
+                "line_start": s,
+                "line_end": e,
+                "model": r.model,
+                "usage": asdict(r.usage),
+                "fallback": r.fallback,
+            }
         out = _as_critic(orig, r.text)
         if out is None:
-            r = await ai.chat(prompts.format_retry(msgs, r.text, "行数与原文不一致"), "interactive",
-                              project_dir=p.dir, user=who)
+            r = await ai.chat(
+                prompts.format_retry(msgs, r.text, "行数与原文不一致"), "interactive", project_dir=p.dir, user=who
+            )
             out = _as_critic(orig, r.text)
     except AiError as ex:
         raise _http(ex)
     if out is None:
         raise _http(AiError("format", "AI 输出行数与选区不一致，已放弃（未改动源码）"))
     changed = [s + i for i, (o, ln) in enumerate(zip(orig, out.split("\n"))) if o != ln]
-    return {"critic_markdown": out, "changed_lines": changed, "line_start": s, "line_end": e,
-            "model": r.model, "usage": asdict(r.usage), "fallback": r.fallback}
+    return {
+        "critic_markdown": out,
+        "changed_lines": changed,
+        "line_start": s,
+        "line_end": e,
+        "model": r.model,
+        "usage": asdict(r.usage),
+        "fallback": r.fallback,
+    }
 
 
 # ---------------- review（后台任务 → 批注） ----------------
+
 
 async def _json_call(ai: AiClient, msgs: list[dict], purpose: str, schema: dict | None, **kw) -> dict:
     r: ChatResult = await ai.chat(msgs, purpose, **kw)
@@ -386,7 +441,7 @@ def _review_blocks(ast: dict, lines: list[str], scope: str) -> list[list[dict]]:
 
     def text_of(bid: str) -> str:
         a, b = ranges[bid]
-        return "\n".join(lines[a - 1:b]).strip()
+        return "\n".join(lines[a - 1 : b]).strip()
 
     batches: list[list[dict]] = []
     if scope in ("all", "claims"):
@@ -394,10 +449,13 @@ def _review_blocks(ast: dict, lines: list[str], scope: str) -> list[list[dict]]:
         if claims:
             batches.append(claims)
     if scope in ("all", "description"):
-        desc = [{"block_id": b["id"], "text": text_of(b["id"])}
-                for b in ast["description"] if b["kind"] in ("paragraph", "table", "equation")]
+        desc = [
+            {"block_id": b["id"], "text": text_of(b["id"])}
+            for b in ast["description"]
+            if b["kind"] in ("paragraph", "table", "equation")
+        ]
         for i in range(0, len(desc), REVIEW_BATCH):
-            batches.append(desc[i:i + REVIEW_BATCH])
+            batches.append(desc[i : i + REVIEW_BATCH])
     return batches
 
 
@@ -458,8 +516,15 @@ async def ai_review(pid: str, body: ReviewIn, request: Request, user: CurrentUse
         n = len(batches)
         for i, batch in enumerate(batches):
             jobs.progress(job.id, 0.05 + 0.8 * i / n, f"审阅第 {i + 1}/{n} 批（{len(batch)} 块）")
-            data = await _json_call(ai, prompts.review_messages(batch, scope), "heavy", prompts.SCHEMAS["review"],
-                                    project_dir=p.dir, job_id=job.id, user=who)
+            data = await _json_call(
+                ai,
+                prompts.review_messages(batch, scope),
+                "heavy",
+                prompts.SCHEMAS["review"],
+                project_dir=p.dir,
+                job_id=job.id,
+                user=who,
+            )
             got = data.get("items")
             items.extend(got if isinstance(got, list) else [])
         jobs.progress(job.id, 0.9, "写入批注")
@@ -477,6 +542,7 @@ async def ai_review(pid: str, body: ReviewIn, request: Request, user: CurrentUse
 
 # ---------------- jobs / usage ----------------
 
+
 @router.get("/api/projects/{pid}/ai/jobs")
 async def ai_jobs(pid: str, request: Request):
     request.app.state.store.get(pid)
@@ -487,10 +553,12 @@ async def ai_jobs(pid: str, request: Request):
 async def ai_usage(pid: str, request: Request, limit: int = 200):
     p = request.app.state.store.get(pid)
     rows = read_usage(p.dir)
-    total = {"prompt_tokens": sum(int(r.get("prompt_tokens") or 0) for r in rows),
-             "completion_tokens": sum(int(r.get("completion_tokens") or 0) for r in rows),
-             "requests": len(rows)}
-    return {"rows": rows[-max(0, limit):] if limit else [], "total": total, **budget.status(p.dir, p.settings)}
+    total = {
+        "prompt_tokens": sum(int(r.get("prompt_tokens") or 0) for r in rows),
+        "completion_tokens": sum(int(r.get("completion_tokens") or 0) for r in rows),
+        "requests": len(rows),
+    }
+    return {"rows": rows[-max(0, limit) :] if limit else [], "total": total, **budget.status(p.dir, p.settings)}
 
 
 _JOB_ID_RE = re.compile(r"^job_[0-9a-f]{12}$")

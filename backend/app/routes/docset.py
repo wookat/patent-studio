@@ -17,6 +17,7 @@
 content.md 是真源：GET 每次对它现场 split（不读 docs/ 镜像，镜像只服务磁盘/外部脚本）。
 book ∉ BOOKS → 404；content.md 非规范三书（缺书/乱序/无标题）→ 422；均为 {"detail": "..."}。
 """
+
 import asyncio
 import hashlib
 
@@ -95,6 +96,13 @@ async def put_doc(request: Request, pid: str, book: str, body: DocIn, user: auth
         ast, ast_error = routes_ast._parse(store, pid, new, None), None
     except HTTPException as e:
         ast, ast_error = None, e.detail
-    return {"ok": True, "backup": backup, "backups": store.list_backups(pid)[:20],
-            "ast": ast, "ast_error": ast_error, "content": new,
-            "changed_lines": book_changed_lines(off[book], new_ds.book(book)), "sha": book_sha(new_ds.book(book))}
+    return {
+        "ok": True,
+        "backup": backup,
+        "backups": store.list_backups(pid)[:20],
+        "ast": ast,
+        "ast_error": ast_error,
+        "content": new,
+        "changed_lines": book_changed_lines(off[book], new_ds.book(book)),
+        "sha": book_sha(new_ds.book(book)),
+    }

@@ -4,6 +4,7 @@
 只在 PATENT_STUDIO_AUTH=on（或 create_user CLI）时被导入。建表在首次取会话时完成（幂等），
 main.py 若有 lifespan 也可直接 `await init_db()`。
 """
+
 import asyncio
 import uuid
 from collections.abc import AsyncGenerator
@@ -75,8 +76,9 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                 await self.user_db.update(user, {"is_superuser": True})
         await self._consume_invites(user)
 
-    async def on_after_login(self, user: User, request: Request | None = None,
-                             response: Response | None = None) -> None:
+    async def on_after_login(
+        self, user: User, request: Request | None = None, response: Response | None = None
+    ) -> None:
         await self.user_db.update(user, {"last_login_at": datetime.now(UTC)})
         await self._consume_invites(user)
         events.emit("auth.login", actor=events.actor_of(user), data={"email": user.email})

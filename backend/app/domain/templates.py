@@ -6,6 +6,7 @@
 上传时 POST /api/templates 原样提交即可，created_at/updated_at 由服务端重写）；无索引文件。
 document_type 预留未来 thesis / conference_paper。
 """
+
 import json
 import os
 import re

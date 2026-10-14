@@ -4,6 +4,7 @@
 merge_style(p.settings["style"]) → style_css.render_css → text/css。每次请求现读 studio.json，
 PUT /settings 后再 GET 即新值；Cache-Control: no-cache 让前端 bumpStyleCss 重取时不吃缓存。
 """
+
 from fastapi import APIRouter, Request, Response
 
 from patent_studio.kernel.style import merge_style

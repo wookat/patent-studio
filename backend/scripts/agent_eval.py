@@ -14,6 +14,7 @@
 
 real 模式在此之上再给出 §6.3 的 19 项指标（召回 / 误报 / 时延 / tokens / 人工项标 null），key 只从环境变量读、不入输出。
 """
+
 from __future__ import annotations
 
 import argparse
@@ -80,12 +81,25 @@ async def run_one(case: str, scenario: str, ai: AiClient, workdir: str) -> dict:
     await jobs.run(job, lambda: loop.run_scenario(case, scenario, {}, job, store=store, jobs=jobs, ai=ai))
     job = jobs.get(job.id)
     elapsed = time.perf_counter() - t0
-    row = {"case": case, "scenario": scenario, "status": job.status, "error": job.error, "seconds": round(elapsed, 2),
-           "steps": [s["kind"] for s in job.steps], "proposals": 0, "comments": 0,
-           "tokens": sum((job.result or {}).get("usage", {}).values()) if job.result else 0}
+    row = {
+        "case": case,
+        "scenario": scenario,
+        "status": job.status,
+        "error": job.error,
+        "seconds": round(elapsed, 2),
+        "steps": [s["kind"] for s in job.steps],
+        "proposals": 0,
+        "comments": 0,
+        "tokens": sum((job.result or {}).get("usage", {}).values()) if job.result else 0,
+    }
     after = _md5s(p.dir)
-    checks = {"no_direct_write": after == before, "roundtrip": True, "preflight_delta": True, "anchor_hit": True,
-              "no_legal_verdict": job.status == "done"}
+    checks = {
+        "no_direct_write": after == before,
+        "roundtrip": True,
+        "preflight_delta": True,
+        "anchor_hit": True,
+        "no_legal_verdict": job.status == "done",
+    }
     props = proposals.load(p.dir, case, None)
     row["proposals"] = len(props)
     row["comments"] = sum(1 for q in props if q.kind == "comment")
@@ -98,7 +112,8 @@ async def run_one(case: str, scenario: str, ai: AiClient, workdir: str) -> dict:
         text = q.comment_body or q.critic_markdown or ""
         if q.patch is not None:
             text += "\n".join(b.markdown for b in getattr(q.patch, "blocks", []) or []) + str(
-                getattr(q.patch, "content", "") or "")
+                getattr(q.patch, "content", "") or ""
+            )
         if loop.has_legal_verdict(text):
             checks["no_legal_verdict"] = False
     orig = store.read_content(case)
@@ -113,8 +128,11 @@ async def run_one(case: str, scenario: str, ai: AiClient, workdir: str) -> dict:
             continue
         if q.kind == "critic" and critic.reject(r.content) != critic.reject(orig):
             checks["roundtrip"] = False
-        if q.kind == "patch" and isinstance(q.anchor, BlockAnchor) and \
-                _nonblank(critic.reject(r.content)) != _nonblank(critic.reject(orig)):
+        if (
+            q.kind == "patch"
+            and isinstance(q.anchor, BlockAnchor)
+            and _nonblank(critic.reject(r.content)) != _nonblank(critic.reject(orig))
+        ):
             checks["roundtrip"] = False
         if q.kind == "patch" and isinstance(q.anchor, BlockAnchor) and "{++" not in r.content:
             checks["roundtrip"] = False
@@ -131,7 +149,8 @@ async def run_one(case: str, scenario: str, ai: AiClient, workdir: str) -> dict:
 def _role_models() -> dict[str, str]:
     roles = ("plan", "critique", "draft", "interactive")
     return {role: MODELS["heavy" if role in loop.HEAVY_ROLES else "interactive"] for role in roles} | {
-        "fallback": MODELS["fallback"]}
+        "fallback": MODELS["fallback"]
+    }
 
 
 def summarize(rows: list[dict]) -> dict:
@@ -144,6 +163,7 @@ def summarize(rows: list[dict]) -> dict:
 
 def real_metrics(rows: list[dict]) -> dict:
     """19 §6.3 的 19 项：确定性项自动算；召回 / 误报 / 人工项要样例库与人工评审，这里给出可算的与 null 占位。"""
+
     def by(s):
         return [r for r in rows if r["scenario"] == s]
 
@@ -159,12 +179,16 @@ def real_metrics(rows: list[dict]) -> dict:
         "anchor_hit_rate": summarize(rows)["anchor_hit"]["rate"],
         "no_legal_verdict_rate": summarize(rows)["no_legal_verdict"]["rate"],
         "job_done_rate": round(sum(1 for r in rows if r["status"] == "done") / len(rows), 4) if rows else None,
-        "defect_recall_e2": None, "defect_recall_e4": None, "defect_recall_e5": None,
+        "defect_recall_e2": None,
+        "defect_recall_e4": None,
+        "defect_recall_e5": None,
         "false_positive_rate_e2": None,
         "comments_per_case_e2_max": max((r["comments"] for r in s2), default=None),
         "comments_per_case_e2_le_15": all(r["comments"] <= 15 for r in s2) if s2 else None,
         "out_of_scope_features_e7": None,
-        "human_score_e6": None, "human_score_e9": None, "human_score_e10": None,
+        "human_score_e6": None,
+        "human_score_e9": None,
+        "human_score_e10": None,
         "s2_tokens_max": max((r["tokens"] for r in s2), default=None),
         "s2_seconds_max": max((r["seconds"] for r in s2), default=None),
         "s6_seconds_p50": p50([r["seconds"] for r in by("s6")]),
@@ -197,8 +221,12 @@ async def main_async(args) -> int:
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
     summary = summarize(rows)
-    out = {"provider": args.provider, "models": None if args.provider == "mock" else _role_models(),
-           "summary": summary, "rows": rows}
+    out = {
+        "provider": args.provider,
+        "models": None if args.provider == "mock" else _role_models(),
+        "summary": summary,
+        "rows": rows,
+    }
     if args.provider == "real":
         out["metrics"] = real_metrics(rows)
     if args.output:

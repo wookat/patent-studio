@@ -2,6 +2,7 @@
 """单元 deadlines-backend（docs/plan/21-w5-spec.md R-HOME-05/06、R-CASE-02、§1.3 A1/A2/A5）：
 规则表 + compute（送达推定 / 月加法 / 周末与节假日顺延）、case.json 兼容与 auto 重算、deadlines.add 契约、
 期限中心 API（跨案聚合 / ACL / 改期 / 完成）、到期扫描 emit。"""
+
 import importlib
 import json
 import os
@@ -73,8 +74,16 @@ def test_rules_have_required_fields_and_legal_basis_url():
     with open(compute.RULES_FILE, encoding="utf-8") as f:
         raw = json.load(f)["rules"]
     ids = [r["id"] for r in raw]
-    assert ids == ["priority", "publication", "exam_request", "annual_fee",
-                   "oa_first_reply", "oa_subsequent_reply", "reexam_notice_reply", "reexam_request"]
+    assert ids == [
+        "priority",
+        "publication",
+        "exam_request",
+        "annual_fee",
+        "oa_first_reply",
+        "oa_subsequent_reply",
+        "reexam_notice_reply",
+        "reexam_request",
+    ]
     for r in raw:
         assert r["kind"] in cases.DEADLINE_KINDS
         assert r["base_date"] and r["offset"]
@@ -104,17 +113,20 @@ def test_reexam_and_publication_have_dedicated_kinds(tmp_path, monkeypatch):
     assert d.id == "reexam_request:2026-03-01" and d.kind == "reexam" and d.due == "2026-06-01" and d.source == "auto"
 
 
-@pytest.mark.parametrize("rule_id, base, delivery, due, verified", [
-    ("oa_first_reply", "2026-03-01", "electronic", "2026-07-01", True),   # 发文日即送达日 +4 月
-    ("oa_first_reply", "2026-03-01", "mail", "2026-07-16", True),         # +15 日推定送达
-    ("oa_first_reply", "2026-01-31", "electronic", "2026-06-01", True),   # 5-31 周日 ⇒ 周一
-    ("oa_subsequent_reply", "2026-08-01", "electronic", "2026-10-08", True),  # 10-01 国庆 ⇒ 10-08
-    ("oa_subsequent_reply", "2025-12-31", "electronic", "2026-02-28", True),  # 月末夹紧；2-28 周六调休上班不顺延
-    ("reexam_request", "2026-03-01", "mail", "2026-06-16", True),
-    ("exam_request", "2026-03-01", None, "2029-03-01", False),            # 2029 无节假日表 ⇒ warning
-    ("priority", "2025-06-30", None, "2026-06-30", True),
-    ("publication", "2026-03-01", None, "2027-09-01", False),
-])
+@pytest.mark.parametrize(
+    "rule_id, base, delivery, due, verified",
+    [
+        ("oa_first_reply", "2026-03-01", "electronic", "2026-07-01", True),  # 发文日即送达日 +4 月
+        ("oa_first_reply", "2026-03-01", "mail", "2026-07-16", True),  # +15 日推定送达
+        ("oa_first_reply", "2026-01-31", "electronic", "2026-06-01", True),  # 5-31 周日 ⇒ 周一
+        ("oa_subsequent_reply", "2026-08-01", "electronic", "2026-10-08", True),  # 10-01 国庆 ⇒ 10-08
+        ("oa_subsequent_reply", "2025-12-31", "electronic", "2026-02-28", True),  # 月末夹紧；2-28 周六调休上班不顺延
+        ("reexam_request", "2026-03-01", "mail", "2026-06-16", True),
+        ("exam_request", "2026-03-01", None, "2029-03-01", False),  # 2029 无节假日表 ⇒ warning
+        ("priority", "2025-06-30", None, "2026-06-30", True),
+        ("publication", "2026-03-01", None, "2027-09-01", False),
+    ],
+)
 def test_compute_table(rule_id, base, delivery, due, verified):
     got = compute.compute(compute.rule(rule_id), date.fromisoformat(base), delivery=delivery)
     assert got.due.isoformat() == due
@@ -124,13 +136,18 @@ def test_compute_table(rule_id, base, delivery, due, verified):
 def test_add_months_clamps_and_roll_forward_uses_holiday_table():
     assert compute.add_months(date(2026, 1, 31), 1) == date(2026, 2, 28)
     assert compute.add_months(date(2024, 2, 29), 12) == date(2025, 2, 28)
-    assert compute.roll_forward(date(2026, 2, 15)) == (date(2026, 2, 24), True)     # 春节 2-15…2-23
-    assert compute.roll_forward(date(2026, 9, 20)) == (date(2026, 9, 20), True)     # 周日但调休上班
-    assert compute.roll_forward(date(2027, 1, 3)) == (date(2027, 1, 4), False)      # 无表：只按周末
+    assert compute.roll_forward(date(2026, 2, 15)) == (date(2026, 2, 24), True)  # 春节 2-15…2-23
+    assert compute.roll_forward(date(2026, 9, 20)) == (date(2026, 9, 20), True)  # 周日但调休上班
+    assert compute.roll_forward(date(2027, 1, 3)) == (date(2027, 1, 4), False)  # 无表：只按周末
     assert compute.deemed_received(date(2026, 3, 1), "mail") == date(2026, 3, 16)
     assert deadlines.load_holidays(2026)["verified"] is True
-    assert deadlines.load_holidays(1999) == {"year": 1999, "source": "", "verified": False,
-                                             "holidays": [], "workdays": []}
+    assert deadlines.load_holidays(1999) == {
+        "year": 1999,
+        "source": "",
+        "verified": False,
+        "holidays": [],
+        "workdays": [],
+    }
 
 
 def test_annual_fee_is_next_filing_anniversary_after_grant():
@@ -142,17 +159,27 @@ def test_annual_fee_is_next_filing_anniversary_after_grant():
 
 # ---------------------------------------------------------------- case.json 兼容 + 重算 ----
 
-LEGACY = {"version": 1, "case_no": "P-1", "kind": "invention", "status": "oa", "owner_user_id": None,
-          "client": "甲方", "applicants": [], "inventors": [], "tags": [],
-          "dates": {"opened": "2025-01-01", "target_filing": None, "filed": None, "application_no": None},
-          "deadlines": [{"kind": "filing", "due": "2099-01-01", "note": "旧", "done": False}], "archived": False}
+LEGACY = {
+    "version": 1,
+    "case_no": "P-1",
+    "kind": "invention",
+    "status": "oa",
+    "owner_user_id": None,
+    "client": "甲方",
+    "applicants": [],
+    "inventors": [],
+    "tags": [],
+    "dates": {"opened": "2025-01-01", "target_filing": None, "filed": None, "application_no": None},
+    "deadlines": [{"kind": "filing", "due": "2099-01-01", "note": "旧", "done": False}],
+    "archived": False,
+}
 
 
 def test_normalize_case_loads_legacy_json_without_new_fields():
     case = cases.normalize_case(LEGACY)
     assert case.priority == [] and case.attorney is None and case.fee_status is None and case.client_contact == ""
     assert case.dates.publication is None and case.dates.exam_request is None and case.dates.grant is None
-    d, = case.deadlines
+    (d,) = case.deadlines
     assert d.id.startswith("m-") and d.source == "manual" and d.kind == "filing" and d.title == ""  # kind 原样保留
     assert d.due == "2099-01-01" and d.note == "旧" and d.legal_basis is None and d.override_reason is None
     assert cases.normalize_case({}).deadlines == []
@@ -169,14 +196,15 @@ def test_recompute_auto_keeps_manual_and_drops_stale():
     assert "priority" not in by_id and "annual_fee" not in by_id
     assert len(case.deadlines) == 3  # 旧手工条保留
     # 人工改期 ⇒ 之后重算不覆盖
-    manual = by_id["exam_request"].model_copy(update={"due": "2028-12-01", "source": "manual",
-                                                      "override_reason": "客户要求提前"})
+    manual = by_id["exam_request"].model_copy(
+        update={"due": "2028-12-01", "source": "manual", "override_reason": "客户要求提前"}
+    )
     case = cases.replace_deadline(case, manual)
     case = case.model_copy(update={"priority": [cases.Priority(date="2025-06-30")]})
     case, _ = deadlines.recompute(case)
     by_id = {d.id: d for d in case.deadlines}
     assert by_id["exam_request"].due == "2028-12-01" and by_id["exam_request"].source == "manual"
-    assert by_id["publication"].due == "2026-12-30"          # 有优先权 ⇒ 从最早优先权日起算
+    assert by_id["publication"].due == "2026-12-30"  # 有优先权 ⇒ 从最早优先权日起算
     assert by_id["priority"].due == "2026-06-30" and by_id["priority"].done is True  # 已提交 ⇒ 视为完成
     # 基准日没了 ⇒ auto 条目删除
     case = case.model_copy(update={"priority": []})
@@ -200,8 +228,9 @@ def test_add_contract_for_oa_unit(tmp_path, monkeypatch):
     assert [x.id for x in saved.deadlines] == ["oa_first_reply:r1", "oa_subsequent_reply:r2"]
     # 幂等覆盖；人工改期后不覆盖
     assert deadlines.add("p1", "oa_first_reply", "2026-03-02", {"round_id": "r1"}).due == "2026-07-02"
-    manual = saved.deadline("oa_first_reply:r1").model_copy(update={"source": "manual", "due": "2026-08-01",
-                                                                    "override_reason": "延期"})
+    manual = saved.deadline("oa_first_reply:r1").model_copy(
+        update={"source": "manual", "due": "2026-08-01", "override_reason": "延期"}
+    )
     cases.save_case(str(project), cases.replace_deadline(cases.load_case(str(project)), manual))
     assert deadlines.add("p1", "oa_first_reply", "2026-03-03", {"round_id": "r1"}).due == "2026-08-01"
     with pytest.raises(ValueError):
@@ -240,8 +269,11 @@ def _projects(tmp_path):
     projects = tmp_path / "projects"
     projects.mkdir()
     for pid in ("method", "system"):
-        shutil.copytree(os.path.join(ROOT, "examples", pid), projects / pid,
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            os.path.join(ROOT, "examples", pid),
+            projects / pid,
+            ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+        )
     return projects
 
 
@@ -273,12 +305,16 @@ def _iso(days: int) -> str:
 
 # 两案各 3 条（含 1 条已完成不计数），分组：today 1 / 7d 2 / 30d 1 / overdue 1
 SEED = {
-    "method": [{"id": "a", "kind": "oa_reply", "due": _iso(0), "title": "一通答复"},
-               {"id": "b", "kind": "exam_request", "due": _iso(3)},
-               {"id": "c", "kind": "annual_fee", "due": _iso(-2)}],
-    "system": [{"id": "d", "kind": "oa_reply", "due": _iso(7)},
-               {"id": "e", "kind": "client_review", "due": _iso(20)},  # W4 自由 kind → API 上 custom
-               {"id": "f", "kind": "priority", "due": _iso(1), "done": True}],
+    "method": [
+        {"id": "a", "kind": "oa_reply", "due": _iso(0), "title": "一通答复"},
+        {"id": "b", "kind": "exam_request", "due": _iso(3)},
+        {"id": "c", "kind": "annual_fee", "due": _iso(-2)},
+    ],
+    "system": [
+        {"id": "d", "kind": "oa_reply", "due": _iso(7)},
+        {"id": "e", "kind": "client_review", "due": _iso(20)},  # W4 自由 kind → API 上 custom
+        {"id": "f", "kind": "priority", "due": _iso(1), "done": True},
+    ],
 }
 
 
@@ -333,9 +369,17 @@ def test_target_filing_exposed_on_projects_and_deadlines(client):
     body = c.get("/api/deadlines").json()
     assert body["counts"] == {"today": 1, "7d": 2, "30d": 1, "overdue": 1}  # 不计入期限分组
     assert [i["id"] for i in body["items"]] == ["c", "a", "b", "d", "e", "f"]
-    assert body["target_filings"] == [{"pid": "method", "case_no": rows["method"]["case"]["case_no"] or None,
-                                       "title": rows["method"]["title"], "target_filing": _iso(5),
-                                       "target_filing_days_left": 5, "owner": None, "client": "甲方"}]
+    assert body["target_filings"] == [
+        {
+            "pid": "method",
+            "case_no": rows["method"]["case"]["case_no"] or None,
+            "title": rows["method"]["title"],
+            "target_filing": _iso(5),
+            "target_filing_days_left": 5,
+            "owner": None,
+            "client": "甲方",
+        }
+    ]
     assert [t["pid"] for t in c.get("/api/deadlines?range=7d").json()["target_filings"]] == ["method"]
     assert c.get("/api/deadlines?range=30d").json()["target_filings"] == []
     assert c.get("/api/deadlines?client=乙方").json()["target_filings"] == []
@@ -436,9 +480,11 @@ def test_on_list_is_acl_filtered_and_writes_need_agent(on):
     assert agent.post("/api/projects/system/deadlines/d/done").status_code == 403
     viewer = _login(main, "viewer@example.com")
     assert viewer.get("/api/deadlines").status_code == 200
-    for r in (viewer.post("/api/projects/method/deadlines/a/done"),
-              viewer.put("/api/projects/method/deadlines/a", json={"override_reason": "x"}),
-              viewer.post("/api/projects/method/deadlines/compute")):
+    for r in (
+        viewer.post("/api/projects/method/deadlines/a/done"),
+        viewer.put("/api/projects/method/deadlines/a", json={"override_reason": "x"}),
+        viewer.post("/api/projects/method/deadlines/compute"),
+    ):
         assert r.status_code == 403 and r.json()["detail"]["kind"] == "forbidden", r.text
     assert {i["pid"] for i in boss.get(f"/api/deadlines?owner={boss_uid}").json()["items"]} == {"method", "system"}
     assert boss.get("/api/deadlines?owner=nobody").json()["items"] == []
@@ -469,15 +515,26 @@ def test_done_emits_event_and_scan_emits_due_soon(client):
         assert got == [("deadline.done", "method", {"id": "a", "kind": "oa_reply", "due": _iso(0)})]
         got.clear()
         today = compute.today()
-        cases.save_case(str(projects / "system"), cases.load_case(str(projects / "system")).model_copy(update={
-            "deadlines": [cases.Deadline(id="x30", due=(today + timedelta(days=30)).isoformat()),
-                          cases.Deadline(id="x7", due=(today + timedelta(days=7)).isoformat()),
-                          cases.Deadline(id="x1", due=(today + timedelta(days=1)).isoformat()),
-                          cases.Deadline(id="x1d", due=(today + timedelta(days=1)).isoformat(), done=True),
-                          cases.Deadline(id="x2", due=(today + timedelta(days=2)).isoformat())]}))
+        cases.save_case(
+            str(projects / "system"),
+            cases.load_case(str(projects / "system")).model_copy(
+                update={
+                    "deadlines": [
+                        cases.Deadline(id="x30", due=(today + timedelta(days=30)).isoformat()),
+                        cases.Deadline(id="x7", due=(today + timedelta(days=7)).isoformat()),
+                        cases.Deadline(id="x1", due=(today + timedelta(days=1)).isoformat()),
+                        cases.Deadline(id="x1d", due=(today + timedelta(days=1)).isoformat(), done=True),
+                        cases.Deadline(id="x2", due=(today + timedelta(days=2)).isoformat()),
+                    ]
+                }
+            ),
+        )
         assert scan.scan_once(str(projects), today) == 3
         assert [(k, d["id"], d["days"]) for k, _, d in got] == [
-            ("deadline.due", "x30", 30), ("deadline.due", "x7", 7), ("deadline.due", "x1", 1)]
+            ("deadline.due", "x30", 30),
+            ("deadline.due", "x7", 7),
+            ("deadline.due", "x1", 1),
+        ]
         assert scan.scan_once(str(projects), today + timedelta(days=60)) == 0
     finally:
         unsub()

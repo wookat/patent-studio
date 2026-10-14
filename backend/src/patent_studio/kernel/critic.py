@@ -6,6 +6,7 @@
 单条非贪婪正则，`.` 不匹配换行 ⇒ 标记天然不跨行；非嵌套。
 法则（tests/test_critic.py 锁定）：无标记时 accept/reject 恒等（零漂移）；不改变行数；幂等。
 """
+
 import re
 
 MODES = ("final", "original", "markup")
@@ -114,8 +115,19 @@ def parse(text: str) -> list[dict]:
             else:
                 a, b = final, final
             start, end = _u16(line, m.start()), _u16(line, m.end())
-            marks.append({"id": f"{no}:{start}", "kind": kind, "line": no, "from": start, "to": end,
-                          "a": a, "b": b, "final": final, "original": original})
+            marks.append(
+                {
+                    "id": f"{no}:{start}",
+                    "kind": kind,
+                    "line": no,
+                    "from": start,
+                    "to": end,
+                    "a": a,
+                    "b": b,
+                    "final": final,
+                    "original": original,
+                }
+            )
     return marks
 
 
@@ -133,14 +145,28 @@ def lint_marks(text: str) -> list[dict]:
         for m in TOKEN.finditer(line):
             inner = m.group(0)[3:-3]
             if OPENER.search(inner):
-                out.append({"id": f"critic.nested#L{no}", "severity": "warning", "source": "lint",
-                            "message": f"修订标记嵌套：「{m.group(0)[:3]}」内含另一条标记，语义未定义", "line": no,
-                            "fix": "拆成并列的多条标记，标记之间不要互相包含"})
+                out.append(
+                    {
+                        "id": f"critic.nested#L{no}",
+                        "severity": "warning",
+                        "source": "lint",
+                        "message": f"修订标记嵌套：「{m.group(0)[:3]}」内含另一条标记，语义未定义",
+                        "line": no,
+                        "fix": "拆成并列的多条标记，标记之间不要互相包含",
+                    }
+                )
                 break
         rest = TOKEN.sub("", line)
         m2 = OPENER.search(rest)
         if m2 is not None:
-            out.append({"id": f"critic.unclosed#L{no}", "severity": "warning", "source": "lint",
-                        "message": f"修订标记「{m2.group(0)}」未在本行闭合，按普通文本排版", "line": no,
-                        "fix": "在同一行补上闭合符（++} --} ~~} <<} ==}）；标记不能跨行"})
+            out.append(
+                {
+                    "id": f"critic.unclosed#L{no}",
+                    "severity": "warning",
+                    "source": "lint",
+                    "message": f"修订标记「{m2.group(0)}」未在本行闭合，按普通文本排版",
+                    "line": no,
+                    "fix": "在同一行补上闭合符（++} --} ~~} <<} ==}）；标记不能跨行",
+                }
+            )
     return out

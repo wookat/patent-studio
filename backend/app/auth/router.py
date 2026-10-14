@@ -11,6 +11,7 @@ W4-B（docs/plan/14 §4）：`PUT /members/{user_id}` 改角色；`PUT /members`
 `GET /share` 带 accepted_by；accept 写 share_accepts + 访问记录。
 访问记录 / 协作设置在 routes_access.py（B1），邀请在 invites.py（B2）。
 """
+
 import uuid
 from urllib.parse import urlsplit
 
@@ -63,8 +64,12 @@ if config.AUTH_ON:
         return user
 
     def _member_changed(pid: str, actor, *, user_id, role: str | None, email: str | None = None) -> None:
-        events.emit("member.changed", pid=pid, actor=events.actor_of(actor),
-                    data={"user_id": str(user_id) if user_id is not None else None, "role": role, "email": email})
+        events.emit(
+            "member.changed",
+            pid=pid,
+            actor=events.actor_of(actor),
+            data={"user_id": str(user_id) if user_id is not None else None, "role": role, "email": email},
+        )
 
     def _origin(request: Request) -> str:
         """分享链接的站点前缀 = 浏览器实际访问的地址：Origin → Referer → X-Forwarded-Proto/Host → 监听地址
@@ -146,8 +151,9 @@ if config.AUTH_ON:
     @router.post("/projects/{pid}/share", status_code=201)
     async def create_share_link(pid: str, body: ShareIn, request: Request, user: CurrentUser):
         if body.role not in acl.SHARE_ROLES:
-            raise HTTPException(422, error_detail("validation",
-                                                  "分享链接角色只能是 viewer / reviewer / editor / agent"))
+            raise HTTPException(
+                422, error_detail("validation", "分享链接角色只能是 viewer / reviewer / editor / agent")
+            )
         if body.expires_in_days is not None and body.expires_in_days <= 0:
             raise HTTPException(422, error_detail("validation", "有效期须为正整数天或 null（永久）"))
         link = await acl.create_share_link(pid, body.role, body.expires_in_days, user.id)

@@ -9,6 +9,7 @@
 - apply(comment)：写 comments 存储（author=ai:<model>）。
 - 每次状态变化：emit `ai.proposal`（data.state = applied | dismissed）+ `audit.jsonl`（who=agent:<job_id>）。
 """
+
 import asyncio
 import json
 import os
@@ -88,13 +89,17 @@ def get(project_dir: str, pid: str, proposal_id: str) -> Proposal:
 def preview(proposal: Proposal, limit: int = 120) -> str:
     text = proposal.critic_markdown or proposal.comment_body or ""
     if not text and proposal.patch is not None:
-        text = proposal.patch.content if isinstance(proposal.patch, FilePatch) else \
-            "\n".join(b.markdown for b in proposal.patch.blocks)
+        text = (
+            proposal.patch.content
+            if isinstance(proposal.patch, FilePatch)
+            else "\n".join(b.markdown for b in proposal.patch.blocks)
+        )
     text = text.strip().replace("\n", " ")
-    return text if len(text) <= limit else text[:limit - 1] + "…"
+    return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
 # ---------------------------------------------------------------- 生成标记 ----
+
 
 def as_critic(orig: list[str], out: str) -> str | None:
     """模型输出 → 覆盖整段的 CriticMarkup；行数不同 ⇒ None。
@@ -118,8 +123,11 @@ def critic_for_block(content: str, settings: dict, block_id: str, markdown: str)
     ast = patch._reparse(content, settings)
     _book, _b, s, e = patch.find_block(ast, block_id)
     old = content.split("\n")[s:e]
-    if critic.reject(markdown) == "\n".join(old) and not critic.lint_marks(markdown) \
-            and not any(ln.startswith("## ") for ln in critic.accept(markdown).split("\n")):
+    if (
+        critic.reject(markdown) == "\n".join(old)
+        and not critic.lint_marks(markdown)
+        and not any(ln.startswith("## ") for ln in critic.accept(markdown).split("\n"))
+    ):
         # 早退原样返回仅限接受视图无 `## ` 行——标记内粘进 `## 摘要<正文>` 胶水行的
         # 建议稿原样落正文会被 AST 当未知章节拒（prop_c8555a9895c3 实案 422），
         # 必须走 suggest 归一化（_block_lines 剥壳书头）。
@@ -129,14 +137,16 @@ def critic_for_block(content: str, settings: dict, block_id: str, markdown: str)
 
 # ---------------------------------------------------------------- apply / dismiss ----
 
+
 def _settings(store, p) -> dict:
     return normalize_settings(p.settings, store.list_figs(p.dir))
 
 
 def _file_target(project_dir: str, name: str) -> str:
     if not FILE_RE.match(name):
-        raise kind_error("validation", f"补丁文件名不合法（只允许 docs/<name>.md 或 figs-src/<stem>.mmd）：{name}",
-                         detail=name)
+        raise kind_error(
+            "validation", f"补丁文件名不合法（只允许 docs/<name>.md 或 figs-src/<stem>.mmd）：{name}", detail=name
+        )
     return os.path.join(project_dir, *name.split("/"))
 
 
@@ -182,8 +192,11 @@ def _apply_blocks(store, pid: str, p, prop: Proposal, bp: BlocksPatch) -> tuple[
                 # reject 不可逆（mamba 实案连环提案全 422）。先把该区间归一到
                 # 接受视图（视同先收下在标修订），再按平文本包标记
                 old_flat = critic.accept("\n".join(cur.split("\n")[s_:e_]))
-                marked = "\n".join("{--%s--}" % ln for ln in old_flat.split("\n")) + "\n" \
+                marked = (
+                    "\n".join("{--%s--}" % ln for ln in old_flat.split("\n"))
+                    + "\n"
                     + "\n".join("{++%s++}" % ln for ln in patch._block_lines(b.markdown))
+                )
                 r = patch.patch_block(cur, b.replace_block_id, marked, s, figures)
                 if base_ok:
                     try:
@@ -194,8 +207,9 @@ def _apply_blocks(store, pid: str, p, prop: Proposal, bp: BlocksPatch) -> tuple[
                 tail[b.after_block_id] = patch.block_at_line(r.ast, r.changed_lines["end"]) or r.block_id
             else:
                 marked = "\n".join("{++%s++}" % ln for ln in patch._block_lines(b.markdown))
-                r = patch.insert_block(cur, "paragraph", tail.get(b.after_block_id, b.after_block_id),
-                                       None, marked, s, figures)
+                r = patch.insert_block(
+                    cur, "paragraph", tail.get(b.after_block_id, b.after_block_id), None, marked, s, figures
+                )
         except patch.PatchError as e:
             # stale 锚点整块拒——一条过期锚点把 103 块整提案毙掉（mamba 实案：
             # eq12 过期使全新权项族随提案整体 409）。改为跳过该块、其余照落，
@@ -209,8 +223,7 @@ def _apply_blocks(store, pid: str, p, prop: Proposal, bp: BlocksPatch) -> tuple[
             # 多行 {++} 标记文本可能被 AST 拆成多块（表头行成段、表体行另起段）——
             # r.block_id 是插入区首行所在块，续链必须落到末行所在块，否则后续插入
             # 挤进首块与残余行之间，残余表行被层层推到文末堆叠（vit-11 实案）
-            tail[b.after_block_id] = (
-                patch.block_at_line(r.ast, r.changed_lines["end"]) or r.block_id)
+            tail[b.after_block_id] = patch.block_at_line(r.ast, r.changed_lines["end"]) or r.block_id
     if _nonblank(critic.reject(cur)) != _nonblank(critic.reject(base)):
         raise kind_error("content", "新块标记不可逆（拒绝后与原文不一致），已放弃写入", detail=prop.id)
     cur = _retitle(cur)
@@ -224,7 +237,8 @@ _TITLE_PH = "XXX"
 # 授权件题名从不带轮次/版本/验证标记。锚行尾剥除，正文合法题名不受影响。
 _TITLE_META_TAIL = re.compile(
     r"[（(][^（）()\n]{0,40}?(?:轮|迭代|验证|版次|测试|草稿|内部|draft|rev|v\d)[^（）()\n]{0,40}?[)）]\s*$",
-    re.IGNORECASE)
+    re.IGNORECASE,
+)
 # 权1 主语名：「一种<名>(方法|装置|设备|系统|介质|模型)」，独占一行起算（权利要求书内独立权项）
 _CLAIM1_RE = re.compile(r"(?m)^\d+[\.、]?\s*(一种[^\n，。；]{2,60}?(方法|装置|设备|系统|介质|模型))")
 _CARRIER_RE = re.compile(r"(?m)^\d+[\.、]?\s*一种[^\n，。；]{2,60}?(装置|设备|系统|介质|模型)")
@@ -277,36 +291,59 @@ def _apply_comment(p, prop: Proposal) -> str:
     quote = lines[line - 1].strip()[:40] if 1 <= line <= len(lines) else ""
     with comments_mod.file_lock(p.dir):  # R92：R84 漏网写点——台账 RMW 跨进程互斥
         existing = comments_mod.load(p.dir)
-        c = comments_mod.create(comments_mod.Anchor(block_id=prop.anchor.block_id, line=line, quote=quote),
-                                prop.comment_body, comments_mod.Author(id="ai", name=f"AI {prop.model}"))
+        c = comments_mod.create(
+            comments_mod.Anchor(block_id=prop.anchor.block_id, line=line, quote=quote),
+            prop.comment_body,
+            comments_mod.Author(id="ai", name=f"AI {prop.model}"),
+        )
         existing.append(c)
         comments_mod.save(p.dir, existing)
     return c.id
 
 
-def _finish(store, pid: str, p, prop: Proposal, state: ProposalState, who: str, actor: dict | None,
-            extra: dict) -> Proposal:
+def _finish(
+    store, pid: str, p, prop: Proposal, state: ProposalState, who: str, actor: dict | None, extra: dict
+) -> Proposal:
     prop = prop.model_copy(update={"state": state})
     append(p.dir, pid, prop, by=who)
-    audit.record(p.dir, f"agent:{prop.job_id}", f"proposal.{'apply' if state == 'applied' else 'dismiss'}",
-                 {"proposal_id": prop.id, "kind": prop.kind, "scenario": prop.scenario, "by": who, **extra}, "ok")
-    events.emit("ai.proposal", pid=pid, actor=actor,
-                data={"proposal_id": prop.id, "job_id": prop.job_id, "kind": prop.kind, "scenario": prop.scenario,
-                      "state": state, "action": state, "title": f"{SCENARIO_BY_ID[prop.scenario].label}（{prop.kind}）",
-                      "block_id": prop.anchor.block_id if isinstance(prop.anchor, BlockAnchor) else None, **extra})
+    audit.record(
+        p.dir,
+        f"agent:{prop.job_id}",
+        f"proposal.{'apply' if state == 'applied' else 'dismiss'}",
+        {"proposal_id": prop.id, "kind": prop.kind, "scenario": prop.scenario, "by": who, **extra},
+        "ok",
+    )
+    events.emit(
+        "ai.proposal",
+        pid=pid,
+        actor=actor,
+        data={
+            "proposal_id": prop.id,
+            "job_id": prop.job_id,
+            "kind": prop.kind,
+            "scenario": prop.scenario,
+            "state": state,
+            "action": state,
+            "title": f"{SCENARIO_BY_ID[prop.scenario].label}（{prop.kind}）",
+            "block_id": prop.anchor.block_id if isinstance(prop.anchor, BlockAnchor) else None,
+            **extra,
+        },
+    )
     return prop
 
 
-async def apply(store, pid: str, proposal_id: str, *, user=None, who: str = "本机",
-                actor: dict | None = None) -> ProposalApplyResult:
+async def apply(
+    store, pid: str, proposal_id: str, *, user=None, who: str = "本机", actor: dict | None = None
+) -> ProposalApplyResult:
     """pending → applied；写入方式按 kind（见模块注释）。非 pending ⇒ 409 conflict。"""
     from app import auth
 
     p = store.get(pid)
     prop = get(p.dir, pid, proposal_id)
     if prop.state != "pending":
-        raise kind_error("conflict", f"提案已{ '应用' if prop.state == 'applied' else '忽略' }，不能再次应用",
-                         detail=prop.id)
+        raise kind_error(
+            "conflict", f"提案已{'应用' if prop.state == 'applied' else '忽略'}，不能再次应用", detail=prop.id
+        )
     extra: dict = {}
     content = backup = comment_id = sha = None
     changed = None
@@ -337,12 +374,16 @@ async def apply(store, pid: str, proposal_id: str, *, user=None, who: str = "本
     if sha:
         extra["sha"] = sha
     prop = _finish(store, pid, p, prop, "applied", who, actor, extra)
-    return ProposalApplyResult(proposal=prop, content=content, changed_lines=changed, backup=backup,
-                               skipped_blocks=list(extra.get("skipped_blocks") or []))
+    return ProposalApplyResult(
+        proposal=prop,
+        content=content,
+        changed_lines=changed,
+        backup=backup,
+        skipped_blocks=list(extra.get("skipped_blocks") or []),
+    )
 
 
-async def apply_all(store, pid: str, *, user=None, who: str = "本机",
-                    actor: dict | None = None) -> dict:
+async def apply_all(store, pid: str, *, user=None, who: str = "本机", actor: dict | None = None) -> dict:
     """pending 提案按入档序逐条 apply——s1 成稿一批多份（BlocksPatch+figs FilePatch），
     逐条点应用是重复摩擦（往复轮88 观察池）。单条失败不中止，结果分桶回传。"""
     applied: list[str] = []
@@ -363,10 +404,23 @@ def dismiss(store, pid: str, proposal_id: str, *, who: str = "本机", actor: di
     p = store.get(pid)
     prop = get(p.dir, pid, proposal_id)
     if prop.state != "pending":
-        raise kind_error("conflict", f"提案已{ '应用' if prop.state == 'applied' else '忽略' }，不能再忽略",
-                         detail=prop.id)
+        raise kind_error(
+            "conflict", f"提案已{'应用' if prop.state == 'applied' else '忽略'}，不能再忽略", detail=prop.id
+        )
     return _finish(store, pid, p, prop, "dismissed", who, actor, {})
 
 
-__all__ = ["Anchor", "Patch", "append", "apply", "as_critic", "critic_for_block", "dismiss", "get", "load",
-           "new_id", "path", "preview"]
+__all__ = [
+    "Anchor",
+    "Patch",
+    "append",
+    "apply",
+    "as_critic",
+    "critic_for_block",
+    "dismiss",
+    "get",
+    "load",
+    "new_id",
+    "path",
+    "preview",
+]

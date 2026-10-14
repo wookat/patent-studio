@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """B2-reviewer-invites：邮箱邀请 pending（docs/plan/14 §2 §4 D6 D7）。
 
-  CRUD / 邮箱大小写归一 / 已注册邮箱 POST ⇒ 直接成员 / 注册与登录消费 pending 并 upgrade_only 写 ACL / owner 角色 422。
+CRUD / 邮箱大小写归一 / 已注册邮箱 POST ⇒ 直接成员 / 注册与登录消费 pending 并 upgrade_only 写 ACL / owner 角色 422。
 """
+
 import asyncio
 import uuid
 
@@ -72,8 +73,15 @@ def test_invite_registered_email_becomes_member(on):
     reg = _register(anon, "reg@example.com", display_name="已注册")
     r = su.post(INV, json={"email": "Reg@Example.com", "role": "reviewer"})
     assert r.status_code == 200, r.text
-    assert r.json() == {"member": {"user_id": reg["id"], "email": "reg@example.com",
-                                   "display_name": "已注册", "avatar_color": "", "role": "reviewer"}}
+    assert r.json() == {
+        "member": {
+            "user_id": reg["id"],
+            "email": "reg@example.com",
+            "display_name": "已注册",
+            "avatar_color": "",
+            "role": "reviewer",
+        }
+    }
     assert su.get(INV).json() == []
     roles = {m["email"]: m["role"] for m in su.get("/api/projects/method/members").json()}
     assert roles["reg@example.com"] == "reviewer"
@@ -94,7 +102,7 @@ def test_invite_consumed_on_register_and_login(on):
     assert _login(on, "new@example.com").get("/api/projects/method/collab").json()["mode"] == "review"
 
     # 登录消费 + upgrade_only：已注册邮箱走 POST /invites 会直接成员，所以用 create_pending 直接写 pending
-    #（router.set_member 未注册分支的入口），登录后 editor 不被 viewer 降级
+    # （router.set_member 未注册分支的入口），登录后 editor 不被 viewer 降级
     from app.auth import invites
 
     su_id = uuid.UUID(su.get("/api/users/me").json()["id"])

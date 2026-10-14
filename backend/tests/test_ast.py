@@ -4,6 +4,7 @@
 golden 快照：tests/golden/ast_{method,system}.json；有意改动 AST 输出时
 `UPDATE_GOLDEN=1 uv run pytest tests/test_ast.py -q` 重新生成并 review diff。
 """
+
 import json
 import os
 import re
@@ -66,6 +67,7 @@ def _numbers(ast):
 
 # ---------------- golden + schema ----------------
 
+
 @pytest.mark.parametrize("pid", CASES)
 def test_golden_snapshot_and_schema(pid):
     _s, text, settings = _case(pid)
@@ -126,16 +128,11 @@ def test_prep_sample_fixture_is_subset(pid):
 
     for sec in ("claims", "description", "figures"):
         for sb in sample[sec]:
-            rb = by_id[sb["id"]]
-            if pid == "method" and sb["id"] == "claims/2":
-                # 样例只抄了权项 2 的首段；真实权项 2 为 文本+公式+文本 三段（源码 8–10 行）
-                assert rb["lines"] == {"start": 8, "end": 10} and len(rb["segments"]) == 3
-                assert strip(rb["segments"][0]) == strip(sb["segments"][0])
-                continue
-            assert strip(rb) == strip(sb), sb["id"]
+            assert strip(by_id[sb["id"]]) == strip(sb), sb["id"]
 
 
 # ---------------- 与内核语义一致 ----------------
+
 
 @pytest.mark.parametrize("pid", CASES)
 def test_description_spec_equals_parse_md(pid):
@@ -155,8 +152,18 @@ def test_description_spec_equals_parse_md_edge_cases():
     ast = parse_ast(text)
     VALIDATOR.validate(ast)
     kinds = [b["kind"] for b in ast["description"]]
-    assert kinds == ["section", "paragraph", "paragraph", "subsection", "equation", "paragraph", "table",
-                     "table", "code", "paragraph"]
+    assert kinds == [
+        "section",
+        "paragraph",
+        "paragraph",
+        "subsection",
+        "equation",
+        "paragraph",
+        "table",
+        "table",
+        "code",
+        "paragraph",
+    ]
     d = ast["description"]
     assert d[5]["role"] == "table-caption" and d[5]["para_no"] == 3
     t1, t2 = d[6], d[7]
@@ -170,10 +177,17 @@ def test_description_spec_equals_parse_md_edge_cases():
     assert d[8]["lines"] == {"start": 20, "end": 24}
     assert d[9]["text"] == "尾段" and d[9]["para_no"] == 10
     assert [b["id"] for b in d] == [
-        "description/技术领域", "description/技术领域/p0001", "description/技术领域/p0002",
-        "description/技术领域/小节", "description/技术领域/小节/eq1", "description/技术领域/小节/p0003",
-        "description/技术领域/小节/p0004", "description/技术领域/小节/p0006", "description/技术领域/小节/p0009",
-        "description/技术领域/小节/p0010"]
+        "description/技术领域",
+        "description/技术领域/p0001",
+        "description/技术领域/p0002",
+        "description/技术领域/小节",
+        "description/技术领域/小节/eq1",
+        "description/技术领域/小节/p0003",
+        "description/技术领域/小节/p0004",
+        "description/技术领域/小节/p0006",
+        "description/技术领域/小节/p0009",
+        "description/技术领域/小节/p0010",
+    ]
     assert d[4]["anchor_para_no"] == 2 and d[4]["label"] == "（1）" and d[4]["source"] == "a/b"
     assert ast["books"]["description"]["length"] == 26
     assert ast["figures"] == [] and ast["abstract"]["figure_num"] is None
@@ -220,8 +234,10 @@ def test_inline_figure_roundtrip_and_malformed():
         if os.path.exists(out):
             os.unlink(out)
     # 非 figs/ 路径 / 行内引用（非独立行）都不进 figure——保持普通段落
-    bad = ("# T\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X。\n\n## 说明书\n\n"
-           "### 技术领域\n见图 ![](figs/a.png) 如上\n![x](img/a.png)\n")
+    bad = (
+        "# T\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X。\n\n## 说明书\n\n"
+        "### 技术领域\n见图 ![](figs/a.png) 如上\n![x](img/a.png)\n"
+    )
     spec = parse_md(bad)[3]
     assert all(not isinstance(i, tuple) or i[0] != "f" for i in spec)
 
@@ -229,9 +245,7 @@ def test_inline_figure_roundtrip_and_malformed():
 def test_inline_figure_insert_delete_serialize():
     from patent_studio.kernel.patch import delete_block, insert_block
 
-    text = (
-        "# T\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X。\n\n## 说明书\n\n### 技术领域\n段一\n段二\n"
-    )
+    text = "# T\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X。\n\n## 说明书\n\n### 技术领域\n段一\n段二\n"
     ast = parse_ast(text)
     first = ast["description"][0]
     r = insert_block(text, "figure", after_block_id=first["id"], markdown="![](figs/x.png){width=10}")
@@ -270,7 +284,9 @@ def test_para_numbers_match_docx_and_xml(pid, tmp_path):
     build_patent_ex(cfg)
     with zipfile.ZipFile(cfg["out"]) as z:
         doc = z.read("word/document.xml").decode("utf-8")
-    labels = [int(m.group(1)) for m in re.finditer(r"\[(\d{4})\]", doc)]
+    # 内核段号 = SimHei 字体独立 run（style.label_ascii）；语料正文自带的 [0065] 等字面段号
+    # 在宋体 run 里，不能混算
+    labels = [int(m.group(1)) for m in re.finditer(r'<w:rFonts w:ascii="SimHei".*?</w:rPr><w:t>\[(\d{4})\]</w:t>', doc)]
     assert labels == nums
 
     exporter = _Exporter(cfg)
@@ -279,6 +295,7 @@ def test_para_numbers_match_docx_and_xml(pid, tmp_path):
 
 
 # ---------------- 权项 ----------------
+
 
 def _claims(claims_md):
     text = "# T\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n" + claims_md + "\n\n## 说明书\n\n### 技术领域\n\n段。\n"
@@ -298,11 +315,23 @@ def test_claim_kinds_categories_and_refs():
     )
     assert [x["num"] for x in c] == list(range(1, 9))
     assert [x["num_written"] for x in c] == [str(i) for i in range(1, 9)]
-    assert [x["claim_kind"] for x in c] == ["independent", "dependent", "dependent", "dependent", "dependent",
-                                            "independent", "independent", "dependent"]
+    assert [x["claim_kind"] for x in c] == [
+        "independent",
+        "dependent",
+        "dependent",
+        "dependent",
+        "dependent",
+        "independent",
+        "independent",
+        "dependent",
+    ]
     assert [x["category"] for x in c] == ["控制方法", "方法", "方法", "方法", "方法", "装置", "介质", "介质"]
     assert c[0]["lines"] == {"start": 2, "end": 5} and [s["kind"] for s in c[0]["segments"]] == [
-        "text", "text", "equation", "text"]
+        "text",
+        "text",
+        "equation",
+        "text",
+    ]
     assert c[0]["segments"][2]["text"] == "a = b" and c[0]["segments"][2]["mathml"].startswith("<math ")
     assert c[0]["refs"] == [] and c[0]["charact"] == {"seg": 0, "offset": 15}
 
@@ -317,7 +346,7 @@ def test_claim_kinds_categories_and_refs():
     assert refs(c[6]) == [("权利要求1至5", [1, 2, 3, 4, 5], False)]
     assert refs(c[7]) == [("权利要求 7", [7], False)]
     r = c[1]["refs"][0]
-    assert c[1]["segments"][r["seg"]]["text"][r["start"]:r["end"]] == r["text"]
+    assert c[1]["segments"][r["seg"]]["text"][r["start"] : r["end"]] == r["text"]
     assert c[5]["charact"] == {"seg": 0, "offset": 19}  # "其特征在于：" 含冒号
     assert c[6]["charact"] is None
 
@@ -333,10 +362,15 @@ def test_claim_without_number_or_odd_layout():
 
 # ---------------- MathML ----------------
 
-@pytest.mark.parametrize("pid", CASES)
-def test_all_equations_have_lxml_parseable_mathml(pid):
-    _s, text, settings = _case(pid)
-    ast = parse_ast(text, settings)
+
+def test_all_equations_have_lxml_parseable_mathml():
+    # 语料无公式（b12a541 换语料后 method/system 均无 $$…$$/OMML）：
+    # 改用合成文本喂同一 parse_ast → to_mathml 链路，断言语义不变
+    text = (
+        "# T\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X，其中 $$a = b/2$$ 成立。\n\n"
+        "## 说明书\n\n### 技术领域\n\n段。\n\n$$E_t = (1/|Λ|)·Σ_{λ∈Λ} exp(√n/2)$$\n"
+    )
+    ast = parse_ast(text)
     eqs = [b for b in ast["description"] if b["kind"] == "equation"]
     eqs += [s for c in ast["claims"] for s in c["segments"] if s["kind"] == "equation"]
     assert eqs
@@ -366,13 +400,17 @@ def test_to_mathml_structures():
 
 # ---------------- 结构错误 ----------------
 
-@pytest.mark.parametrize("text,line,msg", [
-    ("## 摘要\n\n## 权利要求书\n\n## 说明书\n", 1, "# 标题"),
-    ("# T\n## 摘要\n## 权利要求书\n## 附录\n## 说明书\n", 4, "未知章节"),
-    ("# T\n## 摘要\n## 权利要求书\n## 说明书\n## 摘要\n", 5, "重复"),
-    ("# T\n## 摘要\n## 权利要求书\n", None, "说明书"),
-    ("# T\n## 摘要\n## 权利要求书\n## 说明书\n$$a = b\n", 5, "$$"),
-])
+
+@pytest.mark.parametrize(
+    "text,line,msg",
+    [
+        ("## 摘要\n\n## 权利要求书\n\n## 说明书\n", 1, "# 标题"),
+        ("# T\n## 摘要\n## 权利要求书\n## 附录\n## 说明书\n", 4, "未知章节"),
+        ("# T\n## 摘要\n## 权利要求书\n## 说明书\n## 摘要\n", 5, "重复"),
+        ("# T\n## 摘要\n## 权利要求书\n", None, "说明书"),
+        ("# T\n## 摘要\n## 权利要求书\n## 说明书\n$$a = b\n", 5, "$$"),
+    ],
+)
 def test_structural_errors(text, line, msg):
     with pytest.raises(AstError) as ei:
         parse_ast(text)
@@ -388,13 +426,15 @@ def test_title_is_last_hash_line_like_parse_md():
 
 # ---------------- 路由 ----------------
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
     for pid in CASES:
-        shutil.copytree(os.path.join(EXAMPLES, pid), projects / pid,
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            os.path.join(EXAMPLES, pid), projects / pid, ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*")
+        )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     import importlib
 
@@ -420,12 +460,13 @@ def test_post_ast_unsaved_content_and_settings(client):
     c, _ = client
     r = c.post("/api/projects/method/ast", json={})
     assert r.status_code == 200 and r.json() == c.get("/api/projects/method/ast").json()
-    text = ("# 草稿\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X，其特征在于，Y。\n\n"
-            "## 说明书\n\n### 技术领域\n\n段。\n")
+    text = (
+        "# 草稿\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X，其特征在于，Y。\n\n## 说明书\n\n### 技术领域\n\n段。\n"
+    )
     r = c.post("/api/projects/method/ast", json={"content": text})
     assert r.status_code == 200
     ast = r.json()
-    assert ast["title"]["text"] == "草稿" and len(ast["figures"]) == 6  # settings 缺省 → studio.json
+    assert ast["title"]["text"] == "草稿" and len(ast["figures"]) == 3  # settings 缺省 → studio.json
     r = c.post("/api/projects/method/ast", json={"content": text, "settings": {"spec_figures": [["fig2.emf", 10]]}})
     assert r.status_code == 200
     assert [(f["file"], f["width"], f["caption"]) for f in r.json()["figures"]] == [("fig2.emf", 10.0, None)]

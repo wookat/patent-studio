@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """R6 账号地基（docs/plan/07 §3–4.1）。off 模式契约 + on 模式（monkeypatch env + tmp studio.db）。"""
+
 import importlib
 import os
 import shutil
@@ -42,8 +43,11 @@ def _reload_app():
 def _projects(tmp_path):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     return projects
 
 
@@ -191,15 +195,20 @@ def test_on_register_login_me_change_password_logout(on):
 
     # fastapi-users 原生 PATCH 已下线（W4-E）：改密只走 PUT + 旧密码核对
     assert c.patch("/api/users/me", json={"password": "new-pass-789"}).status_code == 405
-    r = c.put("/api/users/me",
-              json={"password": {"current": "pw-123456", "new": "new-pass-789"}, "display_name": "Boss"})
+    r = c.put(
+        "/api/users/me", json={"password": {"current": "pw-123456", "new": "new-pass-789"}, "display_name": "Boss"}
+    )
     assert r.status_code == 200 and r.json()["display_name"] == "Boss"
     # R71-01：改密后旧会话立即失效（JWT iat 早于 password_changed_at）
     time.sleep(1.05)  # iat 秒精度：等过签发秒，保证判定确定性
     assert c.get("/api/users/me").status_code == 401
     assert c.post("/api/auth/cookie/logout").status_code == 401
-    assert TestClient(on.app).post("/api/auth/cookie/login",
-                                   data={"username": "boss@example.com", "password": "pw-123456"}).status_code == 400
+    assert (
+        TestClient(on.app)
+        .post("/api/auth/cookie/login", data={"username": "boss@example.com", "password": "pw-123456"})
+        .status_code
+        == 400
+    )
     c2 = _login(on, "boss@example.com", "new-pass-789")
     assert c2.get("/api/users/me").status_code == 200
 
@@ -220,8 +229,14 @@ def test_on_acl_roles_and_members(on):
     r = su.put("/api/projects/method/members", json={"email": "owner@example.com", "role": "owner"})
     assert r.status_code == 200, r.text
     assert r.json() == [
-        {"user_id": r.json()[0]["user_id"], "email": "owner@example.com", "display_name": "",
-         "avatar_color": "", "role": "owner"}]
+        {
+            "user_id": r.json()[0]["user_id"],
+            "email": "owner@example.com",
+            "display_name": "",
+            "avatar_color": "",
+            "role": "owner",
+        }
+    ]
 
     # owner 读写 / 管成员；viewer 读可写不可；stranger 一律 403
     assert owner.get("/api/projects/method/content").status_code == 200
@@ -290,7 +305,11 @@ def test_on_share_links_accept_and_expiry(on):
         ({"X-Forwarded-Host": "fwd.example.com", "X-Forwarded-Proto": "https"}, "https://fwd.example.com/#/share/"),
     ):
         assert su.post("/api/projects/method/share", json=body, headers=headers).json()["url"].startswith(prefix)
-    assert su.get("/api/projects/method/share", headers={"Origin": "https://patent.example.com"}).json()[0]["url"].startswith("https://patent.example.com/")
+    assert (
+        su.get("/api/projects/method/share", headers={"Origin": "https://patent.example.com"})
+        .json()[0]["url"]
+        .startswith("https://patent.example.com/")
+    )
     for x in su.get("/api/projects/method/share").json()[1:]:
         su.delete(f"/api/projects/method/share/{x['token']}")
     forever = su.post("/api/projects/method/share", json={"role": "viewer", "expires_in_days": None}).json()
@@ -424,8 +443,7 @@ def test_on_record_share_accept_duplicate_insert_is_idempotent(on, monkeypatch):
         await acl.record_share_accept(link["token"], user.id)  # 修前 IntegrityError 冒泡
 
         async with SessionLocal() as s:
-            rows = (await s.scalars(
-                select(ShareAccept).where(ShareAccept.token == link["token"]))).all()
+            rows = (await s.scalars(select(ShareAccept).where(ShareAccept.token == link["token"]))).all()
             assert len(rows) == 1
 
     asyncio.run(_flow())
@@ -439,8 +457,12 @@ def test_on_create_user_cli(on, tmp_path, capsys):
     assert create_user.main(["admin@example.com", "pw-123456"]) == 1
     assert create_user.main(["admin@example.com", "pw-654321", "--reset"]) == 0
     assert create_user.main(["ghost@example.com", "x", "--reset"]) == 1
-    assert TestClient(on.app).post("/api/auth/cookie/login",
-                                   data={"username": "admin@example.com", "password": "pw-123456"}).status_code == 400
+    assert (
+        TestClient(on.app)
+        .post("/api/auth/cookie/login", data={"username": "admin@example.com", "password": "pw-123456"})
+        .status_code
+        == 400
+    )
     c = _login(on, "admin@example.com", "pw-654321")
     assert c.get("/api/users/me").json()["display_name"] == "管理员"
 
@@ -478,8 +500,12 @@ def test_templates_router_requires_login_under_auth_on(on):
     """R44-02：/api/templates* CRUD 无任何门槛（无 {pid} → project_access 不生效）——匿名可读改删机构模板。"""
     main = on
     c = TestClient(main.app)
-    for m, url in (("get", "/api/templates"), ("post", "/api/templates"), ("put", "/api/templates/x"),
-                   ("delete", "/api/templates/x")):
+    for m, url in (
+        ("get", "/api/templates"),
+        ("post", "/api/templates"),
+        ("put", "/api/templates/x"),
+        ("delete", "/api/templates/x"),
+    ):
         body = {} if m in ("post", "put") else None
         r = getattr(c, m)(url, json=body) if body is not None else getattr(c, m)(url)
         assert r.status_code == 401, f"{m} {url} → {r.status_code}"
@@ -490,7 +516,7 @@ def test_templates_write_requires_org_editor(on):
     写路由（POST/PUT/DELETE）门槛 = 任一案 editor+ 或超管；读仍 require_login。"""
     main = on
     anon = TestClient(main.app)
-    _register(anon, "su@example.com")   # superuser
+    _register(anon, "su@example.com")  # superuser
     _register(anon, "ed@example.com")
     _register(anon, "vw@example.com")
     su, ed, vw = (_login(main, f"{n}@example.com") for n in ("su", "ed", "vw"))
@@ -519,8 +545,12 @@ def test_deadlines_items_carry_my_role(on):
     _register(anon, "vw@example.com")
     su, vw = _login(main, "su@example.com"), _login(main, "vw@example.com")
     assert su.put("/api/projects/method/members", json={"email": "vw@example.com", "role": "viewer"}).status_code == 200
-    assert su.put("/api/projects/method/case",
-                  json={"deadlines": [{"id": "d1", "kind": "oa_reply", "due": "2099-01-01"}]}).status_code == 200
+    assert (
+        su.put(
+            "/api/projects/method/case", json={"deadlines": [{"id": "d1", "kind": "oa_reply", "due": "2099-01-01"}]}
+        ).status_code
+        == 200
+    )
     items = vw.get("/api/deadlines").json()["items"]
     assert items and all(i["pid"] == "method" and i["my_role"] == "viewer" for i in items)
     assert {i["my_role"] for i in su.get("/api/deadlines").json()["items"]} == {"owner"}
@@ -538,9 +568,20 @@ def test_ai_jobs_acl_and_glob_guards(on):
     jdir = os.path.join(os.environ["PATENT_PROJECTS_DIR"], pid, ".studio", "ai-jobs")
     os.makedirs(jdir, exist_ok=True)
     now = _time.time()
-    job = {"id": jid, "kind": "review", "pid": pid, "status": "done", "progress": 1.0,
-           "message": "完成", "result": {"comments": 3}, "error": None,
-           "created_at": now, "updated_at": now, "steps": [], "queue_key": None}
+    job = {
+        "id": jid,
+        "kind": "review",
+        "pid": pid,
+        "status": "done",
+        "progress": 1.0,
+        "message": "完成",
+        "result": {"comments": 3},
+        "error": None,
+        "created_at": now,
+        "updated_at": now,
+        "steps": [],
+        "queue_key": None,
+    }
     with open(os.path.join(jdir, jid + ".json"), "w", encoding="utf-8") as f:
         _json.dump(job, f)
 
@@ -605,6 +646,7 @@ def test_on_comment_mutations_require_author_or_role(on):
     # editor+（owner）可管他人批注；客户批注（author.id=None）只能角色管
     pub = owner.post("/api/projects/method/comments", json={"anchor": anchor, "body": "客户批注"}).json()["id"]
     from app.domain import comments as _cm
+
     d = os.path.join(os.environ["PATENT_PROJECTS_DIR"], "method")
     pool = _cm.load(d)
     pool[-1].author = _cm.Author(id=None, name="客户甲")

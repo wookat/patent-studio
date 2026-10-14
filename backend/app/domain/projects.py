@@ -6,6 +6,7 @@ W4-C（docs/plan/15-w4c-figures-files-design.md §2）：附图顺序 / 宽度 /
 运行期 settings dict 仍带 spec_figures / abstract_figure（由 figures.md 派生的只读视图，本波次内 lint / ast /
 cnipa_xml / 设置页继续读它）；save_settings 收到这两个键时写回 figures.md。
 """
+
 import json
 import os
 import re
@@ -33,6 +34,7 @@ FIGURE_KEYS = ("abstract_figure", "spec_figures")
 def id_slug(stem: str, limit: int, fallback: str) -> str:
     """文件名主干 → 合法案 id 前缀。字符集 ⊆ ID_RE 允许集，故非空结果恒匹配 ID_RE。"""
     return _BAD_ID_CHARS.sub("-", stem).strip("-")[:limit] or fallback
+
 
 # attachments/（12 §4.4）：任意材料，白名单 + 单文件 50 MB；C2 的 app/domain/attachments.py 读这三个常量
 ATTACHMENTS_DIR = "attachments"
@@ -92,8 +94,7 @@ def write_template_fig(path, size=(1200, 700)):
     for i in range(3):
         x = x0 + i * (bw + gap)
         d.rectangle([x, y0, x + bw, y0 + bh], outline="black", width=4)
-        d.text((x + bw // 2, y0 + bh // 2), f"S{i + 1}", fill="black", anchor="mm",
-               font_size=56)
+        d.text((x + bw // 2, y0 + bh // 2), f"S{i + 1}", fill="black", anchor="mm", font_size=56)
         if i < 2:
             ax0, ax1, ay = x + bw + 12, x + bw + gap - 12, y0 + bh // 2
             d.line([ax0, ay, ax1, ay], fill="black", width=4)
@@ -332,8 +333,9 @@ class ProjectStore:
         settings = dict(settings or {})
         doc = self.load_figures(d)
         if any(k in settings for k in FIGURE_KEYS):
-            lv = normalize_settings({**doc.legacy_view(), **{k: settings[k] for k in FIGURE_KEYS if k in settings}},
-                                    self.list_figs(d))
+            lv = normalize_settings(
+                {**doc.legacy_view(), **{k: settings[k] for k in FIGURE_KEYS if k in settings}}, self.list_figs(d)
+            )
             figures_md.apply_legacy(doc, lv["spec_figures"], lv["abstract_figure"])
             self.save_figures(pid, doc)
         s = normalize_settings(settings, self.list_figs(d))
@@ -412,8 +414,7 @@ class ProjectStore:
         """docs/figures.md + studio.json（或传入的草稿 settings）→ patent_studio.kernel.build_patent 的 CONFIG。
         附图元组来自 project.settings 的派生视图（load_settings ← figures.md）；builder 的 CONFIG 契约不变，
         以便 examples/*/build_docx.py 与 make zero-drift 的原脚本路径继续作为基准。"""
-        s = normalize_settings(settings if settings is not None else project.settings,
-                               self.list_figs(project.dir))
+        s = normalize_settings(settings if settings is not None else project.settings, self.list_figs(project.dir))
         if not s["abstract_figure"] and s["spec_figures"]:
             # 有说明书附图却未选摘要图 → 沿用产品原口径硬拦；纯方法无附图案卷允许无摘要图构建。
             raise ProjectError("未设置摘要附图（figs/ 目录为空或未在设置中选择）", 422)

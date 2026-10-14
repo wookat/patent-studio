@@ -5,6 +5,7 @@ CRUD：validate ⇒ 422 error_detail("terms", …)。extract：确定性候选�
 （heavy）补充 source="ai" 候选，AI 失败 ⇒ error_detail("ai", …)。unify：确定性、不出站、不落盘，
 返回 {critic_markdown, changed_lines, count}，前端写回编辑器后由审阅面板接受 / 拒绝。
 """
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
@@ -90,8 +91,15 @@ async def _ai_candidates(request: Request, pid: str, p, content: str) -> list[di
             continue
         count, hit = terms.count_lines(name, lines)
         aliases = [str(a).strip() for a in (t.get("aliases") or []) if str(a).strip() and str(a).strip() != name]
-        row = {"name": name, "count": count, "lines": hit, "source": "ai", "aliases": aliases,
-               "en": t.get("en") or None, "definition": t.get("definition") or None}
+        row = {
+            "name": name,
+            "count": count,
+            "lines": hit,
+            "source": "ai",
+            "aliases": aliases,
+            "en": t.get("en") or None,
+            "definition": t.get("definition") or None,
+        }
         out.append(row)
     return out
 
@@ -123,5 +131,8 @@ async def unify_terms(request: Request, pid: str, body: UnifyIn):
         if missing:
             raise HTTPException(422, error_detail("terms", "术语表中没有主名：" + "、".join(missing)))
     markdown, changed = terms.unify(content, items, body.names, body.books)
-    return {"critic_markdown": markdown, "changed_lines": changed,
-            "count": terms.unify_count(content, items, body.names, body.books)}
+    return {
+        "critic_markdown": markdown,
+        "changed_lines": changed,
+        "count": terms.unify_count(content, items, body.names, body.books),
+    }

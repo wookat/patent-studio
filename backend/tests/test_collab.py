@@ -3,6 +3,7 @@
 服务端替换全文的字节偏移法则。G1：真实房间 —— uvicorn 起在线程里，`websockets` 客户端 + pycrdt `Provider`
 跑 y-websocket 协议：初始化自磁盘、两端并发编辑收敛并写回（装配律成立）、去抖一次、外部 PUT 广播、
 viewer 丢写、AUTH=on 握手、空房释放先落盘。"""
+
 import asyncio
 import contextlib
 import importlib
@@ -68,8 +69,11 @@ def _reload_app(auth):
 def env(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.delenv("PATENT_STUDIO_AUTH", raising=False)
     monkeypatch.setattr(rooms, "DEBOUNCE_S", FAST)
@@ -193,14 +197,20 @@ def read(p):
 def test_status_enabled_lists_active_rooms(env):
     c, _, _ = env("on")
     assert c.get("/api/projects/method/collab").json() == {
-        "enabled": True, "readonly": False, "mode": "edit", "rooms": [],
+        "enabled": True,
+        "readonly": False,
+        "mode": "edit",
+        "rooms": [],
     }
 
 
 def test_status_disabled_when_off(env):
     c, _, _ = env("off")
     assert c.get("/api/projects/method/collab").json() == {
-        "enabled": False, "readonly": False, "mode": "edit", "rooms": [],
+        "enabled": False,
+        "readonly": False,
+        "mode": "edit",
+        "rooms": [],
     }
 
 
@@ -264,14 +274,17 @@ def test_room_initialized_from_disk_and_status_counts_peers(env):
     c, pdir, _ = env("on")
     content = read(pdir / "content.md")
     with serve(c.app) as base:
+
         async def flow():
             async with client(base, "claims") as claims, client(base, "content") as full:
                 await until(lambda: str(claims) == docset.split(content).claims)
                 await until(lambda: str(full) == content)
                 st = httpx.get(f"{base}/api/projects/method/collab").json()
                 assert st["enabled"] is True
-                assert sorted(st["rooms"], key=lambda r: r["book"]) == [{"book": "claims", "peers": 1},
-                                                                        {"book": "content", "peers": 1}]
+                assert sorted(st["rooms"], key=lambda r: r["book"]) == [
+                    {"book": "claims", "peers": 1},
+                    {"book": "content", "peers": 1},
+                ]
                 assert sorted(rooms.ROOMS) == [("method", "claims"), ("method", "content")]
 
         asyncio.run(flow())
@@ -282,6 +295,7 @@ def test_new_client_receives_existing_awareness_states(env):
     """后来者连上就该看到先到者（YRoom 只转发不补发，serve 前补一条全量 awareness）。"""
     c, _, _ = env("on")
     with serve(c.app) as base:
+
         async def flow():
             async with websockets.connect(_ws_url(base, "claims")) as a:
                 aw_a = Awareness(Doc())
@@ -309,6 +323,7 @@ def test_two_clients_concurrent_edit_converge_and_writeback(env):
     before = read(pdir / "content.md")
     ds0 = docset.split(before)
     with serve(c.app) as base:
+
         async def flow():
             async with client(base, "claims") as a, client(base, "claims") as b:
                 await until(lambda: str(a) == ds0.claims and str(b) == ds0.claims)
@@ -343,6 +358,7 @@ def test_writeback_debounced_once_and_noop_when_unchanged(env, monkeypatch):
 
     monkeypatch.setattr(projects_mod.ProjectStore, "save_content", spy)
     with serve(c.app) as base:
+
         async def flow():
             async with client(base, "content") as t:
                 await until(lambda: str(t).startswith("# "))
@@ -369,6 +385,7 @@ def test_external_put_broadcasts_to_connected_clients(env):
     before = read(pdir / "content.md")
     ds0 = docset.split(before)
     with serve(c.app) as base:
+
         async def flow():
             async with client(base, "claims") as a, client(base, "content") as full:
                 await until(lambda: str(a) == ds0.claims and str(full) == before)
@@ -395,6 +412,7 @@ def test_mcp_patch_block_broadcasts_to_room(env):
 
     c, pdir, _ = env("on")
     with serve(c.app, lifespan="on") as base:
+
         async def flow():
             async with client(base, "claims") as a:
                 await until(lambda: str(a) != "")
@@ -402,11 +420,12 @@ def test_mcp_patch_block_broadcasts_to_room(env):
                     ast = (await m.call_tool("get_ast", {"pid": "method"})).structured_content
                     c1 = ast["claims"][0]
                     lines = [s["text"] for s in c1["segments"]]
-                    lines[0] = lines[0].replace("控制方法", "控制方法及系统", 1)
-                    res = await m.call_tool("patch_block", {"pid": "method", "block_id": c1["id"],
-                                                           "markdown": "\n".join(lines)})
+                    lines[0] = lines[0].replace("私钥生成方法，", "私钥生成方法及流程，", 1)
+                    res = await m.call_tool(
+                        "patch_block", {"pid": "method", "block_id": c1["id"], "markdown": "\n".join(lines)}
+                    )
                     assert res.is_error is False, res
-                await until(lambda: "控制方法{++及系统++}" in str(a))
+                await until(lambda: "私钥生成方法{++及流程++}" in str(a))
                 await asyncio.sleep(FAST * 3)
                 return str(a)
 
@@ -419,6 +438,7 @@ def test_client_edit_after_external_put_merges(env):
     """外部改写后客户端继续键入 → 键入落在改写后的文本上并写回（不丢字、不覆盖外部改写）。"""
     c, pdir, _ = env("on")
     with serve(c.app) as base:
+
         async def flow():
             async with client(base, "abstract") as t:
                 await until(lambda: str(t) != "")
@@ -426,8 +446,10 @@ def test_client_edit_after_external_put_merges(env):
                 httpx.put(f"{base}/api/projects/method/docs/abstract", json={"content": new_abs})
                 await until(lambda: str(t) == new_abs)
                 t += "客户端续写。\n"
-                await until(lambda: docset.split(read(pdir / "content.md")).abstract == new_abs + "客户端续写。\n",
-                            timeout=FAST * 10 + 5)
+                await until(
+                    lambda: docset.split(read(pdir / "content.md")).abstract == new_abs + "客户端续写。\n",
+                    timeout=FAST * 10 + 5,
+                )
 
         asyncio.run(flow())
 
@@ -437,6 +459,7 @@ def test_other_book_saved_keeps_pending_keystrokes(env, monkeypatch):
     c, pdir, _ = env("on")
     monkeypatch.setattr(rooms, "DEBOUNCE_S", 30.0)
     with serve(c.app) as base:
+
         async def flow():
             async with client(base, "claims") as t, client(base, "content") as full:
                 t += "【未落盘键入】"
@@ -457,6 +480,7 @@ def test_other_book_saved_keeps_pending_keystrokes(env, monkeypatch):
 def test_simultaneous_first_connections_share_one_room(env):
     c, _, _ = env("on")
     with serve(c.app) as base:
+
         async def flow():
             all_seen = asyncio.Barrier(3)  # 三端都确认 peers==3 后才允许任何一端断开，否则先断的把 peers 拉低
 
@@ -479,6 +503,7 @@ def test_idle_release_flushes_pending_then_drops_room(env, monkeypatch):
     monkeypatch.setattr(rooms, "DEBOUNCE_S", 30.0)  # 去抖永不触发，只能靠释放前 flush
     monkeypatch.setattr(rooms, "IDLE_RELEASE_S", 0.3)
     with serve(c.app) as base:
+
         async def flow():
             async with client(base, "content") as t:
                 await until(lambda: str(t).startswith("# "))
@@ -500,6 +525,7 @@ def test_reconnect_within_idle_window_keeps_room(env, monkeypatch):
     c, _, _ = env("on")
     monkeypatch.setattr(rooms, "IDLE_RELEASE_S", 1.0)
     with serve(c.app) as base:
+
         async def flow():
             async with client(base, "claims"):
                 await until(lambda: ("method", "claims") in rooms.ROOMS)
@@ -518,6 +544,7 @@ def test_offline_edit_then_reconnect_merges(env):
     """A 断开期间本地插入、服务端同时被 B 改写 → A 重连后三方收敛且磁盘 = 合并结果（11 §0 E9 用 pytest 复现）。"""
     c, pdir, _ = env("on")
     with serve(c.app) as base:
+
         async def flow():
             doc_a = Doc()
             doc_a["content"] = ta = Text()
@@ -530,8 +557,9 @@ def test_offline_edit_then_reconnect_merges(env):
             async with client(base, "claims") as tb:
                 await until(lambda: str(tb) == base_text)
                 tb.insert(0, "【B 在线开头】")
-                await until(lambda: read(pdir / "docs" / "claims.md") == "【B 在线开头】" + base_text,
-                            timeout=FAST * 10 + 5)
+                await until(
+                    lambda: read(pdir / "docs" / "claims.md") == "【B 在线开头】" + base_text, timeout=FAST * 10 + 5
+                )
                 async with websockets.connect(_ws_url(base, "claims")) as ws:
                     ch = WsChannel(ws, "claims")
                     async with Provider(doc_a, ch):
@@ -546,8 +574,9 @@ def test_offline_edit_then_reconnect_merges(env):
 
 
 def _register(base, email, display_name=""):
-    r = httpx.post(f"{base}/api/auth/register",
-                   json={"email": email, "password": "pw-123456", "display_name": display_name})
+    r = httpx.post(
+        f"{base}/api/auth/register", json={"email": email, "password": "pw-123456", "display_name": display_name}
+    )
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -569,11 +598,15 @@ def test_auth_on_handshake_roles_and_viewer_readonly(env):
         _register(base, "editor@example.com", "代理人")
         _register(base, "viewer@example.com")
         _register(base, "stranger@example.com")
-        su, editor, viewer, stranger = (_login(base, f"{n}@example.com")
-                                        for n in ("su", "editor", "viewer", "stranger"))
+        su, editor, viewer, stranger = (
+            _login(base, f"{n}@example.com") for n in ("su", "editor", "viewer", "stranger")
+        )
         for email, role in (("editor@example.com", "editor"), ("viewer@example.com", "viewer")):
-            r = httpx.put(f"{base}/api/projects/method/members", json={"email": email, "role": role},
-                          cookies={"studio_session": su})
+            r = httpx.put(
+                f"{base}/api/projects/method/members",
+                json={"email": email, "role": role},
+                cookies={"studio_session": su},
+            )
             assert r.status_code == 200, r.text
         for cookie, ro in ((su, False), (editor, False), (viewer, True)):
             st = httpx.get(f"{base}/api/projects/method/collab", cookies={"studio_session": cookie})
@@ -612,16 +645,21 @@ def _ytext(s):
     return t
 
 
-@pytest.mark.parametrize("old,new", [
-    ("1. 一种装置，其特征在于：\n", "1. 一种装置，其特征在于：\n2. 根据权利要求1所述的装置。\n"),
-    ("1. 一种装置，其特征在于：\n", "【前缀】1. 一种装置，其特征在于：\n"),
-    ("1. 一种装置，其特征在于：\n2. 根据权利要求1所述的装置。\n", "1. 一种装置，其特征在于：\n"),
-    ("1. 一种装置，其特征在于：\n2. 根据权利要求1所述的装置。\n",
-     "1. 外部改写后的权利要求。\n2. 根据权利要求1所述的装置。\n"),
-    ("α β γ 中文 emoji 🙂 end", "α γ 中文 emoji 🙃 end!"),
-    ("", "从空开始"),
-    ("全删", ""),
-])
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("1. 一种装置，其特征在于：\n", "1. 一种装置，其特征在于：\n2. 根据权利要求1所述的装置。\n"),
+        ("1. 一种装置，其特征在于：\n", "【前缀】1. 一种装置，其特征在于：\n"),
+        ("1. 一种装置，其特征在于：\n2. 根据权利要求1所述的装置。\n", "1. 一种装置，其特征在于：\n"),
+        (
+            "1. 一种装置，其特征在于：\n2. 根据权利要求1所述的装置。\n",
+            "1. 外部改写后的权利要求。\n2. 根据权利要求1所述的装置。\n",
+        ),
+        ("α β γ 中文 emoji 🙂 end", "α γ 中文 emoji 🙃 end!"),
+        ("", "从空开始"),
+        ("全删", ""),
+    ],
+)
 def test_apply_full_text_multibyte(old, new):
     t = _ytext(old)
     assert apply_full_text(t, new, origin="server") is True
@@ -658,6 +696,7 @@ def test_room_rebuilt_from_persisted_state_no_duplicate_on_reconnect(env, monkey
     c, pdir, _ = env("on")
     monkeypatch.setattr(rooms, "IDLE_RELEASE_S", 0.3)
     with serve(c.app) as base:
+
         async def flow():
             doc_a = Doc()
             doc_a["content"] = ta = Text()
@@ -666,8 +705,9 @@ def test_room_rebuilt_from_persisted_state_no_duplicate_on_reconnect(env, monkey
                 async with Provider(doc_a, ch):
                     await until(lambda: ch.synced and str(ta) != "")
                     ta += "【A 在线新增】\n"
-                    await until(lambda: read(pdir / "docs" / "claims.md").endswith("【A 在线新增】\n"),
-                                timeout=FAST * 10 + 5)
+                    await until(
+                        lambda: read(pdir / "docs" / "claims.md").endswith("【A 在线新增】\n"), timeout=FAST * 10 + 5
+                    )
             state_file = pdir / ".studio" / "collab" / "claims.ybin"
             if rebuild == "idle_release":
                 await until(lambda: ("method", "claims") not in rooms.ROOMS, timeout=5)
@@ -694,6 +734,7 @@ def test_persisted_state_unreadable_falls_back_to_fresh_doc(env):
     sf.parent.mkdir(parents=True, exist_ok=True)
     sf.write_bytes(b"\xff\x00garbage")
     with serve(c.app) as base:
+
         async def flow():
             async with client(base, "content") as t:
                 await until(lambda: str(t) == read(pdir / "content.md"))

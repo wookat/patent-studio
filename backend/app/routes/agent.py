@@ -13,6 +13,7 @@
 - GET  /api/admin/ai-usage：机构汇总（superuser）。
 SSE 步骤流在 routes_ai `GET /api/ai/jobs/{id}/events`（agent:* 任务走 watch_steps）。
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.agent import budget, loop, proposals, registry
@@ -64,14 +65,15 @@ async def agent_run(pid: str, body: AgentRunIn, request: Request, user: CurrentU
         budget.check_heavy(p.dir, settings)
     jobs = request.app.state.jobs
     # 同场景重复投递（客户端超时重试 / 双击）→ 409，避免并行双写提案与双倍 AI 消耗（与 convert 同口径）
-    job = jobs.create_unless_busy(job_kind(scenario), pid,
-                                  queue_key=heavy_queue_key(pid) if heavy else None)
+    job = jobs.create_unless_busy(job_kind(scenario), pid, queue_key=heavy_queue_key(pid) if heavy else None)
     if job is None:
         raise HTTPException(409, error_detail("job_busy", "本案已有同一场景任务在进行中", detail=UNIT))
     ai = request.app.state.ai
     who, actor = _who(user), events.actor_of(user)
-    jobs.run(job, lambda: loop.run_scenario(pid, scenario, body.params, job, store=store, jobs=jobs, ai=ai,
-                                            who=who, actor=actor))
+    jobs.run(
+        job,
+        lambda: loop.run_scenario(pid, scenario, body.params, job, store=store, jobs=jobs, ai=ai, who=who, actor=actor),
+    )
     out = _job_out(jobs.get(job.id) or job).model_dump()
     return {**out, "job_id": job.id}
 
@@ -89,20 +91,21 @@ async def agent_proposals(pid: str, request: Request, state: ProposalState | Non
     return ProposalsResponse(proposals=proposals.load(p.dir, pid, state))
 
 
-@router.post("/api/projects/{pid}/agent/proposals/{proposal_id}/apply", response_model=ProposalApplyResult,
-             dependencies=[Depends(require_org_ai)])
+@router.post(
+    "/api/projects/{pid}/agent/proposals/{proposal_id}/apply",
+    response_model=ProposalApplyResult,
+    dependencies=[Depends(require_org_ai)],
+)
 async def apply_proposal(pid: str, proposal_id: str, request: Request, user: CurrentUser):
     store = request.app.state.store
-    return await proposals.apply(store, pid, proposal_id, user=user, who=_who(user),
-                                 actor=events.actor_of(user))
+    return await proposals.apply(store, pid, proposal_id, user=user, who=_who(user), actor=events.actor_of(user))
 
 
 @router.post("/api/projects/{pid}/agent/proposals/apply-all", dependencies=[Depends(require_org_ai)])
 async def apply_all_proposals(pid: str, request: Request, user: CurrentUser):
     """s1 成稿一批多份提案逐条点应用是重复摩擦——按入档序批量应用，单条失败不中止。"""
     store = request.app.state.store
-    return await proposals.apply_all(store, pid, user=user, who=_who(user),
-                                     actor=events.actor_of(user))
+    return await proposals.apply_all(store, pid, user=user, who=_who(user), actor=events.actor_of(user))
 
 
 @router.post("/api/projects/{pid}/agent/proposals/{proposal_id}/dismiss", dependencies=[Depends(require_org_ai)])
@@ -126,11 +129,16 @@ async def org_ai_usage(request: Request):
     for pid in store.list_ids():
         p = store.get(pid)
         rows = budget.today_rows(p.dir)
-        by_project.append({"pid": pid, "title": p.title, "today_tokens": sum(int(r.get("total_tokens") or 0)
-                                                                               for r in rows)})
+        by_project.append(
+            {"pid": pid, "title": p.title, "today_tokens": sum(int(r.get("total_tokens") or 0) for r in rows)}
+        )
         for r in read_usage(p.dir):
             m = by_model.setdefault(r.get("model") or "?", {"model": r.get("model") or "?", "tokens": 0, "calls": 0})
             m["tokens"] += int(r.get("total_tokens") or 0)
             m["calls"] += 1
-    return {"today_tokens": sum(x["today_tokens"] for x in by_project), "budget": budget.daily_budget(None),
-            "by_project": by_project, "by_model": sorted(by_model.values(), key=lambda x: -x["tokens"])}
+    return {
+        "today_tokens": sum(x["today_tokens"] for x in by_project),
+        "budget": budget.daily_budget(None),
+        "by_project": by_project,
+        "by_model": sorted(by_model.values(), key=lambda x: -x["tokens"]),
+    }

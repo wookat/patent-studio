@@ -3,6 +3,7 @@
 GET /api/projects 向后兼容扩展 / 501 占位形状 / ACL 门槛 / history 事件通道 / 列表状态表。
 单元 A1 的功能测试见 test_cases.py。
 """
+
 import importlib
 import os
 import shutil
@@ -41,8 +42,11 @@ def _projects(tmp_path):
     projects = tmp_path / "projects"
     projects.mkdir()
     for pid in ("method", "system"):
-        shutil.copytree(os.path.join(ROOT, "examples", pid), projects / pid,
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            os.path.join(ROOT, "examples", pid),
+            projects / pid,
+            ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+        )
     return projects
 
 
@@ -127,11 +131,13 @@ def test_deadline_levels_and_next_deadline():
     assert cases.deadline_level(0) == "red" and cases.deadline_level(3) == "red"
     assert cases.deadline_level(4) == "yellow" and cases.deadline_level(14) == "yellow"
     assert cases.deadline_level(15) == "normal"
-    c = cases.Case(deadlines=[
-        cases.Deadline(kind="filing", due="2026-09-30"),
-        cases.Deadline(kind="client_review", due="2026-09-07"),
-        cases.Deadline(kind="old", due="2026-01-01", done=True),
-    ])
+    c = cases.Case(
+        deadlines=[
+            cases.Deadline(kind="filing", due="2026-09-30"),
+            cases.Deadline(kind="client_review", due="2026-09-07"),
+            cases.Deadline(kind="old", due="2026-01-01", done=True),
+        ]
+    )
     n = cases.next_deadline(c, today)
     assert n == {"kind": "client_review", "due": "2026-09-07", "note": "", "days_left": 2, "level": "red"}
     assert cases.next_deadline(cases.Case(), today) is None
@@ -144,7 +150,9 @@ def test_tags_file_roundtrip(tmp_path):
     p = tmp_path / ".studio" / "tags.json"
     assert p.is_file()
     assert [t.model_dump() for t in cases.load_tags(str(tmp_path))] == [
-        {"name": "AI", "color": cases.TAG_COLORS[5]}, {"name": "加急", "color": "#ef4444"}]
+        {"name": "AI", "color": cases.TAG_COLORS[5]},
+        {"name": "加急", "color": "#ef4444"},
+    ]
     with pytest.raises(ValueError):
         cases.Tag(name="  ")
 
@@ -209,7 +217,15 @@ def test_list_projects_backward_compatible_and_generates_case_json(client):
     for r in rows:
         assert {"id", "title", "mtime"} <= set(r)  # 旧字段不动
         assert set(r) == {
-            "id", "title", "mtime", "case", "owner", "collaborators", "last_modified_by", "my_role", "list_state",
+            "id",
+            "title",
+            "mtime",
+            "case",
+            "owner",
+            "collaborators",
+            "last_modified_by",
+            "my_role",
+            "list_state",
         }
         assert r["case"]["status"] == "drafting" and r["case"]["next_deadline"] is None
         assert r["owner"] is None and r["collaborators"] == [] and r["my_role"] is None and r["list_state"] == "active"
@@ -229,8 +245,14 @@ def test_get_case_and_project_detail_include_case(client):
 
 def test_create_project_writes_case(client):
     c, projects = client
-    r = c.post("/api/projects", json={"id": "new1", "title": "一种新方法",
-                                      "case": {"case_no": "ZL-2026-001", "client": "甲方", "tags": ["AI"]}})
+    r = c.post(
+        "/api/projects",
+        json={
+            "id": "new1",
+            "title": "一种新方法",
+            "case": {"case_no": "ZL-2026-001", "client": "甲方", "tags": ["AI"]},
+        },
+    )
     assert r.status_code == 201, r.text
     case = r.json()["case"]
     assert case["case_no"] == "ZL-2026-001" and case["client"] == "甲方" and case["status"] == "drafting"

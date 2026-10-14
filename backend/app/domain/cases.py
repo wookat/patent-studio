@@ -17,6 +17,7 @@ W5 R-CASE-02 扩展（旧 case.json 缺字段照常加载，normalize_case 补�
               legal_basis}。
 期限规则与自动重算见 app/deadlines（本模块不依赖它）。
 """
+
 import contextlib
 import json
 import os
@@ -47,13 +48,30 @@ RelatedKind = Literal["parent", "divisional", "associated"]
 # 与 app/schemas.DeadlineKind 同步。case.json 里 kind 仍是自由字符串（W4 旧案 filing / client_review … 照旧保留），
 # 出 API 时由 routes_deadlines.to_item 按此表归为 custom
 DEADLINE_KINDS: tuple[str, ...] = (
-    "oa_reply", "exam_request", "priority", "annual_fee", "review_due", "divisional", "reexam", "publication", "custom"
+    "oa_reply",
+    "exam_request",
+    "priority",
+    "annual_fee",
+    "review_due",
+    "divisional",
+    "reexam",
+    "publication",
+    "custom",
 )
 
 KINDS: tuple[str, ...] = ("invention", "utility", "design")
 # 十档状态机：任意状态可跳到任意状态（撰写台账不是审批流），每次跳转写一条 history 事件
 STATUSES: tuple[str, ...] = (
-    "intake", "drafting", "review", "client_review", "final", "filed", "oa", "granted", "rejected", "closed"
+    "intake",
+    "drafting",
+    "review",
+    "client_review",
+    "final",
+    "filed",
+    "oa",
+    "granted",
+    "rejected",
+    "closed",
 )
 LIST_STATES: tuple[str, ...] = ("active", "archived", "trashed")
 DEFAULT_STATUS = "drafting"
@@ -62,7 +80,15 @@ RED_DAYS = 3
 YELLOW_DAYS = 14
 # 标签色板（Tailwind 500 系；前端 StatusBadge / 色点直接用 hex，不查表）
 TAG_COLORS: tuple[str, ...] = (
-    "#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899", "#64748b"
+    "#ef4444",
+    "#f97316",
+    "#eab308",
+    "#22c55e",
+    "#14b8a6",
+    "#3b82f6",
+    "#8b5cf6",
+    "#ec4899",
+    "#64748b",
 )
 
 
@@ -130,6 +156,7 @@ def new_deadline_id() -> str:
 class Deadline(BaseModel):
     """期限一条。auto = 规则引擎按 dates.* / oa 发文日算出（rule / base_date / legal_basis 齐），
     manual = 人工录入或人工改期（改期必带 override_reason；重算不覆盖 manual）。"""
+
     id: str = Field(default_factory=new_deadline_id)
     kind: str = "custom"
     title: str = ""
@@ -154,6 +181,7 @@ class Deadline(BaseModel):
 
 class Confirmation(BaseModel):
     """客户确认定稿（W5 R-REV-05，share-confirm-backend 写入）：version/sha 为确认时版本；actor = client:<name>。"""
+
     version: int
     sha: str
     name: str
@@ -167,6 +195,7 @@ class Confirmation(BaseModel):
 
 class RelatedCase(BaseModel):
     """案间关联（W19 批7 ⑪c）：分案↔母案双向指针 + 一般关联；与 priority（在先申请号）是两回事。"""
+
     pid: str = Field(min_length=1, max_length=64)
     kind: RelatedKind = "associated"
     note: str = ""
@@ -202,6 +231,7 @@ class Case(BaseModel):
 class CasePatch(BaseModel):
     """PUT /case 请求体：全部可选，只改给出的字段（status 不在此改，走 POST /case/status 记事件）。
     未知键（含 status）422，不静默忽略。"""
+
     model_config = ConfigDict(extra="forbid")
 
     case_no: str | None = None
@@ -255,6 +285,7 @@ class ListStateIn(BaseModel):
 
 class BulkIn(BaseModel):
     """POST /api/projects/bulk：对多案执行同一动作；逐案校验 ACL，失败案在 results 里给 error，不整体回滚。"""
+
     pids: list[str]
     action: Literal["status", "tags", "owner", "list_state"]
     status: CaseStatus | None = None
@@ -265,6 +296,7 @@ class BulkIn(BaseModel):
 
 
 # ---------- case.json ----------
+
 
 def case_path(project_dir: str) -> str:
     return os.path.join(project_dir, CASE_FILE)
@@ -389,6 +421,7 @@ def retag_projects(project_dirs, old: str, new: str | None) -> int:
 
 # ---------- 期限倒计时 ----------
 
+
 def local_today() -> date:
     """北京时间的今天：与 app/deadlines/compute.today() 同一口径，服务器时区（UTC 容器）不得影响倒计时。"""
     return datetime.now(config.TZ).date()
@@ -428,8 +461,11 @@ def target_filing_days_left(case: Case, today: date | None = None) -> int | None
 
 def summary(case: Case, today: date | None = None) -> dict:
     """GET /api/projects 每行的 case 摘要：Case 全字段 + next_deadline + target_filing_days_left（服务端算日期）。"""
-    return {**case.model_dump(), "next_deadline": next_deadline(case, today),
-            "target_filing_days_left": target_filing_days_left(case, today)}
+    return {
+        **case.model_dump(),
+        "next_deadline": next_deadline(case, today),
+        "target_filing_days_left": target_filing_days_left(case, today),
+    }
 
 
 def collaborators_of(pid: str, members: list[dict], seen: dict[str, str]) -> list[dict]:
@@ -440,8 +476,7 @@ def collaborators_of(pid: str, members: list[dict], seen: dict[str, str]) -> lis
     from app.collab import rooms
 
     online = rooms.online_user_ids(pid)
-    return [{**m, "online": m["user_id"] in online, "last_seen": seen.get(m["user_id"])}
-            for m in members]
+    return [{**m, "online": m["user_id"] in online, "last_seen": seen.get(m["user_id"])} for m in members]
 
 
 async def collaborators(pid: str) -> list[dict]:
@@ -472,9 +507,16 @@ async def owner_brief(case: Case, cache: dict[str, dict | None] | None = None) -
     return out
 
 
-async def list_extra(project_dir: str, pid: str, user, states: dict[str, str], today: date | None = None,
-                     owners: dict[str, dict | None] | None = None,
-                     my_role: str | None | object = _UNSET, collab: list[dict] | None = None) -> dict:
+async def list_extra(
+    project_dir: str,
+    pid: str,
+    user,
+    states: dict[str, str],
+    today: date | None = None,
+    owners: dict[str, dict | None] | None = None,
+    my_role: str | None | object = _UNSET,
+    collab: list[dict] | None = None,
+) -> dict:
     """GET /api/projects 每行在 {id,title,mtime} 之外的新字段（旧字段不动，前端现有调用不破）。
     my_role/collab 预取版传入可跳库（聚合列表调用方批量算好，见 main.list_projects 的 R82-02）。"""
     case = ensure_case(project_dir)
@@ -489,6 +531,7 @@ async def list_extra(project_dir: str, pid: str, user, states: dict[str, str], t
 
 
 # ---------- 机构级标签 ----------
+
 
 def tags_path(projects_dir: str | None = None) -> str:
     return os.path.join(projects_dir or config.PROJECTS_DIR, TAGS_FILE)

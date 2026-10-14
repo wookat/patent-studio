@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """单元 E3 · 一键转专利（docs/plan/09 §3.3）：抽取 / 问卷 / 渲染去号 / mock 端到端（新案卷 → 三书装配律 → build；
 现案卷 → history 草稿 commit 不动工作区）/ 校验失败回修 1 次 / ai_ack 与 ai_enabled 门。"""
+
 import importlib
 import io
 import json
@@ -22,11 +23,14 @@ from patent_studio.kernel import docset, figures_md
 from patent_studio.kernel.ast import parse_ast
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-FIXTURE = json.load(open(os.path.join(os.path.dirname(__file__), "..", "app", "ai", "fixtures", "convert.json"),
-                         encoding="utf-8"))
-PAPER = ("A method for adaptive scheduling of heterogeneous computing tasks.\n\n"
-         "We propose a queue based scheduler that measures task latency and\n"
-         "re-assigns tasks between CPU and accelerator pools.\n") * 3
+FIXTURE = json.load(
+    open(os.path.join(os.path.dirname(__file__), "..", "app", "ai", "fixtures", "convert.json"), encoding="utf-8")
+)
+PAPER = (
+    "A method for adaptive scheduling of heterogeneous computing tasks.\n\n"
+    "We propose a queue based scheduler that measures task latency and\n"
+    "re-assigns tasks between CPU and accelerator pools.\n"
+) * 3
 PAPER_BYTES = PAPER.encode("utf-8")
 
 
@@ -50,12 +54,14 @@ def _docx() -> bytes:
 def _pdf(text: str | None) -> bytes:
     """单页 PDF，Helvetica 直接写 ASCII；text=None ⇒ 无文字（模拟扫描件）。"""
     stream = b"" if text is None else b"BT /F1 12 Tf 72 720 Td (" + text.encode("latin-1") + b") Tj ET"
-    objs = [b"<< /Type /Catalog /Pages 2 0 R >>",
-            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
-            b"/Resources << /Font << /F1 5 0 R >> >> >>",
-            b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
-            b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"]
+    objs = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
     out = bytearray(b"%PDF-1.4\n")
     offsets = []
     for i, o in enumerate(objs, 1):
@@ -70,6 +76,7 @@ def _pdf(text: str | None) -> bytes:
 
 
 # ---------------- 抽取 ----------------
+
 
 def test_extract_txt_md_normalizes():
     r = extract.extract("a.txt", "第一行\r\n\r\n\r\n\r\n第二行\r\n".encode())
@@ -93,16 +100,20 @@ def test_extract_pdf_text_and_scanned():
 
 def _pdf_vector_page() -> bytes:
     """一页矢量图 + 「Figure 1:」题注（无内嵌位图——TikZ 类论文形态）。"""
-    stream = (b"0 0 1 rg 100 560 400 140 re S "
-              b"0 0 0 rg 100 630 m 500 630 l S 100 570 m 500 570 l S "
-              b"BT /F1 12 Tf 72 500 Td (Figure 1: A schematic view of the module) Tj ET "
-              b"BT /F1 12 Tf 72 100 Td (Body text line one.) Tj ET")
-    objs = [b"<< /Type /Catalog /Pages 2 0 R >>",
-            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
-            b"/Resources << /Font << /F1 5 0 R >> >> >>",
-            b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
-            b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"]
+    stream = (
+        b"0 0 1 rg 100 560 400 140 re S "
+        b"0 0 0 rg 100 630 m 500 630 l S 100 570 m 500 570 l S "
+        b"BT /F1 12 Tf 72 500 Td (Figure 1: A schematic view of the module) Tj ET "
+        b"BT /F1 12 Tf 72 100 Td (Body text line one.) Tj ET"
+    )
+    objs = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
     out = bytearray(b"%PDF-1.4\n")
     offsets = []
     for i, o in enumerate(objs, 1):
@@ -117,8 +128,8 @@ def _pdf_vector_page() -> bytes:
 
 
 _POPPLER = pytest.mark.skipif(
-    not (shutil.which("pdftotext") and shutil.which("pdftoppm")),
-    reason="poppler-utils 不在测试环境")
+    not (shutil.which("pdftotext") and shutil.which("pdftoppm")), reason="poppler-utils 不在测试环境"
+)
 
 
 @_POPPLER
@@ -131,8 +142,9 @@ def test_extract_pdf_vector_figure_fallback():
     assert thumbs  # 墨带指纹供位图通道去重
     assert len(caps) == len(figs) and caps[0] and "Figure" in caps[0]
     from PIL import Image
+
     im = Image.open(io.BytesIO(figs[0][1]))
-    assert im.width >= 400 and im.height >= 150   # 裁到矩形墨带而非碎片
+    assert im.width >= 400 and im.height >= 150  # 裁到矩形墨带而非碎片
     r = extract.extract("v.pdf", data)
     assert len(r["figures"]) == 1
     assert any("题注" in w for w in r["warnings"])
@@ -141,15 +153,17 @@ def test_extract_pdf_vector_figure_fallback():
 def test_figure_ok_drops_strips_blank_undecodable():
     """往复轮105 抽图质量闸——YOLO fig2 7013×476 白粉条实案：条形/近空白/坏图剔除，正常图与 emf 放行。"""
     from PIL import Image
+
     def _img(w: int, h: int, rgb: tuple) -> bytes:
         buf = io.BytesIO()
         Image.new("RGB", (w, h), rgb).save(buf, "PNG")
         return buf.getvalue()
+
     assert extract._figure_ok(_img(64, 64, (30, 30, 30))) is True
-    assert extract._figure_ok(_img(7013, 476, (255, 255, 255))) is False   # 条形碎片
-    assert extract._figure_ok(_img(200, 200, (255, 255, 255))) is False     # 近空白
-    assert extract._figure_ok(b"not-an-image") is False                     # 无法解码
-    assert extract._figure_ok(b"\x01\x00\x00\x00emf-body") is True          # emf 矢量放行
+    assert extract._figure_ok(_img(7013, 476, (255, 255, 255))) is False  # 条形碎片
+    assert extract._figure_ok(_img(200, 200, (255, 255, 255))) is False  # 近空白
+    assert extract._figure_ok(b"not-an-image") is False  # 无法解码
+    assert extract._figure_ok(b"\x01\x00\x00\x00emf-body") is True  # emf 矢量放行
 
 
 def test_figure_ok_flattens_alpha_and_normalize_grayscales():
@@ -173,7 +187,7 @@ def test_figure_ok_flattens_alpha_and_normalize_grayscales():
         return buf.getvalue()
 
     shell = _rgba_shell(1470, 723)
-    assert extract._figure_ok(shell) is False        # 合成白底后近空白 → 剔
+    assert extract._figure_ok(shell) is False  # 合成白底后近空白 → 剔
 
     def _color_img() -> bytes:
         buf = io.BytesIO()
@@ -183,7 +197,7 @@ def test_figure_ok_flattens_alpha_and_normalize_grayscales():
     ext, blob = _normalize_fig("png", _color_img())
     assert ext == "png"
     im = Image.open(io.BytesIO(blob))
-    assert im.mode == "L"                             # 彩色 → 灰度
+    assert im.mode == "L"  # 彩色 → 灰度
     assert _normalize_fig("emf", b"\x01\x00\x00\x00x") == ("emf", b"\x01\x00\x00\x00x")  # 矢量原样放行
 
 
@@ -203,6 +217,7 @@ def test_extract_caps_chars():
 
 # ---------------- 问卷 ----------------
 
+
 def test_questionnaire_parse_and_render():
     q = questionnaire.parse(json.dumps({"problem": "延迟高", "effects": "  ", "unknown": "x", "figures": "图1 流程"}))
     assert q == {"problem": "延迟高", "figures": "图1 流程"}
@@ -216,12 +231,15 @@ def test_questionnaire_parse_and_render():
 
 # ---------------- 渲染：编号由内核生成 ----------------
 
+
 def test_render_markdown_strips_ai_numbering_and_is_valid():
     data = {
         "title": "一种调度方法",
         "abstract": "摘要一段。",
-        "claims": ["1. 一种调度方法，其特征在于，包括步骤 A。",
-                   "2、根据权利要求1所述的方法，其特征在于，还包括步骤 B。"],
+        "claims": [
+            "1. 一种调度方法，其特征在于，包括步骤 A。",
+            "2、根据权利要求1所述的方法，其特征在于，还包括步骤 B。",
+        ],
         "description": {
             "技术领域": "[0001] 本发明涉及计算机领域。",
             "背景技术": ["### 背景技术", "[0002] 现有技术……"],
@@ -255,6 +273,7 @@ def test_render_markdown_caps_overlong_abstract():
     assert pipeline.check(md) == []
     assert any("截断" in w for w in warnings)
     import re as _re
+
     abs_sec = _re.search(r"## 摘要\n\n(.*?)\n\n## 权利要求书", md, _re.S).group(1)
     assert len(abs_sec.replace("\n", "")) <= 290
 
@@ -262,10 +281,12 @@ def test_render_markdown_caps_overlong_abstract():
 def test_render_markdown_normalizes_self_reference():
     """往复轮108：convert 草稿自称「本申请」——s1 早已归一本发明（轮77），
     convert 链未接同款处理，sam2 实案草稿 13 处本申请贯穿三书。"""
-    data = dict(FIXTURE,
-                abstract="本申请公开一种测试方法。",
-                claims=["本申请方法，其特征在于，包括步骤。"],
-                description=dict(FIXTURE["description"], 技术领域=["本申请涉及测试领域。"]))
+    data = dict(
+        FIXTURE,
+        abstract="本申请公开一种测试方法。",
+        claims=["本申请方法，其特征在于，包括步骤。"],
+        description=dict(FIXTURE["description"], 技术领域=["本申请涉及测试领域。"]),
+    )
     md = pipeline.render_markdown(data)
     assert "本申请" not in md
     assert md.count("本发明") >= 3
@@ -295,13 +316,24 @@ def test_convert_retries_transient_ai_error(monkeypatch, tmp_path):
 
     store = types.SimpleNamespace(
         _dir=lambda pid: str(tmp_path / pid),
-        save_content=lambda pid, content: (tmp_path / pid / "content.md").write_text(content, encoding="utf-8"), encoding="utf-8")
+        save_content=lambda pid, content: (tmp_path / pid / "content.md").write_text(content, encoding="utf-8"),
+        encoding="utf-8",
+    )
     extracted = {"text": "paper", "warnings": [], "figures": [], "pages": 1}
     q = questionnaire.parse("{}")
     (tmp_path / "case1").mkdir()
-    result = asyncio.run(pipeline.run(store=store, ai=None, pid="case1", is_new=True,
-                                      filename="p.txt", extracted=extracted, questionnaire=q,
-                                      progress=lambda *a: None))
+    result = asyncio.run(
+        pipeline.run(
+            store=store,
+            ai=None,
+            pid="case1",
+            is_new=True,
+            filename="p.txt",
+            extracted=extracted,
+            questionnaire=q,
+            progress=lambda *a: None,
+        )
+    )
     assert calls["n"] == 2
     assert result["report"]["claims"] >= 1
     assert (tmp_path / "case1" / "content.md").exists()
@@ -327,25 +359,36 @@ def test_gen_quality_errors_flags_abstract_and_marks():
 
 def _stub_store(tmp_path):
     import types
+
     return types.SimpleNamespace(
         _dir=lambda pid: str(tmp_path / pid),
-        save_content=lambda pid, content: (tmp_path / pid / "content.md").write_text(
-            content, encoding="utf-8"))
+        save_content=lambda pid, content: (tmp_path / pid / "content.md").write_text(content, encoding="utf-8"),
+    )
 
 
 def _run_convert(store, tmp_path, pid="case1"):
     import asyncio
+
     extracted = {"text": "paper", "warnings": [], "figures": [], "pages": 1}
     (tmp_path / pid).mkdir(exist_ok=True)
-    return asyncio.run(pipeline.run(store=store, ai=None, pid=pid, is_new=True,
-                                    filename="p.txt", extracted=extracted,
-                                    questionnaire=questionnaire.parse("{}"),
-                                    progress=lambda *a: None))
+    return asyncio.run(
+        pipeline.run(
+            store=store,
+            ai=None,
+            pid=pid,
+            is_new=True,
+            filename="p.txt",
+            extracted=extracted,
+            questionnaire=questionnaire.parse("{}"),
+            progress=lambda *a: None,
+        )
+    )
 
 
 def test_convert_regenerates_on_gen_quality(monkeypatch, tmp_path):
     """首轮质量问题 → 带错误回修，第二轮合格即交付。"""
     import json as _json
+
     bad = dict(FIXTURE, abstract="本发明公开一种调度方法，属于调度领域，包括步骤 A，能够降低延迟。")
     calls = {"n": 0}
 
@@ -362,6 +405,7 @@ def test_convert_regenerates_on_gen_quality(monkeypatch, tmp_path):
 def test_convert_gen_quality_degrades_to_warning(monkeypatch, tmp_path):
     """回修一轮后质量问题仍在 → 不报废整案，退为告警交付（与 preflight warning 同口径）。"""
     import json as _json
+
     bad = dict(FIXTURE, abstract="本发明公开一种调度方法，属于调度领域，包括步骤 A，能够降低延迟。")
     calls = {"n": 0}
 
@@ -378,12 +422,16 @@ def test_convert_gen_quality_degrades_to_warning(monkeypatch, tmp_path):
 
 # ---------------- 端到端（mock 供应商）----------------
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("PATENT_STUDIO_AI_PROVIDER", "mock")
     from app import config, main
@@ -408,8 +456,11 @@ def _wait(c, job_id, timeout=10.0):
 
 def _convert(c, target="new", ai_ack=True, name="scheduler paper.txt", data=None, q="{}"):
     data = PAPER_BYTES if data is None else data
-    return c.post("/api/projects/convert", files={"file": (name, data, "text/plain")},
-                  data={"questionnaire": q, "target": target, "ai_ack": "true" if ai_ack else "false"})
+    return c.post(
+        "/api/projects/convert",
+        files={"file": (name, data, "text/plain")},
+        data={"questionnaire": q, "target": target, "ai_ack": "true" if ai_ack else "false"},
+    )
 
 
 def test_convert_new_project_end_to_end(client):
@@ -462,8 +513,11 @@ def test_convert_from_attachment(client):
     base = {"questionnaire": "{}", "target": "new", "ai_ack": "true"}
     r = c.post("/api/projects/convert", data=base)
     assert r.status_code == 422 and r.json()["detail"]["kind"] == "source"
-    r = c.post("/api/projects/convert", files={"file": ("a.txt", PAPER_BYTES, "text/plain")},
-               data={**base, "attachment_pid": "method", "attachment": "scheduler paper.txt"})
+    r = c.post(
+        "/api/projects/convert",
+        files={"file": ("a.txt", PAPER_BYTES, "text/plain")},
+        data={**base, "attachment_pid": "method", "attachment": "scheduler paper.txt"},
+    )
     assert r.status_code == 422 and r.json()["detail"]["kind"] == "source"
     r = c.post("/api/projects/convert", data={**base, "attachment_pid": "method", "attachment": "nope.txt"})
     assert r.status_code == 404 and r.json()["detail"]["kind"] == "attachments"
@@ -507,6 +561,7 @@ def test_convert_existing_project_draft_commit(client):
     assert (projects / "method" / "content.md").read_text(encoding="utf-8") == before
     assert c.get("/api/projects/method/content").json()["content"] == before
     from app.domain import history
+
     pdir = str(projects / "method")
     top = history.log(pdir)[0]
     assert top["sha"] == res["draft_sha"] and top["message"] == pipeline.DRAFT_MESSAGE and top["author"] == "ai"
@@ -576,9 +631,14 @@ def test_write_figures_resyncs_figures_md(tmp_path):
     (pdir / "figs" / "fig1.png").write_bytes(b"placeholder")
     (pdir / "docs" / "figures.md").write_text(
         "# 说明书附图\n\n![图1](figs/fig1.png){width=15}\n\n# 摘要附图\n\n![](figs/fig1.png){width=14.5}\n",
-        encoding="utf-8")
-    assert pipeline._write_figures(str(pdir), [("tiff", b"T1"), ("png", b"P2"), ("png", b"P3")],
-                                   "图1为架构图\n图2为流程图\n图3为结果图") == 3
+        encoding="utf-8",
+    )
+    assert (
+        pipeline._write_figures(
+            str(pdir), [("tiff", b"T1"), ("png", b"P2"), ("png", b"P3")], "图1为架构图\n图2为流程图\n图3为结果图"
+        )
+        == 3
+    )
     fmd = (pdir / "docs" / "figures.md").read_text(encoding="utf-8")
     assert "fig1.png" not in fmd
     doc = figures_md.read(str(pdir))
@@ -611,6 +671,7 @@ def test_convert_scanned_pdf_422(client):
 
 
 # ---------------- 校验失败回修 1 次 ----------------
+
 
 class SeqProvider:
     """按序返回预设文本；用于验证「失败带错误回修 1 次」。"""
@@ -703,8 +764,8 @@ def test_order_figures_src_reorders_drops_and_fallbacks():
     assert pipeline._order_figures(figs, [{"num": 1, "src": 3, "caption": "x"}]) == [("png", b"c")]
     assert pipeline._order_figures(figs, [{"src": 2}, {"src": 1}]) == [("png", b"b"), ("png", b"a")]
     assert pipeline._order_figures(figs, [{"src": 1}, {"src": 1}, {"src": 2}]) == [("png", b"a"), ("png", b"b")]
-    assert pipeline._order_figures(figs, None) == figs      # 未输出 figures 键 → 原样全收
-    assert pipeline._order_figures(figs, []) == []          # 模型判定全不收
+    assert pipeline._order_figures(figs, None) == figs  # 未输出 figures 键 → 原样全收
+    assert pipeline._order_figures(figs, []) == []  # 模型判定全不收
     assert pipeline._order_figures(figs, [{"src": 99}, {"src": "x"}, {}]) == figs  # src 全无效 → 原序兑底
 
 
@@ -713,19 +774,24 @@ def test_order_figures_mmd_renders_gen_schematic():
     mmd = "flowchart LR\n  A[输入] --> B[编码] --> C[输出]\n"
     gen = {}
     marks = []
-    out = pipeline._order_figures([], [{"num": 1, "mmd": mmd, "caption": "图1",
-                                       "marks": {"101": "输入模块", "102": "编码模块"}}],
-                                  gen, marks)
+    out = pipeline._order_figures(
+        [], [{"num": 1, "mmd": mmd, "caption": "图1", "marks": {"101": "输入模块", "102": "编码模块"}}], gen, marks
+    )
     assert len(out) == 1 and out[0][0] == "png" and out[0][1][:4] == b"\x89PNG"
     assert (gen.get("fig1.mmd") or "").strip() == mmd.strip()
     assert marks == [{"101": "输入模块", "102": "编码模块"}]
     # spec 图源走 figspec 确定性渲染，gen_src 落 .spec JSON
-    spec = {"bands": [{"title": "输入", "blocks": [{"id": "A", "label": "输入模块 101"}]},
-                      {"title": "输出", "blocks": [{"id": "B", "label": "输出模块 102"}]}],
-            "edges": [{"from": "A", "to": "B"}]}
+    spec = {
+        "bands": [
+            {"title": "输入", "blocks": [{"id": "A", "label": "输入模块 101"}]},
+            {"title": "输出", "blocks": [{"id": "B", "label": "输出模块 102"}]},
+        ],
+        "edges": [{"from": "A", "to": "B"}],
+    }
     gen2, marks2 = {}, []
-    out2 = pipeline._order_figures([], [{"num": 1, "spec": spec, "caption": "图1",
-                                        "marks": {"101": "输入模块"}}], gen2, marks2)
+    out2 = pipeline._order_figures(
+        [], [{"num": 1, "spec": spec, "caption": "图1", "marks": {"101": "输入模块"}}], gen2, marks2
+    )
     assert len(out2) == 1 and out2[0][0] == "png" and out2[0][1][:4] == b"\x89PNG"
     assert gen2.get("fig1.spec") and json.loads(gen2["fig1.spec"])["bands"]
     assert marks2 == [{"101": "输入模块"}]

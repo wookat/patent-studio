@@ -2,6 +2,7 @@
 """R3 B1-patch-api（docs/plan/06-r3-structure-edit-design.md §3 / §4 / §8 第 11 项）：
 序列化法则对两案逐字节成立；patch/insert/delete 纯函数（恒等补丁、只改该块行、装配律）；
 路由 200/422/409 + save_content 落盘；模板可被 parse_ast 接受；boundary 三规则 + fix 可被 patch 接受；/api/mathml。"""
+
 import json
 import os
 import shutil
@@ -41,8 +42,9 @@ def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
     for d in EXAMPLES:
-        shutil.copytree(d, projects / os.path.basename(d),
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            d, projects / os.path.basename(d), ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*")
+        )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     import importlib
 
@@ -57,11 +59,15 @@ def client(tmp_path, monkeypatch):
 
 # ---------------- 序列化法则（prep 已验证，保留） ----------------
 
+
 def _blocks(md):
     ast = parse_ast(md)
     ds = docset.split(md)
-    for book, blocks in (("abstract", ast["abstract"]["paragraphs"]), ("claims", ast["claims"]),
-                         ("description", ast["description"])):
+    for book, blocks in (
+        ("abstract", ast["abstract"]["paragraphs"]),
+        ("claims", ast["claims"]),
+        ("description", ast["description"]),
+    ):
         text = ds.book(book).split("\n")
         for b in blocks:
             yield book, b, text[b["lines"]["start"] - 1 : b["lines"]["end"]]
@@ -77,15 +83,29 @@ def test_serialize_law_examples(d):
     assert n >= 70
 
 
+# 新语料（b12a541）两案只含 claim/paragraph/section 三种块型；
+# 全 kind 覆盖改用合成文本（序列化法则逐 kind 的语义不变）
+RICH_MD = (
+    "# T\n\n## 摘要\n\n摘。\n\n## 权利要求书\n\n1.一种X，其特征在于，Y。\n\n"
+    "2.根据权利要求1所述的X，其特征在于，Z。\n\n"
+    "## 说明书\n\n### 技术领域\n\n段一。\n\n#### 小节题\n\n$$a = b$$\n\n"
+    "表1 对比\n\n<!-- 表格: 三线 -->\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n"
+    "注：表注。\n\n### 附图说明\n\n图1为示意图。\n"
+)
+
+
 def test_serialize_law_covers_all_kinds():
     kinds = {b["kind"] for d in EXAMPLES for _, b, _ in _blocks(read_md(d))}
+    kinds |= {b["kind"] for _, b, _ in _blocks(RICH_MD)}
     assert set(EDITABLE_KINDS) <= kinds
 
 
 def test_serialize_table_forms():
     opts = "<!-- 表格: 三线 段号居左 列宽=30,70 表题后置=表1对比 -->"
-    md = ("# t\n\n## 摘要\n\na\n\n## 权利要求书\n\n1.x\n\n## 说明书\n\n### 具体实施方式\n\n表1 对比\n\n"
-          f"{opts}\n| a | b |\n| --- | --- |\n| ^^ | d |\n\n注：n\n\n```\ncode\n```\n")
+    md = (
+        "# t\n\n## 摘要\n\na\n\n## 权利要求书\n\n1.x\n\n## 说明书\n\n### 具体实施方式\n\n表1 对比\n\n"
+        f"{opts}\n| a | b |\n| --- | --- |\n| ^^ | d |\n\n注：n\n\n```\ncode\n```\n"
+    )
     ast = parse_ast(md)
     tbl = next(b for b in ast["description"] if b["kind"] == "table")
     assert serialize_block(tbl) == [opts, "| a | b |", "| --- | --- |", "| ^^ | d |", "", "注：n"]
@@ -118,6 +138,7 @@ def test_line_range_splice_keeps_assembly_law(d):
 
 
 # ---------------- patch_block ----------------
+
 
 def _full_range(ast, book, b):
     off = ast["books"][book]["offset"]
@@ -164,10 +185,8 @@ def _modified(b):
     raise AssertionError(k)
 
 
-@pytest.mark.parametrize("d", EXAMPLES)
-def test_patch_modified_every_kind_only_changes_block_lines(d):
-    """两案每种 kind 各做一次修改补丁：只有该块行区间变化，其余行逐字节不变；装配律成立；新 id 落在同一位置。"""
-    md = read_md(d)
+def _modified_law(md):
+    """每种 kind 各做一次修改补丁：只有该块行区间变化，其余行逐字节不变；装配律成立；新 id 落在同一位置。"""
     ast = parse_ast(md)
     old = md.split("\n")
     done = set()
@@ -188,7 +207,18 @@ def test_patch_modified_every_kind_only_changes_block_lines(d):
         nb = next(x for _, x in iter_blocks(r.ast) if x["id"] == r.block_id)
         assert _full_range(r.ast, book, nb) == (s, s + len(new_lines))
         assert nb["kind"] == b["kind"]
-    assert {k for _, k in done} >= set(EDITABLE_KINDS)
+    return {k for _, k in done}
+
+
+@pytest.mark.parametrize("d", EXAMPLES)
+def test_patch_modified_every_kind_only_changes_block_lines(d):
+    """两案每种 kind 各做一次修改补丁（语料实际出现的 kind）。"""
+    _modified_law(read_md(d))
+
+
+def test_patch_modified_every_kind_synthetic_all_kinds():
+    """全 kind 覆盖用 RICH_MD 合成文本补（新语料只含 3 种块型）。"""
+    assert _modified_law(RICH_MD) >= set(EDITABLE_KINDS)
 
 
 def test_patch_strips_outer_newlines_and_shifts_ids():
@@ -217,12 +247,10 @@ def test_patch_markup_content_resolves_ids_on_accepted_view():
         "### 发明内容\n\n内容段。\n\n### 附图说明\n\n### 具体实施方式\n\n实施段。\n"
     )
     ast = parse_ast(critic.accept(md))
-    target = next(b for b in ast["description"]
-                  if b["kind"] == "paragraph" and b["text"] == "背景段一。")
+    target = next(b for b in ast["description"] if b["kind"] == "paragraph" and b["text"] == "背景段一。")
     # 原文视图同号但指向标记行——照原文定锚会把删除标记行当正文段改掉（或越号报 stale）
     ast_raw = parse_ast(md)
-    raw_same = next(b for b in ast_raw["description"]
-                    if b["id"] == target["id"])
+    raw_same = next(b for b in ast_raw["description"] if b["id"] == target["id"])
     assert raw_same["kind"] == "paragraph" and raw_same["text"] != "背景段一。"
     r = patch_block(md, target["id"], "新背景段一。")
     new = r.content.split("\n")
@@ -267,6 +295,7 @@ def test_patch_errors():
 
 # ---------------- insert_block ----------------
 
+
 def _expected_kind(kind, book):
     if book == "claims":
         return "claim"
@@ -289,8 +318,9 @@ def test_insert_template_at_book_start_every_kind(d):
             law(r.content)
             nb = next(x for _, x in iter_blocks(r.ast) if x["id"] == r.block_id)
             assert nb["kind"] == _expected_kind(t["kind"], book), (t["kind"], book)
-            assert new[s:e] == (block_templates.template(t["kind"]) if t["kind"] not in ("claim", "figure-ref")
-                                else "\n".join(new[s:e])).split("\n")
+            assert new[s:e] == (
+                block_templates.template(t["kind"]) if t["kind"] not in ("claim", "figure-ref") else "\n".join(new[s:e])
+            ).split("\n")
 
 
 @pytest.mark.parametrize("d", EXAMPLES)
@@ -347,41 +377,60 @@ def test_insert_errors():
 
 # ---------------- delete_block ----------------
 
+
+def _delete_keeps_blank(md, bid):
+    ast = parse_ast(md)
+    old = md.split("\n")
+    book, b = next((bk, x) for bk, x in iter_blocks(ast) if x["id"] == bid)
+    s, e = _full_range(ast, book, b)
+    r = delete_block(md, bid)
+    new = r.content.split("\n")
+    assert r.block_id is None and r.changed_lines == {"start": s + 1, "end": s}
+    assert new[:s] == old[:s]
+    assert new[s:] == old[e + 1 :], bid  # 块行 + 其后一个空行
+    assert "\n\n\n" not in r.content
+    law(r.content)
+    assert sum(1 for _ in iter_blocks(r.ast)) == sum(1 for _ in iter_blocks(ast)) - 1
+
+
 @pytest.mark.parametrize("d", EXAMPLES)
 def test_delete_keeps_single_blank_between_blocks(d):
     md = read_md(d)
     ast = parse_ast(md)
-    old = md.split("\n")
     targets = ["abstract/p1", "claims/2", ast["description"][1]["id"], ast["description"][-1]["id"]]
-    for k in ("subsection", "equation", "table"):
-        targets.append(next(b["id"] for b in ast["description"] if b["kind"] == k))
+    # 新语料无 subsection/equation/table 块 → 这些 kind 的删除法则由 RICH_MD 覆盖（见下）
+    targets += [
+        next(b["id"] for b in ast["description"] if b["kind"] == k)
+        for k in ("subsection", "equation", "table")
+        if any(b["kind"] == k for b in ast["description"])
+    ]
     for bid in targets:
-        book, b = next((bk, x) for bk, x in iter_blocks(ast) if x["id"] == bid)
-        s, e = _full_range(ast, book, b)
-        r = delete_block(md, bid)
-        new = r.content.split("\n")
-        assert r.block_id is None and r.changed_lines == {"start": s + 1, "end": s}
-        assert new[:s] == old[:s]
-        assert new[s:] == old[e + 1 :], bid  # 块行 + 其后一个空行
-        assert "\n\n\n" not in r.content
-        law(r.content)
-        assert sum(1 for _ in iter_blocks(r.ast)) == sum(1 for _ in iter_blocks(ast)) - 1
+        _delete_keeps_blank(md, bid)
+
+
+def test_delete_keeps_single_blank_all_kinds():
+    """subsection/equation/table 等语料缺失 kind 的删除法则（RICH_MD 合成文本）。"""
+    ast = parse_ast(RICH_MD)
+    for bid in (b["id"] for k in ("subsection", "equation", "table") for b in ast["description"] if b["kind"] == k):
+        _delete_keeps_blank(RICH_MD, bid)
 
 
 def test_delete_protects_statutory_sections():
     md = read_md(EXAMPLES[0])
-    for title, line in (("技术领域", 47), ("附图说明", 157)):
+    for title, line in (("技术领域", 31), ("附图说明", 157)):
         with pytest.raises(PatchError) as ei:
             delete_block(md, "description/" + title)
         assert ei.value.kind == "content" and ei.value.line == line
-    r = delete_block(md, "description/发明内容/技术方案")  # 非法定小节可删
-    assert all(b["id"] != "description/发明内容/技术方案" for b in r.ast["description"])
+    # 新语料无小节 → 非法定小节可删的断言用 RICH_MD 的合成小节
+    r = delete_block(RICH_MD, "description/技术领域/小节题")
+    assert all(b["id"] != "description/技术领域/小节题" for b in r.ast["description"])
     with pytest.raises(PatchError) as ei:
         delete_block(md, "claims/99")
     assert ei.value.kind == "stale"
 
 
 # ---------------- 模板 ----------------
+
 
 def test_templates_shape_and_parse():
     ts = block_templates.templates()
@@ -400,21 +449,26 @@ def test_templates_shape_and_parse():
 
 # ---------------- boundary lint ----------------
 
+
 def _fig_caption(ast, n):
     return next(b for b in ast["description"] if b["kind"] == "paragraph" and b["text"].startswith("图%d为" % n))
 
 
 @pytest.mark.parametrize("d", EXAMPLES)
 def test_boundary_lint_clean_on_examples(d):
+    """新语料正文自带 [NNNN] 段号前缀 → boundary.para_no 是真命中而非回归；
+    断言诊断构成 = 全部 para_no（数量随语料锁死）。"""
     md = read_md(d)
-    assert lint_boundary(parse_ast(md, read_settings(d)), md) == []
+    diags = lint_boundary(parse_ast(md, read_settings(d)), md)
+    expected = {"method": 147, "system": 261}[os.path.basename(d)]
+    assert [x["id"] for x in diags] == ["boundary.para_no"] * expected
 
 
 def test_boundary_lint_three_rules_and_fixes_roundtrip():
-    d = EXAMPLES[0]
-    md, settings = read_md(d), read_settings(d)
+    """语料本身已带段号前缀，三规则+修复回路改用干净的 RICH_MD 合成文本。"""
+    md, settings = RICH_MD, {"spec_figures": [["fig1.png", 15.0]]}
     ast = parse_ast(md, settings)
-    fig = _fig_caption(ast, 2)
+    fig = _fig_caption(ast, 1)
     c = patch_block(md, "abstract/p1", "[0001] " + ast["abstract"]["paragraphs"][0]["text"], settings)
     c = patch_block(c.content, "claims/2", "5" + "\n".join(serialize_block(ast["claims"][1]))[1:], settings)
     c = patch_block(c.content, fig["id"], "图9" + fig["text"][2:], settings)
@@ -423,9 +477,9 @@ def test_boundary_lint_three_rules_and_fixes_roundtrip():
     for x in diags:
         assert x["severity"] == "warning" and x["source"] == "boundary" and x["section"]
         assert set(x["fix"]) == {"block_id", "markdown"}
-    assert [x["line"] for x in diags] == [5, 15, 163]
+    assert [x["line"] for x in diags] == [5, 11, 34]
     assert diags[1]["fix"]["block_id"] == "claims/2" and diags[1]["fix"]["markdown"].startswith("2.根据权利要求1")
-    assert diags[2]["fix"]["markdown"].startswith("图2为")
+    assert diags[2]["fix"]["markdown"].startswith("图1为")
     cur = c.content
     for x in diags:
         cur = patch_block(cur, x["fix"]["block_id"], x["fix"]["markdown"], settings).content
@@ -433,7 +487,7 @@ def test_boundary_lint_three_rules_and_fixes_roundtrip():
 
 
 def test_boundary_lint_table_note_and_description_para():
-    md = read_md(EXAMPLES[0])
+    md = RICH_MD  # 新语料无带表注的表 → 合成文本
     ast = parse_ast(md)
     tbl = next(b for b in ast["description"] if b["kind"] == "table" and b["note"])
     lines = serialize_block(tbl)
@@ -456,6 +510,7 @@ def test_boundary_lint_table_note_and_description_para():
 
 
 # ---------------- 路由 ----------------
+
 
 def _disk(client, pid):
     with open(client.projects / pid / "content.md", encoding="utf-8") as f:
@@ -487,8 +542,9 @@ def test_route_patch_saves_and_backs_up(client, pid):
 def test_route_patch_uses_body_content_as_base(client):
     disk = _disk(client, "method")
     unsaved = disk.replace("## 摘要\n\n", "## 摘要\n\n未保存的摘要段。\n\n", 1)
-    r = client.post("/api/projects/method/blocks/claims/1",
-                    json={"markdown": "1.一种方法，其特征在于，", "content": unsaved})
+    r = client.post(
+        "/api/projects/method/blocks/claims/1", json={"markdown": "1.一种方法，其特征在于，", "content": unsaved}
+    )
     assert r.status_code == 200
     assert "未保存的摘要段。" in r.json()["content"] and _disk(client, "method") == r.json()["content"]
     assert r.json()["ast"]["claims"][0]["segments"][0]["text"] == "1.一种方法，其特征在于，"
@@ -517,15 +573,17 @@ def test_route_insert_and_delete(client):
     assert j["block_id"] == "claims/2" and j["ast"]["claims"][1]["segments"][0]["text"] == "2.一种……，其特征在于，"
     assert _disk(client, "method") == j["content"]
     law(j["content"])
-    r = client.post("/api/projects/method/blocks",
-                    json={"kind": "equation", "after_block_id": "description/技术领域/p0001", "markdown": "$$a = b$$"})
+    r = client.post(
+        "/api/projects/method/blocks",
+        json={"kind": "equation", "after_block_id": "description/技术领域/p0001", "markdown": "$$a = b$$"},
+    )
     assert r.status_code == 200 and r.json()["block_id"] == "description/技术领域/eq1"
     r = client.request("DELETE", "/api/projects/method/blocks/description/技术领域/eq1", json={})
     assert r.status_code == 200 and r.json()["block_id"] is None
     r = client.request("DELETE", "/api/projects/method/blocks/claims/2")
     assert r.status_code == 200
     assert r.json()["content"] == md0 == _disk(client, "method")
-    assert r.json()["changed_lines"] == {"start": 15, "end": 14}
+    assert r.json()["changed_lines"] == {"start": 11, "end": 10}
     assert client.get("/api/projects/method/ast").json() == r.json()["ast"]
 
 
@@ -552,8 +610,7 @@ def test_patch_sanitizes_book_headings(d):
     target = ast["abstract"]["paragraphs"][0]["id"]
     r = patch_block(md, target, "## 摘要本发明涉及一种测试方法。\n## 摘要\n## 小节标题保留为文本\n正文行")
     new = r.content.split("\n")
-    bad = [ln for ln in new if ln.startswith("## ") and ln[3:].strip() not in
-           ("摘要", "权利要求书", "说明书")]
+    bad = [ln for ln in new if ln.startswith("## ") and ln[3:].strip() not in ("摘要", "权利要求书", "说明书")]
     assert not bad and "本发明涉及一种测试方法。" in r.content
     assert "小节标题保留为文本" in r.content and "## 小节标题保留为文本" not in r.content
     law(r.content)

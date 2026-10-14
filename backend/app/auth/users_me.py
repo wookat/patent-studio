@@ -11,6 +11,7 @@
 
 fastapi-users / SQLAlchemy 只在 on 分支内惰性 import（off 下不得把 app.auth.db 拉进来，test_w4e_prep 锁定）。
 """
+
 import time
 
 from fastapi import APIRouter, HTTPException

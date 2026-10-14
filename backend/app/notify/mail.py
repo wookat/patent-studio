@@ -5,6 +5,7 @@
 （smtps 走 SMTP_SSL，smtp 端口非 25 时 STARTTLS）；失败只记 warning（不含 URL / 密码），不影响触发它的业务操作。
 `status()` 是 /api/admin/settings 里的只读 smtp 字段：主机 / 端口 / 账号 / 发件人，密码永不出网。
 """
+
 import asyncio
 import logging
 import os

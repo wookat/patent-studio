@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """W5 notify-audit-backend：站内通知（events → notifications 表）+ 催办 + 可选 SMTP。"""
+
 import asyncio
 import logging
 import os
@@ -44,6 +45,7 @@ def _unread(c) -> int:
 
 # ---------------------------------------------------------------- off ----
 
+
 def test_off_mode_lists_empty_and_writes_nothing(client):
     c, tmp = client
     notify.install()
@@ -57,6 +59,7 @@ def test_off_mode_lists_empty_and_writes_nothing(client):
 
 # ---------------------------------------------------------------- 期限 → 责任人 ----
 
+
 def test_deadline_due_notifies_owner_once(on, caplog):
     su_c, staff_c, su, staff = _seed(on)
     d = _project_dir("method")
@@ -67,8 +70,11 @@ def test_deadline_due_notifies_owner_once(on, caplog):
     assert _unread(su_c) == 0
 
     with caplog.at_level(logging.WARNING):
-        events.emit("deadline.due", pid="method",
-                    data={"kind": "oa_reply", "title": "答复一通", "due": due, "days_left": 6, "threshold": 7})
+        events.emit(
+            "deadline.due",
+            pid="method",
+            data={"kind": "oa_reply", "title": "答复一通", "due": due, "days_left": 6, "threshold": 7},
+        )
     assert not [r for r in caplog.records if r.levelno >= logging.WARNING], caplog.text  # 未配 SMTP：静默
 
     r = su_c.get("/api/notify?unread=1")
@@ -94,10 +100,15 @@ def test_deadline_due_notifies_owner_once(on, caplog):
 
 # ---------------------------------------------------------------- 已读 ----
 
+
 def test_read_one_and_read_all_are_per_user(on):
     su_c, staff_c, su, staff = _seed(on)
-    events.emit("comment.mention", pid="method", actor={"id": staff["id"], "display_name": "小李", "avatar_color": ""},
-                data={"cid": "c9", "user_ids": [su["id"], staff["id"]], "quote": "请确认权利要求 3"})
+    events.emit(
+        "comment.mention",
+        pid="method",
+        actor={"id": staff["id"], "display_name": "小李", "avatar_color": ""},
+        data={"cid": "c9", "user_ids": [su["id"], staff["id"]], "quote": "请确认权利要求 3"},
+    )
     items = su_c.get("/api/notify").json()["items"]
     assert len(items) == 1 and items[0]["kind"] == "mention"
     assert items[0]["href"] == "#/p/method?c=c9" and items[0]["body"] == "请确认权利要求 3"
@@ -114,8 +125,12 @@ def test_read_one_and_read_all_are_per_user(on):
     assert len(su_c.get("/api/notify").json()["items"]) == 1  # 全部列表仍在
 
     events.emit("comment.assign", pid="method", actor={"id": staff["id"]}, data={"cid": "c1", "user_id": su["id"]})
-    events.emit("ai.proposal", pid="method", actor={"id": staff["id"], "display_name": "小李", "avatar_color": ""},
-                data={"proposal_id": "p1", "action": "applied", "title": "补充实施例", "block_id": "b7"})
+    events.emit(
+        "ai.proposal",
+        pid="method",
+        actor={"id": staff["id"], "display_name": "小李", "avatar_color": ""},
+        data={"proposal_id": "p1", "action": "applied", "title": "补充实施例", "block_id": "b7"},
+    )
     events.emit("ai.proposal", pid="method", actor={"id": staff["id"]}, data={"proposal_id": "p2", "action": "created"})
     events.emit("share.confirmed", pid="method", data={"name": "张客户", "version": 2})
     r = su_c.get("/api/notify?unread=1").json()
@@ -132,11 +147,13 @@ def test_read_one_and_read_all_are_per_user(on):
 
 # ---------------------------------------------------------------- 客户免登录批注 / 确认 → 代理师（W7 domain-03）----
 
+
 def test_client_comment_and_confirm_notify_staff_without_owner(on):
     """案目录直接拷进 PROJECTS_DIR（无 owner_user_id、无 ACL 成员）：超管兜底收到「客户批注」「客户确认」两条通知。
     兜底链要异步查 ACL，用 with TestClient 保住事件循环并在其上 drain。"""
     notify.install()
     with TestClient(on.app) as anon:
+
         def drain():
             anon.portal.call(notify.drain)
 
@@ -145,13 +162,16 @@ def test_client_comment_and_confirm_notify_staff_without_owner(on):
         su_c = _login(on, "su@example.com")
         other_c = _login(on, "other@example.com")
         assert cases.load_case(_project_dir("method")).owner_user_id is None
-        tok = su_c.post("/api/projects/method/public-links",
-                        json={"scope": "confirm", "ttl_days": 7, "allow_download": False}).json()["token"]
+        tok = su_c.post(
+            "/api/projects/method/public-links", json={"scope": "confirm", "ttl_days": 7, "allow_download": False}
+        ).json()["token"]
         assert _unread(su_c) == 0
 
         anchor = {"book": "abstract", "block_id": "abstract/1", "line": 3}
-        r = anon.post(f"/api/public/{tok}/comments", json={"name": "王经理（客户）", "body": "摘要第二句请改为「系统」",
-                                                           "anchor": anchor})
+        r = anon.post(
+            f"/api/public/{tok}/comments",
+            json={"name": "王经理（客户）", "body": "摘要第二句请改为「系统」", "anchor": anchor},
+        )
         assert r.status_code == 201, r.text
         cid = r.json()["id"]
         drain()
@@ -178,12 +198,17 @@ def test_client_comment_and_confirm_notify_staff_without_owner(on):
 
 # ---------------------------------------------------------------- 催办 ----
 
+
 def test_list_pagination_before_id(on):
     """before_id 游标翻页：limit+1 探 has_more；页间不重不漏；锚点无效回首页（前端去重）"""
     su_c, staff_c, su, staff = _seed(on)
     for i in range(5):
-        events.emit("comment.mention", pid="method", actor={"id": staff["id"], "display_name": "小李"},
-                    data={"cid": f"cp{i}", "user_ids": [su["id"]], "quote": f"q{i}"})
+        events.emit(
+            "comment.mention",
+            pid="method",
+            actor={"id": staff["id"], "display_name": "小李"},
+            data={"cid": f"cp{i}", "user_ids": [su["id"]], "quote": f"q{i}"},
+        )
     # member.changed 发给被加的 staff 不发 su：su 收件箱 = 5 条提及
     r1 = su_c.get("/api/notify?limit=3").json()
     assert len(r1["items"]) == 3 and r1["has_more"] is True
@@ -242,6 +267,7 @@ def test_nudge_notifies_target_once(on):
 
 # ---------------------------------------------------------------- 机构默认协作 → 新案 ----
 
+
 def test_case_created_applies_org_default_collab(on):
     su_c, staff_c, su, staff = _seed(on)
     assert su_c.put("/api/admin/settings", json={"default_collab": {"allow_viewer_comment": False}}).status_code == 200
@@ -254,6 +280,7 @@ def test_case_created_applies_org_default_collab(on):
 
 # ---------------------------------------------------------------- SMTP ----
 
+
 def test_mail_unconfigured_is_silent(monkeypatch, caplog):
     monkeypatch.delenv(mail.ENV, raising=False)
     assert mail.configured() is False and mail.status() is None
@@ -265,8 +292,13 @@ def test_mail_unconfigured_is_silent(monkeypatch, caplog):
 def test_mail_status_hides_password_and_failure_is_warning_only(monkeypatch, caplog):
     monkeypatch.setenv(mail.ENV, "smtps://bot%40ip.example:s3cret-pw@127.0.0.1:1?from=noreply@ip.example")
     st = mail.status()
-    assert st.model_dump(by_alias=True) == {"host": "127.0.0.1", "port": 1, "user": "bot@ip.example",
-                                            "from": "noreply@ip.example", "enabled": True}
+    assert st.model_dump(by_alias=True) == {
+        "host": "127.0.0.1",
+        "port": 1,
+        "user": "bot@ip.example",
+        "from": "noreply@ip.example",
+        "enabled": True,
+    }
     with caplog.at_level(logging.WARNING):
         assert asyncio.run(mail.send("a@example.com", "s", "b")) is False  # 端口 1 连不上
     assert len(caplog.records) == 1 and "s3cret-pw" not in caplog.text
@@ -279,8 +311,12 @@ def test_mail_sent_with_notification_when_configured(on, monkeypatch):
     sent = []
     monkeypatch.setenv(mail.ENV, "smtp://u:p@127.0.0.1:2525")
     monkeypatch.setattr(mail, "_send_sync", lambda url, to, subject, body: sent.append((to, subject, body)))
-    events.emit("comment.assign", pid="method", actor={"id": staff["id"], "display_name": "小李", "avatar_color": ""},
-                data={"user_id": su["id"], "due": "2026-10-01"})
+    events.emit(
+        "comment.assign",
+        pid="method",
+        actor={"id": staff["id"], "display_name": "小李", "avatar_color": ""},
+        data={"user_id": su["id"], "due": "2026-10-01"},
+    )
     asyncio.run(notify.drain())
     assert _unread(su_c) == 1
     assert sent == [("su@example.com", "[Patent Studio] 小李 指派你审阅", "截止 2026-10-01")]
@@ -289,8 +325,10 @@ def test_mail_sent_with_notification_when_configured(on, monkeypatch):
 def test_comment_mention_href_deep_links_to_comment(on):
     """R56-01：@成员 → 收件人通知 href 带 ?c=<批注 id>（emit 契约键是 cid，曾发 comment_id 丢落点）。"""
     su_c, staff_c, _su, _staff = _seed(on)
-    r = su_c.post("/api/projects/method/comments",
-                  json={"anchor": {"block_id": "claims/1", "line": 10, "quote": "请复核"}, "body": "@小李 看一下"})
+    r = su_c.post(
+        "/api/projects/method/comments",
+        json={"anchor": {"block_id": "claims/1", "line": 10, "quote": "请复核"}, "body": "@小李 看一下"},
+    )
     assert r.status_code == 201, r.text
     cid = r.json()["id"]
     items = staff_c.get("/api/notify").json()["items"]
@@ -328,7 +366,7 @@ def test_comment_mention_email_localpart_and_ambiguity(on):
     notify.install()
     anon = TestClient(on.app)
     _register(anon, "su@example.com", display_name="管理员")
-    _register(anon, "solo@x.cn")                       # 无显示名——只能按本地段 'solo' @
+    _register(anon, "solo@x.cn")  # 无显示名——只能按本地段 'solo' @
     _register(anon, "dup@a.cn")
     _register(anon, "dup@b.cn")
     su_c = _login(on, "su@example.com")
@@ -339,13 +377,14 @@ def test_comment_mention_email_localpart_and_ambiguity(on):
         assert su_c.put("/api/projects/method/members", json={"email": email, "role": "viewer"}).status_code == 200
 
     anchor = {"block_id": "claims/1", "line": 9, "quote": "其特征在于"}
+
     def post(body: str):
         return su_c.post("/api/projects/method/comments", json={"anchor": anchor, "body": body})
 
-    assert post("@solo 看下这条").status_code == 201   # 本地段命中
-    assert post("@dup 这条撞名").status_code == 201    # 撞名——不应给任何一方发通知
+    assert post("@solo 看下这条").status_code == 201  # 本地段命中
+    assert post("@dup 这条撞名").status_code == 201  # 撞名——不应给任何一方发通知
 
     solo_kinds = [i["kind"] for i in solo_c.get("/api/notify").json()["items"]]
-    assert "mention" in solo_kinds, solo_kinds   # 本地段命中
-    for c in (dupa_c, dupb_c):                    # 撞名 → 两人都不收
+    assert "mention" in solo_kinds, solo_kinds  # 本地段命中
+    for c in (dupa_c, dupb_c):  # 撞名 → 两人都不收
         assert not [i for i in c.get("/api/notify").json()["items"] if i["kind"] == "mention"]

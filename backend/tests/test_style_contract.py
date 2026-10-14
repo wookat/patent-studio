@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """W4-D 骨架锁（docs/plan/16 §9a）：style.css 路由 200 text/css、Style→CSS 映射表每条路径可解析、
 版面视图段号徽标依赖的 AST 形状。D1 功能测试见 test_style_css.py。"""
+
 import os
 
 import pytest
@@ -44,8 +45,9 @@ def test_ast_blocks_carry_para_no(pid):
     from app.domain.projects import ProjectStore
 
     store = ProjectStore(EXAMPLES)
-    ast = parse_ast(store.read_content(pid), store.load_settings(pid),
-                    figures=figures_md.read(os.path.join(EXAMPLES, pid)))
+    ast = parse_ast(
+        store.read_content(pid), store.load_settings(pid), figures=figures_md.read(os.path.join(EXAMPLES, pid))
+    )
     seen = []
     for b in ast["description"]:
         if b["kind"] in ("paragraph", "table", "code"):

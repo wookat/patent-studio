@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """lint 十条规则：每条一正一反；两件真实案子 0 error。"""
+
 import os
+from collections import Counter
 
 import pytest
 
@@ -156,8 +158,10 @@ def test_spec_sections():
     d = find(lint(missing, SETTINGS), "spec.sections")
     assert len(d) == 1 and d[0]["severity"] == "error" and "背景技术" in d[0]["message"]
     assert d[0]["line"] == line_of(missing, "### 技术领域")  # 定位到缺失处前一章节
-    swapped = GOOD.replace("### 技术领域\n\n本发明涉及测试。\n\n### 背景技术\n\n现有技术。\n",
-                           "### 背景技术\n\n现有技术。\n\n### 技术领域\n\n本发明涉及测试。\n")
+    swapped = GOOD.replace(
+        "### 技术领域\n\n本发明涉及测试。\n\n### 背景技术\n\n现有技术。\n",
+        "### 背景技术\n\n现有技术。\n\n### 技术领域\n\n本发明涉及测试。\n",
+    )
     d = find(lint(swapped, SETTINGS), "spec.sections")
     assert len(d) == 1 and "顺序" in d[0]["message"] and d[0]["line"] == line_of(swapped, "### 技术领域")
     no_spec = GOOD.split("## 说明书")[0]
@@ -216,13 +220,32 @@ def test_equation_unclosed():
 
 
 # ---- 两件真实案子 ----
-@pytest.mark.parametrize("pid", ["method", "system"])
-def test_real_examples_zero_error(pid):
+@pytest.mark.parametrize(
+    "pid,expected",
+    [
+        ("method", Counter({"boundary.para_no": 147, "style.vague#L177": 1, "style.vague#L183": 1})),
+        (
+            "system",
+            Counter(
+                {
+                    "boundary.para_no": 261,
+                    "style.vague#L23": 1,
+                    "style.vague#L329": 1,
+                    "style.vague#L409": 1,
+                    "style.vague#L463": 1,
+                    "style.vague#L543": 1,
+                }
+            ),
+        ),
+    ],
+)
+def test_real_examples_zero_error(pid, expected):
     store = ProjectStore(EXAMPLES)
     p = store.get(pid)
     r = lint(store.read_content(pid), p.settings, p.figs_dir)
     assert r["counts"]["error"] == 0, r["diagnostics"]
-    assert r["counts"]["warning"] == 0, r["diagnostics"]
+    # 新语料正文自带 [NNNN] 段号前缀（boundary.para_no 真命中）+ 少量模糊表述告警
+    assert Counter(d["id"] for d in r["diagnostics"]) == expected, r["diagnostics"]
 
 
 # ---- style.vague / style.trademark ----
@@ -242,8 +265,9 @@ def test_style_trademark():
 
 # ---- claims.characterizing ----
 def test_characterizing():
-    bad = GOOD.replace("2.根据权利要求1所述的方法，其特征在于，还包括步骤 B。",
-                       "2.根据权利要求1所述的方法，还包括步骤 B。")
+    bad = GOOD.replace(
+        "2.根据权利要求1所述的方法，其特征在于，还包括步骤 B。", "2.根据权利要求1所述的方法，还包括步骤 B。"
+    )
     d = find(lint(bad, SETTINGS), "claims.characterizing")
     assert {x["id"] for x in d} == {"claims.characterizing#2"} and d[0]["severity"] == "warning"
     assert not find(lint(GOOD, SETTINGS), "claims.characterizing")
@@ -262,9 +286,7 @@ def test_self_ref():
 
 # ---- claims.excluded_matter ----
 def test_excluded_matter():
-    bad = GOOD.replace("1.一种测试方法，其特征在于，包括步骤 A。",
-                       "1.一种疾病的诊断方法，其特征在于，包括步骤 A。")
+    bad = GOOD.replace("1.一种测试方法，其特征在于，包括步骤 A。", "1.一种疾病的诊断方法，其特征在于，包括步骤 A。")
     d = find(lint(bad, SETTINGS), "claims.excluded_matter")
     assert len(d) == 1 and d[0]["severity"] == "warning" and "第 25 条" in d[0]["message"]
     assert not find(lint(GOOD, SETTINGS), "claims.excluded_matter")
-

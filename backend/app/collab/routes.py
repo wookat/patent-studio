@@ -12,6 +12,7 @@
   （spike 实测，11 §0.4）。鉴权在端点内自己做：`auth.users.read_cookie_user(ws)`（只读 `.cookies`）+ `acl.role_for`。
   先 `accept()` 再拒绝（`close(1008, reason)`），否则 HTTP 层是 403、浏览器只见 1006（11 §3.4）。
 """
+
 from fastapi import APIRouter
 from starlette.websockets import WebSocket
 

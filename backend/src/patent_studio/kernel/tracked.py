@@ -14,6 +14,7 @@ builder.PatentBuilder(run_hook=...) 在 add_math_text 里按 hook.split 切段�
 修订只作用于经 add_math_text 的文本（正文段、权项、编号段、标题、表格单元格）；
 公式行 `$$…$$` 与 ``` 代码块是 OMML / 等宽原样对象，不做 run 级修订，其中的标记按 final 处理。
 """
+
 import os
 from datetime import UTC, datetime
 from typing import Protocol
@@ -62,7 +63,7 @@ class TrackedRuns:
         pos = 0
         for m in critic.TOKEN.finditer(text):
             if m.start() > pos:
-                out.append(("keep", text[pos:m.start()]))
+                out.append(("keep", text[pos : m.start()]))
             if m.group("ins") is not None:
                 out.append(("ins", m.group("ins")))
             elif m.group("dele") is not None:
@@ -108,8 +109,9 @@ class TrackedRuns:
         """批注文本不进正文：删掉刚生成的 run，把批注范围锚在段内前一个 run / w:ins / w:del 上；
         段首无锚时留一个空 run 做锚。范围标记放在段级（不钻进 w:del），批注引用 run 不会被当成已删除文本。"""
         anchor = runs[0].getprevious()
-        while anchor is not None and (anchor.tag not in (qn("w:r"), qn("w:ins"), qn("w:del"))
-                                      or anchor.find(qn("w:commentReference")) is not None):
+        while anchor is not None and (
+            anchor.tag not in (qn("w:r"), qn("w:ins"), qn("w:del")) or anchor.find(qn("w:commentReference")) is not None
+        ):
             anchor = anchor.getprevious()
         if anchor is None:
             anchor = runs[0]

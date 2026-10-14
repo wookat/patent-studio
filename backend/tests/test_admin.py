@@ -3,6 +3,7 @@
 W5 notify-audit-backend：/api/admin/settings（ai_enabled / default_collab / smtp 只读 / ai_daily_tokens）
 + org.require_org_ai。
 """
+
 import asyncio
 import json
 import os
@@ -39,6 +40,7 @@ def _seed(on):
 
 # ---------------------------------------------------------------- 权限 ----
 
+
 def test_users_routes_require_superuser(on):
     su_c, staff_c, staff, _ = _seed(on)
     assert TestClient(on.app).get("/api/admin/users").status_code == 401
@@ -51,14 +53,23 @@ def test_users_routes_require_superuser(on):
 
 # ---------------------------------------------------------------- 列表 ----
 
+
 def test_list_users_includes_inactive_sorted_by_last_login(on):
     su_c, staff_c, staff, su = _seed(on)
     _register(TestClient(on.app), "never@example.com")  # 注册但从未登录
 
     rows = su_c.get("/api/admin/users").json()
     assert [r["email"] for r in rows] == ["staff@example.com", "su@example.com", "never@example.com"]
-    assert set(rows[0]) == {"id", "email", "display_name", "title", "avatar_color",
-                            "is_superuser", "is_active", "last_login_at"}
+    assert set(rows[0]) == {
+        "id",
+        "email",
+        "display_name",
+        "title",
+        "avatar_color",
+        "is_superuser",
+        "is_active",
+        "last_login_at",
+    }
     assert rows[1]["is_superuser"] is True and rows[0]["is_superuser"] is False
     assert rows[0]["last_login_at"] and rows[2]["last_login_at"] is None
     assert rows[0]["display_name"] == "小李"
@@ -71,6 +82,7 @@ def test_list_users_includes_inactive_sorted_by_last_login(on):
 
 # ---------------------------------------------------------------- 更新 ----
 
+
 def test_update_user_fields_and_disabled_session_dies(on):
     su_c, staff_c, staff, _ = _seed(on)
     r = su_c.put(f"/api/admin/users/{staff['id']}", json={"title": " 发明人 ", "is_superuser": True})
@@ -82,8 +94,12 @@ def test_update_user_fields_and_disabled_session_dies(on):
     r = su_c.put(f"/api/admin/users/{staff['id']}", json={"is_superuser": False, "is_active": False})
     assert r.status_code == 200 and r.json()["is_superuser"] is False and r.json()["is_active"] is False
     assert staff_c.get("/api/users/me").status_code == 401  # 禁用即掉线
-    assert TestClient(on.app).post("/api/auth/cookie/login",
-                                   data={"username": "staff@example.com", "password": "pw-123456"}).status_code == 400
+    assert (
+        TestClient(on.app)
+        .post("/api/auth/cookie/login", data={"username": "staff@example.com", "password": "pw-123456"})
+        .status_code
+        == 400
+    )
     r = su_c.put(f"/api/admin/users/{staff['id']}", json={"is_active": True})
     assert r.json()["is_active"] is True
     _login(on, "staff@example.com")  # 重新启用后可登录
@@ -132,6 +148,7 @@ def test_last_superuser_cannot_be_disabled_by_peer(on):
 
 
 # ---------------------------------------------------------------- 机构 ----
+
 
 def test_org_roundtrip_off_mode_writes_studio_org_json(client):
     c, tmp = client
@@ -185,14 +202,23 @@ def test_settings_defaults_and_patch_persist_alongside_name(client, monkeypatch)
     assert r.json()["ai_enabled"] is False  # 未给字段不动
     assert c.get("/api/admin/org").json() == {"name": "甲所"}  # 名称不受影响
     with open(os.path.join(tmp, "projects", ".studio", "org.json"), encoding="utf-8") as f:
-        assert json.load(f) == {"name": "甲所", "ai_enabled": False, "ai_daily_tokens": 5000,
-                                "default_collab": {"editor_mode": "review", "allow_viewer_comment": False}}
+        assert json.load(f) == {
+            "name": "甲所",
+            "ai_enabled": False,
+            "ai_daily_tokens": 5000,
+            "default_collab": {"editor_mode": "review", "allow_viewer_comment": False},
+        }
 
     # smtp 只读：PUT 里给了也忽略；状态来自环境变量且不含密码
     monkeypatch.setenv(mail.ENV, "smtp://bot%40ip.example:pw-secret@mail.ip.example:2525?from=noreply@ip.example")
     r = c.put("/api/admin/settings", json={"smtp": {"host": "evil", "enabled": False}})
-    assert r.json()["smtp"] == {"host": "mail.ip.example", "port": 2525, "user": "bot@ip.example",
-                                "from": "noreply@ip.example", "enabled": True}
+    assert r.json()["smtp"] == {
+        "host": "mail.ip.example",
+        "port": 2525,
+        "user": "bot@ip.example",
+        "from": "noreply@ip.example",
+        "enabled": True,
+    }
     assert "pw-secret" not in r.text
     assert c.get("/api/admin/settings").json()["smtp"]["enabled"] is True
 

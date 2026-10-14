@@ -9,6 +9,7 @@ fastapi-users / SQLAlchemy 只在 on 分支内惰性 import。
 W4-B（docs/plan/14）：角色加 reviewer（viewer < reviewer < editor）；源文档写路由降到 reviewer 门槛，路由内 save 前调
 `check_source_write`（reviewer 只允许 CriticMarkup 建议 / 批注，否则 403）；`access_touch` 是访问记录写入点。
 """
+
 import os
 from typing import Annotated
 
@@ -259,6 +260,7 @@ async def require_org_editor(user: CurrentUser) -> None:
     if user.is_superuser:
         return
     from app.auth import acl
+
     if not role_at_least(await acl.max_role_for(user.id), "editor"):
         raise HTTPException(403, error_detail("forbidden", "需要编辑者及以上角色", detail="editor"))
 

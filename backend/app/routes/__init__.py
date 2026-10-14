@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """routes 包共享小件。"""
+
 from fastapi import HTTPException, Request, UploadFile
 
 from app.domain.projects import ProjectError
@@ -20,6 +21,7 @@ async def read_bounded(file: UploadFile, kind: str, max_bytes: int) -> bytes:
     data = await file.read(max_bytes + 1)
     if len(data) > max_bytes:
         name = file.filename or ""
-        raise HTTPException(413, error_detail(
-            kind, f"文件过大：{name}（上限 {max_bytes // 1024 // 1024} MB）", detail=name or None))
+        raise HTTPException(
+            413, error_detail(kind, f"文件过大：{name}（上限 {max_bytes // 1024 // 1024} MB）", detail=name or None)
+        )
     return data

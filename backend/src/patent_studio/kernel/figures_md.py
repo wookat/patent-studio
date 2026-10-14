@@ -23,6 +23,7 @@
       - 1032 检索安全门控控制器
   无 marks 的图不写这几行，旧文件 parse → serialize 逐字节不变；摘要图不带 marks（写了进 bad_lines）。
 """
+
 import os
 import re
 from dataclasses import dataclass, field
@@ -111,8 +112,9 @@ def parse(text):
             doc.bad_lines.append((no, ln))
             continue
         default = DEFAULT_WIDTH if section == "spec" else DEFAULT_ABSTRACT_WIDTH
-        fig = Figure(file=m.group("file"), width=float(m.group("width") or default),
-                     alt=m.group("alt").strip(), line=no)
+        fig = Figure(
+            file=m.group("file"), width=float(m.group("width") or default), alt=m.group("alt").strip(), line=no
+        )
         if section == "spec":
             doc.spec.append(fig)
         elif doc.abstract is None:
@@ -173,8 +175,9 @@ def infer(figs, docx_exts):
     """无 figures.md 也无旧字段：摘要图 = 第一张可入 DOCX 的图，说明书附图 = 全部
     （与 projects.default_settings 同规则）。"""
     docx_figs = [f for f in figs if f.lower().endswith(docx_exts)]
-    return from_legacy([[f, DEFAULT_WIDTH] for f in docx_figs],
-                       [docx_figs[0], DEFAULT_ABSTRACT_WIDTH] if docx_figs else None)
+    return from_legacy(
+        [[f, DEFAULT_WIDTH] for f in docx_figs], [docx_figs[0], DEFAULT_ABSTRACT_WIDTH] if docx_figs else None
+    )
 
 
 def read(project_dir):
@@ -201,10 +204,17 @@ def apply_legacy(doc, spec_figures=None, abstract_figure=None):
         new = []
         for i, (f, w) in enumerate(spec_figures, 1):
             old = olds.get(str(f))
-            new.append(Figure(file=str(f), width=float(w), alt=old.alt if old is not None else f"图{i}",
-                              marks=dict(old.marks) if old is not None else {}))
+            new.append(
+                Figure(
+                    file=str(f),
+                    width=float(w),
+                    alt=old.alt if old is not None else f"图{i}",
+                    marks=dict(old.marks) if old is not None else {},
+                )
+            )
         doc.spec = new
     if abstract_figure is not None:
-        doc.abstract = Figure(file=str(abstract_figure[0]), width=float(abstract_figure[1]),
-                              alt=doc.abstract.alt if doc.abstract else "")
+        doc.abstract = Figure(
+            file=str(abstract_figure[0]), width=float(abstract_figure[1]), alt=doc.abstract.alt if doc.abstract else ""
+        )
     return doc

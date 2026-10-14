@@ -6,6 +6,7 @@
 权限：main.py 的 ACL 依赖按方法判定（GET viewer / POST·DELETE editor），本文件不另设。
 处理函数通过 request.app.state.store 取 ProjectStore，不反向 import app.main。
 """
+
 import asyncio
 import os
 from urllib.parse import quote
@@ -59,10 +60,14 @@ async def get_attachment(pid: str, name: str, request: Request, download: bool =
     path = _run(att.attachment_path, request.app.state.store, pid, name)
     base = os.path.basename(path)
     media = att.MEDIA_OF_EXT[os.path.splitext(base)[1].lower()]
-    return FileResponse(path, media_type=media, headers={
-        "Content-Disposition": _disposition("attachment" if download else "inline", base),
-        "Cache-Control": "no-store",
-    })
+    return FileResponse(
+        path,
+        media_type=media,
+        headers={
+            "Content-Disposition": _disposition("attachment" if download else "inline", base),
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.delete("/attachments/{name}")

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """F3 模板预设：schema、templates/*.json 落盘（PROJECTS_DIR 同级）、六条路由端到端、apply 走 normalize_settings。"""
+
 import importlib
 import json
 import os
@@ -10,16 +11,22 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-BODY = {"name": "默认-宋体", "description": "d",
-        "settings": {"style": {"page": {"margin_left_mm": 30}, "fonts": {"body_cjk": "宋体"}}, "abstract_limit": 280}}
+BODY = {
+    "name": "默认-宋体",
+    "description": "d",
+    "settings": {"style": {"page": {"margin_left_mm": 30}, "fonts": {"body_cjk": "宋体"}}, "abstract_limit": 280},
+}
 
 
 @pytest.fixture()
 def env(tmp_path, monkeypatch):
     projects = tmp_path / "data" / "projects"
     projects.mkdir(parents=True)
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     from app import config, main
     from app.domain import build, templates, xml_export

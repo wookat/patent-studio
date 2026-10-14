@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """CNIPA 五书 XML 导出：结构单测（无 LibreOffice）+ 真实 method 案端到端（需 soffice + pdftoppm，缺则跳过）。"""
+
 import os
 import re
 import shutil
@@ -31,15 +32,26 @@ def test_inline_text_subscripts_and_sub_except():
 def test_claim_refs_only_backward():
     ct = etree.Element("claim-text")
     cx.claim_text_with_refs(ct, "根据权利要求1至3所述的方法，其特征在于，参见权利要求7，且g_t>0", 5, ())
-    assert _xml(ct) == ('<claim-text>根据<claim-ref idref="c1 c2 c3">权利要求1至3</claim-ref>所述的方法，'
-                        '其特征在于，参见权利要求7，且g<sub>t</sub>&gt;0</claim-text>')
+    assert _xml(ct) == (
+        '<claim-text>根据<claim-ref idref="c1 c2 c3">权利要求1至3</claim-ref>所述的方法，'
+        "其特征在于，参见权利要求7，且g<sub>t</sub>&gt;0</claim-text>"
+    )
 
 
 def test_description_sections_and_paragraph_numbers():
     ex = cx._Exporter({"sub_except": (), "style": None})
-    spec = [("h", "技术领域"), "本发明涉及X_1。", ("h", "发明内容"), ("s", "技术方案"), "步骤一。",
-            ("e", "a=b", ""), ("t", [["A", "B"], ["1", "2"]], {"表题后置": "表1 结果"}), ("c", ["x = 1"]),
-            ("h", "自定义章节"), "尾段。"]
+    spec = [
+        ("h", "技术领域"),
+        "本发明涉及X_1。",
+        ("h", "发明内容"),
+        ("s", "技术方案"),
+        "步骤一。",
+        ("e", "a=b", ""),
+        ("t", [["A", "B"], ["1", "2"]], {"表题后置": "表1 结果"}),
+        ("c", ["x = 1"]),
+        ("h", "自定义章节"),
+        "尾段。",
+    ]
     root, n = ex.description("标题", spec)
     assert n == 6  # 3 文本段 + 表格(1) + 表题后置(1) + 伪代码(1)；公式挂在上一段不占段号（与 builder 一致）
     desc = root.find("description")
@@ -129,8 +141,14 @@ def test_method_end_to_end_zip(tmp_path):
     cfg = store.build_config(store.get("method"), out=str(tmp_path / "x.docx"))
     res = cx.export_cnipa_xml(cfg, str(tmp_path / "xml"), docx_to_pdf)
     assert res.valid, [b.errors for b in res.books]
-    assert res.counts == {"claims": 11, "paragraphs": 98, "figures": 6, "equations": 17, "tables": 2,
-                          "abstract_chars": 253}
+    assert res.counts == {
+        "claims": 11,
+        "paragraphs": 98,
+        "figures": 6,
+        "equations": 17,
+        "tables": 2,
+        "abstract_chars": 253,
+    }
     with zipfile.ZipFile(res.zip_path) as z:
         names = z.namelist()
     for code, _ in cx.BOOKS:

@@ -6,6 +6,7 @@ extract(filename, data) -> Extracted{text, pages, warnings, figures}
   - pdf 抽不出文字 ⇒ ExtractError("scanned_pdf")；不支持的扩展名 ⇒ ExtractError("unsupported_media")；
   - figures：docx / pdf 内嵌图片（png/jpg/gif/bmp/tiff/emf），按出现顺序 [(ext, bytes)]，供写入案卷 figs/。
 """
+
 import glob
 import io
 import os
@@ -36,6 +37,7 @@ def _flatten(blob: bytes):
     （Transformer 实案 cv-fig2-5 四角圆框假象）——不合成直接测墨会把全黑透明图判成满墨。
     返回 PIL Image；解码失败返回 None。"""
     from PIL import Image
+
     try:
         with Image.open(io.BytesIO(blob)) as im:
             if im.mode in ("RGBA", "LA", "PA") or (im.mode == "P" and "transparency" in im.info):
@@ -51,6 +53,7 @@ def _thumb(im) -> bytes | None:
     """归一化指纹图：白底合成 → 墨区 autocrop → 16x16 灰度 → bytes。
     供位图/墨带渲染去重：同图不同来源（内嵌位图 vs 页区渲染）指纹近似。"""
     from PIL import Image, ImageChops
+
     try:
         g = im.convert("L")
         bg = Image.new("L", g.size, 255)
@@ -73,6 +76,7 @@ def _same_fig(a: bytes | None, b: bytes | None) -> bool:
 def _to_gray(blob: bytes) -> bytes:
     """统一转灰度——CNIPA 附图禁彩色；矢量带渲图与位图同口径。"""
     from PIL import Image
+
     im = Image.open(io.BytesIO(blob))
     if im.mode == "L":
         return blob
@@ -88,6 +92,7 @@ def _band_ink_ok(blob: bytes) -> bool:
     if im is None:
         return False
     import numpy as _np
+
     a = _np.asarray(im.convert("L"))
     if a.size == 0:
         return False
@@ -158,8 +163,7 @@ def extract(filename: str, data: bytes) -> Extracted:
         warnings.append(f"内嵌图片 {len(figures)} 张，只保留前 {MAX_FIGURES} 张")
         figures = figures[:MAX_FIGURES]
         fig_captions = fig_captions[:MAX_FIGURES]
-    return {"text": text, "pages": pages, "warnings": warnings, "figures": figures,
-            "fig_captions": fig_captions}
+    return {"text": text, "pages": pages, "warnings": warnings, "figures": figures, "fig_captions": fig_captions}
 
 
 def _clean(text: str) -> str:
@@ -197,8 +201,7 @@ def _docx(data: bytes) -> tuple[str, list[tuple[str, bytes]]]:
     return "\n".join(lines), figures
 
 
-def _pdf(data: bytes
-         ) -> tuple[str, int, list[tuple[str, bytes]], list[str], list[str | None]]:
+def _pdf(data: bytes) -> tuple[str, int, list[tuple[str, bytes]], list[str], list[str | None]]:
     try:
         reader = PdfReader(io.BytesIO(data))
         n = len(reader.pages)
@@ -212,8 +215,7 @@ def _pdf(data: bytes
     # 先按「Figure N:」题注墨带收编——图序=文档序，矢量/TikZ/透明壳位图全兜住；
     # 位图后对墨带指纹去重补位。反过来的旧序让散图位图（注意力热力图等）先占满
     # 配额，题注主图反而落选（itransformer 实案：图2-4 真图丢失只剩附录热力图）。
-    figures, band_thumbs, vec_drop, academic, fig_captions = _pdf_vector_figures(
-        data, MAX_FIGURES)
+    figures, band_thumbs, vec_drop, academic, fig_captions = _pdf_vector_figures(data, MAX_FIGURES)
     if figures:
         warnings.append(f"按图题注渲染图形区 {len(figures)} 张")
     if vec_drop:
@@ -259,22 +261,23 @@ _FIG_ACADEMIC_CAP = re.compile(r"(?i)classification|taxonomy|benchmark")
 _BBOX_PAGE = re.compile(r"<page[^>]*width=\"([\d.]+)\"[^>]*height=\"([\d.]+)\"")
 _BBOX_WORD = re.compile(
     r"<word[^>]*xMin=\"([\d.]+)\"[^>]*yMin=\"([\d.]+)\"[^>]*"
-    r"xMax=\"([\d.]+)\"[^>]*yMax=\"([\d.]+)\"[^>]*>([^<]*)</word>")
-_CAPTION_MIN_H = 40.0   # 题注上方图形区最小高度（pt）——低于则不是独立图区
+    r"xMax=\"([\d.]+)\"[^>]*yMax=\"([\d.]+)\"[^>]*>([^<]*)</word>"
+)
+_CAPTION_MIN_H = 40.0  # 题注上方图形区最小高度（pt）——低于则不是独立图区
 _RENDER_DPI = 200
 
 
 def _words_per_page(data: bytes) -> list[tuple[float, float, list[tuple[float, float, float, float, str]]]]:
     """pdftotext -bbox-layout → [(page_w, page_h, [(x0,y0,x1,y1,word)…])…]——零新依赖取字框。"""
     import subprocess
+
     try:
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             f.write(data)
             pdf_path = f.name
         with tempfile.NamedTemporaryFile(suffix=".html", delete=False) as f:
             html_path = f.name
-        subprocess.run(["pdftotext", "-bbox-layout", pdf_path, html_path],
-                       check=True, capture_output=True, timeout=60)
+        subprocess.run(["pdftotext", "-bbox-layout", pdf_path, html_path], check=True, capture_output=True, timeout=60)
         html = open(html_path, encoding="utf-8", errors="replace").read()
     except Exception:
         return []
@@ -291,17 +294,21 @@ def _words_per_page(data: bytes) -> list[tuple[float, float, list[tuple[float, f
         if not pm:
             continue
         import html as _html
-        words = [(float(m.group(1)), float(m.group(2)), float(m.group(3)), float(m.group(4)),
-                  _html.unescape(m.group(5)))
-                 for m in _BBOX_WORD.finditer(chunk)]
+
+        words = [
+            (float(m.group(1)), float(m.group(2)), float(m.group(3)), float(m.group(4)), _html.unescape(m.group(5)))
+            for m in _BBOX_WORD.finditer(chunk)
+        ]
         pages.append((float(pm.group(1)), float(pm.group(2)), words))
     return pages
 
 
-def _page_png(pdf_path: str, page_no: int, dpi: int,
-              clip_pts: tuple[float, float, float, float] | None = None) -> bytes | None:
+def _page_png(
+    pdf_path: str, page_no: int, dpi: int, clip_pts: tuple[float, float, float, float] | None = None
+) -> bytes | None:
     """pdftoppm 渲染单页（可选按点坐标裁剪）——poppler 已在部署依赖（Dockerfile L36）。"""
     import subprocess
+
     for old in glob.glob("/tmp/_vec_fig-*.png"):
         try:
             os.unlink(old)
@@ -311,8 +318,16 @@ def _page_png(pdf_path: str, page_no: int, dpi: int,
     if clip_pts:
         x0, y0, x1, y1 = clip_pts
         scale = dpi / 72.0
-        args += ["-x", str(int(x0 * scale)), "-y", str(int(y0 * scale)),
-                 "-W", str(max(1, int((x1 - x0) * scale))), "-H", str(max(1, int((y1 - y0) * scale)))]
+        args += [
+            "-x",
+            str(int(x0 * scale)),
+            "-y",
+            str(int(y0 * scale)),
+            "-W",
+            str(max(1, int((x1 - x0) * scale))),
+            "-H",
+            str(max(1, int((y1 - y0) * scale))),
+        ]
     args += [pdf_path, "/tmp/_vec_fig"]
     try:
         subprocess.run(args, check=True, capture_output=True, timeout=60)
@@ -326,8 +341,8 @@ def _page_png(pdf_path: str, page_no: int, dpi: int,
     return None
 
 
-_SCAN_DPI = 100   # 墨带探测页渲染分辨率——低 dpi 够用且快
-_GAP_MAX = 6      # 行内允许的最大空白行（px@100dpi ≈ 4pt）——正文行间隙 ~5px 不断带，段距/图文间隔断开
+_SCAN_DPI = 100  # 墨带探测页渲染分辨率——低 dpi 够用且快
+_GAP_MAX = 6  # 行内允许的最大空白行（px@100dpi ≈ 4pt）——正文行间隙 ~5px 不断带，段距/图文间隔断开
 
 
 def _ink_band_above(png: bytes, y_px: int) -> tuple[int, int, int, int] | None:
@@ -335,6 +350,7 @@ def _ink_band_above(png: bytes, y_px: int) -> tuple[int, int, int, int] | None:
     先向上跨过题注自身的墨带与其上空白（图-注间距），再量紧邻的图形墨带；
     带内允许 _GAP_MAX 空白行缝合图内稀疏线。返回 (x_min, top, x_max, bottom)。"""
     from PIL import Image
+
     try:
         with Image.open(io.BytesIO(png)) as im:
             gray = im.convert("L")
@@ -446,13 +462,14 @@ def _crop_png(page, region: "_Rect", dpi: int) -> bytes:
     return buf.getvalue()
 
 
-def _pdf_vector_figures(data: bytes, cap: int
-                        ) -> tuple[list[tuple[str, bytes]], dict[int, list[bytes]],
-                                   int, int, list[str | None]]:
+def _pdf_vector_figures(
+    data: bytes, cap: int
+) -> tuple[list[tuple[str, bytes]], dict[int, list[bytes]], int, int, list[str | None]]:
     """按「Figure N:」题注定位，pdfplumber 矢量绘制/位图元素同栏聚类裁剪——图序=文档序。
     返回 (figures, 每页指纹, dropped, academic, 各图题注)。取代原 pdftoppm 墨带扫描：
     不再靠像素猜图区（正文墨带误抓/lora 图1 离散笔画漏抓实证），直接读图形元素坐标。"""
     import pdfplumber
+
     if cap <= 0:
         return [], {}, 0, 0, []
     try:
@@ -476,18 +493,21 @@ def _pdf_vector_figures(data: bytes, cap: int
                 if t:
                     box = _Rect(ln["x0"], ln["top"], ln["x1"], ln["bottom"])
                     lines.append((box, t))
-            ink = [_Rect(o["x0"], o["top"], o["x1"], o["bottom"])
-                   for o in page.rects + page.lines + page.curves]
-            ink += [_Rect(im["x0"], im["top"], im["x1"], im["bottom"])
-                    for im in page.images]
+            ink = [_Rect(o["x0"], o["top"], o["x1"], o["bottom"]) for o in page.rects + page.lines + page.curves]
+            ink += [_Rect(im["x0"], im["top"], im["x1"], im["bottom"]) for im in page.images]
             for r, m in [(rr, _FIG_CAP_RE.match(tt)) for rr, tt in lines]:
                 if not m or len(out) >= cap:
                     continue
                 col_mid = (r.x0 + r.x1) / 2
-                above = sorted([x for x in ink
-                                if abs((x.x0 + x.x1) / 2 - col_mid) < pw / 3
-                                and x.y1 <= r.y0 + 2 and (r.y0 - x.y1) < 400],
-                               key=lambda x: x.y1, reverse=True)
+                above = sorted(
+                    [
+                        x
+                        for x in ink
+                        if abs((x.x0 + x.x1) / 2 - col_mid) < pw / 3 and x.y1 <= r.y0 + 2 and (r.y0 - x.y1) < 400
+                    ],
+                    key=lambda x: x.y1,
+                    reverse=True,
+                )
                 # 自题注向上聚类：水平相邻(±30pt)且与区域顶边垂直间隙 ≤60pt 才并入
                 region = None
                 for x in above:
@@ -514,8 +534,7 @@ def _pdf_vector_figures(data: bytes, cap: int
                     dropped += 1
                     continue
                 cap_line = " ".join(t for rr, t in lines if abs(rr.y0 - r.y0) <= 4)
-                band_words = " ".join(t for rr, t in lines
-                                      if region.y0 - 6 <= (rr.y0 + rr.y1) / 2 <= region.y1 + 6)
+                band_words = " ".join(t for rr, t in lines if region.y0 - 6 <= (rr.y0 + rr.y1) / 2 <= region.y1 + 6)
                 if _FIG_SELF_REF.search(band_words) or _FIG_ACADEMIC_CAP.search(cap_line):
                     academic += 1
                     continue
@@ -528,9 +547,9 @@ def _pdf_vector_figures(data: bytes, cap: int
     return out, thumbs, dropped, academic, out_caps
 
 
-def _pdf_vector_figures_legacy(data: bytes, cap: int
-                               ) -> tuple[list[tuple[str, bytes]], dict[int, list[bytes]],
-                                          int, int, list[str | None]]:
+def _pdf_vector_figures_legacy(
+    data: bytes, cap: int
+) -> tuple[list[tuple[str, bytes]], dict[int, list[bytes]], int, int, list[str | None]]:
     """按「Figure N:」题注定位，pdftoppm 渲染题注上方墨带为 png——图序=文档序。
     返回 (figures, 每页墨带指纹, dropped, academic, 各图题注)；指纹供位图通道去重，
     题注供生成端对齐「提取图序号↔论文图号」。无题注论文则全空，
@@ -565,13 +584,16 @@ def _pdf_vector_figures_legacy(data: bytes, cap: int
                 if not _CAPTION_WORD.match(w):
                     continue
                 nxt = words[i + 1] if i + 1 < len(words) else None
-                if (not nxt or not _CAPTION_NUM.match(nxt[4])
-                        or abs((nxt[1] + nxt[3]) - (y0 + y1)) > 4 or nxt[0] - x1 > 8):
+                if (
+                    not nxt
+                    or not _CAPTION_NUM.match(nxt[4])
+                    or abs((nxt[1] + nxt[3]) - (y0 + y1)) > 4
+                    or nxt[0] - x1 > 8
+                ):
                     continue
                 # 「Figure」必须是该行行首词——正文行内引用「…as shown in Figure 1.」
                 # 不是题注，抓它会把上面的正文段落/公式墨带当图收编（patchtst/lora 实案）。
-                line_x0 = min(xa for (xa, la, _b, lb, _w) in words
-                              if abs((la + lb) - (y0 + y1)) <= 4)
+                line_x0 = min(xa for (xa, la, _b, lb, _w) in words if abs((la + lb) - (y0 + y1)) <= 4)
                 if _x0 - line_x0 > 2:
                     continue
                 band = _ink_band_above(png, int(y0 * scale))
@@ -582,8 +604,7 @@ def _pdf_vector_figures_legacy(data: bytes, cap: int
                 if key in seen_bands:
                     continue
                 seen_bands.add(key)
-                clip = (max(0.0, bx_lo / scale - 4), top_px / scale,
-                        min(_pw, bx_hi / scale + 4), bot_px / scale)
+                clip = (max(0.0, bx_lo / scale - 4), top_px / scale, min(_pw, bx_hi / scale + 4), bot_px / scale)
                 blob = _page_png(pdf_path, pi + 1, _RENDER_DPI, clip)
                 if not blob:
                     continue
@@ -591,11 +612,11 @@ def _pdf_vector_figures_legacy(data: bytes, cap: int
                     dropped += 1
                     continue
                 band_words = " ".join(
-                    ww for (_a, by0, _b, by1, ww) in words
-                    if top_px / scale - 6 <= (by0 + by1) / 2 <= bot_px / scale + 6)
-                cap_line = " ".join(
-                    ww for (_a, cy0, _b, cy1, ww) in words
-                    if abs((cy0 + cy1) - (y0 + y1)) <= 4)
+                    ww
+                    for (_a, by0, _b, by1, ww) in words
+                    if top_px / scale - 6 <= (by0 + by1) / 2 <= bot_px / scale + 6
+                )
+                cap_line = " ".join(ww for (_a, cy0, _b, cy1, ww) in words if abs((cy0 + cy1) - (y0 + y1)) <= 4)
                 if _FIG_SELF_REF.search(band_words) or _FIG_ACADEMIC_CAP.search(cap_line):
                     academic += 1
                     continue

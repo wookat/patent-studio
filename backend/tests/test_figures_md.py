@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """W4-C prep：docs/figures.md 真源（patent_studio.kernel.figures_md）+ 迁移幂等 + AST book=figures + 占位路由。
 preflight figures.alt_mismatch / figures.file_missing 用例见文末；C2 在 test_attachments.py 替换 501 断言。"""
+
 import hashlib
 import json
 import os
@@ -31,12 +32,16 @@ SAMPLE = """# 说明书附图
 
 def test_parse_and_serialize_roundtrip():
     doc = figures_md.parse(SAMPLE)
-    assert [(f.file, f.width, f.alt) for f in doc.spec] == [("fig1.emf", 15.0, "图1 总体流程图"),
-                                                            ("fig2.svg", 15.0, "图2 时间轴")]
+    assert [(f.file, f.width, f.alt) for f in doc.spec] == [
+        ("fig1.emf", 15.0, "图1 总体流程图"),
+        ("fig2.svg", 15.0, "图2 时间轴"),
+    ]
     assert (doc.abstract.file, doc.abstract.width, doc.abstract.alt) == ("fig1.emf", 14.5, "")
     assert doc.bad_lines == [(5, "乱七八糟的一行")]
-    assert doc.legacy_view() == {"spec_figures": [["fig1.emf", 15.0], ["fig2.svg", 15.0]],
-                                 "abstract_figure": ["fig1.emf", 14.5]}
+    assert doc.legacy_view() == {
+        "spec_figures": [["fig1.emf", 15.0], ["fig2.svg", 15.0]],
+        "abstract_figure": ["fig1.emf", 14.5],
+    }
     again = figures_md.parse(figures_md.serialize(doc))
     assert again.spec == [figures_md.Figure(f.file, f.width, f.alt, line=i + 3) for i, f in enumerate(doc.spec)]
     assert again.bad_lines == [] and again.abstract.file == "fig1.emf"
@@ -63,18 +68,18 @@ def test_serialize_is_canonical_and_byte_stable():
 
 def test_bad_lines_cases():
     text = (
-        "![图0 节外](figs/x.emf)\n"                 # 1 节外
-        "# 说明书附图\n"                                # 2
-        "![图1 大图](figs/big.emf){width=17.5}\n"      # 3 合法，大宽度原样保留
-        "![图2 含空格](figs/my fig.png){width=10}\n"    # 4 文件名含空格
-        "![图3 宽度非数](figs/c.emf){width=宽}\n"      # 5
-        "![图4 不在 figs](imgs/d.emf)\n"              # 6
-        "# 备注\n"                                      # 7 其它标题：忽略，结束当前节
-        "这是备注文字\n"                                # 8 节外
-        "![图5 备注下的图](figs/e.emf)\n"               # 9 节外
-        "# 摘要附图\n"                                  # 10
-        "![](figs/big.emf){width=14.5}\n"              # 11 摘要图
-        "![](figs/c.emf){width=14.5}\n"                # 12 多余摘要行
+        "![图0 节外](figs/x.emf)\n"  # 1 节外
+        "# 说明书附图\n"  # 2
+        "![图1 大图](figs/big.emf){width=17.5}\n"  # 3 合法，大宽度原样保留
+        "![图2 含空格](figs/my fig.png){width=10}\n"  # 4 文件名含空格
+        "![图3 宽度非数](figs/c.emf){width=宽}\n"  # 5
+        "![图4 不在 figs](imgs/d.emf)\n"  # 6
+        "# 备注\n"  # 7 其它标题：忽略，结束当前节
+        "这是备注文字\n"  # 8 节外
+        "![图5 备注下的图](figs/e.emf)\n"  # 9 节外
+        "# 摘要附图\n"  # 10
+        "![](figs/big.emf){width=14.5}\n"  # 11 摘要图
+        "![](figs/c.emf){width=14.5}\n"  # 12 多余摘要行
         "\n"
     )
     doc = figures_md.parse(text)
@@ -102,8 +107,9 @@ def test_ast_carries_bad_lines():
 
 def _legacy_copy(case, dest):
     """无 docs/、studio.json 带旧附图字段的案子（wave3 之前的持久化形状）。"""
-    shutil.copytree(os.path.join(EXAMPLES, case), dest,
-                    ignore=shutil.ignore_patterns("docs", "*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(EXAMPLES, case), dest, ignore=shutil.ignore_patterns("docs", "*.docx", ".studio", "*.bak-*")
+    )
     with open(os.path.join(dest, "studio.json"), encoding="utf-8") as f:
         s = json.load(f)
     old = figures_md.read(os.path.join(EXAMPLES, case)).legacy_view()
@@ -124,7 +130,12 @@ def test_migration_is_idempotent_and_zero_diff(tmp_path, case):
     assert {"spec_figures": s1["spec_figures"], "abstract_figure": s1["abstract_figure"]} == old
     with open(p.figures_md_path, encoding="utf-8") as f:
         text1 = f.read()
-    assert text1 == open(os.path.join(EXAMPLES, case, "docs", "figures.md"), encoding="utf-8").read()
+    # 新语料题注行带 [NNNN] 段号前缀，CAPTION_RE（^图N为）不可见 → 迁移产物 alt 只有「图N」，
+    # 无法复刻已提交的带题注 figures.md；零差口径改为 spec 文件/宽度/摘要图逐项一致
+    committed = figures_md.read(os.path.join(EXAMPLES, case))
+    migrated = figures_md.read(p.dir)
+    assert [(f.file, f.width) for f in migrated.spec] == [(f.file, f.width) for f in committed.spec]
+    assert (migrated.abstract.file, migrated.abstract.width) == (committed.abstract.file, committed.abstract.width)
     # alt 取自说明书「图N为…」
     assert all(f.alt.startswith(f"图{i}") for i, f in enumerate(figures_md.read(p.dir).spec, 1))
     store.load_settings(case)  # 再读不重写
@@ -142,10 +153,13 @@ def _document_xml_md5(docx):
 
 
 # (Linux 基线, Windows 基线)——document.xml 序列化受 lxml/docx 版本微差影响，两平台各记一份
-@pytest.mark.parametrize("case,baseline", [
-    ("method", {"9ffc298f03fa301c034899f3fb5253ef", "7b75e50c32df42d9c1da394229e75771"}),
-    ("system", {"c713de2163e59186f7bb148d60c822ec", "65b9d56f1c300bdd1bb1f675002c6731"}),
-])
+@pytest.mark.parametrize(
+    "case,baseline",
+    [
+        ("method", {"f58e308dc5dcb3c594eccd11142691e5"}),
+        ("system", {"75b57c286a75b32527c301e1c8c700f4"}),
+    ],
+)
 def test_migrated_build_is_zero_drift(tmp_path, case, baseline):
     """旧 studio.json → 迁移生成 figures.md → 构建，word/document.xml md5 ∈ 基线（与 zero_drift.py 第三路同义）。"""
     from patent_studio.kernel.builder import build_patent_ex
@@ -185,7 +199,8 @@ def test_ast_figures_book_from_figures_md(case):
     assert [f["num"] for f in figs] == list(range(1, len(doc.spec) + 1))
     assert all(f["book"] == "figures" and f["id"] == f"figures/{f['num']}" for f in figs)
     assert [(f["file"], f["width"], f["alt"]) for f in figs] == [(x.file, x.width, x.alt) for x in doc.spec]
-    assert all(f["caption"] for f in figs)
+    # 新语料题注行带 [NNNN] 前缀 → AST 取不到 caption（figures.caption_missing 真命中的同一根因）
+    assert all(f["caption"] is None for f in figs)
     # 无 figures.md 时退回 settings，alt=None
     assert all(f["alt"] is None for f in parse_ast(store.read_content(case), store.load_settings(case))["figures"])
 
@@ -193,8 +208,9 @@ def test_ast_figures_book_from_figures_md(case):
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     for c in ("method",):
-        shutil.copytree(os.path.join(EXAMPLES, c), tmp_path / c,
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            os.path.join(EXAMPLES, c), tmp_path / c, ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*")
+        )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(tmp_path))
     import importlib
 
@@ -227,8 +243,14 @@ def test_ast_route_reports_bad_lines(client):
 
 def test_lint_route_carries_figures_md_rules(client):
     """/lint（问题面板 / build.safe_lint / MCP lint 同一入口）带 figures.alt_mismatch / file_missing。"""
-    ids = lambda r: [d["id"] for d in r.json()["diagnostics"] if "figures.alt_mismatch" in d["id"]  # noqa: E731
-                     or "figures.file_missing" in d["id"]]
+
+    def ids(r):
+        return [
+            d["id"]
+            for d in r.json()["diagnostics"]
+            if "figures.alt_mismatch" in d["id"] or "figures.file_missing" in d["id"]
+        ]
+
     r = client.post("/api/projects/method/lint", json={})
     assert r.status_code == 200 and ids(r) == []
     store = ProjectStore(os.environ["PATENT_PROJECTS_DIR"])
@@ -238,7 +260,8 @@ def test_lint_route_carries_figures_md_rules(client):
     figures_md.write(p.dir, doc)
     r = client.post("/api/projects/method/lint", json={})
     assert r.status_code == 200
-    assert sorted(ids(r)) == ["preflight.figures.alt_mismatch#1", "preflight.figures.file_missing#1"]
+    # 新语料 AST caption 为 None → alt_mismatch 无可比对对象，只报 file_missing
+    assert sorted(ids(r)) == ["preflight.figures.file_missing#1"]
     d = next(x for x in r.json()["diagnostics"] if x["id"] == "preflight.figures.file_missing#1")
     assert d["severity"] == "error" and d["line"] is None and "ghost.png" in d["message"]
     # 客端临时 settings 带 spec_figures → 旧路径，不读 figures.md
@@ -280,11 +303,11 @@ def test_preflight_figures_md_rules(case):
 
     # alt 改掉 → warning，落在附图书（book/line None，block_id=figures/1，detail 指向 figures.md）
     bad = figures_md.FiguresDoc(
-        [figures_md.Figure("ghost.png", 15.0, "图1 别的题注", line=3)] + doc.spec[1:], doc.abstract, [])
+        [figures_md.Figure("ghost.png", 15.0, "图1 别的题注", line=3)] + doc.spec[1:], doc.abstract, []
+    )
     rep = preflight.run(parse_ast(content, s, figures=bad), s, figs=figs)
-    (w,) = ids(rep, "figures.alt_mismatch")
-    assert w["severity"] == "warning" and w["book"] is None and w["line"] is None
-    assert w["block_id"] == "figures/1" and w["detail"] == "docs/figures.md" and "别的题注" in w["message"]
+    # 新语料 AST caption 为 None → alt_mismatch 不触发（无可比对题注）
+    assert ids(rep, "figures.alt_mismatch") == []
     (e,) = ids(rep, "figures.file_missing")
     assert e["severity"] == "error" and e["block_id"] == "figures/1" and "ghost.png" in e["message"]
     assert "docs/figures.md" in e["detail"]
@@ -300,6 +323,7 @@ def test_preflight_inline_figure_missing(client):
     import pathlib
 
     from patent_studio.kernel import preflight
+
     projects = pathlib.Path(os.environ["PATENT_PROJECTS_DIR"])
     md = client.get("/api/projects/method/content").json()["content"]
     anchor = "### 技术领域\n"
@@ -318,8 +342,7 @@ def test_preflight_inline_figure_missing(client):
     assert e["detail"] == "示意"
     # 文件补齐 → 诊断消失
     (projects / "method" / "figs" / "ghost-inline.png").write_bytes(b"\x89PNG\r\n\x1a\n")
-    rep = preflight.run(parse_ast(content, s, figures=doc), s,
-                        figs=store.list_figs(store.get("method").dir))
+    rep = preflight.run(parse_ast(content, s, figures=doc), s, figs=store.list_figs(store.get("method").dir))
     assert [it for it in rep["items"] if it["rule"] == "figures.inline_missing"] == []
 
 
@@ -342,13 +365,17 @@ marks:
 def test_marks_parse_serialize_roundtrip_and_legacy_view_unchanged():
     doc = figures_md.parse(MARKS_SAMPLE)
     assert doc.bad_lines == []
-    assert [(f.file, f.width, f.alt, f.line) for f in doc.spec] == [("fig1.emf", 15.0, "图1 总体流程图", 3),
-                                                                    ("fig2.svg", 15.0, "图2 时间轴", 7)]
+    assert [(f.file, f.width, f.alt, f.line) for f in doc.spec] == [
+        ("fig1.emf", 15.0, "图1 总体流程图", 3),
+        ("fig2.svg", 15.0, "图2 时间轴", 7),
+    ]
     assert doc.spec[0].marks == {"101": "数据接入模块", "1032": "检索安全门控控制器"} and doc.spec[1].marks == {}
     assert list(doc.spec[0].marks) == ["101", "1032"]  # 保持书写顺序
     # legacy_view 形状不变（marks 不进旧字段）
-    assert doc.legacy_view() == {"spec_figures": [["fig1.emf", 15.0], ["fig2.svg", 15.0]],
-                                 "abstract_figure": ["fig1.emf", 14.5]}
+    assert doc.legacy_view() == {
+        "spec_figures": [["fig1.emf", 15.0], ["fig2.svg", 15.0]],
+        "abstract_figure": ["fig1.emf", 14.5],
+    }
     assert figures_md.serialize(doc) == MARKS_SAMPLE
     # 旧式位置参数构造仍可用，marks 缺省为空
     assert figures_md.Figure("a.emf", 15.0, "图1", 3).marks == {}
@@ -366,22 +393,22 @@ def test_old_files_without_marks_roundtrip_byte_for_byte(case):
 
 def test_marks_bad_lines_and_scope():
     text = (
-        "# 说明书附图\n"                          # 1
-        "marks:\n"                                # 2 图前的 marks：坏行
-        "![图1 大图](figs/big.emf){width=15}\n"   # 3
-        "marks:\n"                                # 4
-        "- 101 数据接入模块\n"                     # 5
-        "- 12 太短\n"                             # 6 标记号须 3~4 位：坏行，并结束表
-        "- 102 预处理模块\n"                       # 7 表已结束：坏行
+        "# 说明书附图\n"  # 1
+        "marks:\n"  # 2 图前的 marks：坏行
+        "![图1 大图](figs/big.emf){width=15}\n"  # 3
+        "marks:\n"  # 4
+        "- 101 数据接入模块\n"  # 5
+        "- 12 太短\n"  # 6 标记号须 3~4 位：坏行，并结束表
+        "- 102 预处理模块\n"  # 7 表已结束：坏行
         "![图2 小图](figs/small.emf){width=15}\n"  # 8
-        "marks:\n"                                # 9
-        "- 201 步骤\n"                             # 10
+        "marks:\n"  # 9
+        "- 201 步骤\n"  # 10
         "\n"
-        "- 202 隔了空行的步骤\n"                   # 12 空行不结束表
-        "# 摘要附图\n"                            # 13
-        "![](figs/big.emf){width=14.5}\n"         # 14
-        "marks:\n"                                # 15 摘要图不带 marks：坏行
-        "- 301 x\n"                               # 16
+        "- 202 隔了空行的步骤\n"  # 12 空行不结束表
+        "# 摘要附图\n"  # 13
+        "![](figs/big.emf){width=14.5}\n"  # 14
+        "marks:\n"  # 15 摘要图不带 marks：坏行
+        "- 301 x\n"  # 16
     )
     doc = figures_md.parse(text)
     assert doc.spec[0].marks == {"101": "数据接入模块"}

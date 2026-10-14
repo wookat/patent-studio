@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """各场景共用的小工具：派生结果、锚点、JSON 生成槽（1 次 format_retry）、comment 提案的两道门（anchor_hit +
 no_legal_verdict）。"""
+
 from __future__ import annotations
 
 from app.agent import checks
@@ -22,12 +23,12 @@ def final_text(d: Derived) -> str:
 
 def book_text(d: Derived, book: str) -> str:
     b = d.ast["books"][book]
-    return "\n".join(d.lines[b["offset"]: b["offset"] + b["length"]])
+    return "\n".join(d.lines[b["offset"] : b["offset"] + b["length"]])
 
 
 def block_text(d: Derived, book: str, block: dict) -> str:
     off = d.ast["books"][book]["offset"]
-    return "\n".join(d.lines[off + block["lines"]["start"] - 1: off + block["lines"]["end"]])
+    return "\n".join(d.lines[off + block["lines"]["start"] - 1 : off + block["lines"]["end"]])
 
 
 def block_at(d: Derived, line: int) -> tuple[str, dict] | None:
@@ -40,8 +41,9 @@ def block_at(d: Derived, line: int) -> tuple[str, dict] | None:
 
 def anchor_of(d: Derived, book: str, block: dict) -> BlockAnchor:
     off = d.ast["books"][book]["offset"]
-    return BlockAnchor(book=book, block_id=block["id"], line_start=off + block["lines"]["start"],
-                       line_end=off + block["lines"]["end"])
+    return BlockAnchor(
+        book=book, block_id=block["id"], line_start=off + block["lines"]["start"], line_end=off + block["lines"]["end"]
+    )
 
 
 def claim_block(d: Derived, num: int) -> dict | None:
@@ -78,8 +80,11 @@ def comment(ctx: RunContext, d: Derived, line: int, quote: str, body: str, *, ex
         return None
     book, block = hit
     anchor = anchor_of(d, book, block)
-    results = [checks.anchor_hit(quote, d.lines, anchor.line_start, anchor.line_end), checks.no_legal_verdict(body),
-               *extra]
+    results = [
+        checks.anchor_hit(quote, d.lines, anchor.line_start, anchor.line_end),
+        checks.no_legal_verdict(body),
+        *extra,
+    ]
     if not all([ctx.check(r) for r in results]):
         return None
     return ctx.propose("comment", anchor, comment_body=body, checks_=results)

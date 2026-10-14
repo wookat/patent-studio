@@ -6,6 +6,7 @@ params: {items: [OaItem…]}（内联）或 {item_ids: [...]}（从 .studio/oa/i
 经 oa.answer.normalize_edits
 保证编号不变、reject 还原原文、装得进权利要求书）。不落 answers.json——S7 只产提案。
 """
+
 from __future__ import annotations
 
 from app.agent import checks
@@ -69,16 +70,23 @@ async def run(ctx: RunContext) -> None:
     claims = oa_answer.claim_blocks(content)
     for item in items:
         focus = [n for n in item.get("claims") or [] if n in claims] or sorted(claims)[:1]
-        messages = prompts_agent.build("s7", "argue", oa_answer._user(item), context=_context(ctx, d, item, claims),
-                                       pid=ctx.pid, item=item.get("id", "?"))
+        messages = prompts_agent.build(
+            "s7",
+            "argue",
+            oa_answer._user(item),
+            context=_context(ctx, d, item, claims),
+            pid=ctx.pid,
+            item=item.get("id", "?"),
+        )
         data, raw = await common.gen_json(ctx, "argue", messages)
         anchor_num = focus[0]
         if data is None:
             body = f"审查意见 {item.get('id', '')} 的争辩草稿（未能结构化，请核对）：{raw.strip()[:800]}"
         else:
             points = [str(p) for p in data.get("points") or []]
-            body = f"针对审查意见 {item.get('id', '')} 的争辩要点（请核对）：\n" + \
-                "\n".join(f"{i}. {p}" for i, p in enumerate(points, 1))
+            body = f"针对审查意见 {item.get('id', '')} 的争辩要点（请核对）：\n" + "\n".join(
+                f"{i}. {p}" for i, p in enumerate(points, 1)
+            )
         common.comment(ctx, d, claims[anchor_num]["line"], f"{anchor_num}.", body)
         if data is None:
             continue
@@ -88,8 +96,11 @@ async def run(ctx: RunContext) -> None:
         for e in edits:
             block = common.claim_block(d, e["claim"])
             anchor = common.anchor_of(d, "claims", block)
-            results = [checks.lint(e["critic_line"]), checks.roundtrip(e["original"], e["critic_line"]),
-                       checks.no_legal_verdict(e["critic_line"])]
+            results = [
+                checks.lint(e["critic_line"]),
+                checks.roundtrip(e["original"], e["critic_line"]),
+                checks.no_legal_verdict(e["critic_line"]),
+            ]
             if all([ctx.check(r) for r in results]):
                 ctx.propose("critic", anchor, critic_markdown=e["critic_line"], checks_=results)
     ctx.finish(items=len(items))

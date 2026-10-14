@@ -6,6 +6,7 @@ holidays/<year>.json：{"year", "source", "verified", "holidays": ["YYYY-MM-DD".
 期限计算把它视为「无表」：只按周末顺延，并在响应 holidays_missing 里标出。
 规则表 rules.json 与计算见 compute.py；本模块把规则套到 case.json（recompute）并给 oa 单元 add() 契约。
 """
+
 from collections.abc import Callable
 from datetime import date
 
@@ -42,14 +43,28 @@ def base_dates(case: cases.Case) -> dict[str, date | None]:
     }
 
 
-def _auto(rule: compute.Rule, computed: compute.Computed, *, prev: cases.Deadline | None,
-          title: str | None = None, done: bool | None = None) -> cases.Deadline:
+def _auto(
+    rule: compute.Rule,
+    computed: compute.Computed,
+    *,
+    prev: cases.Deadline | None,
+    title: str | None = None,
+    done: bool | None = None,
+) -> cases.Deadline:
     lb = rule.legal_basis
     return cases.Deadline(
-        id=prev.id if prev else rule.id, kind=rule.kind, title=title or rule.title, due=computed.due.isoformat(),
-        base_date=computed.base.isoformat(), rule=rule.id, note=prev.note if prev else "", source="auto",
-        done=prev.done if done is None and prev else bool(done), done_at=prev.done_at if prev else None,
-        legal_basis=cases.LegalBasis(law=lb.law, article=lb.article, url=lb.url))
+        id=prev.id if prev else rule.id,
+        kind=rule.kind,
+        title=title or rule.title,
+        due=computed.due.isoformat(),
+        base_date=computed.base.isoformat(),
+        rule=rule.id,
+        note=prev.note if prev else "",
+        source="auto",
+        done=prev.done if done is None and prev else bool(done),
+        done_at=prev.done_at if prev else None,
+        legal_basis=cases.LegalBasis(law=lb.law, article=lb.article, url=lb.url),
+    )
 
 
 def recompute(case: cases.Case) -> tuple[cases.Case, bool]:
@@ -82,8 +97,7 @@ def recompute(case: cases.Case) -> tuple[cases.Case, bool]:
     return case, holidays_ok
 
 
-def add(pid: str, kind: str, base: str, extra: dict | None = None, *,
-        project_dir: str | None = None) -> cases.Deadline:
+def add(pid: str, kind: str, base: str, extra: dict | None = None, *, project_dir: str | None = None) -> cases.Deadline:
     """oa 单元调用契约（routes_oa /rounds 落一轮 OA 后调用；同步函数，直接落盘 case.json）。
 
     add(pid, kind, base, extra) -> cases.Deadline
@@ -112,11 +126,13 @@ def add(pid: str, kind: str, base: str, extra: dict | None = None, *,
     if rule.base_date != "event":
         raise ValueError(f"规则 {rule_id} 不是事件类期限，应由 recompute 按 dates.* 生成")
     delivery = extra.get("delivery", "electronic")
-    computed = compute.compute(rule, date.fromisoformat(base), delivery=delivery,
-                               extension_months=int(extra.get("extension_months") or 0))
+    computed = compute.compute(
+        rule, date.fromisoformat(base), delivery=delivery, extension_months=int(extra.get("extension_months") or 0)
+    )
     project_dir = project_dir or cases.project_dir(pid)
     did = extra.get("deadline_id") or (
-        f"{rule_id}:{extra['round_id']}" if extra.get("round_id") else f"{rule_id}:{base}")
+        f"{rule_id}:{extra['round_id']}" if extra.get("round_id") else f"{rule_id}:{base}"
+    )
     # R93：manual 守卫与 load→replace→save 都在锁内——锁外取到的 case 可能已陈旧
     with atomic.studio_lock(project_dir, "case"):
         case = cases.ensure_case(project_dir)

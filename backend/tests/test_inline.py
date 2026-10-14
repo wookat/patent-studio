@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """W9 prep-kernel：行内格式 tokenizer（patent_studio.kernel.inline）单测 + 五种标记 DOCX / XML / 导入全链路。"""
+
 import io
 import os
 import shutil
@@ -74,7 +75,10 @@ def test_star_boundaries_and_precedence():
 def test_sub_except_whitelist():
     text = "标识符tsf_guard与on_matured保持字面，但x_t是下标"
     assert _toks(text, sub_except=DEFAULT_SUB_EXCEPT) == [
-        (PLAIN, "标识符tsf_guard与on_matured保持字面，但x"), (SUB, "t"), (PLAIN, "是下标")]
+        (PLAIN, "标识符tsf_guard与on_matured保持字面，但x"),
+        (SUB, "t"),
+        (PLAIN, "是下标"),
+    ]
     assert _toks("tsf_guard") == [(PLAIN, "tsf"), (SUB, "guard")]
     # 白名单词在粗体里也保持字面
     assert _toks("**tsf_guard**", sub_except=DEFAULT_SUB_EXCEPT) == [(B, "tsf_guard")]
@@ -83,8 +87,7 @@ def test_sub_except_whitelist():
 def test_greek_letter_scripts():
     # ε_θ / μ_θ / Σ_θ 类数学记号：希腊字母下标应转真下标而非露字面下划线
     # （ddpm-11 权项 Σ_θ 打印残渣实案）
-    assert _toks("噪声ε_θ与均值μ_θ") == [
-        (PLAIN, "噪声ε"), (SUB, "θ"), (PLAIN, "与均值μ"), (SUB, "θ")]
+    assert _toks("噪声ε_θ与均值μ_θ") == [(PLAIN, "噪声ε"), (SUB, "θ"), (PLAIN, "与均值μ"), (SUB, "θ")]
     assert _toks("协方差Σ_θ") == [(PLAIN, "协方差Σ"), (SUB, "θ")]
     assert _toks("指数x^α") == [(PLAIN, "指数x"), (SUP, "α")]
 
@@ -130,9 +133,12 @@ def test_inline_strip_and_spans():
 
 # ---------------- DOCX ----------------
 
+
 def _runs(p):
-    return [(r.text, bool(r.bold), bool(r.italic), bool(r.underline), bool(r.font.subscript),
-             bool(r.font.superscript)) for r in p.runs]
+    return [
+        (r.text, bool(r.bold), bool(r.italic), bool(r.underline), bool(r.font.subscript), bool(r.font.superscript))
+        for r in p.runs
+    ]
 
 
 def test_docx_runs_five_marks():
@@ -171,6 +177,7 @@ def test_docx_runs_tracked_hook_keeps_marks():
 
 # ---------------- CNIPA XML ----------------
 
+
 def _xml(el):
     return etree.tostring(el, encoding="unicode")
 
@@ -178,8 +185,10 @@ def _xml(el):
 def test_xml_inline_nested_tags():
     p = etree.Element("p")
     cx.inline_text(p, FIVE)
-    assert _xml(p) == ("<p>参数<b>粗体</b>与<i>斜体</i>及<u>下划线</u>，变量x<sub>t</sub>与e<sup>2</sup>，"
-                       "嵌套<b>a</b><b><sub>2</sub></b>结束</p>")
+    assert _xml(p) == (
+        "<p>参数<b>粗体</b>与<i>斜体</i>及<u>下划线</u>，变量x<sub>t</sub>与e<sup>2</sup>，"
+        "嵌套<b>a</b><b><sub>2</sub></b>结束</p>"
+    )
     p = etree.Element("p")
     cx.inline_text(p, "<u>***x***</u>y")
     assert _xml(p) == "<p><b><i><u>x</u></i></b>y</p>"
@@ -188,8 +197,10 @@ def test_xml_inline_nested_tags():
 def test_xml_claim_refs_with_marks():
     ct = etree.Element("claim-text")
     cx.claim_text_with_refs(ct, "根据权利要求1所述的方法，其中**g_t**>0", 3, ())
-    assert _xml(ct) == ('<claim-text>根据<claim-ref idref="c1">权利要求1</claim-ref>所述的方法，'
-                        '其中<b>g</b><b><sub>t</sub></b>&gt;0</claim-text>')
+    assert _xml(ct) == (
+        '<claim-text>根据<claim-ref idref="c1">权利要求1</claim-ref>所述的方法，'
+        "其中<b>g</b><b><sub>t</sub></b>&gt;0</claim-text>"
+    )
 
 
 def test_xml_five_marks_dtd_valid(tmp_path):
@@ -208,6 +219,7 @@ def test_xml_five_marks_dtd_valid(tmp_path):
 
 # ---------------- 导入（DOCX → Markdown）----------------
 
+
 def test_import_marks_roundtrip_paragraph(tmp_path):
     """内核 build 的段 → import：五种标记逐字还原。"""
     b = PatentBuilder()
@@ -219,7 +231,8 @@ def test_import_marks_roundtrip_paragraph(tmp_path):
     p = b.para("***粗斜***与<u>*x*</u>，e^{n+1}与 **两侧空白** 保留")
     para = docx_import._read_para(p._p, lambda om: "")
     assert docx_import._clean(docx_import._join_pieces(para.pieces, para.piece_marks)) == (
-        "***粗斜***与*<u>x</u>*，e^{n+1}与 **两侧空白** 保留")
+        "***粗斜***与*<u>x</u>*，e^{n+1}与 **两侧空白** 保留"
+    )
 
 
 def test_import_native_word_marks(tmp_path):
@@ -247,8 +260,11 @@ def test_full_chain_example_with_marks(tmp_path, name):
 
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", name), projects / name,
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", name),
+        projects / name,
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     store = ProjectStore(str(projects))
     proj = store.get(name)
     md_path = os.path.join(proj.dir, "content.md")
@@ -267,6 +283,7 @@ def test_full_chain_example_with_marks(tmp_path, name):
     assert hit and any(r.underline for r in hit[0].runs) and any(r.font.superscript for r in hit[0].runs)
     ex = cx._Exporter({"sub_except": tuple(store.load_settings(name)["sub_except"]), "style": None})
     from patent_studio.kernel.content import load_md
+
     title, _abstract, _claims, spec = load_md(md_path)
     root, _ = ex.description(title, spec)
     xml = cx.serialize(root)

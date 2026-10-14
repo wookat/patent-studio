@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """agent-scenarios-backend（docs/plan/21 §6.1）：S1–S7 / S9 / S10 场景计划在 mock 下跑通两案，
 产出只有 critic / comment / patch，源文件 md5 不变；S8 不注册。"""
+
 import asyncio
 import hashlib
 import json
@@ -37,8 +38,9 @@ def store(tmp_path):
     root = tmp_path / "projects"
     root.mkdir()
     for c in CASES:
-        shutil.copytree(os.path.join(ROOT, "examples", c), root / c,
-                        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+        shutil.copytree(
+            os.path.join(ROOT, "examples", c), root / c, ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*")
+        )
     st = ProjectStore(str(root))
     for c in CASES:
         st.read_content(c)  # 先物化 docs/ 镜像（gitignored），否则快照把懒迁移误判为场景直写
@@ -47,8 +49,15 @@ def store(tmp_path):
 
 def run(store, scenario, pid, params=None, *, ai=None):
     ai = ai or AiClient(prompts_agent.AgentMockProvider())
-    ctx = RunContext(store=store, pid=pid, ai=ai, job_id=f"job-{scenario}-{pid}", scenario=scenario,
-                     params=params or {}, user="tester")
+    ctx = RunContext(
+        store=store,
+        pid=pid,
+        ai=ai,
+        job_id=f"job-{scenario}-{pid}",
+        scenario=scenario,
+        params=params or {},
+        user="tester",
+    )
     asyncio.run(registry.get(scenario)(ctx))
     return ctx
 
@@ -58,6 +67,7 @@ def _snapshot(store, pid):
 
 
 # ---------------------------------------------------------------- 注册表 ----
+
 
 def test_registry_exact_set():
     assert set(registry.registered()) == {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"}
@@ -76,6 +86,7 @@ def test_plans_declare_steps_and_routes():
 def test_no_forbidden_model_anywhere():
     import app.agent.checks as c
     import app.agent.plans as pl
+
     for m in (c, pl, prompts_agent):
         with open(m.__file__, encoding="utf-8") as f:
             assert FORBIDDEN_MODEL not in f.read()
@@ -84,14 +95,23 @@ def test_no_forbidden_model_anywhere():
 
 # ---------------------------------------------------------------- 每场景跑通 ----
 
+
 @pytest.mark.parametrize("pid", CASES)
 @pytest.mark.parametrize("scenario", ["s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"])
 def test_scenario_runs_to_done_without_writing(store, scenario, pid):
     before = _snapshot(store, pid)
     params = {}
     if scenario == "s7":
-        params = {"items": [{"id": "oa-1", "claims": [1], "kind": "novelty",
-                             "text": "关于权利要求 1：对比文件 1 公开了相同的技术方案，请申请人陈述意见。"}]}
+        params = {
+            "items": [
+                {
+                    "id": "oa-1",
+                    "claims": [1],
+                    "kind": "novelty",
+                    "text": "关于权利要求 1：对比文件 1 公开了相同的技术方案，请申请人陈述意见。",
+                }
+            ]
+        }
     ctx = run(store, scenario, pid, params)
     kinds = [e.kind for e in ctx.events]
     assert kinds[0] == "plan" and kinds[-1] == "done"
@@ -104,6 +124,7 @@ def test_scenario_runs_to_done_without_writing(store, scenario, pid):
 
 
 # ---------------------------------------------------------------- S1 ----
+
 
 @pytest.mark.parametrize("pid", CASES)
 def test_s1_existing_case_keeps_source_md5(store, pid):
@@ -133,24 +154,25 @@ def test_s1_new_case_goes_through_convert_pipeline(store):
 
 # ---------------------------------------------------------------- S2 ----
 
+
 def _comments(ctx):
     return [p for p in ctx.proposals if p.kind == "comment"]
 
 
 def test_s2_hits_known_defects_method(store):
+    # 新语料已知确定性缺陷：权10「所述私钥生成方法生成」缺先行基础 → L27
     ctx = run(store, "s2", "method")
-    lines = {p.anchor.line_start for p in _comments(ctx)} | {p.anchor.line_end for p in _comments(ctx)}
     hit = {ln for p in _comments(ctx) for ln in range(p.anchor.line_start, p.anchor.line_end + 1)}
-    assert 39 in hit, lines
-    assert 189 in hit, lines
+    assert 27 in hit, {p.anchor.line_start for p in _comments(ctx)}
     for p in _comments(ctx):
         assert checks.no_legal_verdict(p.comment_body).ok, p.comment_body
 
 
 def test_s2_hits_known_defect_system(store):
+    # 新语料已知确定性缺陷：权1/权3「所述…code_snippet」缺先行基础 → L9/L13
     ctx = run(store, "s2", "system")
     hit = {ln for p in _comments(ctx) for ln in range(p.anchor.line_start, p.anchor.line_end + 1)}
-    assert 34 in hit
+    assert {9, 13} <= hit, {p.anchor.line_start for p in _comments(ctx)}
     for p in _comments(ctx):
         assert checks.no_legal_verdict(p.comment_body).ok
 
@@ -163,26 +185,27 @@ def test_s2_comments_cite_paragraph_numbers_and_no_model_for_deterministic(store
     assert dets, "确定性 antecedent 检查须在模型前执行"
     first_gen = ctx.events.index(gens[0]) if gens else len(ctx.events)
     assert ctx.events.index(dets[0]) < first_gen
-    assert any("[00" in (p.comment_body or "") for p in _comments(ctx))
+    # 确定性 antecedent 批注直接引用权项号，不经模型生成
+    assert any("缺先行基础" in (p.comment_body or "") for p in _comments(ctx))
 
 
 # ---------------------------------------------------------------- S4 / S6 ----
 
+
 def _inject_inconsistent_mark(store, pid):
-    """轮8 图例归一后 method 案的 1034 截短名不再不一致——s4/s5 需要至少一条真不一致标记才有差分对象。"""
+    """新语料两案均无同号多名标记——s4/s5 需要至少一条真不一致标记才有差分对象。"""
     store.save_content(pid, store.read_content(pid) + "\n\n进给轴201驱动刀具，夹持机构201夹持工件。")
 
 
 @pytest.mark.parametrize("pid", CASES)
 def test_s4_critic_roundtrips_byte_for_byte(store, pid):
-    if pid == "method":
-        _inject_inconsistent_mark(store, pid)
+    _inject_inconsistent_mark(store, pid)
     ctx = run(store, "s4", pid)
     crits = [p for p in ctx.proposals if p.kind == "critic"]
     assert crits
     lines = store.read_content(pid).split("\n")
     for p in crits:
-        old = "\n".join(lines[p.anchor.line_start - 1: p.anchor.line_end])
+        old = "\n".join(lines[p.anchor.line_start - 1 : p.anchor.line_end])
         assert checks.roundtrip(old, p.critic_markdown).ok
         assert checks.lint(p.critic_markdown).ok
         assert "{~~" in p.critic_markdown
@@ -194,6 +217,7 @@ def test_s6_abstract_within_300_and_noun_subset(store, pid):
     assert ctx.proposals and ctx.proposals[0].kind in ("critic", "patch")
     p = ctx.proposals[0]
     from patent_studio.kernel import critic
+
     text = critic.accept(p.critic_markdown) if p.kind == "critic" else p.patch.blocks[0].markdown
     assert len(text) <= 300
     assert checks.noun_subset(text, store.read_content(pid)).ok
@@ -202,14 +226,16 @@ def test_s6_abstract_within_300_and_noun_subset(store, pid):
 
 # ---------------------------------------------------------------- S3 / S5 / S7 / S9 / S10 形态 ----
 
+
 def test_s3_insertion_critic(store):
     ctx = run(store, "s3", "system")
     crits = [p for p in ctx.proposals if p.kind == "critic"]
     assert crits
     lines = store.read_content("system").split("\n")
     from patent_studio.kernel import critic
+
     for p in crits:
-        old = "\n".join(lines[p.anchor.line_start - 1: p.anchor.line_end])
+        old = "\n".join(lines[p.anchor.line_start - 1 : p.anchor.line_end])
         assert "{++" in p.critic_markdown and "{--" not in p.critic_markdown and "~>" not in p.critic_markdown
         assert critic.reject(p.critic_markdown) == old
         assert critic.accept(p.critic_markdown).startswith(old) and len(critic.accept(p.critic_markdown)) > len(old)
@@ -223,8 +249,9 @@ def test_s5_comments_only(store):
 
 
 def test_s7_one_heavy_gen_per_item_and_no_renumber(store):
-    items = [{"id": f"oa-{i}", "claims": [1], "kind": "novelty", "text": f"关于权利要求 1 的第 {i} 条意见。"}
-             for i in (1, 2)]
+    items = [
+        {"id": f"oa-{i}", "claims": [1], "kind": "novelty", "text": f"关于权利要求 1 的第 {i} 条意见。"} for i in (1, 2)
+    ]
     ai = AiClient(prompts_agent.AgentMockProvider())
     ctx = run(store, "s7", "method", {"items": items}, ai=ai)
     gens = [e for e in ctx.events if e.kind == "gen_delta" and e.data["step"] == "argue"]
@@ -233,9 +260,10 @@ def test_s7_one_heavy_gen_per_item_and_no_renumber(store):
     assert len([p for p in ctx.proposals if p.kind == "comment"]) == 2
     lines = store.read_content("method").split("\n")
     from patent_studio.kernel import critic
+
     for p in ctx.proposals:
         if p.kind == "critic":
-            old = "\n".join(lines[p.anchor.line_start - 1: p.anchor.line_end])
+            old = "\n".join(lines[p.anchor.line_start - 1 : p.anchor.line_end])
             assert checks.roundtrip(old, p.critic_markdown).ok
             assert old.split(".", 1)[0] == critic.accept(p.critic_markdown).split(".", 1)[0], "权项号不变"
 
@@ -281,11 +309,18 @@ def test_s1_build_blocks_replaces_template_stubs():
     d = SimpleNamespace(ast=ast)
     blocks = s1.build_blocks(
         d,
-        ["一种方法，其特征在于，包括真步骤一；真步骤二。",
-         "根据权利要求1所述的方法，其特征在于，真限定。",
-         "根据权利要求2所述的方法，其特征在于，再限定。"],
-        {"技术领域": "本发明涉及真领域。", "背景技术": "背景一段。", "发明内容": "内容一段。",
-         "附图说明": "图1为示意图。", "具体实施方式": "实施一段。\n\n实施二段。"},
+        [
+            "一种方法，其特征在于，包括真步骤一；真步骤二。",
+            "根据权利要求1所述的方法，其特征在于，真限定。",
+            "根据权利要求2所述的方法，其特征在于，再限定。",
+        ],
+        {
+            "技术领域": "本发明涉及真领域。",
+            "背景技术": "背景一段。",
+            "发明内容": "内容一段。",
+            "附图说明": "图1为示意图。",
+            "具体实施方式": "实施一段。\n\n实施二段。",
+        },
         "# 题\n## 摘要\n本发明公开真摘要。",
     )
     reps = [b.replace_block_id for b in blocks if b.replace_block_id]
@@ -294,8 +329,7 @@ def test_s1_build_blocks_replaces_template_stubs():
     assert any(r.startswith("description/具体实施方式/") for r in reps)
     assert "abstract/p1" in reps
     # 第 3 权超占位 → 插在最后被替换的 claims/2 之后
-    assert [b.after_block_id for b in blocks
-            if not b.replace_block_id and "再限定" in b.markdown] == ["claims/2"]
+    assert [b.after_block_id for b in blocks if not b.replace_block_id and "再限定" in b.markdown] == ["claims/2"]
     # 摘要混入的书名/节名行被剔除
     abs_b = next(b for b in blocks if b.replace_block_id == "abstract/p1")
     assert abs_b.markdown == "本发明公开真摘要。"
@@ -309,6 +343,7 @@ def test_s1_build_blocks_replaces_template_stubs():
 def test_s1_limit_abstract_truncates_at_punctuation():
     """往复轮6：模型摘要超 CNIPA 300 字上限时整案提案此前被降级 comment——改为文边界截断兜底。"""
     from app.agent.plans import s1
+
     long = "本发明公开了一种方法" * 20 + "，中。" + "补充细节" * 60
     out = s1._limit_abstract(long)
     assert len(out) <= 290
@@ -319,10 +354,13 @@ def test_s1_limit_abstract_truncates_at_punctuation():
 def test_s1_dedupe_captions_keeps_longest():
     """往复轮9：模型违反「同一图号只声明一次」时确定性去重——同 N 保最长题注原位。"""
     from app.agent.plans import s1
-    text = ("图1为本发明实施例的总体流程图。\n\n"
-            "图1为基于去噪扩散概率模型的图像生成方法的整体流程示意图。\n\n"
-            "图2为模型架构图。\n\n"
-            "元件标号说明：101为训练模块；102为扩散单元。")
+
+    text = (
+        "图1为本发明实施例的总体流程图。\n\n"
+        "图1为基于去噪扩散概率模型的图像生成方法的整体流程示意图。\n\n"
+        "图2为模型架构图。\n\n"
+        "元件标号说明：101为训练模块；102为扩散单元。"
+    )
     out = s1._dedupe_captions(text)
     assert out.count("图1为") == 1 and "整体流程示意图" in out
     assert "总体流程图" not in out and "图2为模型架构图" in out
@@ -343,14 +381,16 @@ def test_s1_caption_stubs_replaced_by_number():
     blocks = s1.build_blocks(
         d,
         ["一种方法，其特征在于，包括真步骤一。"],
-        {"技术领域": "本发明涉及真领域。", "背景技术": "背景一段。", "发明内容": "内容一段。",
-         "附图说明": "图1为方法总体流程示意图。\n\n图2为系统架构示意图。\n\n"
-                     "元件标号说明：101为采集模块。",
-         "具体实施方式": "实施一段。"},
+        {
+            "技术领域": "本发明涉及真领域。",
+            "背景技术": "背景一段。",
+            "发明内容": "内容一段。",
+            "附图说明": "图1为方法总体流程示意图。\n\n图2为系统架构示意图。\n\n元件标号说明：101为采集模块。",
+            "具体实施方式": "实施一段。",
+        },
         "本发明公开真摘要不少于一百五十字。" * 8,
     )
-    cap_rep = [b for b in blocks if b.replace_block_id
-               and b.replace_block_id.startswith("description/附图说明/")]
+    cap_rep = [b for b in blocks if b.replace_block_id and b.replace_block_id.startswith("description/附图说明/")]
     assert cap_rep and "总体流程示意图" in cap_rep[0].markdown
     applied = checks.apply_blocks(TEMPLATE_MD, SimpleNamespace(blocks=blocks).blocks)
     assert applied.count("图1为") == 1
@@ -361,44 +401,49 @@ def test_s1_caption_stubs_replaced_by_number():
 def test_s1_plan_figures_normalizes():
     """往复轮10：大纲 figures 字段只收 {num:int, title:str} 形，畸形条目剔除。"""
     from app.agent.plans import s1
-    assert s1._plan_figures({"figures": [{"num": 1, "title": "流程图"},
-                                         {"num": "2"}, {"n": 3}, "图4", 5]}) == [
-        {"num": 1, "title": "流程图"}, {"num": 2, "title": ""}]
-    assert s1._plan_figures({}) == [] and s1._plan_figures(None) == []
 
+    assert s1._plan_figures({"figures": [{"num": 1, "title": "流程图"}, {"num": "2"}, {"n": 3}, "图4", 5]}) == [
+        {"num": 1, "title": "流程图"},
+        {"num": 2, "title": ""},
+    ]
+    assert s1._plan_figures({}) == [] and s1._plan_figures(None) == []
 
 
 def test_s1_figsrc_sanitize_math_residue():
     """往复轮37：图源标签数学记号确定性剥除——ε_θ/q(x|y)/N(0,I)/‖·‖不进图，
     剥空节点回退 id、剥空边标签整段移除；中文元件名+标号保留。"""
     from app.agent.plans import s1
-    src = ('flowchart LR\n'
-           '    SCH["噪声调度单元 102<br/>预设噪声调度 β_t"]\n'
-           '    X0["训练样本 x_0"] -->|"q(x_t|x_{t-1}) 加高斯噪声"| X1["x_T ~ N(0,I)"]\n'
-           '    L["损失计算单元 108<br/>‖ε−ε_θ(x_t,t)‖² 加权期望"]\n'
-           '    U["U-Net骨干网络 105"]\n')
+
+    src = (
+        "flowchart LR\n"
+        '    SCH["噪声调度单元 102<br/>预设噪声调度 β_t"]\n'
+        '    X0["训练样本 x_0"] -->|"q(x_t|x_{t-1}) 加高斯噪声"| X1["x_T ~ N(0,I)"]\n'
+        '    L["损失计算单元 108<br/>‖ε−ε_θ(x_t,t)‖² 加权期望"]\n'
+        '    U["U-Net骨干网络 105"]\n'
+    )
     out = s1._sanitize_mmd(src)
-    assert '噪声调度单元 102' in out and 'U-Net骨干网络 105' in out
-    assert '损失计算单元 108' in out and '加权期望' in out
-    for bad in ('β_t', 'x_0', 'x_t', 'x_{', 'ε_θ', '‖', 'N(0', '~', '\\'):
+    assert "噪声调度单元 102" in out and "U-Net骨干网络 105" in out
+    assert "损失计算单元 108" in out and "加权期望" in out
+    for bad in ("β_t", "x_0", "x_t", "x_{", "ε_θ", "‖", "N(0", "~", "\\"):
         assert bad not in out, bad
-    assert '"X1"' in out            # 纯数学节点回退 id
-    assert '|""|' not in out        # 空边标签不残留
-    assert '-->|"加高斯噪声"|' not in out or 'q(' not in out
+    assert '"X1"' in out  # 纯数学节点回退 id
+    assert '|""|' not in out  # 空边标签不残留
+    assert '-->|"加高斯噪声"|' not in out or "q(" not in out
 
 
 def test_s1_claims_multi_multi_detect():
     """往复轮39：多项从属再引多项从属的确定性检出——ddpm-4 实案型态。
     独权型「…执行权利要求1至N任一项」（四型束）不算从属不报；单引从属不算。"""
     from app.agent.plans import s1
+
     claims = [
-        "一种图像生成模型的训练方法，其特征在于，包括步骤A与步骤B。",                # 1 独权
-        "根据权利要求1所述的方法，其特征在于，步骤A包括子步骤。",                    # 2 单从属
-        "根据权利要求1所述的方法，其特征在于，步骤B包括参数限定。",                  # 3 单从属
-        "根据权利要求1或权利要求2所述的方法，其特征在于，加权期望按变分下界取权。",   # 4 多项从属
-        "根据权利要求1至4任一项所述的方法，其特征在于，时间步经正弦嵌入注入。",       # 5 多项引多项→违规
+        "一种图像生成模型的训练方法，其特征在于，包括步骤A与步骤B。",  # 1 独权
+        "根据权利要求1所述的方法，其特征在于，步骤A包括子步骤。",  # 2 单从属
+        "根据权利要求1所述的方法，其特征在于，步骤B包括参数限定。",  # 3 单从属
+        "根据权利要求1或权利要求2所述的方法，其特征在于，加权期望按变分下界取权。",  # 4 多项从属
+        "根据权利要求1至4任一项所述的方法，其特征在于，时间步经正弦嵌入注入。",  # 5 多项引多项→违规
         "一种图像生成系统，其特征在于，各模块被配置为执行权利要求1至5任一项所述方法的各步骤。",  # 6 独权型引用→不报
-        "根据权利要求2所述的方法，其特征在于，骨干网络设自注意力层。",               # 7 单引从属→不报
+        "根据权利要求2所述的方法，其特征在于，骨干网络设自注意力层。",  # 7 单引从属→不报
     ]
     assert s1._multi_multi_violations(claims) == [(5, [4])]
     # 全单链无违规
@@ -408,6 +453,7 @@ def test_s1_claims_multi_multi_detect():
 def test_s1_claim_ref_nums_range_expand():
     """往复轮39：「N至M」区间展开 + 自引剔除。"""
     from app.agent.plans import s1
+
     assert s1._claim_ref_nums("执行权利要求1至4任一项所述方法的各步骤", 9) == {1, 2, 3, 4}
     assert s1._claim_ref_nums("根据权利要求1或权利要求5所述的方法", 8) == {1, 5}
     assert s1._claim_ref_nums("根据权利要求1所述的方法", 1) == set()
@@ -417,11 +463,12 @@ def test_s1_claims_no_characterizing_detect():
     """往复轮109：缺「其特征在于」确定性检出——mamba 实案 s1 重写权项
     整族丢式（全 14 项独权带从权通篇无此短语）；检出即点名重弹补回。"""
     from app.agent.plans import s1
+
     claims = [
-        "一种序列建模方法，包括：获取输入序列；构建状态空间模型。",        # 1 缺
-        "根据权利要求1所述的方法，其特征在于，步骤A包括子步骤。",          # 2 有
-        "根据权利要求1所述的方法，参数B为可学习参数。",                    # 3 缺
-        "一种序列建模系统，其特征在于，各模块被配置为执行方法。",           # 4 有
+        "一种序列建模方法，包括：获取输入序列；构建状态空间模型。",  # 1 缺
+        "根据权利要求1所述的方法，其特征在于，步骤A包括子步骤。",  # 2 有
+        "根据权利要求1所述的方法，参数B为可学习参数。",  # 3 缺
+        "一种序列建模系统，其特征在于，各模块被配置为执行方法。",  # 4 有
     ]
     assert s1._no_characterizing(claims) == [1, 3]
     assert s1._no_characterizing(claims[1:2]) == []
@@ -431,32 +478,34 @@ def test_s1_claims_flat_gradient_detect():
     """往复轮41：从权平铺无梯度的确定性检出——ddpm-10 实案型态。
     簇≥3 且无一引在先从权→报；有任一链式递进→不报；独权型引用不算。"""
     from app.agent.plans import s1
+
     flat = [
-        "一种图像生成模型的训练方法，其特征在于，包括步骤A与步骤B。",               # 1 独权
-        "根据权利要求1所述的方法，其特征在于，步骤A包括子步骤。",                   # 2
-        "根据权利要求1所述的方法，其特征在于，步骤B包括参数限定。",                 # 3
-        "根据权利要求1所述的方法，其特征在于，损失取变分下界。",                    # 4
-        "根据权利要求1所述的方法，其特征在于，时间步经正弦嵌入。",                  # 5 — 簇4全平引→报(1,4)
+        "一种图像生成模型的训练方法，其特征在于，包括步骤A与步骤B。",  # 1 独权
+        "根据权利要求1所述的方法，其特征在于，步骤A包括子步骤。",  # 2
+        "根据权利要求1所述的方法，其特征在于，步骤B包括参数限定。",  # 3
+        "根据权利要求1所述的方法，其特征在于，损失取变分下界。",  # 4
+        "根据权利要求1所述的方法，其特征在于，时间步经正弦嵌入。",  # 5 — 簇4全平引→报(1,4)
     ]
     assert s1._flat_gradient_violations(flat) == [(1, 4)]
     chained = flat[:3] + [
-        "根据权利要求3所述的方法，其特征在于，参数限定进一步为σ调度。",             # 4 递进
-        "根据权利要求1所述的方法，其特征在于，时间步经正弦嵌入。",                  # 5
+        "根据权利要求3所述的方法，其特征在于，参数限定进一步为σ调度。",  # 4 递进
+        "根据权利要求1所述的方法，其特征在于，时间步经正弦嵌入。",  # 5
     ]
     assert s1._flat_gradient_violations(chained) == []
     small = flat[:3]
-    assert s1._flat_gradient_violations(small) == []   # 簇<3 不报
+    assert s1._flat_gradient_violations(small) == []  # 簇<3 不报
 
 
 def test_s1_claims_type_bundle_detect():
     """往复轮43：独权类型组缺型确定性检出——resnet-8 型态四型齐备 0 命中。"""
     from app.agent.plans import s1
+
     full = [
-        "1.一种图像识别方法，其特征在于，包括步骤。",            # 方法独权
-        "2.根据权利要求1所述的方法，其特征在于，细节。",          # 从属不计
-        "3.一种图像识别系统，其特征在于，包括模块。",            # 系统→装置族
-        "4.一种电子设备，其特征在于，包括处理器与存储器。",        # 设备
-        "5.一种计算机可读存储介质，其特征在于，存储有程序。",      # 介质
+        "1.一种图像识别方法，其特征在于，包括步骤。",  # 方法独权
+        "2.根据权利要求1所述的方法，其特征在于，细节。",  # 从属不计
+        "3.一种图像识别系统，其特征在于，包括模块。",  # 系统→装置族
+        "4.一种电子设备，其特征在于，包括处理器与存储器。",  # 设备
+        "5.一种计算机可读存储介质，其特征在于，存储有程序。",  # 介质
     ]
     assert s1._type_bundle_missing(full) == []
     missing = full[:2]
@@ -465,8 +514,12 @@ def test_s1_claims_type_bundle_detect():
     sneaky = full[:2] + ["3.根据权利要求1所述的图像识别系统，其特征在于，模块细化。"]
     assert "装置" in s1._type_bundle_missing(sneaky)
     # 装置/程序产品同族互换
-    alt = ["1.一种方法，其特征在于。", "2.一种处理装置，其特征在于。",
-           "3.一种电子设备，其特征在于。", "4.一种计算机程序产品，其特征在于。"]
+    alt = [
+        "1.一种方法，其特征在于。",
+        "2.一种处理装置，其特征在于。",
+        "3.一种电子设备，其特征在于。",
+        "4.一种计算机程序产品，其特征在于。",
+    ]
     assert s1._type_bundle_missing(alt) == []
 
 
@@ -474,10 +527,13 @@ def test_s1_eq_renumber_conflict():
     """往复轮48：跨书式号冲突确定性重编——resnet-9 实案 式(1) 权项指 y=F+x、
     实施方式指 F=H-x，后者换新号全段同步；一致的声明不重编。"""
     from app.agent.plans import s1
+
     claims = "1.一种方法：$$y=F(x,\\{W_{i}\\})+x$$（式(1)）。"
     taken = s1._eq_decls(claims)
-    impl = ("步骤一：$$F(x)=H(x)-x$$式(1)\n\n步骤二：$$y=F(x,{Wi})+x$$式(2)，输出满足式(2)。"
-            "\n\n步骤三：$$y=F(x,{Wi})+Ws·x$$式(3)")
+    impl = (
+        "步骤一：$$F(x)=H(x)-x$$式(1)\n\n步骤二：$$y=F(x,{Wi})+x$$式(2)，输出满足式(2)。"
+        "\n\n步骤三：$$y=F(x,{Wi})+Ws·x$$式(3)"
+    )
     fixed = s1._eq_renumber(impl, taken)
     decl = s1._eq_decls(fixed)
     # 冲突的 式1/式2 已换新号、同号同式的引用同步；一致的 式3 保留
@@ -495,8 +551,8 @@ def test_s1_eq_renumber_conflict():
 def test_s1_table_checks():
     """往复轮48：表号重号换号+题注缺表体检出。"""
     from app.agent.plans import s1
-    text = ("正文引表1：\n\n表1 配置表\n\n| 列 | 值 |\n\n"
-            "下一张：\n\n表1 验证结果\n\n| 场景 | 结果 |\n\n表1中数据说明。")
+
+    text = "正文引表1：\n\n表1 配置表\n\n| 列 | 值 |\n\n下一张：\n\n表1 验证结果\n\n| 场景 | 结果 |\n\n表1中数据说明。"
     taken: set[str] = set()
     fixed = s1._retable(text, taken)
     assert "表1 配置表" in fixed and "表2 验证结果" in fixed
@@ -510,18 +566,21 @@ def test_s1_table_checks():
 def test_s1_detached_tables():
     """往复轮54：游离表片剥离——模型把表体堆在文末+纯文本重复版（vit-8 实案）。"""
     from app.agent.plans import s1
-    text = ("表1 模块配置表\n\n| 模块 | 输出 |\n|---|---|\n| 切分模块101 | 图像块 |\n\n"
-            "正文段落。\n\n综上所述，全文收束。\n\n"
-            "|---|---|\n| 游离表头 | 值 |\n| 行1 | 甲 |\n\n"
-            "|---|---|---|\n| 模块 | 对象 | 输出 |\n| 切分模块101 | 图像 | 块 |\n"
-            "| 线性投影102 | 块 | 向量 |\n| 编码器103 | 向量 | 特征 |\n\n"
-            "模块 对象 输出\n切分模块101 图像 块\n线性投影102 块 向量\n编码器103 向量 特征")
+
+    text = (
+        "表1 模块配置表\n\n| 模块 | 输出 |\n|---|---|\n| 切分模块101 | 图像块 |\n\n"
+        "正文段落。\n\n综上所述，全文收束。\n\n"
+        "|---|---|\n| 游离表头 | 值 |\n| 行1 | 甲 |\n\n"
+        "|---|---|---|\n| 模块 | 对象 | 输出 |\n| 切分模块101 | 图像 | 块 |\n"
+        "| 线性投影102 | 块 | 向量 |\n| 编码器103 | 向量 | 特征 |\n\n"
+        "模块 对象 输出\n切分模块101 图像 块\n线性投影102 块 向量\n编码器103 向量 特征"
+    )
     out = s1._strip_detached_tables(text)
     assert "表1 模块配置表" in out and "| 切分模块101 | 图像块 |" in out  # 合法表保留
     assert "综上所述" in out and "正文段落" in out
     assert "游离表头" not in out and "行1" not in out  # 游离片剥除
-    assert "| 模块 | 对象 | 输出 |" not in out          # 连续第二片同样剥除
-    assert "线性投影102" not in out                   # 纯文本重复版剥除
+    assert "| 模块 | 对象 | 输出 |" not in out  # 连续第二片同样剥除
+    assert "线性投影102" not in out  # 纯文本重复版剥除
     # 表区内散行段落保留（不属表块）
     t2 = "表2 对比表\n\n| 项 | 值 |\n\n方案A | 优 | 快\n\n方案B | 中 | 慢"
     assert s1._strip_detached_tables(t2) == t2
@@ -533,6 +592,7 @@ def test_s1_detached_tables():
 def test_s1_table_zone_end():
     """往复轮54：表区末段判定——题注后连续含|段+散行段归区。"""
     from app.agent.plans import s1
+
     paras = ["表2 对比表", "| 项 | 值 |\n| a | b |", "方案A | 优 | 快", "综上所述正文"]
     assert s1._table_zone_end(paras, 0) == 2
     paras2 = ["表1 配置表", "表1中，说明文字。"]
@@ -542,6 +602,7 @@ def test_s1_table_zone_end():
 def test_s1_table_refs_missing():
     """往复轮55：表号引用悬空检出——正文引「表N」但全文无题注（vit-9 实案表1）。"""
     from app.agent.plans import s1
+
     missing = "各模块参数如表1所示，按表1配置即可复现。\n\n综上所述，正文结束。"
     assert s1._table_refs_missing(missing) == ["1"]
     ok = "各模块参数如表1所示。\n\n表1 模块配置表\n\n| 模块 | 值 |\n|---|---|"
@@ -552,6 +613,7 @@ def test_s1_table_refs_missing():
 def test_s1_extra_carrier_indeps():
     """往复轮56：功能载体独权并立检出——装置/系统/模型同族至多一项（vit-9 权6模型+权15装置）。"""
     from app.agent.plans import s1
+
     claims = [
         "一种基于Transformer的图像识别方法，其特征在于，包括步骤A。",
         "根据权利要求1所述的方法，其特征在于，P取16。",
@@ -572,8 +634,8 @@ def test_s1_extra_carrier_indeps():
 def test_s1_wrap_text_formulas():
     """往复轮57：纯文本公式行包 $$——vit-9 实施方式 `z_0=[x_class; …]　式(3)` 形。"""
     from app.agent.plans import s1
-    out = s1._wrap_text_formulas(
-        "如式(3)所示：\n\nz_0=[x_class; t′_1; …; t′_N]　式(3)\n\n式(3)中分号表示拼接。")
+
+    out = s1._wrap_text_formulas("如式(3)所示：\n\nz_0=[x_class; t′_1; …; t′_N]　式(3)\n\n式(3)中分号表示拼接。")
     assert "$$z_0=[x_class; t'_1; \\ldots; t'_N]$$式(3)" in out
     assert "式(3)中分号表示拼接" in out  # 引用散文不动
     # unicode 算符/上下标转写
@@ -588,6 +650,7 @@ def test_s1_wrap_text_formulas():
 def test_s1_formulas_missing_body():
     """往复轮48：段末宣告公式而次段无 $$ 块 = 缺式检出（resnet-9 两处实案同型）。"""
     from app.agent.plans import s1
+
     assert s1._formulas_missing_body("输出y满足式(1)：\n\n本实施例还提供介质。")
     assert s1._formulas_missing_body("即：\n\n下一段正文。")
     assert not s1._formulas_missing_body("输出y满足式(1)：\n\n$$y=F+x$$式(1)")
@@ -597,6 +660,7 @@ def test_s1_formulas_missing_body():
 def test_s1_eq_gap_renumber():
     """往复轮58：式号跳号顺位补齐+同式异号重申回正号（vit-10 式11断档/式12与式5同体）。"""
     from app.agent.plans import s1
+
     # 跳号：台账 1-10 后声明式12 → 归位式11，引用同步
     text = "如式(12)所示：\n\n$$z=f(x)$$式(12)\n\n再由式(12)推导。"
     taken = {str(i): f"body{i}" for i in range(1, 11)}
@@ -616,14 +680,17 @@ def test_s1_eq_gap_renumber():
 def test_s1_rejoin_caption_orphans():
     """往复轮58：三体分裂拼合+无题注表配号+孤头残段剥除（vit-10 实案表区）。"""
     from app.agent.plans import s1
-    text = ("如表1所示：\n\n"
-            "|处理位置|输入尺寸|输出尺寸|\n\n"
-            "中间隔着的正文段落。\n\n"
-            "表2 对比表\n\n"
-            "| 项 | A | B |\n\n"
-            "又一正文段。\n\n"
-            "| a1 | b1 | c1 |\n| a2 | b2 | c2 |\n\n"
-            "|---|---|---|\n|m1|x|y|\n|m2|x|y|")
+
+    text = (
+        "如表1所示：\n\n"
+        "|处理位置|输入尺寸|输出尺寸|\n\n"
+        "中间隔着的正文段落。\n\n"
+        "表2 对比表\n\n"
+        "| 项 | A | B |\n\n"
+        "又一正文段。\n\n"
+        "| a1 | b1 | c1 |\n| a2 | b2 | c2 |\n\n"
+        "|---|---|---|\n|m1|x|y|\n|m2|x|y|"
+    )
     out = s1._strip_detached_tables(s1._caption_orphan_tables(s1._rejoin_split_tables(text), ["1"]))
     # 分隔线起首表块拼回孤儿表头 → 表1 题注配上（表头在前、分隔线+数据行归位）
     assert "表1\n\n|处理位置|输入尺寸|输出尺寸|\n|---|---|---|\n|m1|x|y|" in out
@@ -635,6 +702,7 @@ def test_s1_rejoin_caption_orphans():
 def test_s1_single_pipe_frag():
     """往复轮58：单行 | 残段识别——孤头必残，多行/无|不误伤。"""
     from app.agent.plans import s1
+
     assert s1._single_pipe_frag("|处理位置|输入|输出|")
     assert not s1._single_pipe_frag("|a|b|\n|---|---|")
     assert not s1._single_pipe_frag("普通正文段")
@@ -645,10 +713,13 @@ def test_s1_fused_caption_table_split():
     """往复轮59：题注与表体同段黏连（\n 连接）拆段归一——不再被当无题注表错插裸序号；
     紧随的等行集完整表按重发残件剥除（bert-14 实案融合+双发）。"""
     from app.agent.plans import s1
-    text = ("如表1所示：\n\n"
-            "表1 规模配置\n| 配置 | L | H |\n| A | 12 | 768 |\n| B | 24 | 1024 |\n\n"
-            "| 配置 | L | H |\n| A | 12 | 768 |\n| B | 24 | 1024 |\n\n"
-            "综上，本发明取得效果。")
+
+    text = (
+        "如表1所示：\n\n"
+        "表1 规模配置\n| 配置 | L | H |\n| A | 12 | 768 |\n| B | 24 | 1024 |\n\n"
+        "| 配置 | L | H |\n| A | 12 | 768 |\n| B | 24 | 1024 |\n\n"
+        "综上，本发明取得效果。"
+    )
     out = s1._strip_detached_tables(s1._caption_orphan_tables(s1._rejoin_split_tables(text), []))
     assert "表1 规模配置\n\n| 配置 | L | H |" in out
     assert "表2" not in out and "表4" not in out and "表5" not in out
@@ -660,16 +731,19 @@ def test_s1_end_dump_pair_rebind():
     """往复轮59：文末 [数据组][头+数据] 成对堆叠——对塌留全 + 头行等值绑回题注表
     （bert-14 实案三表全堆文末；同列数会让按列归并错配最近题注）。"""
     from app.agent.plans import s1
-    text = ("表1 配置表\n\n| 配置 | L | H |\n\n"
-            "表2 替换规则\n\n| 处理 | 比例 |\n\n"
-            "表3 评测结果\n\n| 任务 | 指标 |\n\n"
-            "综上，本发明取得效果。\n\n"
-            "| GLUE | 80 |\n| MNLI | 86 |\n\n"
-            "| 任务 | 指标 |\n| GLUE | 80 |\n| MNLI | 86 |\n\n"
-            "| MASK | 80% |\n| 随机 | 10% |\n\n"
-            "| 处理 | 比例 |\n| MASK | 80% |\n| 随机 | 10% |\n\n"
-            "| A | 12 | 768 |\n| B | 24 | 1024 |\n\n"
-            "| 配置 | L | H |\n| A | 12 | 768 |\n| B | 24 | 1024 |")
+
+    text = (
+        "表1 配置表\n\n| 配置 | L | H |\n\n"
+        "表2 替换规则\n\n| 处理 | 比例 |\n\n"
+        "表3 评测结果\n\n| 任务 | 指标 |\n\n"
+        "综上，本发明取得效果。\n\n"
+        "| GLUE | 80 |\n| MNLI | 86 |\n\n"
+        "| 任务 | 指标 |\n| GLUE | 80 |\n| MNLI | 86 |\n\n"
+        "| MASK | 80% |\n| 随机 | 10% |\n\n"
+        "| 处理 | 比例 |\n| MASK | 80% |\n| 随机 | 10% |\n\n"
+        "| A | 12 | 768 |\n| B | 24 | 1024 |\n\n"
+        "| 配置 | L | H |\n| A | 12 | 768 |\n| B | 24 | 1024 |"
+    )
     out = s1._strip_detached_tables(s1._caption_orphan_tables(s1._rejoin_split_tables(text), []))
     # 三张表各归各位：头行等值绑定到各自题注，文尾无残表堆
     assert "表1 配置表\n\n| 配置 | L | H |\n|---|---|---|\n| A | 12 | 768 |\n| B | 24 | 1024 |" in out
@@ -682,12 +756,15 @@ def test_s1_end_dump_pair_rebind():
 def test_s1_abstract_floor_pad():
     """往复轮59：摘要 <240 燃尽后从发明内容摘句并入——纯搬位、效果句仍居尾、不编造。"""
     from app.agent.plans import s1
-    seg = ("一种图像识别方法，包括获取待识别图像并调用卷积神经网络提取特征表示的步骤。"
-           "该模型包括编码器、分类器与输出层三部分构成。"
-           "训练时以交叉熵损失对模型参数进行迭代更新，并对输入图像执行归一化与尺寸对齐预处理。"
-           "推理阶段对特征表示进行全局池化后送入分类器，输出各类别的置信度分数。"
-           "模型部署时可运行于电子设备与可读存储介质之上，支持批量图像的并发识别处理。"
-           "系统还包括与模型配套的参数管理单元与结果缓存单元，分别用于模型加载与中间结果复用。")
+
+    seg = (
+        "一种图像识别方法，包括获取待识别图像并调用卷积神经网络提取特征表示的步骤。"
+        "该模型包括编码器、分类器与输出层三部分构成。"
+        "训练时以交叉熵损失对模型参数进行迭代更新，并对输入图像执行归一化与尺寸对齐预处理。"
+        "推理阶段对特征表示进行全局池化后送入分类器，输出各类别的置信度分数。"
+        "模型部署时可运行于电子设备与可读存储介质之上，支持批量图像的并发识别处理。"
+        "系统还包括与模型配套的参数管理单元与结果缓存单元，分别用于模型加载与中间结果复用。"
+    )
     a4 = "本发明涉及一种图像识别方法。包括获取图像、提取特征、分类识别。从而提高识别准确率。"
     out = s1._abstract_floor_pad(a4, seg)
     assert len(out) >= 240
@@ -702,9 +779,12 @@ def test_s1_math_pipes_not_phantom_cols():
     """往复轮60：$$..$$ 内 |V| 数学记号不算表格列——纯散文段不得被误判为
     孤儿表头残段，sep-led 数据不得灌进散文（bert-15 实案）。"""
     from app.agent.plans import s1
-    prose = ("掩码语言模型单元105取编码器堆叠104在被遮盖位置$$i\\in\\mathcal{M}$$的"
-             "输出向量$$h_i^{(L)}$$，经线性映射$$W_{mlm}\\in\\mathbb{R}^{H\\times|\\mathcal{V}|}$$"
-             "与偏置$$b_{mlm}\\in\\mathbb{R}^{|\\mathcal{V}|}$$得到得分向量。")
+
+    prose = (
+        "掩码语言模型单元105取编码器堆叠104在被遮盖位置$$i\\in\\mathcal{M}$$的"
+        "输出向量$$h_i^{(L)}$$，经线性映射$$W_{mlm}\\in\\mathbb{R}^{H\\times|\\mathcal{V}|}$$"
+        "与偏置$$b_{mlm}\\in\\mathbb{R}^{|\\mathcal{V}|}$$得到得分向量。"
+    )
     assert not s1._is_table_block(prose)
     assert not s1._single_pipe_frag(prose)
     assert s1._pipe_cols(prose) == 0
@@ -715,6 +795,7 @@ def test_s1_bodiless_caption_frag_rebind():
     """往复轮60：题注后仅表头行、表体 sep-led 堆文末——按「空体题注优先」归位；
     同列数题注并存时先到数据先得体，后到数据归剩余空体（bert-15 实案四表全归位）。"""
     from app.agent.plans import s1
+
     text = (
         "表1 子层构成\n\n| 子层 | 运算 | 输入 | 输出 |\n\n"
         "表2 处理策略\n\n| 处理方式 | 概率 | 内容 |\n\n"
@@ -724,7 +805,8 @@ def test_s1_bodiless_caption_frag_rebind():
         "| GLUE | 得分 | 80.5% |\n| SQuAD | F1 | 93.2 |\n\n"
         "| --- | --- | --- | --- | --- | --- | --- |\n| 配置一 | 12 | 768 | 12 | 64 | 3072 | 110M |\n\n"
         "| --- | --- | --- |\n| 替换为MASK | 80% | 替换为特殊token |\n| 随机替换 | 10% | 随机token |\n\n"
-        "| --- | --- | --- | --- |\n| 自注意力子层 | 缩放点积 | BxT | BxT |\n")
+        "| --- | --- | --- | --- |\n| 自注意力子层 | 缩放点积 | BxT | BxT |\n"
+    )
     out = s1._strip_detached_tables(s1._caption_orphan_tables(s1._rejoin_split_tables(text), []))
     assert "| 子层 | 运算 | 输入 | 输出 |\n|---|---|---|---|\n| 自注意力子层 |" in out
     assert "| 处理方式 | 概率 | 内容 |\n|---|---|---|\n| 替换为MASK |" in out
@@ -738,13 +820,16 @@ def test_s1_bodiless_caption_frag_rebind():
 def test_retitle_strips_meta_tail():
     """bert-12 实案迭代标记漏进书题——尾括注剥除、题中「验证」词不受影响、占位题面仍兜底。"""
     from app.agent import proposals
+
     body = "\n\n## 摘要\n\n甲"
-    assert proposals._retitle(
-        "# 一种基于双向Transformer的文本语义编码方法及装置（轮33验证）" + body
-    ).split("\n")[0] == "# 一种基于双向Transformer的文本语义编码方法及装置"
-    assert proposals._retitle(
-        "# 一种数据处理方法及装置(实验版v3)（轮5验证）" + body
-    ).split("\n")[0] == "# 一种数据处理方法及装置"
+    assert (
+        proposals._retitle("# 一种基于双向Transformer的文本语义编码方法及装置（轮33验证）" + body).split("\n")[0]
+        == "# 一种基于双向Transformer的文本语义编码方法及装置"
+    )
+    assert (
+        proposals._retitle("# 一种数据处理方法及装置(实验版v3)（轮5验证）" + body).split("\n")[0]
+        == "# 一种数据处理方法及装置"
+    )
     # 题中「验证」词与合法题名不动
     assert proposals._retitle("# 一种图像验证方法" + body).split("\n")[0] == "# 一种图像验证方法"
     assert proposals._retitle("# 一种图像识别方法及装置" + body).split("\n")[0] == "# 一种图像识别方法及装置"
@@ -754,12 +839,15 @@ def test_wrap_pipe_frag_tables():
     """bert-12 实案：配置表按散文段落逐行发出（无首|/分隔线/题注），裸|直印正文——
     残段游程回包成表、配裸题注、挪到 表N 引用段后；无引用/列不齐/散文不触发。"""
     from app.agent.plans import s1
-    text = ("实施例一：两种规模配置如表1所示。\n\n"
-            "其他说明段。\n\n"
-            "配置名称 | 层数L | 隐藏维H | 注意力头数A | 参数规模\n\n"
-            "BERT-BASE | 12 | 768 | 12 | 约110M\n\n"
-            "BERT-LARGE | 24 | 1024 | 16 | 约340M\n\n"
-            "收尾段。")
+
+    text = (
+        "实施例一：两种规模配置如表1所示。\n\n"
+        "其他说明段。\n\n"
+        "配置名称 | 层数L | 隐藏维H | 注意力头数A | 参数规模\n\n"
+        "BERT-BASE | 12 | 768 | 12 | 约110M\n\n"
+        "BERT-LARGE | 24 | 1024 | 16 | 约340M\n\n"
+        "收尾段。"
+    )
     out = s1._wrap_pipe_frag_tables(text)
     assert "| 配置名称 | 层数L |" in out and "| BERT-BASE | 12 |" in out
     assert "如表1所示。\n\n表1\n\n| 配置名称" in out  # 题注+表随引用段归位
@@ -771,17 +859,18 @@ def test_wrap_pipe_frag_tables():
     # 负例二：散文含数学 | 记号不触发
     assert s1._wrap_pipe_frag_tables("句中 $a|b$ 是数学。") == "句中 $a|b$ 是数学。"
     # 负例三：题注已有且有体表 → 残段无锚可配，保留原样不动
-    has = ("如表1所示。\n\n表1 配置\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\n"
-           "x | 1 | 2\n\ny | 3 | 4")
+    has = "如表1所示。\n\n表1 配置\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\nx | 1 | 2\n\ny | 3 | 4"
     assert s1._wrap_pipe_frag_tables(has) == has
     # bert-12 真型：题注在但表体缺——残段包表直插题注段后（题注锚优先于引用锚）
-    caponly = ("实施例一：两种规模配置如表1所示。\n\n"
-               "表1 双向Transformer编码器堆叠104的规模配置\n\n"
-               "其他说明段若干。\n\n"
-               "配置名称 | 层数L | 隐藏维H | 注意力头数A | 参数规模\n\n"
-               "BERT-BASE | 12 | 768 | 12 | 约110M\n\n"
-               "BERT-LARGE | 24 | 1024 | 16 | 约340M\n\n"
-               "收尾段。")
+    caponly = (
+        "实施例一：两种规模配置如表1所示。\n\n"
+        "表1 双向Transformer编码器堆叠104的规模配置\n\n"
+        "其他说明段若干。\n\n"
+        "配置名称 | 层数L | 隐藏维H | 注意力头数A | 参数规模\n\n"
+        "BERT-BASE | 12 | 768 | 12 | 约110M\n\n"
+        "BERT-LARGE | 24 | 1024 | 16 | 约340M\n\n"
+        "收尾段。"
+    )
     o2 = s1._wrap_pipe_frag_tables(caponly)
     assert "规模配置\n\n| 配置名称" in o2
     assert o2.count("BERT-BASE") == 1 and "收尾段。" in o2
@@ -789,6 +878,7 @@ def test_wrap_pipe_frag_tables():
 
 def test_clean_abstract_normalizes_opening():
     from app.agent.plans.s1 import _clean_abstract
+
     assert _clean_abstract("本申请公开了一种方法。从而提高了效率。").startswith("本发明公开")
     assert _clean_abstract("本发明公开了一种方法。").startswith("本发明公开")
     # 非起句的「本申请」不碰（罕见但保留原义）
@@ -798,6 +888,7 @@ def test_clean_abstract_normalizes_opening():
 
 def test_promo_covers_benchmark_boasts():
     from patent_studio.kernel.preflight import _PROMO_RE
+
     for w in ("刷新纪录", "创下纪录", "打破纪录", "世界纪录", "先进水平", "SOTA"):
         assert _PROMO_RE.search(w), w
     # 实验数据陈述不判宣传
@@ -814,6 +905,7 @@ def test_self_ref_unified_to_benfaming():
 
 def test_wrap_eq_lead_inline_to_display():
     from app.agent.plans.s1 import _wrap_text_formulas
+
     src = "式(1)：$E_i=T_i+S_i+P_i$。\n\n式(2): $h_i^l=Enc_l(h^{l-1})$\n\n式(1)中，$E_i$ 为输入表示。"
     out = _wrap_text_formulas(src)
     assert "$$E_i=T_i+S_i+P_i$$式(1)" in out
@@ -824,9 +916,8 @@ def test_wrap_eq_lead_inline_to_display():
 
 def test_wrap_eq_lead_display_and_markup():
     from app.agent.plans.s1 import _wrap_text_formulas
-    src = ("{++式(1)：$$E_i = T_i + S_i + P_i$$++}\n\n"
-           "式(2)：$$h=Enc(x)$$\n\n"
-           "式(1)中，$E_i$ 为输入表示。")
+
+    src = "{++式(1)：$$E_i = T_i + S_i + P_i$$++}\n\n式(2)：$$h=Enc(x)$$\n\n式(1)中，$E_i$ 为输入表示。"
     out = _wrap_text_formulas(src)
     assert "{++$$E_i = T_i + S_i + P_i$$式(1)++}" in out
     assert "$$h=Enc(x)$$式(2)" in out
@@ -836,11 +927,14 @@ def test_wrap_eq_lead_display_and_markup():
 def test_mark_name_abbr_parens_not_drift():
     from patent_studio.kernel import preflight
     from patent_studio.kernel.ast import parse_ast
+
     # bert-15 实案：图例带（NSP）括注 vs 正文裸名——定义性注释非漂移
-    text = ("# 一种方法\n\n## 摘要\n\n一种方法。\n\n## 权利要求书\n\n1.一种方法，包括下一句预测单元107。\n\n"
-            "## 说明书\n\n### 具体实施方式\n\n"
-            "下一句预测（NSP）单元107构造句对；下一句预测单元107判断后续。\n\n"
-            "元件标号说明：107为下一句预测（NSP）单元。\n")
+    text = (
+        "# 一种方法\n\n## 摘要\n\n一种方法。\n\n## 权利要求书\n\n1.一种方法，包括下一句预测单元107。\n\n"
+        "## 说明书\n\n### 具体实施方式\n\n"
+        "下一句预测（NSP）单元107构造句对；下一句预测单元107判断后续。\n\n"
+        "元件标号说明：107为下一句预测（NSP）单元。\n"
+    )
     r = preflight.run(parse_ast(text, None))
     assert not [i for i in r["items"] if i["rule"] == "numerals.inconsistent"]
 
@@ -848,10 +942,13 @@ def test_mark_name_abbr_parens_not_drift():
 def test_mark_name_true_drift_still_flags():
     from patent_studio.kernel import preflight
     from patent_studio.kernel.ast import parse_ast
+
     # resnet-4 实案：同号异基名——真漂移仍报
-    text = ("# 一种方法\n\n## 摘要\n\n一种方法。\n\n## 权利要求书\n\n1.一种方法，包括残差单元102。\n\n"
-            "## 说明书\n\n### 具体实施方式\n\n"
-            "特征提取单元102接收输入；深度残差模块102输出结果。\n")
+    text = (
+        "# 一种方法\n\n## 摘要\n\n一种方法。\n\n## 权利要求书\n\n1.一种方法，包括残差单元102。\n\n"
+        "## 说明书\n\n### 具体实施方式\n\n"
+        "特征提取单元102接收输入；深度残差模块102输出结果。\n"
+    )
     r = preflight.run(parse_ast(text, None))
     hits = [i for i in r["items"] if i["rule"] == "numerals.inconsistent"]
     assert hits and "特征提取单元" in hits[0]["message"]
@@ -877,9 +974,11 @@ def test_s1_build_blocks_redraft_replaces_in_place():
     d = SimpleNamespace(ast=parse_ast(drafted, {}))
     blocks = s1.build_blocks(
         d,
-        ["一种新方法，其特征在于，新步骤。",
-         "根据权利要求1所述的新方法，其特征在于，新限定。",
-         "根据权利要求2所述的新方法，其特征在于，再限定。"],
+        [
+            "一种新方法，其特征在于，新步骤。",
+            "根据权利要求1所述的新方法，其特征在于，新限定。",
+            "根据权利要求2所述的新方法，其特征在于，再限定。",
+        ],
         {"技术领域": "本发明涉及新领域。", "具体实施方式": "新实施一段。\n\n新实施二段。"},
         "本发明公开新摘要。",
     )
@@ -892,8 +991,10 @@ def test_s1_build_blocks_redraft_replaces_in_place():
     assert [b.after_block_id for b in tail] == ["claims/2"]
     assert tail[0].markdown.startswith("3.")
     # 说明书既有段原位替换；摘要首段亦然
-    assert any(b.replace_block_id and b.replace_block_id.startswith("description/技术领域/")
-               and "新领域" in b.markdown for b in blocks)
+    assert any(
+        b.replace_block_id and b.replace_block_id.startswith("description/技术领域/") and "新领域" in b.markdown
+        for b in blocks
+    )
     assert any(b.replace_block_id == "abstract/p1" and "新摘要" in b.markdown for b in blocks)
     # 端到端：虚拟应用后旧稿痕迹清零、无重复权项
     applied = checks.apply_blocks(drafted, SimpleNamespace(blocks=blocks).blocks)
@@ -914,8 +1015,10 @@ def test_claim_subject_typesuffix_at_clause_boundary():
     assert s1._type_bundle_missing(claims) == ["装置"]
     assert s1._extra_carrier_indeps(claims) == []
     # 真装置/系统/模型独权仍被识别
-    assert s1._extra_carrier_indeps(claims + ["11.一种扩散模型训练装置，其特征在于，包括：模块X。",
-                                            "12.一种扩散模型训练系统，其特征在于，包括：模块X。"]) == [5]
+    assert s1._extra_carrier_indeps(
+        claims
+        + ["11.一种扩散模型训练装置，其特征在于，包括：模块X。", "12.一种扩散模型训练系统，其特征在于，包括：模块X。"]
+    ) == [5]
     assert s1._type_bundle_missing(claims + ["11.一种扩散模型训练装置，其特征在于，包括：模块X。"]) == []
 
 
@@ -940,10 +1043,15 @@ def test_normalize_claim_order_clusters_and_carrier_refs():
     # 簇序：方法1+从权2,3 → 系统4+从权5 → 设备6+从权7 → 介质8
     heads = [c.split("，其特征", 1)[0] for c in out]
     assert heads == [
-        "1.一种X方法", "2.根据权利要求1所述的X方法", "3.根据权利要求2所述的X方法",
-        "4.一种X系统", "5.根据权利要求4所述的X系统",
-        "6.一种电子设备", "7.根据权利要求6所述的电子设备",
-        "8.一种计算机可读存储介质"]
+        "1.一种X方法",
+        "2.根据权利要求1所述的X方法",
+        "3.根据权利要求2所述的X方法",
+        "4.一种X系统",
+        "5.根据权利要求4所述的X系统",
+        "6.一种电子设备",
+        "7.根据权利要求6所述的电子设备",
+        "8.一种计算机可读存储介质",
+    ]
     # 引用号改写：方法从权链 5→2、6→3；系统从权引 2→4；设备从权引 3→6
     assert "权利要求1至3任一项所述方法" in out[5]
     assert "权利要求1至3任一项所述方法" in out[7]
@@ -983,19 +1091,23 @@ def test_semantic_tab_refs_renumber():
     「测试指标如表1所示」表1=结构类（指标在表4）；bert-14 同型。"""
     from app.agent.plans import s1
 
-    text = ("表1 编码器层的子层构成与维度演进\n\n| 层 | 维度 |\n| - | - |\n| a | 1 |\n\n"
-            "表4 预训练语言表示模型在部分NLP任务上的性能指标\n\n| 任务 | 指标 |\n| - | - |\n| a | 1 |\n\n"
-            "其中部分任务的测试指标如表1所示。\n\n"
-            "子层构成见表1。\n\n"
-            "性能数据见表4。")
+    text = (
+        "表1 编码器层的子层构成与维度演进\n\n| 层 | 维度 |\n| - | - |\n| a | 1 |\n\n"
+        "表4 预训练语言表示模型在部分NLP任务上的性能指标\n\n| 任务 | 指标 |\n| - | - |\n| a | 1 |\n\n"
+        "其中部分任务的测试指标如表1所示。\n\n"
+        "子层构成见表1。\n\n"
+        "性能数据见表4。"
+    )
     out = s1._fix_semantic_tab_refs(text)
     assert "测试指标如表4所示" in out
     assert "子层构成见表1" in out
     assert "性能数据见表4" in out
     # 语境两档兼具不盲改
-    ambi = ("表1 编码器层结构配置\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n"
-            "表2 任务性能指标\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n"
-            "结构配置与性能指标见表1。")
+    ambi = (
+        "表1 编码器层结构配置\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n"
+        "表2 任务性能指标\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n"
+        "结构配置与性能指标见表1。"
+    )
     assert "见表1" in s1._fix_semantic_tab_refs(ambi)
     # 裸表号桩算题注 → 缺表体核对收留
     assert s1._TAB_CAPTION.match("{++表4++}")
@@ -1017,16 +1129,20 @@ def test_s1_figures_caption_para_explode():
         "## 说明书\n\n### 技术领域\n\n本发明涉及领域。\n\n"
         "### 背景技术\n\n旧背景。\n\n### 发明内容\n\n旧内容。\n\n"
         "### 附图说明\n\n图1为旧图一。\n\n图2为旧图二。\n\n图3为旧图三。\n\n图4为旧图四。\n\n"
-        "### 具体实施方式\n\n旧实施。")
+        "### 具体实施方式\n\n旧实施。"
+    )
     d = SimpleNamespace(ast=parse_ast(old, {}))
     blocks = s1.build_blocks(
         d,
         ["一种方法，其特征在于，步骤。"],
-        {"技术领域": "本发明涉及新领域。",
-         "附图说明": "图1为新图一；\n图2为新图二；\n图3为新图三；\n图4为新图四；\n图5为新图五。\n\n"
-                     "元件标号说明：101为模块。",
-         "具体实施方式": "新实施。"},
-        "本发明公开新摘要不少于一百五十字。" * 6)
+        {
+            "技术领域": "本发明涉及新领域。",
+            "附图说明": "图1为新图一；\n图2为新图二；\n图3为新图三；\n图4为新图四；\n图5为新图五。\n\n"
+            "元件标号说明：101为模块。",
+            "具体实施方式": "新实施。",
+        },
+        "本发明公开新摘要不少于一百五十字。" * 6,
+    )
     accepted = critic.accept(checks.apply_blocks(old, SimpleNamespace(blocks=blocks).blocks))
     for i in range(1, 6):
         assert accepted.count(f"图{i}为") == 1, i
@@ -1041,11 +1157,12 @@ def test_s1_figsrc_sanitize_dimension_guard():
     """往复轮102：N×N/N÷N 维度记号非数学残渣——unet-seg fig2 实案
     `1×1卷积分类层` 被剥成 `11卷积分类层`。"""
     from app.agent.plans import s1
-    src = 'flowchart TD\n  CLS[1×1卷积分类层 105] --> POOL[2×2池化] --> UP[上采样×2]'
+
+    src = "flowchart TD\n  CLS[1×1卷积分类层 105] --> POOL[2×2池化] --> UP[上采样×2]"
     out = s1._sanitize_mmd(src)
-    assert '1×1卷积分类层 105' in out
-    assert '2×2池化' in out
-    assert '上采样×2' in out      # 单侧邻数字的倍率记号同样保留
+    assert "1×1卷积分类层 105" in out
+    assert "2×2池化" in out
+    assert "上采样×2" in out  # 单侧邻数字的倍率记号同样保留
     # 非维度 × 仍剥（数学乘号残渣）
-    out2 = s1._sanitize_mmd('flowchart TD\n  A[a×b运算] --> B')
-    assert 'a×b' not in out2
+    out2 = s1._sanitize_mmd("flowchart TD\n  A[a×b运算] --> B")
+    assert "a×b" not in out2

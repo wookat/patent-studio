@@ -2,6 +2,7 @@
 """W5 preflight-backend（docs/plan/21-w5-spec.md §2.1 R-CHK-02 / R-FIG-02；§1.3 A3 形式项默认 warning）：
 新增 code 的正反夹具（fixtures/preflight/w5/）、para_no 定位、studio.json preflight.disabled[]、
 两案基线增量（warning ≤3、error 0）、figures.md marks 表 ↔ 说明书正文一致性。"""
+
 import json
 import os
 
@@ -31,7 +32,10 @@ NEW_RULES = {
     "numerals.spec_not_in_marks": "warning",
 }
 # 基线锁定前的两案旧规则命中（test_preflight.test_examples_baseline 逐条断言）
-OLD_BASELINE = {"method": 1, "system": 2}
+# b12a541 换语料后重录：method 3 条 figures.caption_missing；
+# system 10 条旧规则（caption_missing+numerals.inconsistent）+ 1 条新规则命中
+OLD_BASELINE = {"method": 3, "system": 10}
+EXPECTED_NEW = {"method": [], "system": ["abstract.elements_missing"]}
 
 
 def read(name):
@@ -69,6 +73,7 @@ def rules(report):
 
 # ---- 级别：形式项默认 warning，仅 spec.section_missing 为 error ----
 
+
 def test_new_rule_levels():
     all_items = run("form_bad.md")[1]["items"] + run("form_missing.md", NO_FIG)[1]["items"]
     all_items += run_marks("marks.figures.md")[2]["items"]
@@ -81,11 +86,18 @@ def test_new_rule_levels():
 
 # ---- form_bad.md：六条形式项各命中一次 ----
 
+
 def test_form_bad_fixture():
     text, r = run("form_bad.md")
     assert r["counts"] == {"error": 0, "warning": 6, "info": 0}
-    assert rules(r) == ["abstract.elements_missing", "claims.figure_ref", "claims.no_characterized",
-                        "claims.promo_wording", "spec.promo_wording", "spec.section_order"]
+    assert rules(r) == [
+        "abstract.elements_missing",
+        "claims.figure_ref",
+        "claims.no_characterized",
+        "claims.promo_wording",
+        "spec.promo_wording",
+        "spec.section_order",
+    ]
     (ab,) = items(r, "abstract.elements_missing")
     assert ab["book"] == "abstract" and ab["line"] == line_of(text, "一种最佳的测试装置")
     assert ab["detail"] == "技术领域、技术问题、有益效果" and "技术方案" not in ab["detail"]
@@ -128,18 +140,27 @@ def test_form_ok_has_no_new_codes():
     assert r["counts"] == {"error": 0, "warning": 0, "info": 0}
 
 
-@pytest.mark.parametrize("phrase,hit", [
-    ("最佳实施例", False), ("最佳模式", False), ("最佳方案", True), ("最先进", True), ("遥遥领先", True),
-    ("常规方案", False),
-])
+@pytest.mark.parametrize(
+    "phrase,hit",
+    [
+        ("最佳实施例", False),
+        ("最佳模式", False),
+        ("最佳方案", True),
+        ("最先进", True),
+        ("遥遥领先", True),
+        ("常规方案", False),
+    ],
+)
 def test_promo_wording_table(phrase, hit):
     text = read("form_ok.md").replace("采用最佳实施模式进行装配", f"采用{phrase}进行装配")
     r = preflight.run(parse_ast(text, ONE_FIG), ONE_FIG)
     assert bool(items(r, "spec.promo_wording")) is hit, phrase
 
 
-@pytest.mark.parametrize("phrase,hit", [("如图1所示", True), ("参见附图", True), ("见附图1", True),
-                                        ("如附图2所示", True), ("所述探头", False)])
+@pytest.mark.parametrize(
+    "phrase,hit",
+    [("如图1所示", True), ("参见附图", True), ("见附图1", True), ("如附图2所示", True), ("所述探头", False)],
+)
 def test_claims_figure_ref_table(phrase, hit):
     text = read("form_ok.md").replace("所述探头为接触式探头", f"{phrase}，所述探头为接触式探头")
     r = preflight.run(parse_ast(text, ONE_FIG), ONE_FIG)
@@ -147,6 +168,7 @@ def test_claims_figure_ref_table(phrase, hit):
 
 
 # ---- studio.json preflight.disabled[] ----
+
 
 def test_disabled_rules_are_skipped():
     settings = {**ONE_FIG, "preflight": {"disabled": ["claims.no_characterized", "spec.promo_wording"]}}
@@ -175,8 +197,11 @@ def test_put_settings_persists_preflight_disabled(tmp_path, monkeypatch):
 
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(EXAMPLES, "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*", "docs", "project.json"))
+    shutil.copytree(
+        os.path.join(EXAMPLES, "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*", "docs", "project.json"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     from app import config, main
     from app.domain import projects as projects_mod
@@ -202,6 +227,7 @@ def test_put_settings_persists_preflight_disabled(tmp_path, monkeypatch):
 
 # ---- 两案基线增量：新增 warning ≤3、error 0 ----
 
+
 @pytest.mark.parametrize("pid", ["method", "system"])
 def test_examples_baseline_delta(pid):
     store = ProjectStore(EXAMPLES)
@@ -213,10 +239,13 @@ def test_examples_baseline_delta(pid):
     assert r["counts"]["error"] == 0, r["items"]
     assert len(new) <= 3, new
     assert r["counts"]["warning"] - len(new) == OLD_BASELINE[pid]
-    assert new == [], new  # 当前实际增量为 0，变了就在这里显式承认
+    # 新语料下 system 摘要确实缺「技术领域/技术问题」表述 → abstract.elements_missing 命中一次；
+    # 其余新规则命中须显式承认
+    assert [it["rule"] for it in new] == EXPECTED_NEW[pid], new
 
 
 # ---- figures.md marks 表 ↔ 说明书正文（R-FIG-02） ----
+
 
 def test_marks_fixture_positive():
     text, doc, r = run_marks("marks.figures.md")
@@ -249,8 +278,9 @@ def test_marks_fixture_negative_and_legacy_paths():
 
 
 def test_marks_disabled_and_legend_counts_as_used():
-    text, doc, r = run_marks("marks.figures.md",
-                             {"preflight": {"disabled": ["numerals.mark_not_in_spec", "numerals.spec_not_in_marks"]}})
+    text, doc, r = run_marks(
+        "marks.figures.md", {"preflight": {"disabled": ["numerals.mark_not_in_spec", "numerals.spec_not_in_marks"]}}
+    )
     assert r["counts"]["warning"] == 0
     # 标号说明段里出现的 103 视为「正文用到」
     text2 = text.replace("如图2所示", "标号说明：103为输出模块。\n\n如图2所示")
@@ -261,8 +291,9 @@ def test_marks_disabled_and_legend_counts_as_used():
 
 def test_marks_anchor_falls_back_to_caption_when_never_referenced_in_body():
     text, doc, _ = run_marks("marks.figures.md")
-    text2 = text.replace("如图1所示，测试系统包括数据接入模块101、预处理模块102与显示模块104。",
-                         "测试系统包括数据接入模块101。")
+    text2 = text.replace(
+        "如图1所示，测试系统包括数据接入模块101、预处理模块102与显示模块104。", "测试系统包括数据接入模块101。"
+    )
     settings = doc.legacy_view()
     r = preflight.run(parse_ast(text2, settings, figures=doc), settings, figures=doc)
     missing = {it["detail"].split(": ")[1].split(" ")[0]: it for it in items(r, "numerals.mark_not_in_spec")}
@@ -278,14 +309,20 @@ def test_example_projects_figures_have_no_marks_and_report_unchanged_via_routes(
     r = c.get("/api/projects/method/preflight")
     assert r.status_code == 200, r.text
     d = r.json()
-    assert [it["rule"] for it in d["items"]] == ["claims.multi_multi"]
+    assert [it["rule"] for it in d["items"]] == ["figures.caption_missing"] * 3
     assert all("para_no" in it for it in d["items"])
 
 
 def test_fixture_manifest_lists_all_new_files():
     names = set(os.listdir(W5))
-    assert names == {"form_bad.md", "form_missing.md", "form_ok.md", "marks.md", "marks.figures.md",
-                     "marks_ok.figures.md"}
+    assert names == {
+        "form_bad.md",
+        "form_missing.md",
+        "form_ok.md",
+        "marks.md",
+        "marks.figures.md",
+        "marks_ok.figures.md",
+    }
     with open(os.path.join(W5, os.pardir, "README.md"), encoding="utf-8") as f:
         readme = f.read()
     for n in names:
@@ -404,8 +441,7 @@ def test_legal_rhythm_impl_section():
     assert hits and hits[0]["severity"] == "warning"
 
     # 授权件节奏（其中 承句 + 可以 可选表达）不告警
-    ok_impl = ("其中，所述预处理单元对输入执行归一化，可以包括去噪步骤；"
-               "具体地，输出维度与输入一致。\n") * 15
+    ok_impl = ("其中，所述预处理单元对输入执行归一化，可以包括去噪步骤；具体地，输出维度与输入一致。\n") * 15
     text_ok = text.replace(impl, ok_impl)
     r2 = preflight.run(parse_ast(text_ok, NO_FIG), NO_FIG)
     assert not [it for it in r2["items"] if it["rule"] == "style.legal_rhythm"]

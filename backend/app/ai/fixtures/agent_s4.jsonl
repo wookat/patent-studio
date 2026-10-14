@@ -1,2 +1,2 @@
 {"scenario": "s4", "step": "select", "pid": "method", "text": {"groups": [{"primary": "夹持机构", "aliases": ["进给轴"]}]}}
-{"scenario": "s4", "step": "select", "pid": "system", "text": {"groups": [{"primary": "冻结基础预测模型", "aliases": ["冻结骨干"]}]}}
+{"scenario": "s4", "step": "select", "pid": "system", "text": {"groups": [{"primary": "夹持机构", "aliases": ["进给轴"]}]}}

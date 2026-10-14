@@ -12,6 +12,7 @@ data 原样存 JSON（生产者只放字段级元数据：fmt / role / email / m
 CSV：UTF-8 带 BOM（Excel 直接打开中文不乱码），列 ts,kind,actor_id,actor_name,pid,data。
 写入同步（notify/sink.py），off 模式不写、不建库。
 """
+
 import csv
 import io
 import json
@@ -40,10 +41,19 @@ def on_event(ev: events.Event) -> None:
         actor_id = None
     from app.auth.models import OrgAuditEvent as Row
 
-    sink.write(Row, [{
-        "id": sink.new_id(), "ts": sink.ts_of(ev.ts), "kind": ev.kind, "actor_user_id": actor_id,
-        "project_id": ev.pid, "data": json.dumps(ev.data, ensure_ascii=False, default=str),
-    }])
+    sink.write(
+        Row,
+        [
+            {
+                "id": sink.new_id(),
+                "ts": sink.ts_of(ev.ts),
+                "kind": ev.kind,
+                "actor_user_id": actor_id,
+                "project_id": ev.pid,
+                "data": json.dumps(ev.data, ensure_ascii=False, default=str),
+            }
+        ],
+    )
 
 
 def install() -> None:
@@ -51,6 +61,7 @@ def install() -> None:
 
 
 # ---------------------------------------------------------------- 查询 ----
+
 
 def parse_when(v: str | None, *, end: bool = False) -> datetime | None:
     """`from`/`to`：epoch 秒或 YYYY-MM-DD（to 取当天 23:59:59.999999）。"""
@@ -72,16 +83,26 @@ def _out(row, user) -> OrgAuditEvent:
     except ValueError:
         data = {}
     return OrgAuditEvent(
-        id=row.id, ts=acl.utc(row.ts).timestamp(), kind=row.kind,
+        id=row.id,
+        ts=acl.utc(row.ts).timestamp(),
+        kind=row.kind,
         actor=Actor(id=str(user.id), display_name=user.display_name or user.email, avatar_color=user.avatar_color or "")
-        if user is not None else None,
-        pid=row.project_id, data=data,
+        if user is not None
+        else None,
+        pid=row.project_id,
+        data=data,
     )
 
 
-async def query(*, actor: str | None = None, pid: str | None = None, kind: str | None = None,
-                since: datetime | None = None, until: datetime | None = None,
-                limit: int = LIMIT_DEFAULT) -> OrgAuditResponse:
+async def query(
+    *,
+    actor: str | None = None,
+    pid: str | None = None,
+    kind: str | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    limit: int = LIMIT_DEFAULT,
+) -> OrgAuditResponse:
     from sqlalchemy import func, select
 
     from app.auth.db import SessionLocal, init_db
@@ -96,8 +117,9 @@ async def query(*, actor: str | None = None, pid: str | None = None, kind: str |
         except ValueError:
             # 非 id ⇒ 按姓名 / 邮箱包含匹配（管理员在界面里输的是人名）
             like = f"%{actor.strip()}%"
-            conds.append(Row.actor_user_id.in_(
-                select(User.id).where(User.display_name.ilike(like) | User.email.ilike(like))))
+            conds.append(
+                Row.actor_user_id.in_(select(User.id).where(User.display_name.ilike(like) | User.email.ilike(like)))
+            )
     if pid:
         conds.append(Row.project_id == pid)
     if kind:
@@ -109,8 +131,13 @@ async def query(*, actor: str | None = None, pid: str | None = None, kind: str |
     limit = max(1, min(limit, LIMIT_MAX))
     async with SessionLocal() as s:
         total = await s.scalar(select(func.count()).select_from(Row).where(*conds))
-        rows = await s.execute(select(Row, User).outerjoin(User, User.id == Row.actor_user_id).where(*conds)
-                               .order_by(Row.ts.desc(), Row.id).limit(limit))
+        rows = await s.execute(
+            select(Row, User)
+            .outerjoin(User, User.id == Row.actor_user_id)
+            .where(*conds)
+            .order_by(Row.ts.desc(), Row.id)
+            .limit(limit)
+        )
         return OrgAuditResponse(items=[_out(r, u) for r, u in rows], total=total or 0)
 
 
@@ -120,9 +147,14 @@ def to_csv(items: list[OrgAuditEvent]) -> str:
     w = csv.writer(buf)
     w.writerow(CSV_COLUMNS)
     for it in items:
-        w.writerow([
-            datetime.fromtimestamp(it.ts, UTC).isoformat(timespec="seconds"), it.kind,
-            it.actor.id if it.actor else "", it.actor.display_name if it.actor else "", it.pid or "",
-            json.dumps(it.data, ensure_ascii=False, sort_keys=True),
-        ])
+        w.writerow(
+            [
+                datetime.fromtimestamp(it.ts, UTC).isoformat(timespec="seconds"),
+                it.kind,
+                it.actor.id if it.actor else "",
+                it.actor.display_name if it.actor else "",
+                it.pid or "",
+                json.dumps(it.data, ensure_ascii=False, sort_keys=True),
+            ]
+        )
     return buf.getvalue()

@@ -47,6 +47,7 @@ serve: build
 
 lint:
 	cd backend && uv run ruff check .
+	cd backend && uv run ruff format --check .
 	cd frontend && pnpm lint
 
 typecheck:

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """W5 oa-import-backend（docs/plan/21 §2.1 R-OA-01 / R-OA-02、§2.2 R-OA-05）：
 PDF 文字层导入拆条（claims/refs/kind/confidence）、扫描件 400 oa.pdf_no_text、OA 轮次记录与 oa_reply 期限。"""
+
 import importlib
 import json
 import os
@@ -24,6 +25,7 @@ def _fixture(name: str) -> bytes:
 
 
 # ---------------- parse：refs / kind / confidence ----------------
+
 
 def test_refs_and_confidence_from_text():
     text = (
@@ -75,6 +77,7 @@ def test_synthetic_notice_pdf_three_items_two_refs():
 
 # ---------------- rounds：日期与期限 ----------------
 
+
 def test_add_months_and_reply_due_rules():
     assert rounds.add_months(date(2026, 3, 1), 4) == date(2026, 7, 1)
     assert rounds.add_months(date(2026, 1, 31), 1) == date(2026, 2, 28)  # 目标月无同日 ⇒ 月末
@@ -93,12 +96,16 @@ def test_add_months_and_reply_due_rules():
 
 # ---------------- 端到端 ----------------
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("PATENT_STUDIO_AI_PROVIDER", "mock")
     from app import config, main
@@ -118,8 +125,10 @@ def _case(projects):
 
 def test_parse_pdf_multipart_and_scan_400(client):
     c, projects, _ = client
-    r = c.post("/api/projects/method/oa/parse",
-               files={"file": ("notice.pdf", _fixture("notice_synthetic.pdf"), "application/pdf")})
+    r = c.post(
+        "/api/projects/method/oa/parse",
+        files={"file": ("notice.pdf", _fixture("notice_synthetic.pdf"), "application/pdf")},
+    )
     assert r.status_code == 200, r.text
     items = r.json()["items"]
     assert len(items) == 3
@@ -129,8 +138,9 @@ def test_parse_pdf_multipart_and_scan_400(client):
         assert 0.0 <= it["confidence"] <= 1.0
     assert (projects / "method" / ".studio" / "oa" / "items.json").exists()
 
-    r = c.post("/api/projects/method/oa/parse",
-               files={"file": ("scan.pdf", _fixture("oa_scan.pdf"), "application/pdf")})
+    r = c.post(
+        "/api/projects/method/oa/parse", files={"file": ("scan.pdf", _fixture("oa_scan.pdf"), "application/pdf")}
+    )
     assert r.status_code == 400
     assert r.json()["detail"]["kind"] == "oa.pdf_no_text"
 
@@ -144,9 +154,12 @@ def test_parse_pdf_too_large_413(client, monkeypatch):
     """通知书 PDF 上限与附件一致（monkeypatch 缩小口径验证 413；此前无上限）。"""
     c, _, _ = client
     from app.routes import oa as routes_oa
+
     monkeypatch.setattr(routes_oa, "ATTACHMENT_MAX_BYTES", 1024)
-    r = c.post("/api/projects/method/oa/parse",
-               files={"file": ("big.pdf", _fixture("notice_synthetic.pdf") + b"x" * 2048, "application/pdf")})
+    r = c.post(
+        "/api/projects/method/oa/parse",
+        files={"file": ("big.pdf", _fixture("notice_synthetic.pdf") + b"x" * 2048, "application/pdf")},
+    )
     assert r.status_code == 413 and r.json()["detail"]["kind"] == "oa" and r.json()["detail"]["detail"] == "big.pdf"
 
 
@@ -154,8 +167,9 @@ def test_rounds_create_deadline_extend_and_order(client):
     c, projects, _ = client
     assert c.get("/api/projects/method/oa/rounds").json() == {"rounds": []}
 
-    r = c.post("/api/projects/method/oa/rounds",
-               json={"kind": "first", "issued_on": "2026-03-01", "delivery": "electronic"})
+    r = c.post(
+        "/api/projects/method/oa/rounds", json={"kind": "first", "issued_on": "2026-03-01", "delivery": "electronic"}
+    )
     assert r.status_code == 201, r.text
     r1 = r.json()
     assert r1["id"] == "1" and r1["kind"] == "first" and r1["deadline_id"] == "oa-1" and r1["items"] == 0
@@ -174,8 +188,9 @@ def test_rounds_create_deadline_extend_and_order(client):
     assert c.post("/api/projects/method/oa/rounds/1/extend", json={"months": 3}).status_code == 422
 
     # 第二轮：邮寄送达的二通，2026-08-10 + 15 日 = 08-25，+2 个月 = 10-25（周日）⇒ 10-26
-    r = c.post("/api/projects/method/oa/rounds",
-               json={"kind": "subsequent", "issued_on": "2026-08-10", "delivery": "mail"})
+    r = c.post(
+        "/api/projects/method/oa/rounds", json={"kind": "subsequent", "issued_on": "2026-08-10", "delivery": "mail"}
+    )
     assert r.status_code == 201
     dl = {d["note"]: d for d in _case(projects)["deadlines"] if d["kind"] == "oa_reply"}
     assert sorted(d["due"] for d in dl.values()) == ["2026-09-01", "2026-10-26"]
@@ -183,13 +198,25 @@ def test_rounds_create_deadline_extend_and_order(client):
     lst = c.get("/api/projects/method/oa/rounds").json()["rounds"]
     assert [x["id"] for x in lst] == ["1", "2"]
     for x in lst:
-        assert set(x) >= {"id", "kind", "issued_on", "delivery", "deadline_id",
-                          "items", "extensions", "filed_on", "created_at"}
+        assert set(x) >= {
+            "id",
+            "kind",
+            "issued_on",
+            "delivery",
+            "deadline_id",
+            "items",
+            "extensions",
+            "filed_on",
+            "created_at",
+        }
         assert x["filed_on"] is None
 
     # PDF 拆条挂到第 2 轮
-    r = c.post("/api/projects/method/oa/parse", data={"round_id": "2"},
-               files={"file": ("notice.pdf", _fixture("notice_synthetic.pdf"), "application/pdf")})
+    r = c.post(
+        "/api/projects/method/oa/parse",
+        data={"round_id": "2"},
+        files={"file": ("notice.pdf", _fixture("notice_synthetic.pdf"), "application/pdf")},
+    )
     assert r.status_code == 200
     full = c.get("/api/projects/method/oa/rounds/2").json()
     assert len(full["items"]) == 3 and full["notice_text_sha"] and full["due"] == "2026-10-26"
@@ -206,8 +233,10 @@ def test_rounds_create_deadline_extend_and_order(client):
     # 改发文日 ⇒ 期限重算
     r = c.put("/api/projects/method/oa/rounds/1", json={"issued_on": "2026-03-02"})
     assert r.status_code == 200 and r.json()["issued_on"] == "2026-03-02"
-    assert sorted(d["due"] for d in _case(projects)["deadlines"] if d["kind"] == "oa_reply") == \
-        ["2026-09-02", "2026-10-26"]
+    assert sorted(d["due"] for d in _case(projects)["deadlines"] if d["kind"] == "oa_reply") == [
+        "2026-09-02",
+        "2026-10-26",
+    ]
 
     assert c.get("/api/projects/method/oa/rounds/9").status_code == 404
     assert c.delete("/api/projects/method/oa/rounds/1").status_code == 204
@@ -218,8 +247,10 @@ def test_rounds_create_deadline_extend_and_order(client):
 def test_rejection_round_registers_reexam_request_deadline(client):
     """批10：驳回决定轮次 ⇒ reexam_request 期限（kind=reexam、3 个月），法定期限不可延期。"""
     c, projects, _ = client
-    r = c.post("/api/projects/method/oa/rounds",
-               json={"kind": "rejection", "issued_on": "2026-03-01", "delivery": "electronic"})
+    r = c.post(
+        "/api/projects/method/oa/rounds",
+        json={"kind": "rejection", "issued_on": "2026-03-01", "delivery": "electronic"},
+    )
     assert r.status_code == 201, r.text
     assert r.json()["kind"] == "rejection"
     dl = [d for d in _case(projects)["deadlines"] if d["kind"] == "reexam"]
@@ -232,8 +263,9 @@ def test_rejection_round_registers_reexam_request_deadline(client):
     r = c.put("/api/projects/method/oa/rounds/1", json={"filed_on": "2026-05-20"})
     assert r.status_code == 200 and _case(projects)["deadlines"][0]["done"] is True
     # 带延期的普通轮次改成驳回决定 ⇒ 延期作废
-    r = c.post("/api/projects/method/oa/rounds",
-               json={"kind": "subsequent", "issued_on": "2026-08-10", "delivery": "mail"})
+    r = c.post(
+        "/api/projects/method/oa/rounds", json={"kind": "subsequent", "issued_on": "2026-08-10", "delivery": "mail"}
+    )
     assert r.status_code == 201
     assert c.post("/api/projects/method/oa/rounds/2/extend", json={"months": 1}).status_code == 200
     r = c.put("/api/projects/method/oa/rounds/2", json={"kind": "rejection"})

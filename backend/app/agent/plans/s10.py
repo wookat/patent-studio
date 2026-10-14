@@ -4,6 +4,7 @@
 各独立权利要求的 context_pack（裁到预算）→ 1 次 medium gen → check(noun_subset：名词 ⊆ 三书)→ patch docs/brief.md。
 不作授权前景判断（no_legal_verdict 同样把关）。
 """
+
 from __future__ import annotations
 
 from app.agent import checks
@@ -28,10 +29,31 @@ PLAN = Plan(
 
 FILE = "docs/brief.md"
 # 简报体裁自带的栏目词，不计入三书名词子集
-BRIEF_WORDS = ("客户简报", "发明名称", "解决问题", "核心方案", "保护范围", "独立权利要求", "从属权利要求",
-               "下一步", "需核对", "请核对", "建议", "说明书", "摘要", "附图", "附图标记", "写法", "是否统一",
-               "引用方式",
-               "技术方案", "技术效果", "现有技术", "本案", "案卷")
+BRIEF_WORDS = (
+    "客户简报",
+    "发明名称",
+    "解决问题",
+    "核心方案",
+    "保护范围",
+    "独立权利要求",
+    "从属权利要求",
+    "下一步",
+    "需核对",
+    "请核对",
+    "建议",
+    "说明书",
+    "摘要",
+    "附图",
+    "附图标记",
+    "写法",
+    "是否统一",
+    "引用方式",
+    "技术方案",
+    "技术效果",
+    "现有技术",
+    "本案",
+    "案卷",
+)
 
 
 async def run(ctx: RunContext) -> None:
@@ -54,8 +76,13 @@ async def run(ctx: RunContext) -> None:
         if all([ctx.check(r) for r in results]):
             ctx.propose("patch", FileAnchor(file=FILE), patch=FilePatch(file=FILE, content=text), checks_=results)
             break
-        messages = [*messages, {"role": "assistant", "content": res.text},
-                    {"role": "user",
-                     "content": "上一次输出使用了三书中不存在的名词或含结论式措辞，"
-                                "请只用案卷已有名词、不作授权前景判断重写。"}]
+        messages = [
+            *messages,
+            {"role": "assistant", "content": res.text},
+            {
+                "role": "user",
+                "content": "上一次输出使用了三书中不存在的名词或含结论式措辞，"
+                "请只用案卷已有名词、不作授权前景判断重写。",
+            },
+        ]
     ctx.finish()

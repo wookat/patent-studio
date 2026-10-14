@@ -3,6 +3,7 @@
 
 加 --synthetic 时还把 notice_synthetic.md（合成一通：3 条意见 + 2 份对比文件）经 LibreOffice 转成 notice_synthetic.pdf
 （真字体文字层，pypdf 可抽中文）；需 soffice，输出含 LibreOffice 版本 / 时间戳，不要求逐字节稳定。"""
+
 import html
 import os
 import shutil
@@ -35,32 +36,38 @@ def _pdf(objects: list[bytes]) -> bytes:
 
 
 def text_pdf() -> bytes:
-    stream = b"BT /F1 12 Tf 72 720 Td 16 TL " + b" ".join(
-        b"(" + ln.encode("latin-1") + b") Tj T*" for ln in TEXT_LINES) + b" ET"
-    return _pdf([
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R "
-        b"/Resources << /Font << /F1 5 0 R >> >> >>",
-        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    ])
+    stream = (
+        b"BT /F1 12 Tf 72 720 Td 16 TL "
+        + b" ".join(b"(" + ln.encode("latin-1") + b") Tj T*" for ln in TEXT_LINES)
+        + b" ET"
+    )
+    return _pdf(
+        [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R "
+            b"/Resources << /Font << /F1 5 0 R >> >> >>",
+            b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+            b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        ]
+    )
 
 
 def scan_pdf() -> bytes:
     # 1x1 灰度图铺满页面，无任何文本对象 ⇒ extract_text() == ""
     img = b"\xff"
     stream = b"q 595 0 0 842 0 0 cm /Im1 Do Q"
-    return _pdf([
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R "
-        b"/Resources << /XObject << /Im1 5 0 R >> >> >>",
-        b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
-        b"<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8 "
-        b"/Length 1 >>\nstream\n"
-        + img + b"\nendstream",
-    ])
+    return _pdf(
+        [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R "
+            b"/Resources << /XObject << /Im1 5 0 R >> >> >>",
+            b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"\nendstream",
+            b"<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8 "
+            b"/Length 1 >>\nstream\n" + img + b"\nendstream",
+        ]
+    )
 
 
 def _md_to_html(md: str) -> str:
@@ -76,8 +83,10 @@ def _md_to_html(md: str) -> str:
             parts.append(f"<h1>{html.escape(s[2:])}</h1>")
         else:
             parts.append(f"<p>{html.escape(s)}</p>")
-    return ('<html><head><meta charset="utf-8"><style>body{font-family:"宋体",SimSun,serif;font-size:12pt}'
-            "</style></head><body>" + "\n".join(parts) + "</body></html>")
+    return (
+        '<html><head><meta charset="utf-8"><style>body{font-family:"宋体",SimSun,serif;font-size:12pt}'
+        "</style></head><body>" + "\n".join(parts) + "</body></html>"
+    )
 
 
 def synthetic_pdf() -> bytes:
@@ -90,8 +99,12 @@ def synthetic_pdf() -> bytes:
         src = os.path.join(tmp, "notice_synthetic.html")
         with open(src, "w", encoding="utf-8") as f:
             f.write(_md_to_html(md))
-        subprocess.run([soffice, "--headless", "--convert-to", "pdf:writer_web_pdf_Export", "--outdir", tmp, src],
-                       check=True, capture_output=True, timeout=120)
+        subprocess.run(
+            [soffice, "--headless", "--convert-to", "pdf:writer_web_pdf_Export", "--outdir", tmp, src],
+            check=True,
+            capture_output=True,
+            timeout=120,
+        )
         with open(os.path.join(tmp, "notice_synthetic.pdf"), "rb") as f:
             return f.read()
 

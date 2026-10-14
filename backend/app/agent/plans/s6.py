@@ -5,6 +5,7 @@
 摘要非空：critic {~~旧摘要~>新摘要~~} 锚在摘要首段；摘要为空：patch（BlocksPatch，after_block_id="abstract" 表示
 插到摘要标题之后，见 checks.apply_blocks）。
 """
+
 from __future__ import annotations
 
 from app.agent import checks
@@ -48,8 +49,9 @@ async def run(ctx: RunContext) -> None:
     d = common.derive(ctx)
     limit = _limit(ctx)
     context = ctx.clip(ctx.tool("read_books", read_books, d=d))
-    messages = prompts_agent.build("s6", "abstract", f"请生成一段不超过 {limit} 字的摘要。",
-                                   context=context, pid=ctx.pid)
+    messages = prompts_agent.build(
+        "s6", "abstract", f"请生成一段不超过 {limit} 字的摘要。", context=context, pid=ctx.pid
+    )
     source = common.final_text(d)
     text, results = "", []
     for attempt in range(2):
@@ -58,21 +60,31 @@ async def run(ctx: RunContext) -> None:
         results = [length_check(text, limit), checks.noun_subset(text, source)]
         if all([ctx.check(r) for r in results]):
             break
-        messages = [*messages, {"role": "assistant", "content": res.text},
-                    {"role": "user",
-                     "content": f"上一次输出不合要求（{'；'.join(r.why for r in results if not r.ok)}），"
-                                                f"请重写：不超过 {limit} 字，只用三书已有名词。"}]
+        messages = [
+            *messages,
+            {"role": "assistant", "content": res.text},
+            {
+                "role": "user",
+                "content": f"上一次输出不合要求（{'；'.join(r.why for r in results if not r.ok)}），"
+                f"请重写：不超过 {limit} 字，只用三书已有名词。",
+            },
+        ]
     else:
         paras = d.ast["abstract"]["paragraphs"]
         if paras:
-            common.comment(ctx, d, common.anchor_of(d, "abstract", paras[0]).line_start, paras[0]["text"][:12],
-                           f"建议改写摘要，智能体草稿请核对后自行取用：{text[:400]}")
+            common.comment(
+                ctx,
+                d,
+                common.anchor_of(d, "abstract", paras[0]).line_start,
+                paras[0]["text"][:12],
+                f"建议改写摘要，智能体草稿请核对后自行取用：{text[:400]}",
+            )
         ctx.finish()
         return
     paras = d.ast["abstract"]["paragraphs"]
     if paras:
         anchor = common.anchor_of(d, "abstract", paras[0])
-        old = "\n".join(d.lines[anchor.line_start - 1: anchor.line_end])
+        old = "\n".join(d.lines[anchor.line_start - 1 : anchor.line_end])
         crit = "{~~" + old + "~>" + text + "~~}"
         more = [checks.lint(crit), checks.roundtrip(old, crit)]
         if all([ctx.check(r) for r in more]):

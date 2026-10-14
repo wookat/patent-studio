@@ -2,10 +2,12 @@
 """零漂移回归：默认设置下两案 word/document.xml 必须与附件原脚本基准逐字节一致。
 
 基准（原环境 python-docx 1.2.0 + 附件代码；本机复现一致）：
-  method  9ffc298f03fa301c034899f3fb5253ef
-  system  c713de2163e59186f7bb148d60c822ec
-Windows（lxml/docx 版本微差序列化不同但语义等价）另记一份基线。
+  method  f58e308dc5dcb3c594eccd11142691e5
+  system  75b57c286a75b32527c301e1c8c700f4
+基线刷新：b12a541 换 examples 语料（指纹私钥/神经网络可视化）后重录；
+Windows 序列化微差基线待在该平台重录（旧值属已退役语料，已移除）。
 """
+
 import hashlib
 import os
 import zipfile
@@ -20,8 +22,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 EXAMPLES = os.path.join(ROOT, "examples")
 
 BASELINE = {
-    "method": {"9ffc298f03fa301c034899f3fb5253ef", "7b75e50c32df42d9c1da394229e75771"},
-    "system": {"c713de2163e59186f7bb148d60c822ec", "65b9d56f1c300bdd1bb1f675002c6731"},
+    "method": {"f58e308dc5dcb3c594eccd11142691e5"},
+    "system": {"75b57c286a75b32527c301e1c8c700f4"},
 }
 
 
@@ -34,16 +36,21 @@ def _legacy_config(name, out):
     """与 examples/<name>/build_docx.py 中 CONFIG 完全相同的字典（不含 style）。"""
     here = os.path.join(EXAMPLES, name)
     figs = {
-        "method": [("fig1.emf", 15.0), ("fig2.emf", 15.0), ("fig3.emf", 15.0),
-                   ("fig4.emf", 15.0), ("fig5.emf", 15.0), ("fig6.emf", 15.0)],
-        "system": [("fig1.emf", 15.0), ("fig2.emf", 15.0), ("fig3.emf", 13.0),
-                   ("fig4.emf", 11.5), ("fig5.emf", 15.0)],
+        "method": [("fig1.png", 15.0), ("fig2.png", 15.0), ("fig3.png", 15.0)],
+        "system": [
+            ("fig1.png", 15.0),
+            ("fig2.png", 15.0),
+            ("fig3.png", 15.0),
+            ("fig4.png", 15.0),
+            ("fig5.png", 15.0),
+            ("fig6.png", 15.0),
+        ],
     }[name]
     return {
         "content_md": os.path.join(here, "content.md"),
         "out": out,
         "figs_dir": os.path.join(here, "figs"),
-        "abstract_figure": ("fig1.emf", 14.5),
+        "abstract_figure": ("fig1.png", 14.5),
         "spec_figures": figs,
     }
 
@@ -60,8 +67,9 @@ def test_studio_json_default_settings_matches_baseline(name, tmp_path):
     """经 Studio 的 studio.json → CONFIG 路径（style 为默认）构建，同样必须零漂移。"""
     store = ProjectStore(EXAMPLES)
     proj = store.get(name)
-    cfg = store.build_config(proj, out=str(tmp_path / f"{name}.docx"),
-                             content_md=os.path.join(EXAMPLES, name, "content.md"))
+    cfg = store.build_config(
+        proj, out=str(tmp_path / f"{name}.docx"), content_md=os.path.join(EXAMPLES, name, "content.md")
+    )
     build_patent_ex(cfg)
     assert _md5_document_xml(cfg["out"]) in BASELINE[name]
 

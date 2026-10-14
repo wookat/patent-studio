@@ -15,6 +15,7 @@ W5 notify-audit-backend（docs/plan/21 §2 R-ADM-02 / R-ADM-03 / R-AI-01 机构�
 
 fastapi-users / SQLAlchemy 只在成员 / 审计路由内惰性 import（off 下不得把 app.auth.db 拉进来）。
 """
+
 import uuid
 
 from fastapi import APIRouter, HTTPException, Query
@@ -53,6 +54,7 @@ class AdminUserIn(BaseModel):
 
 class OrgName(BaseModel):
     """/org 的对外形状：只暴露机构名（其余机构设置走 /settings）。"""
+
     name: str = Field(default="", max_length=ORG_NAME_MAX)
 
 
@@ -79,6 +81,7 @@ def _admin_user(u) -> AdminUser:
 
 
 # ---------------------------------------------------------------- 成员 ----
+
 
 @router.get("/users")
 async def list_users(user: CurrentUser) -> list[AdminUser]:
@@ -121,9 +124,9 @@ async def update_user(user_id: str, body: AdminUserIn, user: CurrentUser) -> Adm
             raise HTTPException(409, error_detail("conflict", "不能禁用或降级自己；请让另一位管理员操作"))
         if demote and target.is_superuser and target.is_active:
             others = await s.scalar(
-                select(func.count()).select_from(User).where(
-                    User.is_superuser.is_(True), User.is_active.is_(True), User.id != target.id
-                )
+                select(func.count())
+                .select_from(User)
+                .where(User.is_superuser.is_(True), User.is_active.is_(True), User.id != target.id)
             )
             if not others:
                 raise HTTPException(409, error_detail("conflict", "机构至少保留一位可用的管理员"))
@@ -141,12 +144,17 @@ async def update_user(user_id: str, body: AdminUserIn, user: CurrentUser) -> Adm
         await s.refresh(target)
         # R50-01：授/撤超管、禁用账号这类最高权限变更必须进机构审计（此前零事件，审计页全盲）
         if changes:
-            events.emit("admin.user", pid=None, actor=events.actor_of(user),
-                        data={"user_id": str(target.id), "email": target.email, "changes": changes})
+            events.emit(
+                "admin.user",
+                pid=None,
+                actor=events.actor_of(user),
+                data={"user_id": str(target.id), "email": target.email, "changes": changes},
+            )
         return _admin_user(target)
 
 
 # ---------------------------------------------------------------- 机构 ----
+
 
 @router.get("/org")
 async def get_org(user: CurrentUser) -> OrgName:
@@ -178,6 +186,7 @@ async def put_settings(body: OrgSettingsPatch, user: CurrentUser) -> OrgSettings
 
 # ---------------------------------------------------------------- 审计 ----
 
+
 async def _audit(user, actor, pid, kind, since, until, limit) -> OrgAuditResponse:
     _require_superuser(user)
     if kind and kind not in org_audit.KINDS:
@@ -191,8 +200,12 @@ async def _audit(user, actor, pid, kind, since, until, limit) -> OrgAuditRespons
 
 @router.get("/audit")
 async def get_audit(
-    user: CurrentUser, actor: str | None = None, pid: str | None = None, kind: str | None = None,
-    since: str | None = Query(default=None, alias="from"), until: str | None = Query(default=None, alias="to"),
+    user: CurrentUser,
+    actor: str | None = None,
+    pid: str | None = None,
+    kind: str | None = None,
+    since: str | None = Query(default=None, alias="from"),
+    until: str | None = Query(default=None, alias="to"),
     limit: int = org_audit.LIMIT_DEFAULT,
 ) -> OrgAuditResponse:
     return await _audit(user, actor, pid, kind, since, until, limit)
@@ -200,10 +213,17 @@ async def get_audit(
 
 @router.get("/audit.csv")
 async def get_audit_csv(
-    user: CurrentUser, actor: str | None = None, pid: str | None = None, kind: str | None = None,
-    since: str | None = Query(default=None, alias="from"), until: str | None = Query(default=None, alias="to"),
+    user: CurrentUser,
+    actor: str | None = None,
+    pid: str | None = None,
+    kind: str | None = None,
+    since: str | None = Query(default=None, alias="from"),
+    until: str | None = Query(default=None, alias="to"),
     limit: int = org_audit.LIMIT_MAX,
 ) -> Response:
     res = await _audit(user, actor, pid, kind, since, until, limit)
-    return Response(org_audit.to_csv(res.items), media_type="text/csv; charset=utf-8",
-                    headers={"Content-Disposition": 'attachment; filename="org-audit.csv"'})
+    return Response(
+        org_audit.to_csv(res.items),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="org-audit.csv"'},
+    )

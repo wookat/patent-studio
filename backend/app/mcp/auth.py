@@ -4,6 +4,7 @@
 PatGate 是包在 Streamable HTTP ASGI 端点外的一层：解析身份、放进 CURRENT_ACTOR，
 工具函数里 CURRENT_ACTOR.get() 取"谁在调用"。拒绝时直接回 JSON，形状 = app.errors.error_detail。
 """
+
 import hashlib
 import json
 import secrets
@@ -50,18 +51,25 @@ async def verify_pat(token: str) -> Actor | None:
 
     await init_db()
     async with SessionLocal() as s:
-        row = (await s.execute(
-            select(PersonalAccessToken, User).join(User, User.id == PersonalAccessToken.user_id)
-            .where(PersonalAccessToken.token_hash == token_hash(token), PersonalAccessToken.revoked_at.is_(None),
-                   User.is_active.is_(True)))
+        row = (
+            await s.execute(
+                select(PersonalAccessToken, User)
+                .join(User, User.id == PersonalAccessToken.user_id)
+                .where(
+                    PersonalAccessToken.token_hash == token_hash(token),
+                    PersonalAccessToken.revoked_at.is_(None),
+                    User.is_active.is_(True),
+                )
+            )
         ).first()
         if row is None:
             return None
         pat, user = row
         pat.last_used_at = datetime.now(UTC)
         await s.commit()
-        return Actor(id=pat.id, name=user.display_name or user.email, user_id=str(user.id),
-                     superuser=bool(user.is_superuser))
+        return Actor(
+            id=pat.id, name=user.display_name or user.email, user_id=str(user.id), superuser=bool(user.is_superuser)
+        )
 
 
 def bearer_token(headers) -> str | None:
@@ -98,15 +106,28 @@ class PatGate:
             return
         client = scope.get("client")
         actor, status, message = await resolve_actor(
-            bearer_token(scope.get("headers", ())), client[0] if client else None)
+            bearer_token(scope.get("headers", ())), client[0] if client else None
+        )
         if actor is None:
             # kind "unauthorized" 是 MCP 对外契约（test_mcp 锁定；REST 侧 401 用 "auth"）——刻意保留
-            body = json.dumps({"detail": error_detail(
-                "unauthorized" if status == 401 else "forbidden", message, detail="F1-mcp-server")},
-                ensure_ascii=False).encode()
-            await send({"type": "http.response.start", "status": status,
-                        "headers": [(b"content-type", b"application/json; charset=utf-8"),
-                                    (b"content-length", str(len(body)).encode())]})
+            body = json.dumps(
+                {
+                    "detail": error_detail(
+                        "unauthorized" if status == 401 else "forbidden", message, detail="F1-mcp-server"
+                    )
+                },
+                ensure_ascii=False,
+            ).encode()
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": status,
+                    "headers": [
+                        (b"content-type", b"application/json; charset=utf-8"),
+                        (b"content-length", str(len(body)).encode()),
+                    ],
+                }
+            )
             await send({"type": "http.response.body", "body": body})
             return
         token = CURRENT_ACTOR.set(actor)

@@ -8,6 +8,7 @@ mock.py    mock 供应商（PATENT_STUDIO_AI_PROVIDER=mock）
 
 隐私：所有带 pid 的 AI 路由先过 require_enabled()；settings.ai_enabled 默认 false ⇒ 零出站。
 """
+
 from fastapi import HTTPException
 
 from app.errors import error_detail

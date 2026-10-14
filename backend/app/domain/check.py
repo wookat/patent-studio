@@ -5,6 +5,7 @@ check_all.py 会重放 make_figs.py（重写 figs/*.png|svg）并读取 <案子>
 因此在临时目录里复制 method/、system/（content.md、make_figs.py、figs/）后运行，
 docx 使用 Studio 最近一次构建的 out.docx（若无则现场用 studio.json 构建），不污染仓库文件。
 """
+
 import os
 import re
 import shutil
@@ -43,8 +44,14 @@ def _prepare_case(store: ProjectStore, pid: str, dst: str):
 def run_check_all(store: ProjectStore, timeout=600):
     script = config.CHECK_SCRIPT
     if not os.path.isfile(script):
-        return {"ok": False, "exit_code": None, "duration_ms": 0, "output": f"未找到回归脚本：{script}",
-                "results": [], "docx_source": {}}
+        return {
+            "ok": False,
+            "exit_code": None,
+            "duration_ms": 0,
+            "output": f"未找到回归脚本：{script}",
+            "results": [],
+            "docx_source": {},
+        }
     t0 = time.perf_counter()
     sources = {}
     with tempfile.TemporaryDirectory(prefix="patent-check-") as tmp:
@@ -58,15 +65,27 @@ def run_check_all(store: ProjectStore, timeout=600):
         env["PYTHONPATH"] = os.pathsep.join(filter(None, [config.BACKEND_DIR, env.get("PYTHONPATH", "")]))
         env["MPLBACKEND"] = "Agg"
         try:
-            r = subprocess.run([sys.executable, os.path.join(tmp, "check_all.py")], cwd=tmp,
-                               capture_output=True, text=True, timeout=timeout, env=env)
+            r = subprocess.run(
+                [sys.executable, os.path.join(tmp, "check_all.py")],
+                cwd=tmp,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env,
+            )
             output = (r.stdout or "") + (("\n[stderr]\n" + r.stderr) if r.stderr.strip() else "")
             code = r.returncode
         except subprocess.TimeoutExpired as e:
             output = ((e.stdout or b"").decode() if isinstance(e.stdout, bytes) else (e.stdout or "")) + "\n[超时]"
             code = -1
-    return {"ok": code == 0, "exit_code": code, "duration_ms": round((time.perf_counter() - t0) * 1000),
-            "output": output.strip(), "results": _parse(output), "docx_source": sources}
+    return {
+        "ok": code == 0,
+        "exit_code": code,
+        "duration_ms": round((time.perf_counter() - t0) * 1000),
+        "output": output.strip(),
+        "results": _parse(output),
+        "docx_source": sources,
+    }
 
 
 def _parse(output):

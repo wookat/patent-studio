@@ -4,6 +4,7 @@
 fixture：tests/fixtures/import_native.docx（Word 原生样式：Heading 1/2/3、gridSpan+vMerge 表、图片、
 OMML 行内/独立公式、脚注/文本框/域）由本文件 build_native_fixture() 生成；两案回归直接用内核 build 的 DOCX。
 """
+
 import copy
 import hashlib
 import io
@@ -37,6 +38,7 @@ UNIT = "F3-docx-import-templates"
 
 # ---------------- fixture 生成 ----------------
 
+
 def _png() -> bytes:
     buf = io.BytesIO()
     Image.new("RGB", (40, 30), (200, 30, 30)).save(buf, format="PNG")
@@ -68,22 +70,31 @@ def build_native_fixture() -> bytes:
     p = d.add_paragraph("[0002]\u3000行内公式 ")
     append_omml(p, "a_i = b_i^2")
     p.add_run(" 与上标 ")
-    _raw(p, '<m:oMath %s><m:sSup><m:sSupPr/><m:e><m:r><m:t>b</m:t></m:r></m:e>'
-            '<m:sup><m:r><m:t>2</m:t></m:r></m:sup></m:sSup></m:oMath>' % nsdecls("m"))
+    _raw(
+        p,
+        "<m:oMath %s><m:sSup><m:sSupPr/><m:e><m:r><m:t>b</m:t></m:r></m:e>"
+        "<m:sup><m:r><m:t>2</m:t></m:r></m:sup></m:sSup></m:oMath>" % nsdecls("m"),
+    )
     p.add_run(" 之后的文字")
     # 脚注引用 + 文本框 + 域
     p = d.add_paragraph("[0003]\u3000带脚注的句子")
     _raw(p, '<w:r %s><w:footnoteReference w:id="1"/></w:r>' % nsdecls("w"))
-    _raw(p, '<w:r %s><w:pict><v:shape xmlns:v="urn:schemas-microsoft-com:vml"><v:textbox><w:txbxContent>'
-            '<w:p><w:r><w:t>文本框内容</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r>'
-         % nsdecls("w"))
+    _raw(
+        p,
+        '<w:r %s><w:pict><v:shape xmlns:v="urn:schemas-microsoft-com:vml"><v:textbox><w:txbxContent>'
+        "<w:p><w:r><w:t>文本框内容</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r>"
+        % nsdecls("w"),
+    )
     _raw(p, '<w:fldSimple %s w:instr=" PAGE "><w:r><w:t>3</w:t></w:r></w:fldSimple>' % nsdecls("w"))
     # 独立公式：1×3 无框表，中格 OMML，右格编号
     t = d.add_table(rows=1, cols=3)
-    t._tbl.tblPr.append(parse_xml(
-        '<w:tblBorders %s>' % nsdecls("w") +
-        "".join('<w:%s w:val="none"/>' % e for e in ("top", "left", "bottom", "right", "insideH", "insideV")) +
-        "</w:tblBorders>"))
+    t._tbl.tblPr.append(
+        parse_xml(
+            "<w:tblBorders %s>" % nsdecls("w")
+            + "".join('<w:%s w:val="none"/>' % e for e in ("top", "left", "bottom", "right", "insideH", "insideV"))
+            + "</w:tblBorders>"
+        )
+    )
     append_omml(t.cell(0, 1).paragraphs[0], "E = Σ_{i∈S}(x_i − μ)/n")
     t.cell(0, 2).paragraphs[0].add_run("（1）")
     d.add_paragraph("[0004]\u3000表1给出了参数。")
@@ -116,13 +127,16 @@ def build_native_fixture() -> bytes:
 
 def test_native_fixture_up_to_date():
     """仓库内 fixture 必须能被 build_native_fixture() 重建（比较文档 XML，忽略 zip 时间戳）。"""
+
     def doc_xml(data):
         with zipfile.ZipFile(io.BytesIO(data)) as z:
             return z.read("word/document.xml")
+
     assert doc_xml(open(NATIVE, "rb").read()) == doc_xml(build_native_fixture())
 
 
 # ---------------- 映射表 ----------------
+
 
 @pytest.fixture()
 def native(tmp_path):
@@ -210,19 +224,24 @@ def test_not_a_docx():
 
 
 def test_import_report_schema():
-    rep = docx_import.ImportReport(books={"abstract": 3, "claims": 10, "description": 80}, figures=["图1.png"],
-                                   items=[docx_import.ReportItem(code="formula.partial", para_index=12, text="…")])
+    rep = docx_import.ImportReport(
+        books={"abstract": 3, "claims": 10, "description": 80},
+        figures=["图1.png"],
+        items=[docx_import.ReportItem(code="formula.partial", para_index=12, text="…")],
+    )
     assert rep.model_dump()["items"][0]["detail"] is None and rep.style_suggestion is None
     assert set(docx_import.BOOK_HEADINGS) == {"abstract", "claims", "description"}
 
 
 # ---------------- 两案回归（§5.4）----------------
 
+
 def _example_config(name, out, content_md=None, figs_dir=None, settings=None):
     store = ProjectStore(os.path.join(ROOT, "examples"))
     project = store.get(name)
-    cfg = store.build_config(project, out=out, content_md=content_md or os.path.join(project.dir, "content.md"),
-                             settings=settings)
+    cfg = store.build_config(
+        project, out=out, content_md=content_md or os.path.join(project.dir, "content.md"), settings=settings
+    )
     if figs_dir:
         cfg["figs_dir"] = figs_dir
     return cfg
@@ -254,8 +273,11 @@ def test_example_roundtrip_document_xml(tmp_path, name):
     settings.update(rep.figure_settings)
     settings["sub_except"] += [x for x in rep.sub_except if x not in settings["sub_except"]]
     again = str(tmp_path / "again.docx")
-    build_patent_ex(_example_config(name, again, content_md=str(proj / "content.md"), figs_dir=str(proj / "figs"),
-                                    settings=settings))
+    build_patent_ex(
+        _example_config(
+            name, again, content_md=str(proj / "content.md"), figs_dir=str(proj / "figs"), settings=settings
+        )
+    )
     assert _doc_xml_md5(orig) == _doc_xml_md5(again)
 
 
@@ -274,8 +296,11 @@ def test_example_roundtrip_pdftotext(tmp_path, name):
     settings = copy.deepcopy(store.load_settings(name))
     settings.update(rep.figure_settings)
     again = str(tmp_path / "again.docx")
-    build_patent_ex(_example_config(name, again, content_md=str(proj / "content.md"), figs_dir=str(proj / "figs"),
-                                    settings=settings))
+    build_patent_ex(
+        _example_config(
+            name, again, content_md=str(proj / "content.md"), figs_dir=str(proj / "figs"), settings=settings
+        )
+    )
     texts = []
     for docx in (orig, again):
         out = tmp_path / os.path.basename(docx).replace(".docx", "")
@@ -291,12 +316,16 @@ def test_example_roundtrip_pdftotext(tmp_path, name):
 
 # ---------------- 服务层 + 路由 ----------------
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("LO_PROFILE_DIR", str(tmp_path / "lo"))
     import importlib
@@ -342,8 +371,11 @@ def test_import_route_creates_project(client):
     assert c.post("/api/projects/import/docx", files=files, data={"id": "案A"}).status_code == 409
     assert c.post("/api/projects/import/docx", files=files, data={"id": "bad id!"}).status_code == 400
     # 部分采纳：style JSON 优先于 apply_styles
-    r = c.post("/api/projects/import/docx", files=files,
-               data={"id": "案B", "apply_styles": "false", "style": json.dumps({"fonts": {"body_cjk": "仿宋"}})})
+    r = c.post(
+        "/api/projects/import/docx",
+        files=files,
+        data={"id": "案B", "apply_styles": "false", "style": json.dumps({"fonts": {"body_cjk": "仿宋"}})},
+    )
     assert r.status_code == 201
     assert c.get("/api/projects/案B").json()["settings"]["style"] == {"fonts": {"body_cjk": "仿宋"}}
     r = c.post("/api/projects/import/docx", files=files, data={"id": "案C", "style": "not json"})

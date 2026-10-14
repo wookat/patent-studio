@@ -7,6 +7,7 @@ run_audited 落 audit.jsonl；org 级工具（无 pid）审计写 <projects>/.st
 async fn 在 run_audited 的 to_thread 里执行——线程内无运行中 loop，可 asyncio.run。
 写面均 editor+ 直写（与 patch_block direct 同模型），全部审计。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -40,6 +41,7 @@ ORG_DIR = os.path.join(config.PROJECTS_DIR, ".studio")
 
 def _err(kind, message, detail=None) -> ToolError:
     from app.mcp.tools import _err as _t_err
+
     return _t_err(kind, message, detail=detail)
 
 
@@ -49,6 +51,7 @@ async def _run_org(store, tool, args, fn, result_of=lambda _r: "ok"):
         result = await __import__("anyio").to_thread.run_sync(fn)
     except Exception as e:
         from app.mcp.tools import _BUSINESS, _detail_of
+
         if isinstance(e, _BUSINESS):
             detail = _detail_of(e)
         elif isinstance(e, ToolError):
@@ -102,8 +105,12 @@ def register(server, store):
 
         def body():
             case = cases.load_case(p.dir)
-            return {"deadlines": [d.model_dump(mode="json") for d in case.deadlines],
-                    "next": cases.next_deadline(case), "summary": cases.summary(case)}
+            return {
+                "deadlines": [d.model_dump(mode="json") for d in case.deadlines],
+                "next": cases.next_deadline(case),
+                "summary": cases.summary(case),
+            }
+
         return await run(pid, "get_deadlines", {}, body)
 
     @server.tool()
@@ -116,8 +123,9 @@ def register(server, store):
     async def list_oa_rounds(pid: str) -> list[dict[str, Any]]:
         """OA 轮次列表（同 GET /oa/rounds）。"""
         p = await open_project(pid)
-        return await run(pid, "list_oa_rounds", {},
-                         lambda: [oa_rounds_mod.to_api(r) for r in oa_rounds_mod.list_rounds(p.dir)])
+        return await run(
+            pid, "list_oa_rounds", {}, lambda: [oa_rounds_mod.to_api(r) for r in oa_rounds_mod.list_rounds(p.dir)]
+        )
 
     @server.tool()
     async def get_oa_round(pid: str, rid: str) -> dict[str, Any]:
@@ -129,14 +137,19 @@ def register(server, store):
                 return oa_rounds_mod.to_api(oa_rounds_mod.load_round(p.dir, rid))
             except oa_rounds_mod.RoundError as e:
                 raise _err("not_found", str(e))
+
         return await run(pid, "get_oa_round", {"rid": rid}, body)
 
     @server.tool()
     async def list_comments(pid: str, status: str | None = None) -> list[dict[str, Any]]:
         """批注台账（status: open/resolved 过滤）；锚点含 block_id/line 供 reply/resolve。"""
         p = await open_project(pid)
-        return await run(pid, "list_comments", {"status": status},
-                         lambda: [c.to_dict() for c in comments.select(comments.load(p.dir), status=status)])
+        return await run(
+            pid,
+            "list_comments",
+            {"status": status},
+            lambda: [c.to_dict() for c in comments.select(comments.load(p.dir), status=status)],
+        )
 
     @server.tool()
     async def list_public_links(pid: str) -> list[dict[str, Any]]:
@@ -148,8 +161,12 @@ def register(server, store):
     async def get_proposals(pid: str, state: str | None = None) -> list[dict[str, Any]]:
         """AI 提案台账（state: pending/applied/dismissed 过滤）。"""
         p = await open_project(pid)
-        return await run(pid, "get_proposals", {"state": state},
-                         lambda: [pr.model_dump(mode="json") for pr in agent_proposals.load(p.dir, pid, state)])
+        return await run(
+            pid,
+            "get_proposals",
+            {"state": state},
+            lambda: [pr.model_dump(mode="json") for pr in agent_proposals.load(p.dir, pid, state)],
+        )
 
     @server.tool()
     async def list_ai_jobs(pid: str) -> list[dict[str, Any]]:
@@ -158,22 +175,21 @@ def register(server, store):
 
         def body():
             out = []
-            for f in sorted(glob.glob(os.path.join(p.dir, JOBS_DIR, "job_*.json")),
-                            key=os.path.getmtime, reverse=True):
+            for f in sorted(glob.glob(os.path.join(p.dir, JOBS_DIR, "job_*.json")), key=os.path.getmtime, reverse=True):
                 try:
                     with open(f, encoding="utf-8") as fh:
                         out.append(json.load(fh))
                 except (OSError, ValueError):
                     continue
             return out
+
         return await run(pid, "list_ai_jobs", {}, body)
 
     @server.tool()
     async def list_audit(pid: str, limit: int = 50) -> list[dict[str, Any]]:
         """本案审计日志（.studio/audit.jsonl 尾部，最新在前）——逐件工具调用 + chat_run 对话任务记录。"""
         p = await open_project(pid)
-        return await run(pid, "list_audit", {"limit": limit},
-                         lambda: audit.tail(p.dir, min(max(limit, 1), 200)))
+        return await run(pid, "list_audit", {"limit": limit}, lambda: audit.tail(p.dir, min(max(limit, 1), 200)))
 
     @server.tool()
     async def get_deliver_errors(pid: str) -> list[dict[str, Any]]:
@@ -182,7 +198,9 @@ def register(server, store):
 
         def body():
             from app.routes import deliver
+
             return [e.model_dump(mode="json") for e in deliver.request_errors(store, pid)]
+
         return await run(pid, "get_deliver_errors", {}, body)
 
     @server.tool()
@@ -195,36 +213,42 @@ def register(server, store):
         def body():
             report = prior_art.search_all(queries, limit=limit)
             return report.model_dump(mode="json") if hasattr(report, "model_dump") else report
+
         return await run(pid, "prior_art_search", {"queries": queries, "limit": limit}, body)
 
     @server.tool()
     async def list_tags() -> list[dict[str, Any]]:
         """机构标签库（同 GET /api/tags）。"""
-        return await _run_org(store, "list_tags", {},
-                              lambda: [t.model_dump(mode="json") for t in cases.load_tags()])
+        return await _run_org(store, "list_tags", {}, lambda: [t.model_dump(mode="json") for t in cases.load_tags()])
 
     @server.tool()
     async def list_templates() -> list[dict[str, Any]]:
         """机构模板库列表。"""
-        return await _run_org(store, "list_templates", {},
-                              lambda: [t.model_dump(mode="json") for t in templates.list_templates()])
+        return await _run_org(
+            store, "list_templates", {}, lambda: [t.model_dump(mode="json") for t in templates.list_templates()]
+        )
 
     @server.tool()
     async def get_template(name: str) -> dict[str, Any]:
         """单份模板全文。"""
+
         def body():
             for t in templates.list_templates():
                 if t.name == name:
                     return t.model_dump(mode="json")
             raise _err("not_found", f"模板不存在：{name}")
+
         return await _run_org(store, "get_template", {"name": name}, body)
 
     @server.tool()
     async def oa_parse(text: str) -> dict[str, Any]:
         """OA 通知正文 → 要点拆条（不落台账；配合 create_oa_round 登记）。"""
-        return await _run_org(store, "oa_parse", {"text_len": len(text)},
-                              lambda: {"items": oa_parse_mod.parse(text)[0],
-                                       "warnings": oa_parse_mod.parse(text)[1]})
+        return await _run_org(
+            store,
+            "oa_parse",
+            {"text_len": len(text)},
+            lambda: {"items": oa_parse_mod.parse(text)[0], "warnings": oa_parse_mod.parse(text)[1]},
+        )
 
     # ---------------------------------------------------------------- 写 ----
 
@@ -235,6 +259,7 @@ def register(server, store):
 
         def body():
             import secrets
+
             new_pid = pid or "p" + secrets.token_hex(6)
             store.create(new_pid, title)
             p = store.get(new_pid)
@@ -242,18 +267,21 @@ def register(server, store):
             if who.user_id:
                 cases.claim_owner(p.dir, who.user_id)
             return {"pid": p.id, "title": p.title}
+
         r = await _run_org(store, "create_project", {"title": title, "pid": pid}, body)
         if config.AUTH_ON and who.user_id:
             try:
                 from app import auth as _auth
+
                 await _auth.grant_owner(r["pid"], who.user_id)
             except Exception:
                 pass
         return r
 
     @server.tool()
-    async def import_docx_path(path: str, pid: str | None = None, title: str | None = None,
-                               apply_styles: bool = True) -> dict[str, Any]:
+    async def import_docx_path(
+        path: str, pid: str | None = None, title: str | None = None, apply_styles: bool = True
+    ) -> dict[str, Any]:
         """从服务端可读路径导入 docx 建案（upload 二进制不适合 MCP 通道）。"""
         who = actor()
         if not os.path.isfile(path) or not path.lower().endswith(".docx"):
@@ -262,18 +290,20 @@ def register(server, store):
         def body():
             with open(path, "rb") as f:
                 data = f.read()
-            pid2, report = import_project(store, data, os.path.basename(path), pid, title,
-                                          apply_styles, None)
+            pid2, report = import_project(store, data, os.path.basename(path), pid, title, apply_styles, None)
             p = store.get(pid2)
             if who.user_id:
                 cases.claim_owner(p.dir, who.user_id)
-            return {"project": {"id": p.id, "title": p.title},
-                    "report": report.model_dump() if hasattr(report, "model_dump") else report}
-        r = await _run_org(store, "import_docx_path",
-                           {"path": path, "pid": pid, "title": title}, body)
+            return {
+                "project": {"id": p.id, "title": p.title},
+                "report": report.model_dump() if hasattr(report, "model_dump") else report,
+            }
+
+        r = await _run_org(store, "import_docx_path", {"path": path, "pid": pid, "title": title}, body)
         if config.AUTH_ON and who.user_id:
             try:
                 from app import auth as _auth
+
                 await _auth.grant_owner(r["project"]["id"], who.user_id)
             except Exception:
                 pass
@@ -293,11 +323,12 @@ def register(server, store):
                 case2 = cases.apply_patch(case, patch)
                 if cases.DEADLINE_INPUT_FIELDS.intersection(patch.model_fields_set):
                     from app import deadlines as deadlines_mod
+
                     case2, _ = deadlines_mod.recompute(case2)
                 cases.save_case(p.dir, case2)
-                history.commit_case(p.dir, "case: update " + ",".join(cases.patched_fields(patch)),
-                                    actor().name)
+                history.commit_case(p.dir, "case: update " + ",".join(cases.patched_fields(patch)), actor().name)
                 return case2.model_dump(mode="json")
+
         out = await run(pid, "update_case", {"fields": sorted(fields)}, body)
         return out
 
@@ -309,6 +340,7 @@ def register(server, store):
         def body():
             merged = {**(p.settings or {}), **settings}
             return store.save_settings(pid, merged)
+
         return await run(pid, "put_settings", {"keys": sorted(settings)}, body)
 
     @server.tool()
@@ -319,40 +351,50 @@ def register(server, store):
         def body():
             from app.routes.cases import case_or_404
             from app.routes.deadlines import _find, _save
+
             with atomic.studio_lock(p.dir, "case"):
                 case = case_or_404(p.dir)
-                d = _find(case, deadline_id).model_copy(
-                    update={"done": done, "done_at": time.time() if done else None})
-                case = _save(p.dir, cases.replace_deadline(case, d),
-                             f"case: deadline {'done' if done else 'undone'} {d.id}", None)
+                d = _find(case, deadline_id).model_copy(update={"done": done, "done_at": time.time() if done else None})
+                case = _save(
+                    p.dir,
+                    cases.replace_deadline(case, d),
+                    f"case: deadline {'done' if done else 'undone'} {d.id}",
+                    None,
+                )
                 return {"deadline_id": d.id, "done": done, "due": d.due}
+
         out = await run(pid, "deadline_done", {"deadline_id": deadline_id, "done": done}, body)
-        events.emit("deadline.done" if done else "deadline.undone", pid=pid, actor=_actor_dict(),
-                    data={"id": deadline_id})
+        events.emit(
+            "deadline.done" if done else "deadline.undone", pid=pid, actor=_actor_dict(), data={"id": deadline_id}
+        )
         return out
 
     @server.tool()
-    async def update_deadline(pid: str, deadline_id: str, due: str | None = None,
-                              override_reason: str | None = None) -> dict[str, Any]:
+    async def update_deadline(
+        pid: str, deadline_id: str, due: str | None = None, override_reason: str | None = None
+    ) -> dict[str, Any]:
         """期限改期（due YYYY-MM-DD + 理由；改期事实+理由入审计与期限行透出）。"""
         p = await _editor(pid, "update_deadline", {"deadline_id": deadline_id, "due": due})
 
         def body():
             from app.routes.cases import case_or_404
             from app.routes.deadlines import _find, _save
+
             with atomic.studio_lock(p.dir, "case"):
                 case = case_or_404(p.dir)
                 d = _find(case, deadline_id)
                 old = d.due
-                d2 = d.model_copy(update={"due": due or d.due, "source": "manual",
-                                          "override_reason": override_reason})
-                _save(p.dir, cases.replace_deadline(case, d2),
-                      f"case: deadline override {d2.id} → {d2.due}", None)
+                d2 = d.model_copy(update={"due": due or d.due, "source": "manual", "override_reason": override_reason})
+                _save(p.dir, cases.replace_deadline(case, d2), f"case: deadline override {d2.id} → {d2.due}", None)
                 return {"deadline_id": d2.id, "from": old, "to": d2.due}
+
         out = await run(pid, "update_deadline", {"deadline_id": deadline_id, "due": due}, body)
-        events.emit("deadline.override", pid=pid, actor=_actor_dict(),
-                    data={"id": deadline_id, "from": out["from"], "to": out["to"],
-                          "reason": override_reason})
+        events.emit(
+            "deadline.override",
+            pid=pid,
+            actor=_actor_dict(),
+            data={"id": deadline_id, "from": out["from"], "to": out["to"], "reason": override_reason},
+        )
         return out
 
     @server.tool()
@@ -369,6 +411,7 @@ def register(server, store):
                 cases.save_case(p.dir, case)
                 history.commit_case(p.dir, f"oa: round {rnd['id']} {kind}", actor().name)
                 return oa_rounds_mod.to_api(rnd)
+
         out = await run(pid, "create_oa_round", {"kind": kind, "issued_on": issued_on}, body)
         events.emit("oa.round", pid=pid, actor=_actor_dict(), data={"id": out["id"]})
         return out
@@ -383,6 +426,7 @@ def register(server, store):
                 return oa_rounds_mod.to_api(oa_rounds_mod.update_round(p.dir, rid, **fields))
             except oa_rounds_mod.RoundError as e:
                 raise _err("not_found", str(e))
+
         return await run(pid, "update_oa_round", {"rid": rid}, body)
 
     @server.tool()
@@ -395,6 +439,7 @@ def register(server, store):
                 return oa_rounds_mod.to_api(oa_rounds_mod.extend_round(p.dir, rid, months))
             except oa_rounds_mod.RoundError as e:
                 raise _err("conflict", str(e))
+
         return await run(pid, "extend_oa_round", {"rid": rid, "months": months}, body)
 
     @server.tool()
@@ -408,6 +453,7 @@ def register(server, store):
             except oa_rounds_mod.RoundError as e:
                 raise _err("not_found", str(e))
             return {"ok": True}
+
         return await run(pid, "delete_oa_round", {"rid": rid}, body)
 
     @server.tool()
@@ -415,9 +461,14 @@ def register(server, store):
         """时间线工作笔记（同 POST /notes）。"""
         p = await _editor(pid, "add_note", {"body_len": len(body)})
         who = actor()
-        return await run(pid, "add_note", {"body_len": len(body)},
-                         lambda: timeline.add_note(p.dir, body, _author_of(who) and
-                                                   {"id": who.user_id or "local", "name": who.name}))
+        return await run(
+            pid,
+            "add_note",
+            {"body_len": len(body)},
+            lambda: timeline.add_note(
+                p.dir, body, _author_of(who) and {"id": who.user_id or "local", "name": who.name}
+            ),
+        )
 
     @server.tool()
     async def reply_comment(pid: str, cid: str, body: str) -> dict[str, Any]:
@@ -434,6 +485,7 @@ def register(server, store):
                 c2 = comments.reply(c, body, _author_of(who))
                 comments.save(p.dir, items)
                 return c2.to_dict()
+
         return await run(pid, "reply_comment", {"cid": cid, "body_len": len(body)}, do)
 
     @server.tool()
@@ -451,6 +503,7 @@ def register(server, store):
                 c2 = comments.resolve(c, resolved, _author_of(who))
                 comments.save(p.dir, items)
                 return c2.to_dict()
+
         return await run(pid, "resolve_comment", {"cid": cid, "resolved": resolved}, do)
 
     @server.tool()
@@ -465,18 +518,24 @@ def register(server, store):
                     raise _err("not_found", f"批注不存在：{cid}")
                 comments.save(p.dir, [c for c in items if c.id != cid])
                 return {"ok": True}
+
         return await run(pid, "delete_comment", {"cid": cid}, do)
 
     @server.tool()
-    async def create_public_link(pid: str, scope: str = "read", ttl_days: int | None = None,
-                                 allow_download: bool = False) -> dict[str, Any]:
+    async def create_public_link(
+        pid: str, scope: str = "read", ttl_days: int | None = None, allow_download: bool = False
+    ) -> dict[str, Any]:
         """创建免登录分享链（scope: read/comment）。"""
         await _editor(pid, "create_public_link", {"scope": scope})
         who = actor()
 
         def body():
-            return asyncio.run(public_share.create_link(
-                pid, _ActorUser(who), scope=scope, ttl_days=ttl_days, allow_download=allow_download))
+            return asyncio.run(
+                public_share.create_link(
+                    pid, _ActorUser(who), scope=scope, ttl_days=ttl_days, allow_download=allow_download
+                )
+            )
+
         return await run(pid, "create_public_link", {"scope": scope, "ttl_days": ttl_days}, body)
 
     @server.tool()
@@ -484,34 +543,46 @@ def register(server, store):
         """吊销分享链。"""
         await _editor(pid, "revoke_public_link", {})
         who = actor()
-        return await run(pid, "revoke_public_link", {"token": token[:8]},
-                         lambda: {"ok": asyncio.run(public_share.revoke_link(pid, token,
-                                                                             _ActorUser(who)))})
+        return await run(
+            pid,
+            "revoke_public_link",
+            {"token": token[:8]},
+            lambda: {"ok": asyncio.run(public_share.revoke_link(pid, token, _ActorUser(who)))},
+        )
 
     @server.tool()
     async def apply_proposal(pid: str, proposal_id: str) -> dict[str, Any]:
         """应用 AI 提案（非 pending 409；写正文走提案契约——与 web 同款闸）。"""
         await _editor(pid, "apply_proposal", {"proposal_id": proposal_id})
         who = actor()
-        return await run(pid, "apply_proposal", {"proposal_id": proposal_id},
-                         lambda: asyncio.run(agent_proposals.apply(store, pid, proposal_id,
-                                                                   user=None, who=who.name)).model_dump(mode="json"))
+        return await run(
+            pid,
+            "apply_proposal",
+            {"proposal_id": proposal_id},
+            lambda: asyncio.run(agent_proposals.apply(store, pid, proposal_id, user=None, who=who.name)).model_dump(
+                mode="json"
+            ),
+        )
 
     @server.tool()
     async def dismiss_proposal(pid: str, proposal_id: str) -> dict[str, Any]:
         """忽略 AI 提案。"""
         await _editor(pid, "dismiss_proposal", {"proposal_id": proposal_id})
         who = actor()
-        return await run(pid, "dismiss_proposal", {"proposal_id": proposal_id},
-                         lambda: agent_proposals.dismiss(store, pid, proposal_id,
-                                                         who=who.name).model_dump(mode="json"))
+        return await run(
+            pid,
+            "dismiss_proposal",
+            {"proposal_id": proposal_id},
+            lambda: agent_proposals.dismiss(store, pid, proposal_id, who=who.name).model_dump(mode="json"),
+        )
 
     @server.tool()
     async def apply_template(pid: str, name: str) -> dict[str, Any]:
         """套机构模板到案卷。"""
         await _editor(pid, "apply_template", {"name": name})
-        return await run(pid, "apply_template", {"name": name},
-                         lambda: asyncio.run(templates.apply_template(store, pid, name)))
+        return await run(
+            pid, "apply_template", {"name": name}, lambda: asyncio.run(templates.apply_template(store, pid, name))
+        )
 
     @server.tool()
     async def create_tag(name: str, color: str | None = None) -> dict[str, Any]:
@@ -528,6 +599,7 @@ def register(server, store):
             tags.append(t)
             cases.save_tags(tags)
             return t.model_dump(mode="json")
+
         return await _run_org(store, "create_tag", {"name": name}, body)
 
     @server.tool()
@@ -546,9 +618,11 @@ def register(server, store):
             jobs = JobStore(config.PROJECTS_DIR)
             ai = ai_client.from_env()
             job = jobs.create(agent_loop.job_kind(scenario), pid)
-            await agent_loop.run_scenario(pid, scenario, params or {}, job, store=store, jobs=jobs,
-                                          ai=ai, who=who.name, actor=_actor_dict())
+            await agent_loop.run_scenario(
+                pid, scenario, params or {}, job, store=store, jobs=jobs, ai=ai, who=who.name, actor=_actor_dict()
+            )
             return jobs.get(job.id).to_dict()
+
         try:
             return await run(pid, "run_scenario", {"scenario": scenario}, work)
         except Exception as e:
@@ -557,6 +631,7 @@ def register(server, store):
 
 class _ActorUser:
     """public_share.create_link/revoke_link 需要带 .id 的 user 形——MCP Actor 轻量适配。"""
+
     def __init__(self, who):
         self.id = who.user_id
         self.email = who.name

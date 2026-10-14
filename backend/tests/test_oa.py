@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """单元 E3 · OA 答复工作台（docs/plan/09 §3.4）：确定性拆条 / CriticMarkup 生成律 / answer job（mock）/
 意见陈述书 DOCX。"""
+
 import importlib
 import io
 import os
@@ -40,6 +41,7 @@ ABOUT = """审查员意见如下。
 
 # ---------------- 拆条 ----------------
 
+
 def test_parse_numbered_items_claims_kinds():
     items, warnings = parse.parse(NOTICE)
     assert warnings == []
@@ -73,12 +75,16 @@ def test_parse_is_deterministic():
 
 # ---------------- CriticMarkup 生成律 ----------------
 
-@pytest.mark.parametrize("old,new", [
-    ("1. 一种方法，其特征在于，包括步骤A。", "1. 一种方法，其特征在于，包括步骤A和步骤B。"),
-    ("1. 一种方法，包括：\n步骤一；\n步骤二。", "1. 一种方法，其特征在于，包括：\n步骤一；"),
-    ("1. 甲。", "1. 甲。\n乙。\n丙。"),
-    ("1. 完全不同的原文。", "1. 全新的替换文本，与原文毫无关系。"),
-])
+
+@pytest.mark.parametrize(
+    "old,new",
+    [
+        ("1. 一种方法，其特征在于，包括步骤A。", "1. 一种方法，其特征在于，包括步骤A和步骤B。"),
+        ("1. 一种方法，包括：\n步骤一；\n步骤二。", "1. 一种方法，其特征在于，包括：\n步骤一；"),
+        ("1. 甲。", "1. 甲。\n乙。\n丙。"),
+        ("1. 完全不同的原文。", "1. 全新的替换文本，与原文毫无关系。"),
+    ],
+)
 def test_to_critic_roundtrip(old, new):
     line = answer.to_critic(old, new)
     assert critic.reject(line).rstrip("\n") == old
@@ -95,12 +101,16 @@ def test_to_critic_merges_fragments():
 
 # ---------------- 端到端（mock 供应商）----------------
 
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("PATENT_STUDIO_AI_PROVIDER", "mock")
     from app import config, main
@@ -206,10 +216,20 @@ def test_oa_answer_job_and_export_docx(client):
 
 def test_export_docx_amended_claims_uses_accept():
     claims_md = "\n1. 一种方法，其特征在于，包括步骤A。\n\n2. 根据权利要求1所述的方法。\n\n"
-    ans = {"item_id": "oa-1", "points": ["要点"], "amend_summary": "增补 B",
-           "claim_edits": [{"claim": 1, "block_id": "claims/1", "line": 1,
-                            "critic_line": "1. 一种方法，其特征在于，包括步骤A{++和步骤B++}。",
-                            "original": "1. 一种方法，其特征在于，包括步骤A。"}]}
+    ans = {
+        "item_id": "oa-1",
+        "points": ["要点"],
+        "amend_summary": "增补 B",
+        "claim_edits": [
+            {
+                "claim": 1,
+                "block_id": "claims/1",
+                "line": 1,
+                "critic_line": "1. 一种方法，其特征在于，包括步骤A{++和步骤B++}。",
+                "original": "1. 一种方法，其特征在于，包括步骤A。",
+            }
+        ],
+    }
     items = [{"id": "oa-1", "claims": [1], "kind": "novelty", "text": "1. 无新颖性"}]
     data = export.export_docx(project={"title": "T", "app_no": None}, items=items, answers=[ans], claims_md=claims_md)
     d = Document(io.BytesIO(data))

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """W5 notify-audit-backend：机构审计（events "*" → org_audit_events）+ GET /api/admin/audit(.csv) 筛选（超管）。"""
+
 import csv
 import io
 import os
@@ -40,6 +41,7 @@ def _rows_csv(text: str) -> list[dict]:
 
 # ---------------------------------------------------------------- off ----
 
+
 def test_off_mode_writes_nothing_and_routes_501(client):
     c, tmp = client
     org_audit.install()
@@ -50,6 +52,7 @@ def test_off_mode_writes_nothing_and_routes_501(client):
 
 
 # ---------------------------------------------------------------- 写入 ----
+
 
 def test_export_download_event_becomes_audit_row(on):
     su_c, staff_c, su, staff = _seed(on)
@@ -80,12 +83,26 @@ def test_case_ops_kinds_now_audited(on):
     """批72：已 emit 却被 KINDS 闸丢弃的案务操作入审计——期限完成/撤销/改期/催办、
     OA 轮次、案卷状态、批注指派都是「谁动了义务」的法定追溯面。"""
     su_c, staff_c, su, staff = _seed(on)
-    for kind in ("deadline.done", "deadline.undone", "deadline.override", "deadline.nudge",
-                 "oa.round", "case.status", "comment.assign"):
+    for kind in (
+        "deadline.done",
+        "deadline.undone",
+        "deadline.override",
+        "deadline.nudge",
+        "oa.round",
+        "case.status",
+        "comment.assign",
+    ):
         events.emit(kind, pid="method", actor=_actor(staff), data={"probe": kind})
     kinds = {r["kind"] for r in su_c.get("/api/admin/audit").json()["items"]}
-    assert {"deadline.done", "deadline.undone", "deadline.override", "deadline.nudge",
-            "oa.round", "case.status", "comment.assign"} <= kinds
+    assert {
+        "deadline.done",
+        "deadline.undone",
+        "deadline.override",
+        "deadline.nudge",
+        "oa.round",
+        "case.status",
+        "comment.assign",
+    } <= kinds
 
 
 def test_admin_user_update_emits_audit(on):
@@ -112,6 +129,7 @@ def test_admin_user_update_emits_audit(on):
 
 # ---------------------------------------------------------------- 权限 ----
 
+
 def test_audit_is_superuser_only(on):
     su_c, staff_c, su, staff = _seed(on)
     assert TestClient(on.app).get("/api/admin/audit").status_code == 401
@@ -123,6 +141,7 @@ def test_audit_is_superuser_only(on):
 
 
 # ---------------------------------------------------------------- 筛选 + CSV ----
+
 
 def test_filters_and_csv_row_count_matches(on):
     su_c, staff_c, su, staff = _seed(on)
@@ -160,8 +179,12 @@ def test_filters_and_csv_row_count_matches(on):
     assert r.status_code == 422
 
     # CSV：行数 = 同一筛选的 total；列固定；data 为 JSON
-    for params, n in (({}, 7), ({"actor": staff["id"]}, 4), ({"kind": "export.downloaded", "pid": "b"}, 1),
-                      ({"to": yesterday}, 1)):
+    for params, n in (
+        ({}, 7),
+        ({"actor": staff["id"]}, 4),
+        ({"kind": "export.downloaded", "pid": "b"}, 1),
+        ({"to": yesterday}, 1),
+    ):
         r = su_c.get("/api/admin/audit.csv", params=params)
         assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
         assert "org-audit.csv" in r.headers["content-disposition"]

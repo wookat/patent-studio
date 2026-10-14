@@ -12,6 +12,7 @@ parse(text) -> (items, warnings)
 pdf_text(data) -> str
   pypdf 抽文字层（21 §1.3 A7：只支持文字层 PDF，OCR 推后）；无文字层或有效字数 < MIN_TEXT_CHARS ⇒ NoTextLayer。
 """
+
 import io
 import re
 from typing import TypedDict
@@ -125,11 +126,16 @@ def parse(text: str) -> tuple[list[OaItem], list[str]]:
     items: list[OaItem] = []
     for k, chunk in enumerate(chunks, 1):
         claims, refs, kind = _claims_in(chunk), _refs_in(chunk), _kind(chunk)
-        items.append({
-            "id": f"oa-{k}", "claims": claims, "refs": refs, "kind": kind,
-            "confidence": _confidence(numbered=bool(starts), claims=claims, refs=refs, kind=kind),
-            "text": chunk,
-        })
+        items.append(
+            {
+                "id": f"oa-{k}",
+                "claims": claims,
+                "refs": refs,
+                "kind": kind,
+                "confidence": _confidence(numbered=bool(starts), claims=claims, refs=refs, kind=kind),
+                "text": chunk,
+            }
+        )
     return items, warnings
 
 

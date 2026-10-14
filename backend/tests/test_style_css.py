@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """W4-D D1：Style → style.css 生成器 + GET /style.css 随 settings 变化 + AST para_no 与 DOCX 段号同源（16 §2–3）。"""
+
 import os
 import re
 import zipfile
@@ -44,6 +45,7 @@ def _rules(css):
 
 
 # ---------------- 生成器 ----------------
+
 
 def test_css_number_and_units():
     assert css_number(12) == "12" and css_number(10.5) == "10.5" and css_number(21.0) == "21"
@@ -118,13 +120,17 @@ def test_render_css_shape_and_part_classes():
 
 
 def test_render_css_follows_overrides():
-    css = render_css(merge_style({
-        "sizes": {"body": 10.5},
-        "fonts": {"body_cjk": "仿宋", "ascii": "Arial"},
-        "page": {"width_cm": 18.4, "margin_left_mm": 20},
-        "paragraph": {"line_spacing": 1.5},
-        "header": {"labels": {"claims": "权利"}},
-    }))
+    css = render_css(
+        merge_style(
+            {
+                "sizes": {"body": 10.5},
+                "fonts": {"body_cjk": "仿宋", "ascii": "Arial"},
+                "page": {"width_cm": 18.4, "margin_left_mm": 20},
+                "paragraph": {"line_spacing": 1.5},
+                "header": {"labels": {"claims": "权利"}},
+            }
+        )
+    )
     root = _rules(css)[":root,.ps-layout"]
     assert root["--ps-size-body"] == "10.5pt" and root["--ps-line-height"] == "1.5"
     assert root["--ps-page-w"] == "18.4cm" and root["--ps-page-w-px"] == "695.43" and root["--ps-margin-l"] == "20mm"
@@ -133,6 +139,7 @@ def test_render_css_follows_overrides():
 
 
 # ---------------- 路由 ----------------
+
 
 def test_style_css_route_reflects_settings(client):
     c, _ = client
@@ -154,6 +161,7 @@ def test_style_css_route_reflects_settings(client):
 
 
 # ---------------- para_no ----------------
+
 
 def test_ast_para_no_uses_numbering_number_spec():
     """AST 段号与 builder 同一实现：ast.py 引用的 number_spec 就是 numbering.number_spec 本体。"""
@@ -178,8 +186,9 @@ def _para_nos(ast):
 def test_para_no_matches_docx_labels(pid, tmp_path):
     """两案：AST 正文块 para_no 序列逐段 == builder 产出 document.xml 的 [000N] 序列。"""
     store = ProjectStore(EXAMPLES)
-    ast = parse_ast(store.read_content(pid), store.load_settings(pid),
-                    figures=figures_md.read(os.path.join(EXAMPLES, pid)))
+    ast = parse_ast(
+        store.read_content(pid), store.load_settings(pid), figures=figures_md.read(os.path.join(EXAMPLES, pid))
+    )
     nums = _para_nos(ast)
     assert nums and nums == list(range(1, len(nums) + 1))
     assert all(b["para_no"] is None for b in ast["abstract"]["paragraphs"])
@@ -189,7 +198,13 @@ def test_para_no_matches_docx_labels(pid, tmp_path):
     build_patent_ex(cfg)
     with zipfile.ZipFile(cfg["out"]) as z:
         doc = z.read("word/document.xml").decode("utf-8")
-    assert [int(m.group(1)) for m in re.finditer(r"\[(\d{4})\]", doc)] == nums
+    # 新语料有裸「[NNNN]」空段行：内核生成标签 + 字面文本独立成 run 各计一次 →
+    # 整 run 恰为 [NNNN] 的序列 = 段号序列 + 这些行的二次出现
+    bare = {
+        int(m.group(1)) for ln in store.read_content(pid).split("\n") if (m := re.fullmatch(r"\[(\d{4})\]", ln.strip()))
+    }
+    expected = [x for n in nums for x in ([n, n] if n in bare else [n])]
+    assert [int(m.group(1)) for m in re.finditer(r"<w:t[^>]*>\[(\d{4})\]</w:t>", doc)] == expected
 
 
 def test_ast_route_blocks_carry_para_no(client):

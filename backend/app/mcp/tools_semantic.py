@@ -17,6 +17,7 @@
 preflight.run 必须带 settings / terms / figs（同 routes_preflight._report）：裸 run(ast) 会多出 figures.ref_missing
 假阳性。
 """
+
 from __future__ import annotations
 
 import re
@@ -52,13 +53,16 @@ def derive(store, pid: str) -> Derived:
     content = store.read_content(pid)
     ast = routes_ast._parse(store, pid, content, None)
     glossary = terms.load(p.dir)
-    report = preflight.run(ast, _settings(store, p), glossary, figs=store.list_figs(p.dir),
-                           figures=store.load_figures(p.dir))
-    return Derived(pid=pid, dir=p.dir, ast=ast, report=report, glossary=glossary,
-                   lines=critic.accept(content).split("\n"))
+    report = preflight.run(
+        ast, _settings(store, p), glossary, figs=store.list_figs(p.dir), figures=store.load_figures(p.dir)
+    )
+    return Derived(
+        pid=pid, dir=p.dir, ast=ast, report=report, glossary=glossary, lines=critic.accept(content).split("\n")
+    )
 
 
 # ---------------------------------------------------------------- 权利要求树 ----
+
 
 def _claim_text(block: dict) -> str:
     return "\n".join(s["text"] for s in block["segments"] if s.get("text"))
@@ -77,9 +81,16 @@ def _nodes(d: Derived) -> dict[int, schemas.ClaimNode]:
         if it["book"] == "claims" and it.get("block_id"):
             issues.setdefault(it["block_id"], []).append(it)
     return {
-        row["num"]: schemas.ClaimNode(num=row["num"], kind=row["kind"], category=row["category"], refs=row["refs"],
-                                      line=row["line"], text=text.get(row["num"], ""),
-                                      issues=issues.get(f"claims/{row['num']}", []), children=[])
+        row["num"]: schemas.ClaimNode(
+            num=row["num"],
+            kind=row["kind"],
+            category=row["category"],
+            refs=row["refs"],
+            line=row["line"],
+            text=text.get(row["num"], ""),
+            issues=issues.get(f"claims/{row['num']}", []),
+            children=[],
+        )
         for row in d.report["claim_tree"]
     }
 
@@ -109,10 +120,18 @@ def _chain(nodes: dict[int, schemas.ClaimNode], num: int) -> list[schemas.ClaimN
         parent = min(parents)
         node = nodes[parent].model_copy(update={"children": []})
         if len(cur.refs) > 1:
-            node.issues = [*node.issues, {"rule": "chain.alternative", "severity": "info",
-                                          "message": f"权利要求 {cur.num} 引用多项 {cur.refs}，依赖链取最小号 {parent}",
-                                          "book": "claims", "line": cur.line, "block_id": f"claims/{cur.num}",
-                                          "detail": ",".join(map(str, cur.refs))}]
+            node.issues = [
+                *node.issues,
+                {
+                    "rule": "chain.alternative",
+                    "severity": "info",
+                    "message": f"权利要求 {cur.num} 引用多项 {cur.refs}，依赖链取最小号 {parent}",
+                    "book": "claims",
+                    "line": cur.line,
+                    "block_id": f"claims/{cur.num}",
+                    "detail": ",".join(map(str, cur.refs)),
+                },
+            ]
         out.append(node)
         seen.add(parent)
         cur = nodes[parent]
@@ -122,6 +141,7 @@ def _chain(nodes: dict[int, schemas.ClaimNode], num: int) -> list[schemas.ClaimN
 
 # ---------------------------------------------------------------- 支持性 / 附图 / 术语 ----
 
+
 def support_map(d: Derived) -> list[schemas.SupportRow]:
     return [schemas.SupportRow(**row) for row in d.report["support_map"]]
 
@@ -129,9 +149,17 @@ def support_map(d: Derived) -> list[schemas.SupportRow]:
 def _paragraphs(d: Derived) -> list[dict]:
     """说明书段落：{para_no, line(全文), text(final), id}，按行号。"""
     off = d.ast["books"]["description"]["offset"]
-    return [{"id": b["id"], "para_no": b["para_no"], "line": off + b["lines"]["start"], "end": off + b["lines"]["end"],
-             "text": d.line(off + b["lines"]["start"])}
-            for b in d.ast["description"] if b["kind"] == "paragraph"]
+    return [
+        {
+            "id": b["id"],
+            "para_no": b["para_no"],
+            "line": off + b["lines"]["start"],
+            "end": off + b["lines"]["end"],
+            "text": d.line(off + b["lines"]["start"]),
+        }
+        for b in d.ast["description"]
+        if b["kind"] == "paragraph"
+    ]
 
 
 def figures(d: Derived) -> list[schemas.FigureRow]:
@@ -147,8 +175,16 @@ def figures(d: Derived) -> list[schemas.FigureRow]:
             if lines & set(n["lines"]):
                 markers.append(_marker(n))
                 placed.add(n["num"])
-        rows.append(schemas.FigureRow(num=f["num"], file=f["file"], caption=caption.get(f["num"], ""),
-                                      caption_line=f["caption_line"], refs=sorted(lines), markers=markers))
+        rows.append(
+            schemas.FigureRow(
+                num=f["num"],
+                file=f["file"],
+                caption=caption.get(f["num"], ""),
+                caption_line=f["caption_line"],
+                refs=sorted(lines),
+                markers=markers,
+            )
+        )
     for n in d.report["numerals"]:
         if n["num"] in placed or n.get("legend_line") is None:
             continue
@@ -161,8 +197,13 @@ def figures(d: Derived) -> list[schemas.FigureRow]:
 
 
 def _marker(n: dict) -> dict:
-    return {"num": n["num"], "legend": n["legend"], "names": n["names"], "lines": n["lines"],
-            "consistent": n["consistent"]}
+    return {
+        "num": n["num"],
+        "legend": n["legend"],
+        "names": n["names"],
+        "lines": n["lines"],
+        "consistent": n["consistent"],
+    }
 
 
 def _definition(d: Derived, name: str) -> tuple[str, int | None]:
@@ -172,7 +213,7 @@ def _definition(d: Derived, name: str) -> tuple[str, int | None]:
     for text, line in candidates:
         m = pat.search(text)
         if m:
-            tail = text[m.start(1):]
+            tail = text[m.start(1) :]
             end = re.search(r"[。；;]", tail)
             return tail[: end.end()] if end else tail, line
     return "", None
@@ -186,8 +227,15 @@ def term_rows(d: Derived) -> list[schemas.TermRow]:
         definition, line = t.get("definition") or "", t.get("first_line")
         if not definition:
             definition, line = _definition(d, t["name"])
-        rows.append(schemas.TermRow(name=t["name"], aliases=list(t.get("aliases") or []), definition=definition,
-                                    definition_line=line, claims=claims_of.get(t["name"], [])))
+        rows.append(
+            schemas.TermRow(
+                name=t["name"],
+                aliases=list(t.get("aliases") or []),
+                definition=definition,
+                definition_line=line,
+                claims=claims_of.get(t["name"], []),
+            )
+        )
         seen.add(t["name"])
         seen.update(t.get("aliases") or [])
     for term, nums in claims_of.items():
@@ -199,6 +247,7 @@ def term_rows(d: Derived) -> list[schemas.TermRow]:
 
 
 # ---------------------------------------------------------------- context_pack ----
+
 
 def _resolve_claim(d: Derived, claim_id: str) -> int:
     m = _CLAIM_ID_RE.match(str(claim_id).strip())
@@ -235,8 +284,11 @@ def context_pack(d: Derived, claim_id: str, max_chars: int = 12000) -> schemas.C
     fig_nums = set(re.findall(r"图\s*(\d+)", claim.text))
     fig_rows = []
     for f in figures(d):
-        if (str(f.num) in fig_nums or set(f.refs) & support_lines
-                or any(re.search(r"(?<!\d)" + re.escape(m["num"]) + r"(?!\d)", claim.text) for m in f.markers)):
+        if (
+            str(f.num) in fig_nums
+            or set(f.refs) & support_lines
+            or any(re.search(r"(?<!\d)" + re.escape(m["num"]) + r"(?!\d)", claim.text) for m in f.markers)
+        ):
             fig_rows.append(f)
 
     term_list = [t for t in term_rows(d) if scope & set(t.claims)]
@@ -246,21 +298,37 @@ def context_pack(d: Derived, claim_id: str, max_chars: int = 12000) -> schemas.C
         if c.resolved:
             continue
         if c.anchor.block_id == block["id"] or c_start <= c.anchor.line <= c_end:
-            pack_comments.append({"id": c.id, "book": "claims", "line": c.anchor.line, "quote": c.anchor.quote,
-                                  "text": c.body, "author": c.author.name, "created_at": c.created_at})
+            pack_comments.append(
+                {
+                    "id": c.id,
+                    "book": "claims",
+                    "line": c.anchor.line,
+                    "quote": c.anchor.quote,
+                    "text": c.body,
+                    "author": c.author.name,
+                    "created_at": c.created_at,
+                }
+            )
 
     issue_lines = set(range(c_start, c_end + 1)) | support_lines
-    issues = [it for it in d.report["items"]
-              if it.get("block_id") == block["id"] or (it.get("line") in issue_lines)]
+    issues = [it for it in d.report["items"] if it.get("block_id") == block["id"] or (it.get("line") in issue_lines)]
 
-    pack = schemas.ContextPack(pid=d.pid, claim=claim.model_copy(update={"children": []}), chain=chain,
-                               support=support, figures=fig_rows, terms=term_list, comments=pack_comments,
-                               issues=issues)
+    pack = schemas.ContextPack(
+        pid=d.pid,
+        claim=claim.model_copy(update={"children": []}),
+        chain=chain,
+        support=support,
+        figures=fig_rows,
+        terms=term_list,
+        comments=pack_comments,
+        issues=issues,
+    )
     return _truncate(pack, max(1, min(max_chars, MAX_CHARS_CAP)))
 
 
 def _truncate(pack: schemas.ContextPack, max_chars: int) -> schemas.ContextPack:
     """序列化超长时按 support（先丢命中术语最少的段）→ terms → comments 依次截尾；claim / chain 不动。"""
+
     def size() -> int:
         return len(pack.model_dump_json())
 
@@ -308,6 +376,11 @@ def register(server, store):
         """一条权项的完整上下文：正文 + 依赖链 + 支持段落（段号+原文）+ 涉及附图与标记 + 术语定义 + 未决批注。
         给建议前先调它，不要靠 read_book 全文自己找。"""
         await open_project_for(store, pid)
-        return await run_audited(store, pid, "context_pack", {"claim_id": claim_id, "max_chars": max_chars},
-                                 lambda: context_pack(derive(store, pid), claim_id, max_chars),
-                                 result_of=lambda r: "ok:truncated" if r.truncated else "ok")
+        return await run_audited(
+            store,
+            pid,
+            "context_pack",
+            {"claim_id": claim_id, "max_chars": max_chars},
+            lambda: context_pack(derive(store, pid), claim_id, max_chars),
+            result_of=lambda r: "ok:truncated" if r.truncated else "ok",
+        )

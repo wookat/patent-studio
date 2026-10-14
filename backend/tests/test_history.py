@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """R6 历史地基（docs/plan/07 §4.3 / §9 A7）：项目内 git 库 + list/show/diff/restore 路由 + .bak 迁移 + git 缺失降级。"""
+
 import os
 import shutil
 import subprocess
@@ -16,8 +17,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 def client(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     import importlib
 
@@ -44,6 +48,7 @@ def _git(pdir, *args):
 
 
 # --- 纯函数层 ---
+
 
 def test_commit_creates_repo_and_tracks_only_content_and_docs(tmp_path):
     d = tmp_path / "p"
@@ -166,6 +171,7 @@ def test_override_replaces_message_and_author(tmp_path):
 
 
 # --- 路由层（A7：保存 3 次 → 3 条；diff 含 +/-；restore 后 content 相同且新增 commit）---
+
 
 def test_save_three_times_then_list_diff_restore(client):
     c, pdir = client

@@ -11,6 +11,7 @@ block_diff(a_text, ast_a, b_text, ast_b) → [{book, block_id, kind, lines: [fro
   lines 是 b 版全文 1-based 闭区间；顺序按 b 版全文行（removed 按落点行）。
   同一块只出一条；不在任何块内的改动（标题行 / 书标题 / 空行）不出条。
 """
+
 import difflib
 
 from .patch import iter_blocks
@@ -27,8 +28,11 @@ def _block_ranges(ast):
 
 def block_diff(a_text, ast_a, b_text, ast_b):
     a_lines, b_lines = a_text.split("\n"), b_text.split("\n")
-    ops = [(tag, i1, i2, j1, j2) for tag, i1, i2, j1, j2 in
-           difflib.SequenceMatcher(None, a_lines, b_lines, autojunk=False).get_opcodes() if tag != "equal"]
+    ops = [
+        (tag, i1, i2, j1, j2)
+        for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a_lines, b_lines, autojunk=False).get_opcodes()
+        if tag != "equal"
+    ]
     inserted = set()  # b 版 1-based 行：a 里没有对应行
     touched = set()  # b 版 1-based 行：处于 replace/insert 片段
     for tag, _i1, _i2, j1, j2 in ops:

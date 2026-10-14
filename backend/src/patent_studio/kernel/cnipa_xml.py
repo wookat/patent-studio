@@ -20,6 +20,7 @@
 导出后用官方 DTD 逐书校验；DTD 自身 cn-drawings 内容模型在 libxml 下非确定性的报错
 （"Content model of cn-drawings is not deterministic"）不计为错误。
 """
+
 import os
 import re
 import shutil
@@ -48,13 +49,22 @@ XSL_PATH = os.path.join(DTD_DIR, "showxml.xsl")
 DOCTYPE = '<!DOCTYPE cn-application-body SYSTEM "/dtdandxsl/cn-application-body-20080416.dtd">'
 STYLESHEET_PI = '<?xml-stylesheet type="text/xsl" href="/dtdandxsl/showxml.xsl"?>'
 
-BOOKS = (("100001", "权利要求书"), ("100002", "说明书"), ("100003", "说明书附图"),
-         ("100004", "说明书摘要"), ("100005", "摘要附图"))
+BOOKS = (
+    ("100001", "权利要求书"),
+    ("100002", "说明书"),
+    ("100003", "说明书附图"),
+    ("100004", "说明书摘要"),
+    ("100005", "摘要附图"),
+)
 
 # 说明书 ### 章节 → DTD section 元素；不在表内的章节退化为 heading + p 直接挂在 description 下
-SECTION_ELEMENTS = {"技术领域": "technical-field", "背景技术": "background-art",
-                    "发明内容": "disclosure", "附图说明": "description-of-drawings",
-                    "具体实施方式": "mode-for-invention"}
+SECTION_ELEMENTS = {
+    "技术领域": "technical-field",
+    "背景技术": "background-art",
+    "发明内容": "disclosure",
+    "附图说明": "description-of-drawings",
+    "具体实施方式": "mode-for-invention",
+}
 NONDETERMINISTIC_DTD_MSG = "not deterministic"
 
 DPI = 300
@@ -87,8 +97,14 @@ class BookResult:
     images: list = field(default_factory=list)
 
     def to_dict(self):
-        return {"code": self.code, "name": self.name, "file": self.file, "valid": self.valid,
-                "errors": self.errors, "images": self.images}
+        return {
+            "code": self.code,
+            "name": self.name,
+            "file": self.file,
+            "valid": self.valid,
+            "errors": self.errors,
+            "images": self.images,
+        }
 
 
 @dataclass
@@ -104,9 +120,13 @@ class XmlExportResult:
         return all(b.valid for b in self.books)
 
     def to_dict(self):
-        return {"zip": os.path.basename(self.zip_path), "valid": self.valid,
-                "books": [b.to_dict() for b in self.books], "warnings": self.warnings,
-                "counts": self.counts}
+        return {
+            "zip": os.path.basename(self.zip_path),
+            "valid": self.valid,
+            "books": [b.to_dict() for b in self.books],
+            "warnings": self.warnings,
+            "counts": self.counts,
+        }
 
 
 # --------------------------------------------------------------------------- 行内文本
@@ -149,7 +169,7 @@ def claim_text_with_refs(ct, text, claim_num, sub_except):
         lo, hi = int(m.group(1)), int(m.group(2) or m.group(1))
         if not (1 <= lo <= hi < claim_num):
             continue
-        last = inline_text(ct, text[pos:m.start()], sub_except, tail_target=last)
+        last = inline_text(ct, text[pos : m.start()], sub_except, tail_target=last)
         ref = etree.SubElement(ct, "claim-ref", idref=" ".join(f"c{i}" for i in range(lo, hi + 1)))
         ref.text = m.group(0)
         last = ref
@@ -200,8 +220,12 @@ def _render_assets(assets, style, sub_except, figs_dir, docx_to_pdf, pdftoppm, w
     docx_to_pdf(docx_path, workdir)
     pdf_path = os.path.join(workdir, "assets.pdf")
     prefix = os.path.join(workdir, "page")
-    subprocess.run([pdftoppm, "-r", str(DPI), "-jpeg", "-jpegopt", "quality=92", pdf_path, prefix],
-                   check=True, capture_output=True, timeout=300)
+    subprocess.run(
+        [pdftoppm, "-r", str(DPI), "-jpeg", "-jpegopt", "quality=92", pdf_path, prefix],
+        check=True,
+        capture_output=True,
+        timeout=300,
+    )
     pages = sorted(f for f in os.listdir(workdir) if f.startswith("page") and f.endswith(".jpg"))
     crops = []
     for name in pages:
@@ -211,20 +235,28 @@ def _render_assets(assets, style, sub_except, figs_dir, docx_to_pdf, pdftoppm, w
             crops.append(None)
             continue
         pad = DPI // 25  # ~1 mm
-        box = (max(bbox[0] - pad, 0), max(bbox[1] - pad, 0),
-               min(bbox[2] + pad, img.width), min(bbox[3] + pad, img.height))
+        box = (
+            max(bbox[0] - pad, 0),
+            max(bbox[1] - pad, 0),
+            min(bbox[2] + pad, img.width),
+            min(bbox[3] + pad, img.height),
+        )
         crops.append(img.crop(box))
     if len(crops) == len(assets):
         blank = [i for i, c in enumerate(crops) if c is None]
         if blank:
             kinds = "、".join(sorted({ASSET_KIND_NAMES[assets[i].kind] for i in blank}))
-            raise XmlExportError(f"{len(blank)} 个对象（{kinds}）渲染为空白页：LibreOffice 可能缺少 Math 组件"
-                                 "（libreoffice-math）或对应字体，请检查转换环境")
+            raise XmlExportError(
+                f"{len(blank)} 个对象（{kinds}）渲染为空白页：LibreOffice 可能缺少 Math 组件"
+                "（libreoffice-math）或对应字体，请检查转换环境"
+            )
     else:
         crops = [c for c in crops if c is not None]  # 表格/公式后 page break 产生的空白尾页
     if len(crops) != len(assets):
-        raise XmlExportError(f"对象栅格化页数不符：期望 {len(assets)} 个对象，得到 {len(crops)} 页"
-                             "（某个表格/公式/附图可能跨页，请缩小其宽度或拆分）")
+        raise XmlExportError(
+            f"对象栅格化页数不符：期望 {len(assets)} 个对象，得到 {len(crops)} 页"
+            "（某个表格/公式/附图可能跨页，请缩小其宽度或拆分）"
+        )
     for a, im in zip(assets, crops):
         a.wi_mm = max(1, round(im.width / DPI * 25.4))
         a.he_mm = max(1, round(im.height / DPI * 25.4))
@@ -234,8 +266,9 @@ def _render_assets(assets, style, sub_except, figs_dir, docx_to_pdf, pdftoppm, w
 
 
 def _img(parent, asset, content="drawing"):
-    asset.el = etree.SubElement(parent, "img", he="0", wi="0", file=asset.name,
-                                **{"img-content": content, "img-format": "jpg", "inline": "no"})
+    asset.el = etree.SubElement(
+        parent, "img", he="0", wi="0", file=asset.name, **{"img-content": content, "img-format": "jpg", "inline": "no"}
+    )
     return asset.el
 
 
@@ -346,8 +379,7 @@ class _Exporter:
             a, _ = self._asset("fig", "100003", fname, w)
             # figure-labels 是官方预览在图下渲染的图号标签（showxml.xsl 取
             # ../@figure-labels），DOCX 附图书同位有「图N」题注；缺失则图下空槽
-            fig = etree.SubElement(dr, "figure", id=f"f{i:04d}", num=str(i),
-                                 **{"figure-labels": f"图{i}"})
+            fig = etree.SubElement(dr, "figure", id=f"f{i:04d}", num=str(i), **{"figure-labels": f"图{i}"})
             _img(fig, a)
         return root
 
@@ -434,8 +466,7 @@ def export_cnipa_xml(config, out_dir, docx_to_pdf, pdftoppm="pdftoppm", zip_name
 
     os.makedirs(out_dir, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="cnipa-xml-") as tmp:
-        _render_assets(ex.assets, ex.style, ex.sub_except, config["figs_dir"], docx_to_pdf,
-                       pdftoppm, tmp)
+        _render_assets(ex.assets, ex.style, ex.sub_except, config["figs_dir"], docx_to_pdf, pdftoppm, tmp)
         for code, _ in codes:
             d = os.path.join(out_dir, code)
             if os.path.isdir(d):
@@ -454,8 +485,9 @@ def export_cnipa_xml(config, out_dir, docx_to_pdf, pdftoppm="pdftoppm", zip_name
         bad = gb18030_issues(roots[code])
         if bad:
             ex.warnings.append(f"{code} 含 GB18030 之外字符：{' '.join(bad)}（官方工具会要求转图）")
-        books.append(BookResult(code, name, f"{code}/{code}.xml", valid, errors,
-                                [a.name for a in ex.assets if a.book == code]))
+        books.append(
+            BookResult(code, name, f"{code}/{code}.xml", valid, errors, [a.name for a in ex.assets if a.book == code])
+        )
 
     zip_path = os.path.join(out_dir, zip_name)
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
@@ -463,9 +495,12 @@ def export_cnipa_xml(config, out_dir, docx_to_pdf, pdftoppm="pdftoppm", zip_name
             d = os.path.join(out_dir, code)
             for fn in sorted(os.listdir(d)):
                 z.write(os.path.join(d, fn), f"{code}/{fn}")
-    counts = {"claims": len(claims), "paragraphs": paragraphs,
-              "figures": len(spec_figures),
-              "equations": sum(a.kind == "eq" for a in ex.assets),
-              "tables": sum(a.kind == "tbl" for a in ex.assets),
-              "abstract_chars": len(abstract)}
+    counts = {
+        "claims": len(claims),
+        "paragraphs": paragraphs,
+        "figures": len(spec_figures),
+        "equations": sum(a.kind == "eq" for a in ex.assets),
+        "tables": sum(a.kind == "tbl" for a in ex.assets),
+        "abstract_chars": len(abstract),
+    }
     return XmlExportResult(out_dir, zip_path, books, ex.warnings, counts)

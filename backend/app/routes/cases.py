@@ -19,6 +19,7 @@ POST /api/projects/bulk                  批量 status / tags / owner / list_sta
 
 写入门槛用 auth.require_role("agent") / ("owner")；错误形状 error_detail(kind, …)。
 """
+
 import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -102,13 +103,22 @@ async def set_status(request: Request, pid: str, body: cases.StatusIn, user: aut
     with atomic.studio_lock(p.dir, "case"):
         case, old = _set_status(p.dir, case_or_404(p.dir), body.status)
         # 批80：git 提交 offload；事件派发留在事件循环（awaitable 订阅者依赖主 loop）
-        await asyncio.to_thread(history.commit_case, p.dir,
-                                cases.status_message(old, body.status, body.note), author=_author(user))
-        events.emit("case.status", pid=pid, actor=events.actor_of(user),
-                    data={"from": old, "to": body.status, "note": body.note})
+        await asyncio.to_thread(
+            history.commit_case, p.dir, cases.status_message(old, body.status, body.note), author=_author(user)
+        )
+        events.emit(
+            "case.status",
+            pid=pid,
+            actor=events.actor_of(user),
+            data={"from": old, "to": body.status, "note": body.note},
+        )
         if body.status == "filed":
-            events.emit("deliver.filed", pid=pid, actor=events.actor_of(user),
-                        data={"application_no": case.dates.application_no, "filed": case.dates.filed})
+            events.emit(
+                "deliver.filed",
+                pid=pid,
+                actor=events.actor_of(user),
+                data={"application_no": case.dates.application_no, "filed": case.dates.filed},
+            )
     return cases.summary(case)
 
 
@@ -265,19 +275,25 @@ async def _bulk_one(request: Request, body: cases.BulkIn, pid: str, user) -> Non
         if case.status != body.status:
             # 批80：与 set_status 路由同链——git 提交 offload，事件派发留事件循环
             case, old = _set_status(p.dir, case, body.status)
-            await asyncio.to_thread(history.commit_case, p.dir,
-                                    cases.status_message(old, body.status, ""), author=_author(user))
-            events.emit("case.status", pid=pid, actor=events.actor_of(user),
-                        data={"from": old, "to": body.status, "note": ""})
+            await asyncio.to_thread(
+                history.commit_case, p.dir, cases.status_message(old, body.status, ""), author=_author(user)
+            )
+            events.emit(
+                "case.status", pid=pid, actor=events.actor_of(user), data={"from": old, "to": body.status, "note": ""}
+            )
             if body.status == "filed":
-                events.emit("deliver.filed", pid=pid, actor=events.actor_of(user),
-                            data={"application_no": case.dates.application_no, "filed": case.dates.filed})
+                events.emit(
+                    "deliver.filed",
+                    pid=pid,
+                    actor=events.actor_of(user),
+                    data={"application_no": case.dates.application_no, "filed": case.dates.filed},
+                )
     elif body.action == "tags":
-        await asyncio.to_thread(_update, p.dir, cases.retag(case, body.add_tags, body.remove_tags),
-                                ["tags"], user)
+        await asyncio.to_thread(_update, p.dir, cases.retag(case, body.add_tags, body.remove_tags), ["tags"], user)
     else:
-        await asyncio.to_thread(_update, p.dir, case.model_copy(update={"owner_user_id": body.owner_user_id}),
-                                ["owner_user_id"], user)
+        await asyncio.to_thread(
+            _update, p.dir, case.model_copy(update={"owner_user_id": body.owner_user_id}), ["owner_user_id"], user
+        )
 
 
 @router.post("/api/projects/bulk")

@@ -15,6 +15,7 @@
 辅助：snapshot(project_dir) 生成 md5 快照；report_for(store, pid, content) 对任一全文跑与 derive 同参数的 preflight；
 apply_blocks(content, blocks, ...) 把 BlocksPatch 虚拟应用到全文（preflight_delta 用）。
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -33,8 +34,19 @@ from patent_studio.kernel.ast import AstError, parse_ast
 
 # A4：结论式措辞只能由代理师/审查员给出；智能体只能「建议 / 疑似 / 请核对」
 LEGAL_VERDICT_WORDS: tuple[str, ...] = (
-    "不支持", "不清楚", "不具备新颖性", "不具备创造性", "不具有新颖性", "不具有创造性",
-    "缺乏新颖性", "缺乏创造性", "应予驳回", "予以驳回", "无效", "得不到说明书的支持", "不符合专利法",
+    "不支持",
+    "不清楚",
+    "不具备新颖性",
+    "不具备创造性",
+    "不具有新颖性",
+    "不具有创造性",
+    "缺乏新颖性",
+    "缺乏创造性",
+    "应予驳回",
+    "予以驳回",
+    "无效",
+    "得不到说明书的支持",
+    "不符合专利法",
 )
 
 # 「所述 X」：X 取 2~20 字，先在连接字处截断（与 preflight._TERM_RE / _term 同规则）
@@ -43,11 +55,83 @@ _TERM_CUT_CHARS = set("的与和及或并且而为是在将把从向于对由经
 _CJK_RUN_RE = re.compile(r"[一-龥]{2,}")
 # 名词块切分：在这些功能词 / 功能字处切开，剩下 ≥2 字的连续汉字视作「名词块」
 _FUNCTION_WORDS: tuple[str, ...] = (
-    "所述", "包括", "包含", "其中", "通过", "用于", "以及", "根据", "基于", "进行", "实现", "采用", "利用",
-    "并且", "或者", "从而", "使得", "能够", "可以", "对应", "作为", "分别", "还有", "具有", "设有", "本发明",
-    "该", "其", "的", "了", "和", "与", "及", "或", "并", "在", "将", "对", "由", "从", "向", "于", "被", "使",
-    "为", "是", "有", "等", "以", "把", "则", "即", "而", "且", "也", "都", "可", "能", "会", "不", "无",
-    "每", "各", "所", "之", "时", "内", "外", "上", "中", "下", "后", "前", "一种", "一个", "至少", "任一",
+    "所述",
+    "包括",
+    "包含",
+    "其中",
+    "通过",
+    "用于",
+    "以及",
+    "根据",
+    "基于",
+    "进行",
+    "实现",
+    "采用",
+    "利用",
+    "并且",
+    "或者",
+    "从而",
+    "使得",
+    "能够",
+    "可以",
+    "对应",
+    "作为",
+    "分别",
+    "还有",
+    "具有",
+    "设有",
+    "本发明",
+    "该",
+    "其",
+    "的",
+    "了",
+    "和",
+    "与",
+    "及",
+    "或",
+    "并",
+    "在",
+    "将",
+    "对",
+    "由",
+    "从",
+    "向",
+    "于",
+    "被",
+    "使",
+    "为",
+    "是",
+    "有",
+    "等",
+    "以",
+    "把",
+    "则",
+    "即",
+    "而",
+    "且",
+    "也",
+    "都",
+    "可",
+    "能",
+    "会",
+    "不",
+    "无",
+    "每",
+    "各",
+    "所",
+    "之",
+    "时",
+    "内",
+    "外",
+    "上",
+    "中",
+    "下",
+    "后",
+    "前",
+    "一种",
+    "一个",
+    "至少",
+    "任一",
 )
 _FUNC_SPLIT_RE = re.compile("|".join(re.escape(w) for w in sorted(_FUNCTION_WORDS, key=len, reverse=True)))
 
@@ -63,6 +147,7 @@ def _bad(name: str, why: str) -> CheckResult:
 
 
 # ---------------------------------------------------------------- 结构 ----
+
 
 def parse(content: str) -> CheckResult:
     try:
@@ -87,8 +172,10 @@ def roundtrip(old: str, new: str) -> CheckResult:
     back = critic.reject(new)
     if back == old:
         return _ok("roundtrip")
-    n = next((i for i, (a, b) in enumerate(zip(back.split("\n"), old.split("\n")), 1) if a != b),
-             min(back.count("\n"), old.count("\n")) + 1)
+    n = next(
+        (i for i, (a, b) in enumerate(zip(back.split("\n"), old.split("\n")), 1) if a != b),
+        min(back.count("\n"), old.count("\n")) + 1,
+    )
     return _bad("roundtrip", f"reject 后与原文在第 {n} 行不一致")
 
 
@@ -104,6 +191,7 @@ def preflight_delta(before: dict, after: dict) -> CheckResult:
 
 
 # ---------------------------------------------------------------- 内容 ----
+
 
 def support(new_terms: Iterable[str], description: str) -> CheckResult:
     missing = [t for t in dict.fromkeys(t.strip() for t in new_terms if t and t.strip()) if t not in description]
@@ -172,6 +260,7 @@ def no_legal_verdict(text: str) -> CheckResult:
 
 # ---------------------------------------------------------------- 写入守卫 ----
 
+
 def snapshot(project_dir: str) -> dict[str, str]:
     """content.md 与 docs/*.md 的 md5；job 前后各取一次交给 no_direct_write。"""
     out: dict[str, str] = {}
@@ -206,6 +295,7 @@ def anchor_hit(quote: str, lines: list[str], line_start: int, line_end: int) -> 
 
 # ---------------------------------------------------------------- 辅助 ----
 
+
 def report_for(store: ProjectStore, pid: str, content: str) -> dict:
     """对任一全文（如虚拟应用补丁后的文本）跑与 tools_semantic.derive 同参数的 preflight。"""
     p = store.get(pid)
@@ -235,27 +325,23 @@ def apply_blocks(content: str, blocks: list, settings: dict | None = None, figur
     tail: dict[str, str] = {}  # 原锚点 → 该锚点后最近插入块的 id
     for b in _ordered_by_anchor(content, blocks, settings, figures):
         if b.replace_block_id:
-            res = patch.patch_block(text, b.replace_block_id, b.markdown, settings=settings,
-                                    figures=figures)
+            res = patch.patch_block(text, b.replace_block_id, b.markdown, settings=settings, figures=figures)
             text = res.content
             if res.block_id:
                 # zelfde reden als hieronder: vervanging kan in meerdere blokken uiteenvallen
-                tail[b.after_block_id] = (
-                    patch.block_at_line(res.ast, res.changed_lines["end"]) or res.block_id)
+                tail[b.after_block_id] = patch.block_at_line(res.ast, res.changed_lines["end"]) or res.block_id
             continue
         after, md = tail.get(b.after_block_id, b.after_block_id), b.markdown
         kind = _kind_of(md)
         if after in docset.BOOKS:
             res = patch.insert_block(text, kind, book=after, markdown=md, settings=settings, figures=figures)
         else:
-            res = patch.insert_block(text, kind, after_block_id=after, markdown=md, settings=settings,
-                                     figures=figures)
+            res = patch.insert_block(text, kind, after_block_id=after, markdown=md, settings=settings, figures=figures)
         text = res.content
         if res.block_id:
             # 多行插入可能被 AST 拆成多块（如缺 sep 的管道表）——续链用插入区末行所在块，
             # 否则同锚点后续块挤进首块与残余行之间（vit-11 实案头体分离）
-            tail[b.after_block_id] = (
-                patch.block_at_line(res.ast, res.changed_lines["end"]) or res.block_id)
+            tail[b.after_block_id] = patch.block_at_line(res.ast, res.changed_lines["end"]) or res.block_id
     return text
 
 

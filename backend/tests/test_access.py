@@ -2,6 +2,7 @@
 """B1-access-log（docs/plan/14 §2.1 / §2.2 / §4 / §8 B1 行）：
 project_access 去抖 upsert、GET /access（viewed / not_viewed / online）、collab-settings 默认与合并、AUTH=off 501。
 夹具复用 test_auth（on / client / _register / _login）与 test_collab（env / serve / client：真实 WebSocket 在线）。"""
+
 import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -51,8 +52,13 @@ def test_touch_debounce(on, monkeypatch):
 
     assert su.get("/api/projects/method").status_code == 200
     (row,) = _viewed(su)["viewed"]
-    assert row["user"] == {"user_id": su_id, "email": "su@example.com", "display_name": "管理员",
-                           "avatar_color": "", "role": "owner"}
+    assert row["user"] == {
+        "user_id": su_id,
+        "email": "su@example.com",
+        "display_name": "管理员",
+        "avatar_color": "",
+        "role": "owner",
+    }
     assert row["count"] == 1 and row["online"] is False
     first_seen, last_seen = row["first_seen"], row["last_seen"]
     assert datetime.fromisoformat(first_seen).tzinfo is not None  # ISO 带 UTC 时区
@@ -98,20 +104,33 @@ def test_access_viewed_not_viewed_and_share_accept(on):
 
     async def _invite():
         async with SessionLocal() as s:
-            s.add(PendingInvite(project_id="method", email="new@example.com", role="reviewer",
-                                invited_by=uuid.UUID(su_id)))
+            s.add(
+                PendingInvite(
+                    project_id="method", email="new@example.com", role="reviewer", invited_by=uuid.UUID(su_id)
+                )
+            )
             await s.commit()
 
     asyncio.run(_invite())
 
     rep = _viewed(su)
     assert [(r["user"]["user_id"], r["user"]["role"], r["count"]) for r in rep["viewed"]] == [
-        (su_id, "owner", 1), (ed_id, "editor", 1)]  # 按 last_seen 倒序
+        (su_id, "owner", 1),
+        (ed_id, "editor", 1),
+    ]  # 按 last_seen 倒序
     assert rep["viewed"][1]["user"]["display_name"] == "代理人"
     assert rep["not_viewed"] == [
-        {"user": {"user_id": vw_id, "email": "viewer@example.com", "display_name": "",
-                  "avatar_color": "", "role": "viewer"},
-         "email": "viewer@example.com", "via": "member"},
+        {
+            "user": {
+                "user_id": vw_id,
+                "email": "viewer@example.com",
+                "display_name": "",
+                "avatar_color": "",
+                "role": "viewer",
+            },
+            "email": "viewer@example.com",
+            "via": "member",
+        },
         {"user": None, "email": "new@example.com", "via": "invite"},
     ]
 
@@ -143,9 +162,17 @@ def test_access_viewed_not_viewed_and_share_accept(on):
     rep = _viewed(su)
     assert [r["user"]["user_id"] for r in rep["viewed"]] == [su_id, ed_id]
     assert [(r["via"], r["email"]) for r in rep["not_viewed"]] == [
-        ("member", "viewer@example.com"), ("link", "guest@example.com"), ("invite", "new@example.com")]
-    assert rep["not_viewed"][1]["user"] == {"user_id": gid, "email": "guest@example.com",
-                                            "display_name": "客人", "avatar_color": "", "role": None}
+        ("member", "viewer@example.com"),
+        ("link", "guest@example.com"),
+        ("invite", "new@example.com"),
+    ]
+    assert rep["not_viewed"][1]["user"] == {
+        "user_id": gid,
+        "email": "guest@example.com",
+        "display_name": "客人",
+        "avatar_color": "",
+        "role": None,
+    }
 
 
 def test_online_from_collab_room(env):
@@ -155,8 +182,11 @@ def test_online_from_collab_room(env):
         test_collab._register(base, "su@example.com")
         test_collab._register(base, "editor@example.com")
         su, ed = test_collab._login(base, "su@example.com"), test_collab._login(base, "editor@example.com")
-        r = httpx.put(f"{base}/api/projects/method/members", json={"email": "editor@example.com", "role": "editor"},
-                      cookies={"studio_session": su})
+        r = httpx.put(
+            f"{base}/api/projects/method/members",
+            json={"email": "editor@example.com", "role": "editor"},
+            cookies={"studio_session": su},
+        )
         assert r.status_code == 200, r.text
         assert httpx.get(f"{base}/api/projects/method", cookies={"studio_session": ed}).status_code == 200
 
@@ -208,11 +238,14 @@ def test_concurrent_first_write_no_integrity_error(on):
     async def go():
         uid = uuid.uuid4()
         user = type("U", (), {"id": uid})()
-        await asyncio.gather(access.touch("race", user), access.touch("race", user),
-                             invites.create_pending("race", "a@b.co", "viewer", uid),
-                             invites.create_pending("race", "a@b.co", "editor", uid),
-                             access.put_settings("race", {"allow_copy": False}),
-                             access.put_settings("race", {"allow_download": False}))
+        await asyncio.gather(
+            access.touch("race", user),
+            access.touch("race", user),
+            invites.create_pending("race", "a@b.co", "viewer", uid),
+            invites.create_pending("race", "a@b.co", "editor", uid),
+            access.put_settings("race", {"allow_copy": False}),
+            access.put_settings("race", {"allow_download": False}),
+        )
         assert str(uid) in await access.last_seen_by_user("race")
         pending = await invites.list_pending("race")
         assert len(pending) == 1 and pending[0]["email"] == "a@b.co"

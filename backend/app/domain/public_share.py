@@ -15,6 +15,7 @@
 - 确认定稿 → case.json.confirmations[]（cases.Confirmation：version/sha/name/note/confirmed_at/actor/ip/ua/token）
   + emit share.confirmed；时间线从 confirmations 派生，不另存。
 """
+
 from __future__ import annotations
 
 import glob
@@ -50,6 +51,7 @@ WATERMARK_BOTTOM_PT = 24
 
 # ---------------- 链接 ----------------
 
+
 def _ts(dt: datetime | None) -> float | None:
     if dt is None:
         return None
@@ -60,13 +62,21 @@ def _ts(dt: datetime | None) -> float | None:
 
 def link_out(row, creator) -> dict:
     """schemas.PublicShareLink 形状。"""
-    return {"token": row.token, "pid": row.project_id, "scope": row.scope, "baseline": baseline_of(row),
-            "allow_download": bool(row.allow_download),
-            "expires_at": _ts(row.expires_at), "revoked": bool(row.revoked),
-            "created_by": (events.actor_of(creator) if creator is not None
-                           else {"id": str(row.created_by), "display_name": "?"}),
-            "created_at": _ts(row.created_at) or 0.0, "visits": row.visits or 0,
-            "last_visit_at": _ts(row.last_visit_at)}
+    return {
+        "token": row.token,
+        "pid": row.project_id,
+        "scope": row.scope,
+        "baseline": baseline_of(row),
+        "allow_download": bool(row.allow_download),
+        "expires_at": _ts(row.expires_at),
+        "revoked": bool(row.revoked),
+        "created_by": (
+            events.actor_of(creator) if creator is not None else {"id": str(row.created_by), "display_name": "?"}
+        ),
+        "created_at": _ts(row.created_at) or 0.0,
+        "visits": row.visits or 0,
+        "last_visit_at": _ts(row.last_visit_at),
+    }
 
 
 async def effective_settings(pid: str) -> dict:
@@ -80,8 +90,16 @@ def baseline_of(row) -> str:
     return row.baseline if row.baseline in ("original", "final") else "original"
 
 
-async def create_link(pid: str, user, *, scope: str, ttl_days: int | None, allow_download: bool,
-                      allow_comment: bool | None = None, baseline: str = "original") -> dict:
+async def create_link(
+    pid: str,
+    user,
+    *,
+    scope: str,
+    ttl_days: int | None,
+    allow_download: bool,
+    allow_comment: bool | None = None,
+    baseline: str = "original",
+) -> dict:
     """链接不得放宽案级设置：案级禁下载 ⇒ allow_download=False；案级禁批注或 allow_comment=False ⇒ scope=read。"""
     from app.auth.db import SessionLocal, init_db
     from app.auth.models import PublicShareLink
@@ -93,16 +111,28 @@ async def create_link(pid: str, user, *, scope: str, ttl_days: int | None, allow
     now = datetime.now(UTC)
     await init_db()
     async with SessionLocal() as s:
-        row = PublicShareLink(token=secrets.token_urlsafe(24), project_id=pid, scope=scope, baseline=baseline,
-                              allow_download=allow_download,
-                              expires_at=now + timedelta(days=ttl_days) if ttl_days else None, revoked=False,
-                              created_by=user.id, created_at=now, visits=0)
+        row = PublicShareLink(
+            token=secrets.token_urlsafe(24),
+            project_id=pid,
+            scope=scope,
+            baseline=baseline,
+            allow_download=allow_download,
+            expires_at=now + timedelta(days=ttl_days) if ttl_days else None,
+            revoked=False,
+            created_by=user.id,
+            created_at=now,
+            visits=0,
+        )
         s.add(row)
         await s.commit()
         await s.refresh(row)
         out = link_out(row, user)
-    events.emit("share.created", pid=pid, actor=events.actor_of(user),
-                data={"token": row.token, "scope": scope, "baseline": baseline, "expires_at": out["expires_at"]})
+    events.emit(
+        "share.created",
+        pid=pid,
+        actor=events.actor_of(user),
+        data={"token": row.token, "scope": scope, "baseline": baseline, "expires_at": out["expires_at"]},
+    )
     return out
 
 
@@ -112,9 +142,12 @@ async def list_links(pid: str) -> list[dict]:
 
     await init_db()
     async with SessionLocal() as s:
-        rows = await s.execute(select(PublicShareLink, User)
-                               .join(User, User.id == PublicShareLink.created_by, isouter=True)
-                               .where(PublicShareLink.project_id == pid).order_by(PublicShareLink.created_at.desc()))
+        rows = await s.execute(
+            select(PublicShareLink, User)
+            .join(User, User.id == PublicShareLink.created_by, isouter=True)
+            .where(PublicShareLink.project_id == pid)
+            .order_by(PublicShareLink.created_at.desc())
+        )
         return [link_out(r, u) for r, u in rows]
 
 
@@ -211,6 +244,7 @@ def read_access_log(project_dir: str) -> list[dict]:
 
 # ---------------- 版本 / 元信息 ----------------
 
+
 def version_of(project_dir: str) -> tuple[int, str]:
     """(版本号 = 提交数, HEAD sha)；无 git 库 ⇒ (0, "")。"""
     versions = history.log(project_dir)
@@ -276,15 +310,28 @@ def meta(project, grant: Grant, org_name: str, content: str = "") -> dict:
     case = cases.ensure_case(project.dir)
     version, sha = version_of(project.dir)
     last = case.confirmations[-1] if case.confirmations else None
-    return {"org_name": org_name, "title": project.title, "case_no": case.case_no or None, "status": case.status,
-            "version": version, "sha": sha, "scope": grant.scope, "baseline": grant.baseline,
-            "pending_revisions": pending_revisions(content), "allow_download": grant.allow_download,
-            "sub_except": [str(x) for x in project.settings.get("sub_except", [])],
-            "allow_copy": grant.allow_copy, "allow_comment": grant.allow_comment, "expires_at": grant.expires_at,
-            "confirmation": confirmation_out(last) if last else None, "pdf_ready": latest_pdf(project) is not None}
+    return {
+        "org_name": org_name,
+        "title": project.title,
+        "case_no": case.case_no or None,
+        "status": case.status,
+        "version": version,
+        "sha": sha,
+        "scope": grant.scope,
+        "baseline": grant.baseline,
+        "pending_revisions": pending_revisions(content),
+        "allow_download": grant.allow_download,
+        "sub_except": [str(x) for x in project.settings.get("sub_except", [])],
+        "allow_copy": grant.allow_copy,
+        "allow_comment": grant.allow_comment,
+        "expires_at": grant.expires_at,
+        "confirmation": confirmation_out(last) if last else None,
+        "pdf_ready": latest_pdf(project) is not None,
+    }
 
 
 # ---------------- 确认定稿 ----------------
+
 
 def confirm(project, grant: Grant, name: str, note: str | None, ip: str | None, ua: str | None) -> cases.Confirmation:
     """追加 case.json.confirmations[] 并 emit share.confirmed（actor 为访客：client:<name>，无用户 id）。
@@ -295,16 +342,30 @@ def confirm(project, grant: Grant, name: str, note: str | None, ip: str | None, 
         for c in reversed(case.confirmations):
             if c.token == grant.token and c.version == version and c.sha == sha and c.name == name:
                 return c
-        rec = cases.Confirmation(version=version, sha=sha, name=name, note=note, confirmed_at=time.time(),
-                                 actor=f"client:{name}", ip=ip, ua=ua, token=grant.token)
+        rec = cases.Confirmation(
+            version=version,
+            sha=sha,
+            name=name,
+            note=note,
+            confirmed_at=time.time(),
+            actor=f"client:{name}",
+            ip=ip,
+            ua=ua,
+            token=grant.token,
+        )
         case.confirmations.append(rec)
         cases.save_case(project.dir, case)
-    events.emit("share.confirmed", pid=project.id, actor=None,
-                data={"token": grant.token, "name": name, "version": version, "sha": sha, "note": note})
+    events.emit(
+        "share.confirmed",
+        pid=project.id,
+        actor=None,
+        data={"token": grant.token, "name": name, "version": version, "sha": sha, "note": note},
+    )
     return rec
 
 
 # ---------------- PDF 水印 ----------------
+
 
 def watermark_text(token: str, today: date | None = None) -> str:
     return f"审阅版 · {token[:6]} · {(today or cases.local_today()).isoformat()}"
@@ -317,12 +378,23 @@ def _stamp_page(width_pt: float, height_pt: float, text: str) -> bytes:
     from matplotlib.figure import Figure
     from matplotlib.font_manager import FontProperties
 
-    fp = FontProperties(fname=FONT_PATH) if os.path.isfile(FONT_PATH) else \
-        FontProperties(family=["SimHei", "Noto Sans CJK SC", "Noto Serif CJK SC", "sans-serif"])
+    fp = (
+        FontProperties(fname=FONT_PATH)
+        if os.path.isfile(FONT_PATH)
+        else FontProperties(family=["SimHei", "Noto Sans CJK SC", "Noto Serif CJK SC", "sans-serif"])
+    )
     fig = Figure(figsize=(width_pt / 72, height_pt / 72), dpi=72)
     FigureCanvasPdf(fig)
-    fig.text(0.5, WATERMARK_BOTTOM_PT / height_pt, text, ha="center", va="bottom", fontsize=WATERMARK_FONT_PT,
-             color="0.45", fontproperties=fp)
+    fig.text(
+        0.5,
+        WATERMARK_BOTTOM_PT / height_pt,
+        text,
+        ha="center",
+        va="bottom",
+        fontsize=WATERMARK_FONT_PT,
+        color="0.45",
+        fontproperties=fp,
+    )
     buf = io.BytesIO()
     with matplotlib.rc_context({"pdf.fonttype": 42}):
         fig.savefig(buf, format="pdf", transparent=True)

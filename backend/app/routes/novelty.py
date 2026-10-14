@@ -4,6 +4,7 @@
 服务在 app.domain.novelty；NoveltyError → HTTP {status} {detail: {kind, message, line: null, detail}}。
 权限：main.py 的 ACL 依赖按方法判定（GET viewer / PUT editor），本文件不另设。
 """
+
 import asyncio
 
 from fastapi import APIRouter, HTTPException, Request

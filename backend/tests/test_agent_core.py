@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """agent-core-backend（docs/plan/21 §6.2 / §6.3 / §6.5）：循环 / 预算 / Proposal / 路由 / SSE。mock 提供方，无 key。"""
+
 import asyncio
 import glob
 import hashlib
@@ -35,8 +36,11 @@ FALLBACK = client_mod.MODELS["fallback"]
 def app_env(tmp_path, monkeypatch):
     projects = tmp_path / "projects"
     projects.mkdir()
-    shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
-                    ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"))
+    shutil.copytree(
+        os.path.join(ROOT, "examples", "method"),
+        projects / "method",
+        ignore=shutil.ignore_patterns("*.docx", ".studio", "*.bak-*"),
+    )
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(projects))
     monkeypatch.setenv("PATENT_STUDIO_AI_PROVIDER", "mock")
     from app import config, main
@@ -75,12 +79,25 @@ def _md5s(project_dir):
 
 
 def _burn(project_dir, tokens):
-    append_usage(project_dir, usage_record(pid="method", purpose="heavy", kind="agent", model=HEAVY,
-                                          requested_model=HEAVY, fallback=False, stream=False,
-                                          usage=client_mod.Usage(tokens, 0, tokens), ms=1, ok=True))
+    append_usage(
+        project_dir,
+        usage_record(
+            pid="method",
+            purpose="heavy",
+            kind="agent",
+            model=HEAVY,
+            requested_model=HEAVY,
+            fallback=False,
+            stream=False,
+            usage=client_mod.Usage(tokens, 0, tokens),
+            ms=1,
+            ok=True,
+        ),
+    )
 
 
 # ---------------- budget.clip ----------------
+
 
 def test_clip_caps_and_hard_limit():
     text = "甲" * 50_000
@@ -96,8 +113,18 @@ def test_daily_budget_reads_usage_today_only(tmp_path):
     d = str(tmp_path)
     assert budget.daily_budget(None) == 200_000 and budget.daily_budget({"ai_daily_tokens": 5}) == 5
     _burn(d, 100)
-    old = usage_record(pid="x", purpose="heavy", kind="agent", model=HEAVY, requested_model=HEAVY, fallback=False,
-                       stream=False, usage=client_mod.Usage(999, 0, 999), ms=1, ok=True)
+    old = usage_record(
+        pid="x",
+        purpose="heavy",
+        kind="agent",
+        model=HEAVY,
+        requested_model=HEAVY,
+        fallback=False,
+        stream=False,
+        usage=client_mod.Usage(999, 0, 999),
+        ms=1,
+        ok=True,
+    )
     old["ts"] = time.time() - 3 * 86400
     append_usage(d, old)
     assert budget.today_tokens(d) == 100
@@ -112,6 +139,7 @@ def test_daily_budget_reads_usage_today_only(tmp_path):
 
 # ---------------- loop：直接跑（不经 HTTP） ----------------
 
+
 @pytest.fixture()
 def world(app_env):
     _app, projects = app_env
@@ -122,8 +150,9 @@ def world(app_env):
 def _run(store, jobs, ai, scenario, params=None):
     async def go():
         job = jobs.create(f"agent:{scenario}", "method", queue_key=None)
-        await jobs.run(job, lambda: loop.run_scenario("method", scenario, params or {}, job,
-                                                      store=store, jobs=jobs, ai=ai))
+        await jobs.run(
+            job, lambda: loop.run_scenario("method", scenario, params or {}, job, store=store, jobs=jobs, ai=ai)
+        )
         return jobs.get(job.id)
 
     return asyncio.run(go())
@@ -131,10 +160,20 @@ def _run(store, jobs, ai, scenario, params=None):
 
 # 场景单元（agent/plans）的真实 handler 需要的入口参数；其余场景无参数
 SCENARIO_PARAMS = {
-    "s1": {"text": "一种基于多模态融合的赌场投注监控方法，通过图像识别与传感器数据融合识别投注行为。",
-           "target": "current"},
-    "s7": {"items": [{"id": "oa-1", "claims": [1], "kind": "novelty",
-                      "text": "关于权利要求 1：对比文件 1 公开了相同的技术方案，请申请人陈述意见。"}]},
+    "s1": {
+        "text": "一种基于多模态融合的赌场投注监控方法，通过图像识别与传感器数据融合识别投注行为。",
+        "target": "current",
+    },
+    "s7": {
+        "items": [
+            {
+                "id": "oa-1",
+                "claims": [1],
+                "kind": "novelty",
+                "text": "关于权利要求 1：对比文件 1 公开了相同的技术方案，请申请人陈述意见。",
+            }
+        ]
+    },
 }
 
 
@@ -224,8 +263,9 @@ def test_cancel_before_step_interrupted(world):
                 async for item in super().stream(model, messages, **kw):
                     yield item
 
-        t = jobs.run(job, lambda: loop.run_scenario("method", "s2", {}, job, store=store, jobs=jobs,
-                                                     ai=AiClient(Slow())))
+        t = jobs.run(
+            job, lambda: loop.run_scenario("method", "s2", {}, job, store=store, jobs=jobs, ai=AiClient(Slow()))
+        )
         await started.wait()
         jobs.cancel(job.id)
         with pytest.raises(asyncio.CancelledError):
@@ -278,7 +318,7 @@ def test_patch_apply_uses_insertion_marks_and_dismiss(world):
     now = store.read_content("method")
     assert "{++" in now and critic.reject(now).replace("\n", "") == original.replace("\n", "")
     assert r.changed_lines.start >= 1
-    _run(store, jobs, ai, "s9")
+    _run(store, jobs, ai, "s9", {"books": ["claims"]})
     files = [q for q in proposals.load(p.dir, "method", "pending") if q.kind == "patch"]
     assert files and files[0].anchor.file.startswith("docs/")
     r2 = asyncio.run(proposals.apply(store, "method", files[0].id))
@@ -304,22 +344,32 @@ def test_patch_apply_orders_anchors_descending_and_chains_same_anchor(world):
     p = store.get("method")
     original = store.read_content("method")
     prop = Proposal(
-        id=proposals.new_id(), job_id="job_test", scenario="s1", kind="patch",
-        anchor=FileAnchor(file="content.md"), model="test", created_at=time.time(),
-        patch=BlocksPatch(blocks=[
-            PatchBlock(after_block_id="description/技术领域/p0001", markdown="技术领域补充段"),
-            PatchBlock(after_block_id="description/背景技术/p0002", markdown="背景技术补充段"),
-            PatchBlock(after_block_id="description/具体实施方式/p0048", markdown="实施方式补充段"),
-            PatchBlock(after_block_id="claims/9", markdown="12.新增权项甲"),
-            PatchBlock(after_block_id="claims/9", markdown="13.新增权项乙"),
-        ]),
+        id=proposals.new_id(),
+        job_id="job_test",
+        scenario="s1",
+        kind="patch",
+        anchor=FileAnchor(file="content.md"),
+        model="test",
+        created_at=time.time(),
+        patch=BlocksPatch(
+            blocks=[
+                PatchBlock(after_block_id="description/技术领域/p0001", markdown="技术领域补充段"),
+                PatchBlock(after_block_id="description/背景技术/p0002", markdown="背景技术补充段"),
+                PatchBlock(after_block_id="description/具体实施方式/p0146", markdown="实施方式补充段"),
+                PatchBlock(after_block_id="claims/9", markdown="12.新增权项甲"),
+                PatchBlock(after_block_id="claims/9", markdown="13.新增权项乙"),
+            ]
+        ),
     )
     proposals.append(p.dir, "method", prop, "test")
     r = asyncio.run(proposals.apply(store, "method", prop.id))
     now = store.read_content("method")
     assert critic.reject(now).replace("\n", "") == original.replace("\n", "")
-    for sec, marker in (("技术领域", "技术领域补充段"), ("背景技术", "背景技术补充段"),
-                        ("具体实施方式", "实施方式补充段")):
+    for sec, marker in (
+        ("技术领域", "技术领域补充段"),
+        ("背景技术", "背景技术补充段"),
+        ("具体实施方式", "实施方式补充段"),
+    ):
         seg = now.split("### " + sec)[1].split("### ")[0]
         assert marker in seg, sec
     assert now.index("新增权项甲") < now.index("新增权项乙")
@@ -331,18 +381,27 @@ def test_patch_apply_replace_block_sandwiches_reversible_marks(world):
     store, jobs, ai = world
     p = store.get("method")
     original = store.read_content("method")
-    old_para = "本发明涉及时间序列预测与机器学习模型部署技术领域"
+    old_para = "本申请属于信息安全技术领域"
     assert old_para in original
     prop = Proposal(
-        id=proposals.new_id(), job_id="job_test", scenario="s1", kind="patch",
-        anchor=FileAnchor(file="content.md"), model="test", created_at=time.time(),
-        patch=BlocksPatch(blocks=[
-            PatchBlock(after_block_id="description/技术领域/p0001",
-                       replace_block_id="description/技术领域/p0001", markdown="替换后的技术领域段。"),
-            PatchBlock(after_block_id="description/技术领域/p0001", markdown="替换块之后追加段。"),
-            PatchBlock(after_block_id="claims/9", replace_block_id="claims/9",
-                       markdown="9.替换后的权项文本。"),
-        ]),
+        id=proposals.new_id(),
+        job_id="job_test",
+        scenario="s1",
+        kind="patch",
+        anchor=FileAnchor(file="content.md"),
+        model="test",
+        created_at=time.time(),
+        patch=BlocksPatch(
+            blocks=[
+                PatchBlock(
+                    after_block_id="description/技术领域/p0001",
+                    replace_block_id="description/技术领域/p0001",
+                    markdown="替换后的技术领域段。",
+                ),
+                PatchBlock(after_block_id="description/技术领域/p0001", markdown="替换块之后追加段。"),
+                PatchBlock(after_block_id="claims/9", replace_block_id="claims/9", markdown="9.替换后的权项文本。"),
+            ]
+        ),
     )
     proposals.append(p.dir, "method", prop, "test")
     r = asyncio.run(proposals.apply(store, "method", prop.id))
@@ -392,6 +451,7 @@ def test_handler_error_becomes_done_error_not_silent(world):
 
 
 # ---------------- 路由 ----------------
+
 
 def test_run_route_202_jobs_events_and_proposals(client):
     c, projects, app = client
@@ -462,24 +522,38 @@ def test_budget_exhausted_heavy_429_chat_allowed(client):
     assert r.status_code == 429 and r.json()["detail"]["kind"] == "budget"
     r = c.post("/api/projects/method/agent/run", json={"scenario": "s6", "params": {}})
     assert r.status_code == 202
-    with c.stream("POST", "/api/projects/method/ai/chat",
-                  json={"messages": [{"role": "user", "content": "你好"}],
-                        "context": {"book": "claims", "line_start": 2, "line_end": 2,
-                                    "terms": True, "checks": True, "claim_tree": True}}) as r:
+    with c.stream(
+        "POST",
+        "/api/projects/method/ai/chat",
+        json={
+            "messages": [{"role": "user", "content": "你好"}],
+            "context": {
+                "book": "claims",
+                "line_start": 2,
+                "line_end": 2,
+                "terms": True,
+                "checks": True,
+                "claim_tree": True,
+            },
+        },
+    ) as r:
         assert r.status_code == 200
         evs = _sse_events(r)
     assert evs[-1]["done"] is True and isinstance(evs[-1]["truncated"], bool)
 
 
-def test_chat_context_semantic_parts_clipped(app_env):
+def test_chat_context_semantic_parts_clipped(app_env, monkeypatch):
     _app, projects = app_env
     store = ProjectStore(str(projects))
     p = store.get("method")
     content = store.read_content("method")
-    text, truncated = routes_ai._chat_context(p, content, {"terms": True, "checks": True, "claim_tree": True},
-                                              store, "method")
+    ctx = {"terms": True, "checks": True, "claim_tree": True}
+    text, truncated = routes_ai._chat_context(p, content, ctx, store, "method")
     assert "术语表：" in text and "检查结果：" in text and "权项树：" in text
     assert len(text) <= budget.INTERACTIVE_CHARS
-    small, t2 = routes_ai._chat_context(p, content, {"terms": [{"name": "安全锚"}]}, store, "method")
-    assert "安全锚" in small and t2 is False
-    assert truncated is True
+    assert truncated is False  # 新语料上下文未超 8k 预算
+    small, t2 = routes_ai._chat_context(p, content, {"terms": [{"name": "私钥"}]}, store, "method")
+    assert "私钥" in small and t2 is False
+    monkeypatch.setattr(budget, "INTERACTIVE_CHARS", 200)  # 缩小预算强制走截断分支
+    _text3, t3 = routes_ai._chat_context(p, content, ctx, store, "method")
+    assert t3 is True

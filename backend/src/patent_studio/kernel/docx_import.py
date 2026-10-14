@@ -19,6 +19,7 @@ extract_styles(data) -> StyleSuggestion：正文/标题字体字号、页边距�
   行内公式      线性化进正文并报 formula.inline；OMML 含不可还原结构 → formula.partial（detail 为原 OMML）
   脚注/尾注/文本框/域/SmartArt → 丢弃并报 unsupported.<kind>（含段序号与原文片段）
 """
+
 import io
 import os
 import re
@@ -61,8 +62,10 @@ def _m(tag):
     return "{%s}%s" % (M_NS, tag)
 
 
-_CONTAINERS = {qn(t) for t in ("w:hyperlink", "w:ins", "w:smartTag", "w:sdt", "w:sdtContent", "w:fldSimple",
-                               "w:customXml", "w:moveTo")}
+_CONTAINERS = {
+    qn(t)
+    for t in ("w:hyperlink", "w:ins", "w:smartTag", "w:sdt", "w:sdtContent", "w:fldSimple", "w:customXml", "w:moveTo")
+}
 _HEADING_FONTS = {"黑体", "SimHei"}
 _STRONG = set("+\u2212=\u2264\u2190\u2208\uff0c,")
 _OPEN = {"(": ")", "[": "]", "{": "}"}
@@ -117,6 +120,7 @@ def _open(data):
 
 
 # ---------------- 通用 XML 读取 ----------------
+
 
 def _val(el, default=None):
     return default if el is None else el.get(qn("w:val"), default)
@@ -346,8 +350,7 @@ def _join_pieces(pieces, marks=None):
                 span += t
                 continue
             sigil, rx = _SCRIPT_RE[kind]
-            rest = "".join((_SCRIPT_RE[x[0]][0] if x[0] in _SCRIPT_RE else "") + x[1]
-                           for x in flat[k + 1:j])
+            rest = "".join((_SCRIPT_RE[x[0]][0] if x[0] in _SCRIPT_RE else "") + x[1] for x in flat[k + 1 : j])
             m = rx.match(sigil + t + rest)
             span += sigil + t if m and m.group(1) == t else sigil + "{" + t + "}"
         core = span.strip()
@@ -355,8 +358,8 @@ def _join_pieces(pieces, marks=None):
             for m in ("u", "i", "b"):
                 if m in mk:
                     core = _WRAP[m][0] + core + _WRAP[m][1]
-            lead = span[:len(span) - len(span.lstrip())]
-            span = lead + core + span[len(span.rstrip()):]
+            lead = span[: len(span) - len(span.lstrip())]
+            span = lead + core + span[len(span.rstrip()) :]
         out += span
         i = j
     return out
@@ -367,6 +370,7 @@ def _clean(text):
 
 
 # ---------------- OMML → 线性公式（omml.append_omml 的尽力逆变换） ----------------
+
 
 def _mval(el, default):
     return default if el is None else el.get(_m("val"), default)
@@ -459,6 +463,7 @@ class _Omml:
 
 # ---------------- 文档 → content.md ----------------
 
+
 class _Importer:
     def __init__(self, doc, figs_dir):
         self.doc = doc
@@ -492,7 +497,7 @@ class _Importer:
             if kind != "t":
                 continue
             for m in _SUB_RE.finditer(t):
-                base = re.search(r"[A-Za-z0-9]*$", t[:m.start()]).group(0)
+                base = re.search(r"[A-Za-z0-9]*$", t[: m.start()]).group(0)
                 ident = base + m.group(0)
                 if ident not in self.sub_except:
                     self.sub_except.append(ident)
@@ -725,7 +730,10 @@ class _Importer:
             fig_settings["spec_figures"] = spec or [fig_settings["abstract_figure"]]
         report = ImportReport(
             books={b: sum(1 for ln in self.lines[b] if ln) for b in self.lines},
-            figures=self.figures, items=self.items, figure_settings=fig_settings, sub_except=self.sub_except,
+            figures=self.figures,
+            items=self.items,
+            figure_settings=fig_settings,
+            sub_except=self.sub_except,
         )
         return md, report
 
@@ -739,6 +747,7 @@ def import_docx(data: bytes, figs_dir: str) -> tuple[str, ImportReport]:
 
 
 # ---------------- 样式提取（§5.2） ----------------
+
 
 def _num(x, nd):
     v = round(x, nd)
@@ -808,12 +817,17 @@ def _styles(doc):
         d[path[-1]] = value
         ev[".".join(path)] = evidence
 
-    for path, counter, unit in ((("fonts", "body_cjk"), body_ea, "字"), (("fonts", "ascii"), body_ascii, "字"),
-                                (("sizes", "body"), body_sz, "字"), (("fonts", "heading_cjk"), head_ea, "字"),
-                                (("sizes", "section_heading"), head_sz, "字"), (("sizes", "title"), title_sz, "字"),
-                                (("paragraph", "line_spacing"), line, "段"),
-                                (("paragraph", "space_after", "body"), after, "段"),
-                                (("paragraph", "first_indent_pt"), first, "段")):
+    for path, counter, unit in (
+        (("fonts", "body_cjk"), body_ea, "字"),
+        (("fonts", "ascii"), body_ascii, "字"),
+        (("sizes", "body"), body_sz, "字"),
+        (("fonts", "heading_cjk"), head_ea, "字"),
+        (("sizes", "section_heading"), head_sz, "字"),
+        (("sizes", "title"), title_sz, "字"),
+        (("paragraph", "line_spacing"), line, "段"),
+        (("paragraph", "space_after", "body"), after, "段"),
+        (("paragraph", "first_indent_pt"), first, "段"),
+    ):
         m = _majority(counter)
         if m:
             put(path, m[0], f"多数 run/段：{m[0]}（{m[1]} {unit}，共 {sum(counter.values())} {unit}）")
@@ -822,8 +836,12 @@ def _styles(doc):
         if sec.page_width and sec.page_height:
             put(("page", "width_cm"), _num(sec.page_width.cm, 1), "首节 pgSz")
             put(("page", "height_cm"), _num(sec.page_height.cm, 1), "首节 pgSz")
-        for key, val in (("margin_top_mm", sec.top_margin), ("margin_bottom_mm", sec.bottom_margin),
-                         ("margin_left_mm", sec.left_margin), ("margin_right_mm", sec.right_margin)):
+        for key, val in (
+            ("margin_top_mm", sec.top_margin),
+            ("margin_bottom_mm", sec.bottom_margin),
+            ("margin_left_mm", sec.left_margin),
+            ("margin_right_mm", sec.right_margin),
+        ):
             if val is not None:
                 put(("page", key), _num(val.mm, 1), "首节 pgMar")
     return StyleSuggestion(style=style, evidence=ev)

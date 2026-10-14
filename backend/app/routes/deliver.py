@@ -32,6 +32,7 @@ W5 preflight-backend（docs/plan/21 §2.1 R-CHK-05 / §1.3 A12）：
   `GET /deliver/errors`（viewer）单独返回 DeliverErrorsResponse；
   xml 项 note="未经 CPC 客户端验证"（CPC 是 Windows 客户端，真机导入是外部验收项，docs 出现导入记录前不撤）。
 """
+
 import asyncio
 import glob
 import json
@@ -207,8 +208,9 @@ def _make_bundle(store, pid: str, body: BundleIn, author: str) -> DeliverManifes
         with open(work_md, "w", encoding="utf-8") as f:
             f.write(critic.resolve(raw, "markup"))
         try:
-            tracked.build_tracked(store.build_config(project, out=work_docx, content_md=work_md,
-                                                     settings=body.settings), author)
+            tracked.build_tracked(
+                store.build_config(project, out=work_docx, content_md=work_md, settings=body.settings), author
+            )
         except (AssertionError, ProjectError, ValueError, KeyError) as e:
             raise BundleError("修订版 DOCX", str(e)) from e
         os.replace(work_md, os.path.join(tracked_dir, "content.md"))
@@ -234,8 +236,9 @@ def _make_bundle(store, pid: str, body: BundleIn, author: str) -> DeliverManifes
             z.write(tracked_docx, f"申请文件-{title}-修订.docx")
             z.writestr(f"附图-{title}.zip", figures_zip)
             snapshot = build_manifest(store, pid).model_dump()
-            snapshot.update(generated_at=datetime.now(UTC).isoformat(timespec="seconds"),
-                            mode=body.mode, pdf_skipped=not want_pdf)
+            snapshot.update(
+                generated_at=datetime.now(UTC).isoformat(timespec="seconds"), mode=body.mode, pdf_skipped=not want_pdf
+            )
             z.writestr("manifest.json", json.dumps(snapshot, ensure_ascii=False, indent=2))
         os.replace(tmp, final)
     except BaseException:
@@ -271,9 +274,11 @@ async def bundle_zip(pid: str, request: Request, user: CurrentUser):
         raise HTTPException(404, error_detail("not_found", "尚未生成递交包", detail="bundle"))
     filename = f"递交包-{project.title}.zip"
     events.emit("export.downloaded", pid=pid, actor=events.actor_of(user), data={"fmt": "bundle.zip"})
-    return FileResponse(path, media_type="application/zip",
-                        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
-                                 "Cache-Control": "no-store"})
+    return FileResponse(
+        path,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}", "Cache-Control": "no-store"},
+    )
 
 
 @router.get("/errors")

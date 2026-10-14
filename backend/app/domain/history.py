@@ -6,6 +6,7 @@ case.json（W4-A 台账）也在库内但不走 commit()：状态 / 台账变更
 git 不存在时 commit 返回 None（log.warning 一次），其余读操作抛 GitUnavailable。
 首次建库时把旧的 content.md.bak-* 按时间顺序导入为最早的几个提交（.bak 由 integrate 停写）。
 """
+
 import contextlib
 import contextvars
 import logging
@@ -26,6 +27,7 @@ except ModuleNotFoundError:  # Windows 开发机：msvcrt.locking 等价挡同�
     def _flock(fd: int, exclusive: bool) -> None:
         os.lseek(fd, 0, os.SEEK_SET)
         msvcrt.locking(fd, msvcrt.LK_LOCK if exclusive else msvcrt.LK_UNLCK, 1)
+
 
 HISTORY_DIR = os.path.join(".studio", "history")
 _LOCK_FILE = "history.lock"  # <project>/.studio/history.lock（不入库：TRACKED 只含 content.md/docs）
@@ -91,21 +93,44 @@ def _identity(author: str | None) -> tuple[str, str]:
     return name, email
 
 
-def _run(project_dir: str, *args: str, author: str | None = None, date: int | None = None,
-         check: bool = True, index: str | None = None, stdin: str | None = None) -> subprocess.CompletedProcess:
+def _run(
+    project_dir: str,
+    *args: str,
+    author: str | None = None,
+    date: int | None = None,
+    check: bool = True,
+    index: str | None = None,
+    stdin: str | None = None,
+) -> subprocess.CompletedProcess:
     g = _git_bin()
     if g is None:
         raise GitUnavailable()
     name, email = _identity(author)
-    env = dict(os.environ, GIT_DIR=git_dir(project_dir), GIT_WORK_TREE=project_dir, LC_ALL="C",
-               GIT_AUTHOR_NAME=name, GIT_AUTHOR_EMAIL=email, GIT_COMMITTER_NAME=name, GIT_COMMITTER_EMAIL=email)
+    env = dict(
+        os.environ,
+        GIT_DIR=git_dir(project_dir),
+        GIT_WORK_TREE=project_dir,
+        LC_ALL="C",
+        GIT_AUTHOR_NAME=name,
+        GIT_AUTHOR_EMAIL=email,
+        GIT_COMMITTER_NAME=name,
+        GIT_COMMITTER_EMAIL=email,
+    )
     if date is not None:
         env["GIT_AUTHOR_DATE"] = env["GIT_COMMITTER_DATE"] = f"{date} +0000"
     if index is not None:
         env["GIT_INDEX_FILE"] = index
-    return subprocess.run([g, "-c", "commit.gpgsign=false", "-c", "core.autocrlf=input", *args],
-                          cwd=project_dir, env=env, input=stdin,
-                          capture_output=True, text=True, encoding="utf-8", errors="replace", check=check)
+    return subprocess.run(
+        [g, "-c", "commit.gpgsign=false", "-c", "core.autocrlf=input", *args],
+        cwd=project_dir,
+        env=env,
+        input=stdin,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=check,
+    )
 
 
 def ensure_repo(project_dir: str) -> bool:
@@ -222,8 +247,7 @@ def commit_draft(project_dir: str, content: str, message: str, author: str | Non
         return _commit_draft_locked(project_dir, content, message, author, parent)
 
 
-def _commit_draft_locked(project_dir: str, content: str, message: str, author: str | None,
-                         parent: str | None) -> str:
+def _commit_draft_locked(project_dir: str, content: str, message: str, author: str | None, parent: str | None) -> str:
     fd, index = tempfile.mkstemp(prefix="draft-index-", dir=git_dir(project_dir))
     os.close(fd)
     os.unlink(index)
@@ -283,8 +307,9 @@ def log(project_dir: str) -> list[dict]:
             if len(parts) == 3 and parts[2] == "content.md" and parts[0].isdigit() and parts[1].isdigit():
                 added += int(parts[0])
                 deleted += int(parts[1])
-        versions.append({"sha": sha, "at": int(at), "message": message, "author": author,
-                         "added": added, "deleted": deleted})
+        versions.append(
+            {"sha": sha, "at": int(at), "message": message, "author": author, "added": added, "deleted": deleted}
+        )
     return versions
 
 
