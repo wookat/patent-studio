@@ -29,6 +29,7 @@ dependencies = [
     "boto3>=1.38,<2",
     "pydantic-settings>=2.9,<3",
     "temporalio>=1.8,<2",
+    "pydantic-ai-slim[openai]>=1.99,<2",
 ]
 
 [project.scripts]
