@@ -88,9 +88,11 @@ def create_app() -> FastAPI:
     async def health():
         return {"ok": True}
 
+    from patent_studio.api import router as platform_router
     from patent_studio.api.auth_routes import router as auth_router
 
     app.include_router(auth_router)
+    app.include_router(platform_router)
 
     if os.path.isdir(STATIC_DIR):
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

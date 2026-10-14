@@ -9,7 +9,10 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 # B2 起 domain/ 层分批搬入，此处同步恢复对应 import 把 ORM 表挂进 Base.metadata
 # （现有迁移全部为显式 op.* DDL 不依赖 metadata；恢复 import 是为了 autogenerate/漂移检查可用）。
-# 尚未搬入：agents、agent_runtime、authorization、collab、importer、materials、runs。
+# 尚未搬入：agent_runtime、importer、materials、runs。
+import patent_studio.domain.agents  # noqa: F401
+import patent_studio.domain.authorization  # noqa: F401
+import patent_studio.domain.collab  # noqa: F401
 import patent_studio.domain.documents  # noqa: F401
 import patent_studio.domain.figures  # noqa: F401
 import patent_studio.domain.identity  # noqa: F401
