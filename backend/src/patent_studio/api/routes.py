@@ -1,17 +1,23 @@
-"""平台 /api/v1 REST 路由。B3 批落地：组织 / 成员 / 邀请 / 案件 / 案件参与者；
-documents、proposals、releases、materials、runs 等域面随后续批次并入本文件。"""
+"""平台 /api/v1 REST 路由。已落地：组织 / 成员 / 邀请 / 案件 / 案件参与者（B3）、
+documents / revisions / working-copies（B4）；proposals、releases、materials、runs 等域面随后续批次并入。"""
 
+import hashlib
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Header
+from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 
 from patent_studio.api import schemas as s
 from patent_studio.api.dependencies import Ctx, DomainRoute, case_access, command, error, org_access, row_for
 from patent_studio.domain import authorization as az
+from patent_studio.domain import documents as d
+from patent_studio.domain import operations as op
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
+from patent_studio.infra.storage import object_ref, open_store
+from patent_studio.settings import get_settings
 
 router = APIRouter(
     prefix="/api/v1",
@@ -24,6 +30,11 @@ Key = Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=12
 
 def _scoped(ctx, case, key, kind, target, body, model, action):
     return command(ctx, key, kind, str(target), body, model, lambda: (action(), case.organization_id, case.id))
+
+
+def _document(ctx, document_id, *, write=False):
+    document = d.get_document(ctx.session, document_id, principal_id=ctx.principal.id)
+    return document, case_access(ctx, document.case_id, write=write)
 
 
 @router.get("/principals/me", response_model=s.PrincipalOut)
@@ -165,3 +176,199 @@ def add_participant(case_id: uuid.UUID, body: s.ParticipantIn, ctx: Ctx, key: Ke
         return participant
 
     return _scoped(ctx, case, key, "participant.add", case_id, body, s.ParticipantOut, action)
+
+
+@router.get("/cases/{case_id}/documents", response_model=list[s.DocumentOut])
+def documents(case_id: uuid.UUID, ctx: Ctx):
+    case_access(ctx, case_id)
+    return list(ctx.session.scalars(select(d.Document).where(d.Document.case_id == case_id)))
+
+
+@router.post("/cases/{case_id}/documents", response_model=s.DocumentOut, status_code=201)
+def create_document(case_id: uuid.UUID, body: s.DocumentIn, ctx: Ctx, key: Key):
+    case = case_access(ctx, case_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "document.create",
+        case_id,
+        body,
+        s.DocumentOut,
+        lambda: d.create_document(ctx.session, case_id, principal_id=ctx.principal.id, book=body.book),
+    )
+
+
+@router.get("/documents/{document_id}", response_model=s.DocumentOut)
+def get_document(document_id: uuid.UUID, ctx: Ctx):
+    return _document(ctx, document_id)[0]
+
+
+@router.get("/documents/{document_id}/revisions", response_model=list[s.RevisionOut])
+def revisions(document_id: uuid.UUID, ctx: Ctx):
+    _document(ctx, document_id)
+    return d.list_revisions(ctx.session, document_id, principal_id=ctx.principal.id)
+
+
+@router.get("/revisions/{revision_id}", response_model=s.RevisionOut)
+def get_revision(revision_id: uuid.UUID, ctx: Ctx):
+    revision = row_for(ctx, d.Revision, revision_id)
+    _document(ctx, revision.document_id)
+    return revision
+
+
+@router.post("/documents/{document_id}/revisions", response_model=s.RevisionOut, status_code=201)
+def create_revision(document_id: uuid.UUID, body: s.RevisionIn, ctx: Ctx, key: Key):
+    _doc, case = _document(ctx, document_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "revision.create",
+        document_id,
+        body,
+        s.RevisionOut,
+        lambda: d.create_revision(
+            ctx.session,
+            document_id,
+            author_principal_id=ctx.principal.id,
+            source=ctx.revision_source,
+            content_ref=body.content_ref.object_ref(),
+            parent_revision_id=body.parent_revision_id,
+        ),
+    )
+
+
+@router.post("/documents/{document_id}/working-copies", response_model=s.WorkingCopyOut, status_code=201)
+def open_copy(document_id: uuid.UUID, body: s.WorkingCopyIn, ctx: Ctx, key: Key):
+    _doc, case = _document(ctx, document_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "working_copy.open",
+        document_id,
+        body,
+        s.WorkingCopyOut,
+        lambda: d.open_working_copy(
+            ctx.session,
+            document_id,
+            principal_id=ctx.principal.id,
+            base_revision_id=body.base_revision_id,
+            content_ref=body.content_ref.object_ref() if body.content_ref else None,
+        ),
+    )
+
+
+def _copy(ctx, working_copy_id):
+    copy = d.get_working_copy(ctx.session, working_copy_id, principal_id=ctx.principal.id)
+    _doc, case = _document(ctx, copy.document_id, write=True)
+    return copy, case
+
+
+@router.get("/working-copies/{working_copy_id}", response_model=s.WorkingCopyOut)
+def get_copy(working_copy_id: uuid.UUID, ctx: Ctx):
+    return _copy(ctx, working_copy_id)[0]
+
+
+@router.get("/working-copies/{working_copy_id}/content", response_class=PlainTextResponse)
+async def get_copy_content(working_copy_id: uuid.UUID, ctx: Ctx):
+    copy, _case = _copy(ctx, working_copy_id)
+    settings = get_settings()
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    try:
+        data = await open_store(
+            settings.storage_url,
+            s3_endpoint_url=settings.s3_endpoint_url,
+            s3_region=settings.s3_region,
+        ).get(copy.content_key)
+    except Exception as exc:
+        raise error(404, "not_found", "Working copy content is unavailable") from exc
+    if len(data) != copy.content_size or hashlib.sha256(data).hexdigest() != copy.content_sha256:
+        raise error(409, "conflict", "Working copy content digest does not match metadata")
+    return PlainTextResponse(data, media_type=copy.content_type)
+
+
+@router.put("/working-copies/{working_copy_id}", response_model=s.WorkingCopyOut)
+def save_copy(working_copy_id: uuid.UUID, body: s.SaveIn, ctx: Ctx, key: Key):
+    _copy_row, case = _copy(ctx, working_copy_id)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "working_copy.save",
+        working_copy_id,
+        body,
+        s.WorkingCopyOut,
+        lambda: d.save_working_copy(
+            ctx.session,
+            working_copy_id,
+            principal_id=ctx.principal.id,
+            expected_version=body.expected_version,
+            content_ref=body.content_ref.object_ref(),
+        ),
+    )
+
+
+@router.put("/working-copies/{working_copy_id}/content", response_model=s.WorkingCopyOut)
+async def save_copy_content(working_copy_id: uuid.UUID, body: s.WorkingCopyContentIn, ctx: Ctx, key: Key):
+    copy, case = _copy(ctx, working_copy_id)
+    settings = get_settings()
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    data = body.content.encode("utf-8")
+    ref = object_ref(data, "text/markdown; charset=utf-8")
+    await open_store(
+        settings.storage_url,
+        s3_endpoint_url=settings.s3_endpoint_url,
+        s3_region=settings.s3_region,
+    ).put(data, ref.content_type)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "working_copy.save_content",
+        working_copy_id,
+        body,
+        s.WorkingCopyOut,
+        lambda: d.save_working_copy(
+            ctx.session,
+            working_copy_id,
+            principal_id=ctx.principal.id,
+            expected_version=body.expected_version,
+            content_ref=ref,
+        ),
+    )
+
+
+@router.post("/working-copies/{working_copy_id}/commit", response_model=s.OperationOut)
+def commit_copy(working_copy_id: uuid.UUID, body: s.CommitIn, ctx: Ctx, key: Key):
+    _copy_row, case = _copy(ctx, working_copy_id)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "working_copy.commit",
+        working_copy_id,
+        body,
+        s.OperationOut,
+        lambda: op.commit_working_copy_with_outbox(
+            ctx.session,
+            working_copy_id,
+            principal_id=ctx.principal.id,
+            organization_id=case.organization_id,
+            operation_id=key,
+            expected_version=body.expected_version,
+            source=ctx.revision_source,
+        ),
+    )
+
+
+@router.post("/working-copies/{working_copy_id}/collab/flush", response_model=s.FlushOut)
+async def flush_collab(working_copy_id: uuid.UUID, ctx: Ctx):
+    copy, _case = _copy(ctx, working_copy_id)
+    from patent_studio.api.yjs import flush_room
+
+    flushed = await flush_room(copy.id, ctx.principal.id)
+    return {"flushed": flushed}
