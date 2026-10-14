@@ -16,6 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.websockets import WebSocket
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 STATIC_DIR = os.environ.get("PATENT_STATIC_DIR", str(REPO_ROOT / "frontend" / "dist"))
@@ -93,6 +94,12 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(platform_router)
+
+    from patent_studio.api.yjs import collab_ws
+
+    @app.websocket("/api/v1/working-copies/{working_copy_id}/collab")
+    async def _collab(websocket: WebSocket):
+        await collab_ws(websocket)
 
     if os.path.isdir(STATIC_DIR):
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
