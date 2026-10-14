@@ -7,8 +7,17 @@ from alembic import context
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
-# B1 批尚未搬入 domain/ 层，Base.metadata 暂为空——现有迁移全部为显式 op.* DDL，
-# 不依赖 metadata；后续批次搬入 domain/*.py 后需在此恢复对应 import 以支持 autogenerate。
+# B2 起 domain/ 层分批搬入，此处同步恢复对应 import 把 ORM 表挂进 Base.metadata
+# （现有迁移全部为显式 op.* DDL 不依赖 metadata；恢复 import 是为了 autogenerate/漂移检查可用）。
+# 尚未搬入：agents、agent_runtime、authorization、collab、importer、materials、runs。
+import patent_studio.domain.documents  # noqa: F401
+import patent_studio.domain.figures  # noqa: F401
+import patent_studio.domain.identity  # noqa: F401
+import patent_studio.domain.operations  # noqa: F401
+import patent_studio.domain.organization  # noqa: F401
+import patent_studio.domain.proposals  # noqa: F401
+import patent_studio.domain.releases  # noqa: F401
+import patent_studio.domain.work_items  # noqa: F401
 from patent_studio.infra.db import Base, database_url
 from patent_studio.settings import get_settings
 

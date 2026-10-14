@@ -89,6 +89,29 @@ def test_database_url_rejects_other_backends():
         database_url("sqlite:///studio.db")
 
 
+def test_fresh_process_import_order_keeps_sqlalchemy_adapters():
+    """fastapi_users_db_sqlalchemy v7 循环导入回归：identity/auth 须在 fastapi_users.db 之后安全落地。"""
+    code = """
+import fastapi_users_db_sqlalchemy.generics
+from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
+from patent_studio.domain.identity import User
+from patent_studio.infra.auth import SessionLocal, _users_stack
+
+stack = _users_stack()
+assert User.__mro__[1] is SQLAlchemyBaseUserTableUUID
+assert SessionLocal and SQLAlchemyUserDatabase and stack["fastapi_users"]
+"""
+    env = {
+        "PATENT_STUDIO_AUTH": "on",
+        "PATENT_STUDIO_SECRET": "import-order-regression-secret",
+        "PYTHONPATH": os.pathsep.join((BACKEND, os.path.join(BACKEND, "src"))),
+    }
+    result = subprocess.run(
+        [sys.executable, "-c", code], cwd=BACKEND, env=env, capture_output=True, text=True, timeout=30
+    )
+    assert result.returncode == 0, result.stderr[-4000:]
+
+
 def test_dynamic_pg_schema_acquisition_starts_without_database(request):
     """懒取 pg_schema 前默认无库；取到后 fixture 自己注入并缓存 disposable URL。"""
     from patent_studio.settings import get_settings

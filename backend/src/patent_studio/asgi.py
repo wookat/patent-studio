@@ -1,11 +1,14 @@
 """平台应用工厂：`patent_studio.asgi:app` / `create_app()`。
 
-B1 批只搭骨架：/api/health、静态前端（frontend/dist）、安全响应头、请求体上限、中文 422 文案。
-认证路由、/api/v1 平台路由、Yjs 协同 WebSocket 等随后续批次往这里并挂；
+B2 批挂载面：/api/health、认证路由（register/login/logout/users/me，auth=off 时按旧口径 501/204）、
+静态前端（frontend/dist）、安全响应头、请求体上限、中文 422 文案。
+/api/v1 平台路由、Yjs 协同 WebSocket 等随后续批次往这里并挂；
 旧应用 `app.main:app` 不受影响，两者并存双跑。
 """
 
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -53,8 +56,17 @@ class BodyLimitMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    yield
+    from patent_studio.infra.auth import auth_on, dispose_engines
+
+    if auth_on():
+        await dispose_engines()
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="Patent Studio API", version="0.1.0")
+    app = FastAPI(title="Patent Studio API", version="0.1.0", lifespan=_lifespan)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(BodyLimitMiddleware)
 
@@ -75,6 +87,10 @@ def create_app() -> FastAPI:
     @app.get("/api/health")
     async def health():
         return {"ok": True}
+
+    from patent_studio.api.auth_routes import router as auth_router
+
+    app.include_router(auth_router)
 
     if os.path.isdir(STATIC_DIR):
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
