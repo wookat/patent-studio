@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import patent_studio.domain.authorization  # noqa: F401  把邀请/授权关系表挂进 Base.metadata
+import patent_studio.domain.collab  # noqa: F401  把协作房间/更新日志表挂进 Base.metadata
 import patent_studio.domain.documents  # noqa: F401  把文稿/修订/工作副本表挂进 Base.metadata
 import patent_studio.domain.figures  # noqa: F401  把附图/附图修订表挂进 Base.metadata
 import patent_studio.domain.identity  # noqa: F401  把全部 ORM 表挂进 Base.metadata

@@ -178,10 +178,26 @@ def add_release_item(
     return item
 
 
-def seal_release(session: Session, release_id: uuid.UUID, *, principal_id: uuid.UUID) -> Release:
+def seal_release(
+    session: Session,
+    release_id: uuid.UUID,
+    *,
+    principal_id: uuid.UUID,
+    force: bool = False,
+    force_reason: str | None = None,
+) -> Release:
     release = _release_for(session, release_id, principal_id)
     if release.status != "created":
         raise ReleaseConflict("release is already sealed")
+    from patent_studio.domain.collab import enforce_case_barrier
+
+    enforce_case_barrier(
+        session,
+        release.case_id,
+        principal_id=principal_id,
+        force=force,
+        force_reason=force_reason,
+    )
     if session.scalar(select(ReleaseItem.id).where(ReleaseItem.release_id == release.id)) is None:
         raise ReleaseConflict("cannot seal an empty release")
     release.status = "sealed"

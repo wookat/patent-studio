@@ -422,8 +422,19 @@ def commit_working_copy(
     expected_version: int | None = None,
     author_principal_id: uuid.UUID | None = None,
     source: RevisionSource = "manual",
+    force: bool = False,
+    force_reason: str | None = None,
 ) -> Revision:
     working_copy = get_working_copy(session, working_copy_id, principal_id=principal_id)
+    from patent_studio.domain.collab import enforce_working_copy_barrier
+
+    enforce_working_copy_barrier(
+        session,
+        working_copy.id,
+        principal_id=principal_id,
+        force=force,
+        force_reason=force_reason,
+    )
     document = session.scalar(
         select(Document).where(Document.id == working_copy.document_id).with_for_update().execution_options(
             populate_existing=True
