@@ -1,10 +1,11 @@
 """Thin, authenticated /api/v1 commands and queries over PostgreSQL domain services."""
+import asyncio
 import hashlib
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Response
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 
@@ -399,6 +400,68 @@ def seal_release(release_id: uuid.UUID, ctx: Ctx, key: Key):
     return _scoped(ctx, case, key, "release.seal", release_id, None, s.ReleaseOut, lambda: r.seal_release(
         ctx.session, release_id, principal_id=ctx.principal.id
     ))
+
+
+@router.post("/releases/{release_id}/build", response_model=s.ArtifactOut, status_code=201)
+def build_release(release_id: uuid.UUID, ctx: Ctx, key: Key):
+    release = r.get_release(ctx.session, release_id, principal_id=ctx.principal.id)
+    case = case_access(ctx, release.case_id, write=True)
+    settings = get_settings()
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    store = open_store(
+        settings.storage_url,
+        s3_endpoint_url=settings.s3_endpoint_url,
+        s3_region=settings.s3_region,
+    )
+    filename, data, inputs = r.render_release(
+        ctx.session,
+        release_id,
+        principal_id=ctx.principal.id,
+        read=lambda ref: asyncio.run(store.get(ref.key)),
+    )
+    ref = object_ref(data, r.DOCX_CONTENT_TYPE)
+    asyncio.run(store.put(data, ref.content_type))
+    return _scoped(ctx, case, key, "release.build", release_id, None, s.ArtifactOut, lambda: (
+        r.record_release_artifact(
+            ctx.session,
+            release_id,
+            principal_id=ctx.principal.id,
+            filename=filename,
+            content_ref=ref,
+            inputs=inputs,
+        )
+    ))
+
+
+@router.get("/releases/{release_id}/artifacts", response_model=list[s.ArtifactOut])
+def release_artifacts(release_id: uuid.UUID, ctx: Ctx):
+    release = r.get_release(ctx.session, release_id, principal_id=ctx.principal.id)
+    case_access(ctx, release.case_id)
+    return r.list_release_artifacts(ctx.session, release_id, principal_id=ctx.principal.id)
+
+
+@router.get("/artifacts/{artifact_id}/content")
+async def get_artifact_content(artifact_id: uuid.UUID, ctx: Ctx):
+    artifact = r.get_release_artifact(ctx.session, artifact_id, principal_id=ctx.principal.id)
+    settings = get_settings()
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    try:
+        data = await open_store(
+            settings.storage_url,
+            s3_endpoint_url=settings.s3_endpoint_url,
+            s3_region=settings.s3_region,
+        ).get(artifact.content_key)
+    except Exception as exc:
+        raise error(404, "not_found", "Artifact content is unavailable") from exc
+    if len(data) != artifact.content_size or hashlib.sha256(data).hexdigest() != artifact.content_sha256:
+        raise error(409, "conflict", "Artifact content digest does not match metadata")
+    return Response(
+        content=data,
+        media_type=artifact.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{artifact.filename}"'},
+    )
 
 
 @router.get("/cases/{case_id}/work-items", response_model=list[s.WorkItemOut])

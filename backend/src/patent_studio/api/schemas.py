@@ -240,6 +240,15 @@ class ReleaseItemOut(DTO):
     item_kind: str
 
 
+class ArtifactOut(DTO):
+    id: uuid.UUID
+    release_id: uuid.UUID
+    filename: str
+    content_ref: Ref
+    inputs: list[dict]
+    created_at: datetime
+
+
 class WorkItemIn(DTO):
     type: Literal["draft", "review", "figure", "oa-response", "search", "client-confirm", "deliver"]
     title: str = Field(min_length=1, max_length=300)
