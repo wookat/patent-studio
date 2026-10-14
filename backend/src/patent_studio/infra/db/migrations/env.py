@@ -20,6 +20,7 @@ import patent_studio.domain.operations  # noqa: F401
 import patent_studio.domain.organization  # noqa: F401
 import patent_studio.domain.proposals  # noqa: F401
 import patent_studio.domain.releases  # noqa: F401
+import patent_studio.domain.runs  # noqa: F401
 import patent_studio.domain.work_items  # noqa: F401
 from patent_studio.infra.db import Base, database_url
 from patent_studio.settings import get_settings

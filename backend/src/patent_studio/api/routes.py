@@ -1,15 +1,17 @@
 """平台 /api/v1 REST 路由。已落地：组织 / 成员 / 邀请 / 案件 / 案件参与者（B3）、
-documents / revisions / working-copies（B4）、proposals / figures / releases（B5）；
-materials、runs 等域面随后续批次并入。"""
+documents / revisions / working-copies（B4）、proposals / figures / releases（B5）、
+operations 查询 + runs / approvals / events SSE（B7）；materials、work-items 等域面随后续批次并入。"""
 
 import asyncio
 import hashlib
+import json
+import time
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Header, Response
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from sqlalchemy import select
 
 from patent_studio.api import schemas as s
@@ -20,6 +22,7 @@ from patent_studio.domain import figures as f
 from patent_studio.domain import operations as op
 from patent_studio.domain import proposals as p
 from patent_studio.domain import releases as r
+from patent_studio.domain import runs as run_domain
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
 from patent_studio.infra.storage import object_ref, open_store
 from patent_studio.settings import get_settings
@@ -577,4 +580,161 @@ def _store(settings):
         settings.storage_url,
         s3_endpoint_url=settings.s3_endpoint_url,
         s3_region=settings.s3_region,
+    )
+
+
+@router.get("/operations/{operation_id}", response_model=s.OperationOut)
+def get_operation(operation_id: str, ctx: Ctx):
+    operation = ctx.session.scalar(select(op.Operation).where(op.Operation.operation_id == operation_id))
+    if operation is None:
+        raise error(404, "not_found", "Operation does not exist")
+    if operation.principal_id != ctx.principal.id:
+        raise error(403, "denied", "Operation belongs to another principal")
+    case_access(ctx, operation.case_id) if operation.case_id else org_access(ctx, operation.organization_id)
+    return operation
+
+
+@router.post("/cases/{case_id}/runs", response_model=s.RunOut, status_code=201)
+def create_run(case_id: uuid.UUID, body: s.RunIn, ctx: Ctx, key: Key):
+    case = case_access(ctx, case_id, write=True)
+
+    def action():
+        op.record_operation(
+            ctx.session,
+            key,
+            operation_type="run.create",
+            principal_id=ctx.principal.id,
+            organization_id=case.organization_id,
+            case_id=case.id,
+        )
+        return run_domain.create_run(
+            ctx.session,
+            key,
+            run_type=body.run_type,
+            case_id=case.id,
+            principal_id=ctx.principal.id,
+            operation_id=key,
+        )
+
+    return _scoped(ctx, case, key, "run.create", case_id, body, s.RunOut, action)
+
+
+@router.get("/runs/{run_id}", response_model=s.RunOut)
+def get_run(run_id: str, ctx: Ctx):
+    run = run_domain._run_for(ctx.session, run_id, ctx.principal.id)
+    return run
+
+
+@router.get("/runs/{run_id}/events", response_model=list[s.RunEventOut])
+def run_events(run_id: str, ctx: Ctx):
+    run = run_domain._run_for(ctx.session, run_id, ctx.principal.id)
+    return list(
+        ctx.session.scalars(
+            select(run_domain.RunEvent).where(run_domain.RunEvent.run_id == run.id).order_by(run_domain.RunEvent.seq)
+        )
+    )
+
+
+_RUN_TERMINAL = {"succeeded", "failed", "canceled"}
+
+
+def _sse_frame(event_id: int, event: str, data: dict) -> str:
+    return f"id: {event_id}\nevent: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@router.get("/runs/{run_id}/events/stream")
+def run_events_stream(
+    run_id: str,
+    ctx: Ctx,
+    last_event_id: Annotated[str | None, Header()] = None,
+):
+    """Push run events over SSE; `Last-Event-ID` resumes after the given seq.
+
+    The DB is polled at `sse_poll_seconds`; a `: hb` comment frame is emitted every
+    `sse_heartbeat_seconds` to survive proxies; the stream closes with `event: done`
+    once the run reaches a terminal state (or hits `sse_max_seconds`).
+    """
+    run = run_domain._run_for(ctx.session, run_id, ctx.principal.id)
+    case_access(ctx, run.case_id)
+    if last_event_id is None:
+        after = 0
+    else:
+        try:
+            after = int(last_event_id)
+        except ValueError:
+            raise error(422, "validation", "Last-Event-ID must be a run event seq") from None
+        if after < 0:
+            raise error(422, "validation", "Last-Event-ID must be a run event seq")
+
+    settings = get_settings()
+    session = ctx.session
+    run_pk = run.id
+
+    def stream():
+        cursor = after
+        deadline = time.monotonic() + max(settings.sse_max_seconds, 0.1)
+        last_beat = time.monotonic()
+        while time.monotonic() < deadline:
+            events = session.scalars(
+                select(run_domain.RunEvent)
+                .where(run_domain.RunEvent.run_id == run_pk, run_domain.RunEvent.seq > cursor)
+                .order_by(run_domain.RunEvent.seq)
+            ).all()
+            for event in events:
+                cursor = event.seq
+                yield _sse_frame(
+                    event.seq,
+                    "run-event",
+                    {
+                        "id": str(event.id),
+                        "run_id": str(event.run_id),
+                        "seq": event.seq,
+                        "event_type": event.event_type,
+                        "payload": event.payload or {},
+                    },
+                )
+            status = session.scalar(select(run_domain.Run.status).where(run_domain.Run.id == run_pk))
+            if status in _RUN_TERMINAL:
+                yield f"event: done\ndata: {json.dumps({'status': status})}\n\n"
+                return
+            now = time.monotonic()
+            if now - last_beat >= max(settings.sse_heartbeat_seconds, 0.1):
+                yield ": hb\n\n"
+                last_beat = now
+            time.sleep(max(settings.sse_poll_seconds, 0.05))
+        status = session.scalar(select(run_domain.Run.status).where(run_domain.Run.id == run_pk))
+        yield f"event: done\ndata: {json.dumps({'status': status, 'reason': 'connection_limit'})}\n\n"
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.get("/runs/{run_id}/approvals", response_model=list[s.ApprovalOut])
+def run_approvals(run_id: str, ctx: Ctx):
+    run = run_domain._run_for(ctx.session, run_id, ctx.principal.id)
+    return list(ctx.session.scalars(select(run_domain.Approval).where(run_domain.Approval.run_id == run.id)))
+
+
+@router.post("/approvals/{approval_id}/decision", response_model=s.ApprovalOut)
+def decide_approval(approval_id: uuid.UUID, body: s.ApprovalDecisionIn, ctx: Ctx, key: Key):
+    approval = row_for(ctx, run_domain.Approval, approval_id)
+    case = case_access(ctx, approval.case_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "approval.decide",
+        approval_id,
+        body,
+        s.ApprovalOut,
+        lambda: run_domain.decide_approval(
+            ctx.session,
+            approval_id,
+            principal_id=ctx.principal.id,
+            decision=body.decision,
+            reason=body.reason,
+        ),
     )
