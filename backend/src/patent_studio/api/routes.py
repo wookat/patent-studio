@@ -1,12 +1,14 @@
 """平台 /api/v1 REST 路由。已落地：组织 / 成员 / 邀请 / 案件 / 案件参与者（B3）、
-documents / revisions / working-copies（B4）；proposals、releases、materials、runs 等域面随后续批次并入。"""
+documents / revisions / working-copies（B4）、proposals / figures / releases（B5）；
+materials、runs 等域面随后续批次并入。"""
 
+import asyncio
 import hashlib
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, Response
 from fastapi.responses import PlainTextResponse
 from sqlalchemy import select
 
@@ -14,7 +16,10 @@ from patent_studio.api import schemas as s
 from patent_studio.api.dependencies import Ctx, DomainRoute, case_access, command, error, org_access, row_for
 from patent_studio.domain import authorization as az
 from patent_studio.domain import documents as d
+from patent_studio.domain import figures as f
 from patent_studio.domain import operations as op
+from patent_studio.domain import proposals as p
+from patent_studio.domain import releases as r
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
 from patent_studio.infra.storage import object_ref, open_store
 from patent_studio.settings import get_settings
@@ -372,3 +377,204 @@ async def flush_collab(working_copy_id: uuid.UUID, ctx: Ctx):
 
     flushed = await flush_room(copy.id, ctx.principal.id)
     return {"flushed": flushed}
+
+
+@router.post("/cases/{case_id}/proposals", response_model=s.ProposalOut, status_code=201)
+def create_proposal(case_id: uuid.UUID, body: s.ProposalIn, ctx: Ctx, key: Key):
+    case = case_access(ctx, case_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "proposal.create",
+        case_id,
+        body,
+        s.ProposalOut,
+        lambda: p.create_proposal(
+            ctx.session,
+            case_id,
+            principal_id=ctx.principal.id,
+            proposer_principal_id=ctx.principal.id,
+            target_kind=body.target_kind,
+            target_revision_id=body.target_revision_id,
+            result_content_ref=body.result_content_ref.object_ref(),
+        ),
+    )
+
+
+@router.get("/cases/{case_id}/proposals", response_model=list[s.ProposalOut])
+def proposals(case_id: uuid.UUID, ctx: Ctx):
+    case_access(ctx, case_id)
+    return list(ctx.session.scalars(select(p.Proposal).where(p.Proposal.case_id == case_id)))
+
+
+@router.post("/proposals/{proposal_id}/{decision}", response_model=s.ProposalOut)
+def decide_proposal(proposal_id: uuid.UUID, decision: str, ctx: Ctx, key: Key):
+    proposal = p.get_proposal(ctx.session, proposal_id, principal_id=ctx.principal.id)
+    case = case_access(ctx, proposal.case_id, manage=decision != "submit", write=True)
+    actions = {"submit": p.submit_proposal, "accept": p.accept_proposal, "reject": p.reject_proposal}
+    if decision not in actions:
+        raise error(404, "not_found", "Unknown proposal decision")
+    return _scoped(
+        ctx,
+        case,
+        key,
+        f"proposal.{decision}",
+        proposal_id,
+        None,
+        s.ProposalOut,
+        lambda: actions[decision](ctx.session, proposal_id, principal_id=ctx.principal.id),
+    )
+
+
+@router.get("/cases/{case_id}/figures", response_model=list[s.FigureOut])
+def figures(case_id: uuid.UUID, ctx: Ctx):
+    case_access(ctx, case_id)
+    return list(ctx.session.scalars(select(f.FigureDocument).where(f.FigureDocument.case_id == case_id)))
+
+
+@router.post("/cases/{case_id}/figures", response_model=s.FigureOut, status_code=201)
+def create_figure(case_id: uuid.UUID, body: s.FigureIn, ctx: Ctx, key: Key):
+    case = case_access(ctx, case_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "figure.create",
+        case_id,
+        body,
+        s.FigureOut,
+        lambda: f.create_figure_document(ctx.session, case_id, principal_id=ctx.principal.id, **body.model_dump()),
+    )
+
+
+@router.get("/cases/{case_id}/releases", response_model=list[s.ReleaseOut])
+def releases(case_id: uuid.UUID, ctx: Ctx):
+    case_access(ctx, case_id)
+    return list(ctx.session.scalars(select(r.Release).where(r.Release.case_id == case_id)))
+
+
+@router.post("/cases/{case_id}/releases", response_model=s.ReleaseOut, status_code=201)
+def create_release(case_id: uuid.UUID, ctx: Ctx, key: Key):
+    case = case_access(ctx, case_id, manage=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "release.create",
+        case_id,
+        None,
+        s.ReleaseOut,
+        lambda: r.create_release(ctx.session, case_id, principal_id=ctx.principal.id),
+    )
+
+
+@router.post("/releases/{release_id}/items", response_model=s.ReleaseItemOut, status_code=201)
+def add_release_item(release_id: uuid.UUID, body: s.ReleaseItemIn, ctx: Ctx, key: Key):
+    release = r.get_release(ctx.session, release_id, principal_id=ctx.principal.id)
+    case = case_access(ctx, release.case_id, manage=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "release.item",
+        release_id,
+        body,
+        s.ReleaseItemOut,
+        lambda: r.add_release_item(ctx.session, release_id, principal_id=ctx.principal.id, **body.model_dump()),
+    )
+
+
+@router.post("/releases/{release_id}/seal", response_model=s.ReleaseOut)
+def seal_release(release_id: uuid.UUID, ctx: Ctx, key: Key):
+    release = r.get_release(ctx.session, release_id, principal_id=ctx.principal.id)
+    case = case_access(ctx, release.case_id, manage=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "release.seal",
+        release_id,
+        None,
+        s.ReleaseOut,
+        lambda: r.seal_release(ctx.session, release_id, principal_id=ctx.principal.id),
+    )
+
+
+@router.post("/releases/{release_id}/build", response_model=s.ArtifactOut, status_code=201)
+def build_release(release_id: uuid.UUID, ctx: Ctx, key: Key):
+    release = r.get_release(ctx.session, release_id, principal_id=ctx.principal.id)
+    case = case_access(ctx, release.case_id, write=True)
+    settings = get_settings()
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    store = open_store(
+        settings.storage_url,
+        s3_endpoint_url=settings.s3_endpoint_url,
+        s3_region=settings.s3_region,
+    )
+    filename, data, inputs = r.render_release(
+        ctx.session,
+        release_id,
+        principal_id=ctx.principal.id,
+        read=lambda ref: asyncio.run(store.get(ref.key)),
+    )
+    ref = object_ref(data, r.DOCX_CONTENT_TYPE)
+    asyncio.run(store.put(data, ref.content_type))
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "release.build",
+        release_id,
+        None,
+        s.ArtifactOut,
+        lambda: r.record_release_artifact(
+            ctx.session,
+            release_id,
+            principal_id=ctx.principal.id,
+            filename=filename,
+            content_ref=ref,
+            inputs=inputs,
+        ),
+    )
+
+
+@router.get("/releases/{release_id}/artifacts", response_model=list[s.ArtifactOut])
+def release_artifacts(release_id: uuid.UUID, ctx: Ctx):
+    release = r.get_release(ctx.session, release_id, principal_id=ctx.principal.id)
+    case_access(ctx, release.case_id)
+    return r.list_release_artifacts(ctx.session, release_id, principal_id=ctx.principal.id)
+
+
+@router.get("/artifacts/{artifact_id}/content")
+async def get_artifact_content(artifact_id: uuid.UUID, ctx: Ctx):
+    artifact = r.get_release_artifact(ctx.session, artifact_id, principal_id=ctx.principal.id)
+    settings = get_settings()
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    try:
+        data = await open_store(
+            settings.storage_url,
+            s3_endpoint_url=settings.s3_endpoint_url,
+            s3_region=settings.s3_region,
+        ).get(artifact.content_key)
+    except Exception as exc:
+        raise error(404, "not_found", "Artifact content is unavailable") from exc
+    if len(data) != artifact.content_size or hashlib.sha256(data).hexdigest() != artifact.content_sha256:
+        raise error(409, "conflict", "Artifact content digest does not match metadata")
+    return Response(
+        content=data,
+        media_type=artifact.content_type,
+        headers={"Content-Disposition": f'attachment; filename="{artifact.filename}"'},
+    )
+
+
+def _store(settings):
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    return open_store(
+        settings.storage_url,
+        s3_endpoint_url=settings.s3_endpoint_url,
+        s3_region=settings.s3_region,
+    )
