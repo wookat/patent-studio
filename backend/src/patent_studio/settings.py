@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     storage_url: str | None = None
     s3_endpoint_url: str | None = None
     s3_region: str | None = None
+    # LLM 网关（OpenAI 兼容）：三者齐全才启用真实模型，否则保持 stub
+    llm_base_url: str | None = None
+    llm_api_key: str | None = None
+    llm_model: str | None = None
 
 
 @lru_cache
