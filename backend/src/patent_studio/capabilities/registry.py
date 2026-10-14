@@ -115,7 +115,7 @@ def _check_contract_schema(schema: object, *, checked: set[type[BaseModel]]) -> 
                 raise CapabilityRegistrationError(
                     "contract aliases must match for validation and serialization"
                 )
-        if schema_type in _UNSUPPORTED_CONTRACT_SCHEMA_TYPES:
+        if isinstance(schema_type, str) and schema_type in _UNSUPPORTED_CONTRACT_SCHEMA_TYPES:
             raise CapabilityRegistrationError(
                 f"contract contains unsupported Pydantic schema type {schema_type!r}"
             )
