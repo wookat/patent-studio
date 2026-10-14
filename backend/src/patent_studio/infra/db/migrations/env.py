@@ -16,6 +16,7 @@ import patent_studio.domain.collab  # noqa: F401
 import patent_studio.domain.documents  # noqa: F401
 import patent_studio.domain.figures  # noqa: F401
 import patent_studio.domain.identity  # noqa: F401
+import patent_studio.domain.materials  # noqa: F401
 import patent_studio.domain.operations  # noqa: F401
 import patent_studio.domain.organization  # noqa: F401
 import patent_studio.domain.proposals  # noqa: F401

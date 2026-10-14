@@ -1,7 +1,7 @@
 """平台 /api/v1 REST 路由。已落地：组织 / 成员 / 邀请 / 案件 / 案件参与者（B3）、
 documents / revisions / working-copies（B4）、proposals / figures / releases（B5）、
-operations 查询 + runs / approvals / events SSE（B7）、work-items / notifications（B9）；
-materials 等域面随后续批次并入。"""
+operations 查询 + runs / approvals / events SSE（B7）、work-items / notifications（B9）、
+materials / anchors / facts（B10）。全部规划面已就位。"""
 
 import asyncio
 import hashlib
@@ -20,6 +20,7 @@ from patent_studio.api.dependencies import Ctx, DomainRoute, case_access, comman
 from patent_studio.domain import authorization as az
 from patent_studio.domain import documents as d
 from patent_studio.domain import figures as f
+from patent_studio.domain import materials as mat
 from patent_studio.domain import operations as op
 from patent_studio.domain import proposals as p
 from patent_studio.domain import releases as r
@@ -881,4 +882,165 @@ def read_notification(notification_id: str, ctx: Ctx, key: Key):
         None,
         s.NotificationOut,
         lambda: w.mark_notification_read(ctx.session, notification_id, principal_id=ctx.principal.id),
+    )
+
+
+@router.post("/cases/{case_id}/materials", response_model=s.MaterialOut, status_code=201)
+def create_material(case_id: uuid.UUID, body: s.MaterialIn, ctx: Ctx, key: Key):
+    case = case_access(ctx, case_id, write=True)
+    ref = None
+    if body.kind != "url":
+        if body.content is None:
+            raise error(422, "validation", "content is required for upload/text materials")
+        data = body.content.encode()
+        ref = object_ref(data, "text/markdown" if body.kind == "text" else "application/octet-stream")
+        asyncio.run(_store(get_settings()).put(data, ref.content_type))
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "material.create",
+        case_id,
+        body,
+        s.MaterialOut,
+        lambda: mat.register_material(
+            ctx.session,
+            case_id,
+            principal_id=ctx.principal.id,
+            kind=body.kind,
+            title=body.title,
+            content_ref=ref,
+            source_url=body.source_url,
+        ),
+    )
+
+
+@router.get("/cases/{case_id}/materials", response_model=list[s.MaterialOut])
+def materials(case_id: uuid.UUID, ctx: Ctx, status: str | None = None):
+    case_access(ctx, case_id)
+    return mat.list_materials(ctx.session, case_id, principal_id=ctx.principal.id, status=status)
+
+
+@router.post("/materials/{material_id}/archive", response_model=s.MaterialOut)
+def archive_material(material_id: uuid.UUID, ctx: Ctx, key: Key):
+    material = mat.get_material(ctx.session, material_id, principal_id=ctx.principal.id)
+    case = case_access(ctx, material.case_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "material.archive",
+        material_id,
+        None,
+        s.MaterialOut,
+        lambda: mat.archive_material(ctx.session, material_id, principal_id=ctx.principal.id),
+    )
+
+
+@router.get("/materials/{material_id}/content")
+async def material_content(material_id: uuid.UUID, ctx: Ctx):
+    material = mat.get_material(ctx.session, material_id, principal_id=ctx.principal.id)
+    case_access(ctx, material.case_id)
+    if material.content_key is None:
+        raise error(404, "not_found", "Material has no stored content")
+    try:
+        data = await _store(get_settings()).get(material.content_key)
+    except Exception as exc:
+        raise error(404, "not_found", "Material content is unavailable") from exc
+    if len(data) != material.content_size or hashlib.sha256(data).hexdigest() != material.content_sha256:
+        raise error(409, "conflict", "Material content digest does not match metadata")
+    return Response(content=data, media_type=material.content_type)
+
+
+@router.post("/materials/{material_id}/anchors", response_model=s.AnchorOut, status_code=201)
+def create_anchor(material_id: uuid.UUID, body: s.AnchorIn, ctx: Ctx, key: Key):
+    material = mat.get_material(ctx.session, material_id, principal_id=ctx.principal.id)
+    case = case_access(ctx, material.case_id, write=True)
+    excerpt_ref = None
+    if body.excerpt is not None:
+        data = body.excerpt.encode()
+        excerpt_ref = object_ref(data, "text/markdown")
+        asyncio.run(_store(get_settings()).put(data, excerpt_ref.content_type))
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "material.anchor",
+        material_id,
+        body,
+        s.AnchorOut,
+        lambda: mat.add_anchor(
+            ctx.session,
+            material_id,
+            principal_id=ctx.principal.id,
+            locator=body.locator,
+            excerpt_ref=excerpt_ref,
+        ),
+    )
+
+
+@router.get("/materials/{material_id}/anchors", response_model=list[s.AnchorOut])
+def anchors(material_id: uuid.UUID, ctx: Ctx):
+    material = mat.get_material(ctx.session, material_id, principal_id=ctx.principal.id)
+    case_access(ctx, material.case_id)
+    return mat.list_anchors(ctx.session, material_id, principal_id=ctx.principal.id)
+
+
+@router.post("/cases/{case_id}/facts", response_model=s.FactOut, status_code=201)
+def create_fact(case_id: uuid.UUID, body: s.FactIn, ctx: Ctx, key: Key):
+    case = case_access(ctx, case_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "fact.create",
+        case_id,
+        body,
+        s.FactOut,
+        lambda: mat.propose_fact(
+            ctx.session,
+            case_id,
+            principal_id=ctx.principal.id,
+            statement=body.statement,
+            material_id=body.material_id,
+            anchor_id=body.anchor_id,
+        ),
+    )
+
+
+@router.get("/cases/{case_id}/facts", response_model=list[s.FactOut])
+def facts(case_id: uuid.UUID, ctx: Ctx, status: str | None = None):
+    case_access(ctx, case_id)
+    return mat.list_facts(ctx.session, case_id, principal_id=ctx.principal.id, status=status)
+
+
+@router.post("/facts/{fact_id}/confirm", response_model=s.FactOut)
+def confirm_fact(fact_id: uuid.UUID, ctx: Ctx, key: Key):
+    fact = mat.get_fact(ctx.session, fact_id, principal_id=ctx.principal.id)
+    case = case_access(ctx, fact.case_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "fact.confirm",
+        fact_id,
+        None,
+        s.FactOut,
+        lambda: mat.confirm_fact(ctx.session, fact_id, principal_id=ctx.principal.id),
+    )
+
+
+@router.post("/facts/{fact_id}/reject", response_model=s.FactOut)
+def reject_fact(fact_id: uuid.UUID, body: s.FactRejectIn, ctx: Ctx, key: Key):
+    fact = mat.get_fact(ctx.session, fact_id, principal_id=ctx.principal.id)
+    case = case_access(ctx, fact.case_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "fact.reject",
+        fact_id,
+        body,
+        s.FactOut,
+        lambda: mat.reject_fact(ctx.session, fact_id, principal_id=ctx.principal.id, reason=body.reason),
     )
