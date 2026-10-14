@@ -236,6 +236,10 @@ class NotificationOut(DTO):
     payload: dict | None
 
 
+class FlushOut(DTO):
+    flushed: int
+
+
 class PrincipalOut(DTO):
     id: uuid.UUID
     kind: str

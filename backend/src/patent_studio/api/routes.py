@@ -239,6 +239,15 @@ def commit_copy(working_copy_id: uuid.UUID, body: s.CommitIn, ctx: Ctx, key: Key
                    ))
 
 
+@router.post("/working-copies/{working_copy_id}/collab/flush", response_model=s.FlushOut)
+async def flush_collab(working_copy_id: uuid.UUID, ctx: Ctx):
+    copy, _case = _copy(ctx, working_copy_id)
+    from patent_studio.api.yjs import flush_room
+
+    flushed = await flush_room(copy.id, ctx.principal.id)
+    return {"flushed": flushed}
+
+
 @router.post("/cases/{case_id}/proposals", response_model=s.ProposalOut, status_code=201)
 def create_proposal(case_id: uuid.UUID, body: s.ProposalIn, ctx: Ctx, key: Key):
     case = case_access(ctx, case_id, write=True)

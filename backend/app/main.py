@@ -65,6 +65,7 @@ from app.routes.timeline import router as timeline_router
 from app.routes.tracked import author_name
 from app.routes.tracked import router as tracked_router
 from patent_studio.api import router as platform_router
+from patent_studio.api.yjs import collab_ws
 from patent_studio.kernel import critic
 from patent_studio.kernel.style import DEFAULT_STYLE, merge_style
 
@@ -137,6 +138,9 @@ app.include_router(timeline_router)
 app.include_router(agent_router)
 app.include_router(collab_router)  # R8：含 Starlette WebSocketRoute，须在末尾 StaticFiles mount 之前
 app.include_router(platform_router)
+app.router.add_websocket_route(
+    "/api/v1/working-copies/{working_copy_id}/collab", collab_ws, name="platform_collab_ws"
+)
 
 
 # /api/ 非 multipart 请求体上限：公开端点（分享/客户页）未认证即可 POST JSON——裸读超大 body
