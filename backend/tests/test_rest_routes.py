@@ -194,3 +194,32 @@ def test_authenticated_rest_proposal_release_work_item_flow(on):
     notifications = client.get("/api/v1/notifications")
     assert notifications.status_code == 200
     assert any(n["work_item_id"] == work_item["id"] for n in notifications.json())
+
+
+def test_authenticated_run_rest_query_and_events(on):
+    client = TestClient(on.app)
+    email = f"rest-run-{uuid.uuid4().hex[:10]}@example.com"
+    _register(client, email)
+    client = _login(on, email)
+    organization = client.post(
+        "/api/v1/organizations",
+        headers={"Idempotency-Key": "run-rest-org"},
+        json={"slug": f"run-{uuid.uuid4().hex[:8]}", "name": "Run Org"},
+    ).json()
+    case = client.post(
+        f"/api/v1/organizations/{organization['id']}/cases",
+        headers={"Idempotency-Key": "run-rest-case"},
+        json={"case_key": "RUN-1", "title": "Run", "kind": "invention"},
+    ).json()
+    run = client.post(
+        f"/api/v1/cases/{case['id']}/runs",
+        headers={"Idempotency-Key": "run-rest-create"},
+        json={"run_type": "review"},
+    )
+    assert run.status_code == 201, run.text
+    body = run.json()
+    assert body["status"] == "queued" and body["operation_id"]
+    queried = client.get(f"/api/v1/runs/{body['run_id']}")
+    assert queried.status_code == 200 and queried.json()["run_id"] == body["run_id"]
+    events = client.get(f"/api/v1/runs/{body['run_id']}/events")
+    assert events.status_code == 200 and events.json()[0]["event_type"] == "run.queued"

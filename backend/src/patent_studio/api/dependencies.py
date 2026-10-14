@@ -163,7 +163,7 @@ def command(
     existing = session.scalar(select(Operation).where(Operation.operation_id == key))
     if existing is not None:
         if (existing.principal_id != ctx.principal.id or existing.operation_type != command_type
-                or existing.payload_sha256 != ref.sha256):
+                or (existing.payload_sha256 is not None and existing.payload_sha256 != ref.sha256)):
             raise error(409, "conflict", "Idempotency-Key is bound to another request")
         case_access(ctx, existing.case_id) if existing.case_id else org_access(ctx, existing.organization_id)
         event = session.scalar(select(OutboxEvent).where(OutboxEvent.operation_id == existing.id))
@@ -180,8 +180,11 @@ def command(
         )
         session.add(operation)
         session.flush()
+    if operation.status == "pending":
         transition_operation(session, key, "running")
         transition_operation(session, key, "succeeded")
+    elif operation.status != "succeeded":
+        raise error(409, "conflict", "Operation is not executable")
     operation.payload_key, operation.payload_sha256 = ref.key, ref.sha256
     operation.payload_size, operation.payload_type = ref.size, ref.content_type
     event = session.scalar(select(OutboxEvent).where(OutboxEvent.operation_id == operation.id))

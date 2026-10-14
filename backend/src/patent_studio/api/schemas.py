@@ -147,6 +147,48 @@ class OperationOut(DTO):
     status: str
 
 
+class RunIn(DTO):
+    run_type: str = Field(min_length=1, max_length=64)
+
+
+class RunOut(DTO):
+    id: uuid.UUID
+    run_id: str
+    run_type: str
+    case_id: uuid.UUID
+    triggered_by_principal_id: uuid.UUID
+    operation_id: uuid.UUID | None
+    status: str
+    fencing_epoch: int
+    temporal_workflow_id: str | None
+    temporal_run_id: str | None
+    error_summary: str | None
+
+
+class RunEventOut(DTO):
+    id: uuid.UUID
+    run_id: uuid.UUID
+    seq: int
+    event_type: str
+    payload: dict
+
+
+class ApprovalOut(DTO):
+    id: uuid.UUID
+    run_id: uuid.UUID
+    case_id: uuid.UUID
+    approver_principal_id: uuid.UUID
+    status: str
+    decided_by_principal_id: uuid.UUID | None
+    decided_at: datetime | None
+    reason: str | None
+
+
+class ApprovalDecisionIn(DTO):
+    decision: Literal["approved", "rejected"]
+    reason: str | None = Field(default=None, max_length=1000)
+
+
 class ProposalIn(DTO):
     target_kind: Literal["document", "figure"]
     target_revision_id: uuid.UUID

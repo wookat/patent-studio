@@ -14,6 +14,7 @@ from patent_studio.domain import figures as f
 from patent_studio.domain import operations as op
 from patent_studio.domain import proposals as p
 from patent_studio.domain import releases as r
+from patent_studio.domain import runs as run_domain
 from patent_studio.domain import work_items as w
 from patent_studio.domain.identity import Notification
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
@@ -404,3 +405,72 @@ def get_operation(operation_id: str, ctx: Ctx):
         raise error(403, "denied", "Operation belongs to another principal")
     case_access(ctx, operation.case_id) if operation.case_id else org_access(ctx, operation.organization_id)
     return operation
+
+
+@router.post("/cases/{case_id}/runs", response_model=s.RunOut, status_code=201)
+def create_run(case_id: uuid.UUID, body: s.RunIn, ctx: Ctx, key: Key):
+    case = case_access(ctx, case_id, write=True)
+
+    def action():
+        op.record_operation(
+            ctx.session,
+            key,
+            operation_type="run.create",
+            principal_id=ctx.principal.id,
+            organization_id=case.organization_id,
+            case_id=case.id,
+        )
+        return run_domain.create_run(
+            ctx.session,
+            key,
+            run_type=body.run_type,
+            case_id=case.id,
+            principal_id=ctx.principal.id,
+            operation_id=key,
+        )
+
+    return _scoped(ctx, case, key, "run.create", case_id, body, s.RunOut, action)
+
+
+@router.get("/runs/{run_id}", response_model=s.RunOut)
+def get_run(run_id: str, ctx: Ctx):
+    run = run_domain._run_for(ctx.session, run_id, ctx.principal.id)
+    return run
+
+
+@router.get("/runs/{run_id}/events", response_model=list[s.RunEventOut])
+def run_events(run_id: str, ctx: Ctx):
+    run = run_domain._run_for(ctx.session, run_id, ctx.principal.id)
+    return list(
+        ctx.session.scalars(
+            select(run_domain.RunEvent).where(run_domain.RunEvent.run_id == run.id).order_by(run_domain.RunEvent.seq)
+        )
+    )
+
+
+@router.get("/runs/{run_id}/approvals", response_model=list[s.ApprovalOut])
+def run_approvals(run_id: str, ctx: Ctx):
+    run = run_domain._run_for(ctx.session, run_id, ctx.principal.id)
+    return list(ctx.session.scalars(select(run_domain.Approval).where(run_domain.Approval.run_id == run.id)))
+
+
+@router.post("/approvals/{approval_id}/decision", response_model=s.ApprovalOut)
+def decide_approval(approval_id: uuid.UUID, body: s.ApprovalDecisionIn, ctx: Ctx, key: Key):
+    approval = row_for(ctx, run_domain.Approval, approval_id)
+    case = case_access(ctx, approval.case_id, write=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "approval.decide",
+        approval_id,
+        body,
+        s.ApprovalOut,
+        lambda: run_domain.decide_approval(
+            ctx.session,
+            approval_id,
+            principal_id=ctx.principal.id,
+            decision=body.decision,
+            reason=body.reason,
+        ),
+    )
