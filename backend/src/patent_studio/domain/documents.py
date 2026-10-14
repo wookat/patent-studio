@@ -30,9 +30,9 @@ from patent_studio.infra.db import Base
 from patent_studio.infra.storage import ObjectRef
 
 DOCUMENT_BOOKS = ("abstract", "claims", "description")
-REVISION_SOURCES = ("manual", "agent", "migration")
+REVISION_SOURCES = ("manual", "agent", "migration", "agent_suggested_accepted")
 DocumentBook = Literal["abstract", "claims", "description"]
-RevisionSource = Literal["manual", "agent", "migration"]
+RevisionSource = Literal["manual", "agent", "migration", "agent_suggested_accepted"]
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -135,7 +135,7 @@ class Revision(Base):
     author_principal_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("principals.id", ondelete="RESTRICT"), nullable=False
     )
-    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
     content_key: Mapped[str] = mapped_column(String(512), nullable=False)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     content_size: Mapped[int] = mapped_column(Integer, nullable=False)

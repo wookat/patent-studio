@@ -41,7 +41,7 @@ def upgrade() -> None:
         sa.Column("revision_no", sa.Integer(), nullable=False),
         sa.Column("parent_revision_id", sa.Uuid(), nullable=True),
         sa.Column("author_principal_id", sa.Uuid(), nullable=False),
-        sa.Column("source", sa.String(length=16), nullable=False),
+        sa.Column("source", sa.String(length=32), nullable=False),
         sa.Column("content_key", sa.String(length=512), nullable=False),
         sa.Column("content_sha256", sa.String(length=64), nullable=False),
         sa.Column("content_size", sa.Integer(), nullable=False),
