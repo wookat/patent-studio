@@ -200,7 +200,7 @@ def get_revision(revision_id: uuid.UUID, ctx: Ctx):
 def create_revision(document_id: uuid.UUID, body: s.RevisionIn, ctx: Ctx, key: Key):
     _doc, case = _document(ctx, document_id, write=True)
     return _scoped(ctx, case, key, "revision.create", document_id, body, s.RevisionOut, lambda: d.create_revision(
-        ctx.session, document_id, author_principal_id=ctx.principal.id, source="manual",
+        ctx.session, document_id, author_principal_id=ctx.principal.id, source=ctx.revision_source,
         content_ref=body.content_ref.object_ref(), parent_revision_id=body.parent_revision_id,
     ))
 
@@ -315,6 +315,7 @@ def commit_copy(working_copy_id: uuid.UUID, body: s.CommitIn, ctx: Ctx, key: Key
                    lambda: op.commit_working_copy_with_outbox(
                        ctx.session, working_copy_id, principal_id=ctx.principal.id,
                        organization_id=case.organization_id, operation_id=key, expected_version=body.expected_version,
+                       source=ctx.revision_source,
                    ))
 
 

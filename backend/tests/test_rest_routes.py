@@ -15,6 +15,88 @@ def _ref(value: str):
     return {"key": ref.key, "sha256": ref.sha256, "size": ref.size, "content_type": ref.content_type}
 
 
+def test_agent_bearer_token_writes_agent_sourced_revision(on, pg_schema):
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+
+    from patent_studio.domain.agents import issue_agent_token, provision_agent
+    from patent_studio.domain.organization import CaseParticipant, OrganizationMembership
+    from patent_studio.infra.db import database_url
+
+    owner = _rest_user(on, "agent-rev-owner")
+    organization, case = _rest_case(owner, "agentrev")
+    owner_principal_id = owner.get("/api/v1/principals/me").json()["id"]
+    document = owner.post(
+        f"/api/v1/cases/{case['id']}/documents",
+        headers={"Idempotency-Key": "agentrev-doc"},
+        json={"book": "description"},
+    ).json()
+    engine = create_engine(database_url(pg_schema))
+    try:
+        with Session(engine) as session, session.begin():
+            agent = provision_agent(session, agent_key="rest-drafter", display_name="REST Agent")
+            session.add(OrganizationMembership(
+                organization_id=uuid.UUID(organization["id"]),
+                principal_id=agent.id, role="member", status="active",
+            ))
+            session.add(CaseParticipant(
+                case_id=uuid.UUID(case["id"]), principal_id=agent.id, role="drafter"
+            ))
+            token = issue_agent_token(
+                session,
+                principal_id=agent.id,
+                issuer_principal_id=uuid.UUID(owner_principal_id),
+                organization_id=uuid.UUID(organization["id"]),
+                case_id=uuid.UUID(case["id"]),
+            )
+    finally:
+        engine.dispose()
+
+    agent = TestClient(on.app)
+    assert agent.get("/api/v1/principals/me", headers={"Authorization": f"Bearer {token}"}).json()["kind"] == "agent"
+    created = agent.post(
+        f"/api/v1/documents/{document['id']}/revisions",
+        headers={"Authorization": f"Bearer {token}", "Idempotency-Key": "agentrev-1"},
+        json={"content_ref": _ref("agent 草拟的说明书")},
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["source"] == "agent"
+    replay = agent.post(
+        f"/api/v1/documents/{document['id']}/revisions",
+        headers={"Authorization": f"Bearer {token}", "Idempotency-Key": "agentrev-1"},
+        json={"content_ref": _ref("agent 草拟的说明书")},
+    )
+    assert replay.status_code == 201 and replay.json()["id"] == created.json()["id"]
+
+    human = owner.post(
+        f"/api/v1/documents/{document['id']}/revisions",
+        headers={"Idempotency-Key": "humanrev-1"},
+        json={"content_ref": _ref("人工修订")},
+    )
+    assert human.status_code == 201 and human.json()["source"] == "manual"
+
+    other_case = owner.post(
+        f"/api/v1/organizations/{organization['id']}/cases",
+        headers={"Idempotency-Key": "agentrev-case-2"},
+        json={"case_key": "OTHER-1", "title": "Out of scope", "kind": "invention"},
+    ).json()
+    other_document = owner.post(
+        f"/api/v1/cases/{other_case['id']}/documents",
+        headers={"Idempotency-Key": "agentrev-doc-2"},
+        json={"book": "claims"},
+    ).json()
+    denied = agent.post(
+        f"/api/v1/documents/{other_document['id']}/revisions",
+        headers={"Authorization": f"Bearer {token}", "Idempotency-Key": "agentrev-oos"},
+        json={"content_ref": _ref("越权内容")},
+    )
+    assert denied.status_code == 403
+    forged = TestClient(on.app).get(
+        "/api/v1/principals/me", headers={"Authorization": "Bearer agt_forged"}
+    )
+    assert forged.status_code == 401
+
+
 def test_platform_route_requires_authenticated_principal(client):
     client, _ = client
     response = client.get("/api/v1/principals/me")

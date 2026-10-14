@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool
 
+from patent_studio.domain import agents as agent_domain
 from patent_studio.domain import authorization as az
 from patent_studio.domain import documents as docs
 from patent_studio.domain.collab import SubmissionBarrierError
@@ -63,12 +64,10 @@ class DomainRoute(APIRoute):
 
 async def subject(request: Request):
     # Resolve dynamically: the existing auth module can be reloaded by test/dev mode switches.
+    # May return None; `transaction` decides whether a bearer credential authenticates instead.
     from app import auth
 
-    user = await auth.current_user(request)
-    if user is None:
-        raise error(401, "auth", "An authenticated database user is required")
-    return user
+    return await auth.current_user(request)
 
 
 Subject = Depends(subject)
@@ -78,15 +77,47 @@ Subject = Depends(subject)
 class Context:
     session: Session
     principal: Principal
+    agent_token: agent_domain.AgentAccessToken | None = None
+
+    @property
+    def revision_source(self) -> str:
+        return "agent" if self.principal.kind == "agent" else "manual"
 
 
-def transaction(user=Subject):
+def _bearer_agent_token(request: Request) -> str | None:
+    scheme, _, raw = request.headers.get("authorization", "").partition(" ")
+    return raw if scheme.lower() == "bearer" and raw.startswith("agt_") else None
+
+
+def _enforce_token_scope(
+    ctx: Context, *, organization_id: uuid.UUID, case_id: uuid.UUID | None = None
+) -> None:
+    token = ctx.agent_token
+    if token is None:
+        return
+    if token.organization_id is not None and token.organization_id != organization_id:
+        raise error(403, "denied", "Agent token scope does not cover this organization")
+    if case_id is not None and token.case_id is not None and token.case_id != case_id:
+        raise error(403, "denied", "Agent token scope does not cover this case")
+
+
+def transaction(request: Request, user=Subject):
+    raw_token = _bearer_agent_token(request)
+    if raw_token is None and user is None:
+        raise error(401, "auth", "An authenticated database user is required")
     url = get_settings().database_url
     if not url:
         raise error(503, "database_unavailable", "PostgreSQL is not configured")
     engine = create_engine(database_url(url), poolclass=NullPool, hide_parameters=True)
     try:
         with Session(engine, expire_on_commit=False) as session, session.begin():
+            if raw_token is not None:
+                try:
+                    token = agent_domain.authenticate_agent_token(session, raw_token)
+                except agent_domain.AgentError as exc:
+                    raise error(401, "auth", "Invalid agent bearer token") from exc
+                yield Context(session, session.get(Principal, token.principal_id), token)
+                return
             active = session.get(User, user.id)
             if active is None or not active.is_active:
                 raise error(401, "auth", "Session user is inactive or missing")
@@ -111,6 +142,7 @@ def org_access(ctx: Context, organization_id: uuid.UUID, *, manage=False) -> Org
     if org is None:
         raise error(404, "not_found", "Organization does not exist")
     membership = ctx.session.get(OrganizationMembership, (org.id, ctx.principal.id))
+    _enforce_token_scope(ctx, organization_id=org.id)
     if org.status != "active" or membership is None or membership.status != "active":
         raise error(403, "denied", "Active organization membership required")
     if manage and membership.role not in {"owner", "admin"}:
@@ -120,6 +152,7 @@ def org_access(ctx: Context, organization_id: uuid.UUID, *, manage=False) -> Org
 
 def case_access(ctx: Context, case_id: uuid.UUID, *, write=False, manage=False) -> Case:
     case = docs._ensure_case_access(ctx.session, case_id, ctx.principal.id)
+    _enforce_token_scope(ctx, organization_id=case.organization_id, case_id=case.id)
     org = ctx.session.get(Organization, case.organization_id)
     if org is None or org.status != "active":
         raise error(403, "denied", "Organization is inactive")
