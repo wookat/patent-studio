@@ -12,6 +12,7 @@ import patent_studio.domain.collab  # noqa: F401  把协作房间/更新日志�
 import patent_studio.domain.documents  # noqa: F401  把文稿/修订/工作副本表挂进 Base.metadata
 import patent_studio.domain.figures  # noqa: F401  把附图/附图修订表挂进 Base.metadata
 import patent_studio.domain.identity  # noqa: F401  把全部 ORM 表挂进 Base.metadata
+import patent_studio.domain.operations  # noqa: F401  把 Operation/outbox 表挂进 Base.metadata
 import patent_studio.domain.organization  # noqa: F401  把机构/案件关系表挂进 Base.metadata
 import patent_studio.domain.proposals  # noqa: F401  把提案/变更集表挂进 Base.metadata
 import patent_studio.domain.releases  # noqa: F401  把 Release 冻结件表挂进 Base.metadata
