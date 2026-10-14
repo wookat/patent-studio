@@ -8,7 +8,7 @@
 - settings：缺行 ⇒ DEFAULT_SETTINGS；put 合并部分字段。
 
 db / acl 在函数内 import：与 auth/__init__.py 同理——AUTH=off 时不加载 fastapi-users / engine，
-且测试按新 DB_PATH 重载时会丢弃 app.auth.db / acl 再 import，模块级绑定会指向旧库。
+且测试重载时会丢弃 app.auth.db / acl 再 import，模块级绑定会指向旧引擎缓存。
 """
 from datetime import UTC, datetime, timedelta
 
@@ -25,7 +25,7 @@ async def touch(pid: str, user) -> None:
     """打开工作台 / 领取链接：upsert project_access（30 分钟去抖）。"""
     from app.auth import acl
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import ProjectAccess
+    from patent_studio.domain.identity import ProjectAccess
 
     await init_db()
     now = datetime.now(UTC)
@@ -53,7 +53,7 @@ async def last_seen_by_user(pid: str) -> dict[str, str]:
     """{user_id: last_seen ISO}：面板协作者头像的「最近访问」（不含 count / not_viewed，那是 list_access 的事）。"""
     from app.auth import acl
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import ProjectAccess
+    from patent_studio.domain.identity import ProjectAccess
 
     await init_db()
     async with SessionLocal() as s:
@@ -65,7 +65,7 @@ async def last_seen_for_pids(pids: list[str]) -> dict[str, dict[str, str]]:
     """{pid: {user_id: last_seen ISO}} 批量版——聚合列表逐案取会 N+1。"""
     from app.auth import acl
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import ProjectAccess
+    from patent_studio.domain.identity import ProjectAccess
 
     await init_db()
     async with SessionLocal() as s:
@@ -80,7 +80,7 @@ async def list_access(pid: str) -> dict:
     """→ {viewed: [{user, first_seen, last_seen, count, online}], not_viewed: [{user|null, email, via}]}"""
     from app.auth import acl
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PendingInvite, ProjectAccess, User
+    from patent_studio.domain.identity import PendingInvite, ProjectAccess, User
 
     await init_db()
     members = {m["user_id"]: m for m in await acl.list_members(pid)}
@@ -112,7 +112,7 @@ async def list_access(pid: str) -> dict:
 
 async def get_settings(pid: str) -> dict:
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import ProjectCollabSettings
+    from patent_studio.domain.identity import ProjectCollabSettings
 
     await init_db()
     async with SessionLocal() as s:
@@ -122,7 +122,7 @@ async def get_settings(pid: str) -> dict:
 async def put_settings(pid: str, patch: dict) -> dict:
     """合并 patch 中非 None 的字段；缺行则以默认值建行。"""
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import ProjectCollabSettings
+    from patent_studio.domain.identity import ProjectCollabSettings
 
     await init_db()
     async with SessionLocal() as s:

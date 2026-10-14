@@ -47,7 +47,7 @@ def invite_out(row) -> dict:
 
 async def list_pending(pid: str) -> list[dict]:
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PendingInvite
+    from patent_studio.domain.identity import PendingInvite
 
     await init_db()
     async with SessionLocal() as s:
@@ -59,7 +59,7 @@ async def list_pending(pid: str) -> list[dict]:
 async def create_pending(pid: str, email: str, role: str, invited_by: uuid.UUID) -> dict:
     """upsert：同一邮箱再邀一次 ⇒ 覆盖角色与邀请人。"""
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PendingInvite
+    from patent_studio.domain.identity import PendingInvite
 
     await init_db()
     async with SessionLocal() as s:
@@ -86,7 +86,7 @@ async def create_pending(pid: str, email: str, role: str, invited_by: uuid.UUID)
 
 async def set_pending_role(pid: str, email: str, role: str) -> dict | None:
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PendingInvite
+    from patent_studio.domain.identity import PendingInvite
 
     await init_db()
     async with SessionLocal() as s:
@@ -101,7 +101,7 @@ async def set_pending_role(pid: str, email: str, role: str) -> dict | None:
 
 async def delete_pending(pid: str, email: str) -> bool:
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PendingInvite
+    from patent_studio.domain.identity import PendingInvite
 
     await init_db()
     async with SessionLocal() as s:
@@ -115,7 +115,7 @@ async def consume(email: str, user_id: uuid.UUID) -> None:
     """被邀邮箱注册 / 登录 ⇒ 该邮箱的全部 pending 变成 ACL 行（不降低已有更高角色）并删除。"""
     from app.auth import acl
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PendingInvite
+    from patent_studio.domain.identity import PendingInvite
 
     await init_db()
     async with SessionLocal() as s:

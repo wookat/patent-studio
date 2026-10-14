@@ -8,12 +8,12 @@ import uuid
 from fastapi import Request
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend, CookieTransport, JWTStrategy
-from fastapi_users.db import SQLAlchemyUserDatabase
 from fastapi_users.jwt import decode_jwt
+from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 
 from app import config
 from app.auth.db import SessionLocal, UserManager, get_user_manager, init_db
-from app.auth.models import User
+from patent_studio.domain.identity import User
 
 COOKIE_NAME = "studio_session"
 SESSION_SECONDS = 7 * 24 * 3600

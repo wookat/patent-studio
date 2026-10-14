@@ -17,9 +17,8 @@ SOFFICE_TIMEOUT = int(os.environ.get("SOFFICE_TIMEOUT", "120"))
 # 常驻 LibreOffice（unoserver XML-RPC 地址）；置空则始终用 soffice CLI。连接失败后退避 UNOSERVER_RETRY_S 秒再试。
 UNOSERVER_URL = os.environ.get("UNOSERVER_URL", "http://127.0.0.1:2003").strip()
 UNOSERVER_RETRY_S = int(os.environ.get("UNOSERVER_RETRY_S", "30"))
-# R6（docs/plan/07 §3）：账号开关只在启动时读一次；off 时不建 DB、不 import fastapi-users
+# R6（docs/plan/07 §3）：账号开关只在启动时读一次；off 时不碰 DB、不 import fastapi-users
 AUTH_ON = os.environ.get("PATENT_STUDIO_AUTH", "off").strip().lower() == "on"
-DB_PATH = os.path.join(os.path.dirname(PROJECTS_DIR), "studio.db")
 AUTH_SECRET = os.environ.get("PATENT_STUDIO_SECRET", "")
 COOKIE_SECURE = os.environ.get("PATENT_STUDIO_COOKIE_SECURE", "off").strip().lower() == "on"
 # 轨道 E（docs/plan/09 §2）：AI 中转站 key 只从这一个变量读；provider=mock 时不出站

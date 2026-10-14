@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """站内通知（docs/plan/21 §2 R-HOME-07 / R-REV-03 / R-MOB-04 后端；notify-audit-backend）。
 
-事件总线（events.py）是唯一入口：业务模块只 emit，本包订阅并写 `notifications` 表（跨用户数据进 SQLite，B5）。
+事件总线（events.py）是唯一入口：业务模块只 emit，本包订阅并写 `notifications` 表（跨用户数据进 PostgreSQL，B5）。
 订阅 → 通知 kind 对照（事件名以 prep events.EventKind 为准，规格里的 due_soon / mentioned / review.assigned /
 proposal.applied|dismissed 分别对应 deadline.due / comment.mention / comment.assign / ai.proposal{action}）：
 
@@ -94,7 +94,7 @@ def create(user_ids, kind: str, title: str, *, body: str = "", pid: str | None =
             "id": sink.new_id(), "user_id": uid, "kind": kind, "title": title[:TITLE_MAX], "body": body,
             "href": href, "project_id": pid, "actor_user_id": actor_id, "read_at": None, "created_at": now,
         })
-    from app.auth.models import Notification as Row
+    from patent_studio.domain.identity import Notification as Row
 
     n = sink.write(Row, rows)
     if n and mail.configured():
@@ -133,7 +133,7 @@ async def _mail_users(user_ids: list[uuid.UUID], title: str, body: str) -> None:
     from sqlalchemy import select
 
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import User
+    from patent_studio.domain.identity import User
 
     await init_db()
     async with SessionLocal() as s:
@@ -205,7 +205,7 @@ async def case_staff(pid: str) -> list:
 
     from app.auth import acl
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import User
+    from patent_studio.domain.identity import User
 
     members = await acl.list_members(pid)
     for role in ("owner", "agent"):
@@ -315,8 +315,8 @@ async def list_for(user_id: uuid.UUID, *, unread_only: bool = False, limit: int 
     from sqlalchemy import and_, func, or_, select
 
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import Notification as Row
-    from app.auth.models import User
+    from patent_studio.domain.identity import Notification as Row
+    from patent_studio.domain.identity import User
 
     await init_db()
     limit = max(1, min(limit, LIST_LIMIT_MAX))
@@ -340,7 +340,7 @@ async def list_for(user_id: uuid.UUID, *, unread_only: bool = False, limit: int 
 
 async def user_exists(user_id: uuid.UUID) -> bool:
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import User
+    from patent_studio.domain.identity import User
 
     await init_db()
     async with SessionLocal() as s:
@@ -351,8 +351,8 @@ async def mark_read(user_id: uuid.UUID, nid: str) -> Notification | None:
     from sqlalchemy import select
 
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import Notification as Row
-    from app.auth.models import User
+    from patent_studio.domain.identity import Notification as Row
+    from patent_studio.domain.identity import User
 
     await init_db()
     async with SessionLocal() as s:
@@ -370,7 +370,7 @@ async def mark_all_read(user_id: uuid.UUID) -> int:
     from sqlalchemy import update
 
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import Notification as Row
+    from patent_studio.domain.identity import Notification as Row
 
     await init_db()
     async with SessionLocal() as s:

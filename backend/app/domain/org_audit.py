@@ -10,7 +10,7 @@ data 原样存 JSON（生产者只放字段级元数据：fmt / role / email / m
 
 查询：actor / pid / kind / from / to（epoch 秒或 YYYY-MM-DD）；limit 默认 200；total 是筛选后的总数。
 CSV：UTF-8 带 BOM（Excel 直接打开中文不乱码），列 ts,kind,actor_id,actor_name,pid,data。
-写入同步（notify/sink.py），off 模式不写、不建库。
+写入同步（notify/sink.py），off 模式不写、不连库。
 """
 import csv
 import io
@@ -38,7 +38,7 @@ def on_event(ev: events.Event) -> None:
         actor_id = uuid.UUID(str(actor)) if actor else None
     except ValueError:
         actor_id = None
-    from app.auth.models import OrgAuditEvent as Row
+    from patent_studio.domain.identity import OrgAuditEvent as Row
 
     sink.write(Row, [{
         "id": sink.new_id(), "ts": sink.ts_of(ev.ts), "kind": ev.kind, "actor_user_id": actor_id,
@@ -85,8 +85,8 @@ async def query(*, actor: str | None = None, pid: str | None = None, kind: str |
     from sqlalchemy import func, select
 
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import OrgAuditEvent as Row
-    from app.auth.models import User
+    from patent_studio.domain.identity import OrgAuditEvent as Row
+    from patent_studio.domain.identity import User
 
     await init_db()
     conds = []
@@ -103,9 +103,9 @@ async def query(*, actor: str | None = None, pid: str | None = None, kind: str |
     if kind:
         conds.append(Row.kind == kind)
     if since is not None:
-        conds.append(Row.ts >= since.astimezone(UTC).replace(tzinfo=None))
+        conds.append(Row.ts >= since.astimezone(UTC))  # timestamptz 按带时区值比较
     if until is not None:
-        conds.append(Row.ts <= until.astimezone(UTC).replace(tzinfo=None))
+        conds.append(Row.ts <= until.astimezone(UTC))
     limit = max(1, min(limit, LIMIT_MAX))
     async with SessionLocal() as s:
         total = await s.scalar(select(func.count()).select_from(Row).where(*conds))

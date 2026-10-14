@@ -42,8 +42,8 @@ FAST = 0.15  # 测试用去抖（秒）
 
 
 def _reload_app(auth):
-    """config → 丢弃 auth 子模块（on 时按新 DB_PATH 重新 import）→ auth 包 → router → projects/build/xml_export
-    → mcp.tools / server（其 ProjectStore 须指向本用例的 PROJECTS_DIR）→ main。"""
+    """config → 丢弃 auth 子模块（on 时重新 import，DB 走 PATENT_STUDIO_DATABASE_URL）→ auth 包 → router →
+    projects/build/xml_export → mcp.tools / server（其 ProjectStore 须指向本用例的 PROJECTS_DIR）→ main。"""
     import app.auth
     import app.auth.router
     from app import config, main
@@ -65,7 +65,7 @@ def _reload_app(auth):
 
 
 @pytest.fixture()
-def env(tmp_path, monkeypatch):
+def env(tmp_path, monkeypatch, request):
     projects = tmp_path / "projects"
     projects.mkdir()
     shutil.copytree(os.path.join(ROOT, "examples", "method"), projects / "method",
@@ -78,6 +78,7 @@ def env(tmp_path, monkeypatch):
     def make(collab="on", auth=False):
         monkeypatch.setenv("PATENT_STUDIO_COLLAB", collab)
         if auth:
+            request.getfixturevalue("pg_schema")  # 懒取：collab=off 的用例不背数据库
             monkeypatch.setenv("PATENT_STUDIO_AUTH", "on")
             monkeypatch.setenv("PATENT_STUDIO_SECRET", SECRET)
             state["auth"] = True

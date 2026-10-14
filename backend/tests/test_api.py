@@ -36,7 +36,7 @@ def client(tmp_path, monkeypatch):
     return TestClient(main.app), projects
 
 
-def test_health_and_list(client):
+def test_health_and_list(client, pg_schema):
     c, _ = client
     assert c.get("/api/health").json()["ok"] is True
     ids = [p["id"] for p in c.get("/api/projects").json()]

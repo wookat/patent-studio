@@ -43,7 +43,7 @@ async def _ready(user):
     if user is None:
         raise login_required()
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PersonalAccessToken
+    from patent_studio.domain.identity import PersonalAccessToken
 
     await init_db()
     return SessionLocal, PersonalAccessToken

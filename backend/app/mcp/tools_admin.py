@@ -79,7 +79,7 @@ def register(server, store):
         _require_admin()
         from sqlalchemy import select
 
-        from app.auth.models import User
+        from patent_studio.domain.identity import User
 
         async def body(s):
             rows = (await s.execute(select(User))).scalars().all()
@@ -98,7 +98,7 @@ def register(server, store):
 
         from sqlalchemy import func, select
 
-        from app.auth.models import User
+        from patent_studio.domain.identity import User
 
         try:
             uid = uuid.UUID(user_id)

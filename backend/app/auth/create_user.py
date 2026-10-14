@@ -4,19 +4,18 @@
     cd backend && uv run python -m app.auth.create_user admin@example.com '密码' [--display-name 张三] [--superuser]
     cd backend && uv run python -m app.auth.create_user someone@example.com '新密码' --reset
 
-DB 位置随 PATENT_PROJECTS_DIR（同级 studio.db）；不需要 PATENT_STUDIO_AUTH=on 或 PATENT_STUDIO_SECRET。
+连接走 PATENT_STUDIO_DATABASE_URL（PostgreSQL）；不需要 PATENT_STUDIO_AUTH=on 或 PATENT_STUDIO_SECRET。
 第一个用户自动 superuser。
 """
 import argparse
 import asyncio
 import sys
 
-from fastapi_users.db import SQLAlchemyUserDatabase
+from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 
-from app import config
 from app.auth.db import SessionLocal, UserManager, init_db
-from app.auth.models import User
 from app.auth.schemas import UserCreate
+from patent_studio.domain.identity import User
 
 
 async def _run(args) -> int:
@@ -37,7 +36,8 @@ async def _run(args) -> int:
         user = await manager.create(UserCreate(email=args.email, password=args.password,
                                                display_name=args.display_name, is_superuser=args.superuser))
         await session.refresh(user)
-        print(f"已创建：{user.email} superuser={user.is_superuser} db={config.DB_PATH}")
+        db = session.bind.url.render_as_string(hide_password=True)
+        print(f"已创建：{user.email} superuser={user.is_superuser} db={db}")
         return 0
 
 

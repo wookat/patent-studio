@@ -59,7 +59,7 @@ def client(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def on(tmp_path, monkeypatch):
+def on(tmp_path, monkeypatch, pg_schema):
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(_projects(tmp_path)))
     monkeypatch.setenv("PATENT_STUDIO_AUTH", "on")
     monkeypatch.setenv("PATENT_STUDIO_SECRET", SECRET)

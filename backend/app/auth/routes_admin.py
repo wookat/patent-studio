@@ -86,7 +86,7 @@ async def list_users(user: CurrentUser) -> list[AdminUser]:
     from sqlalchemy import select
 
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import User
+    from patent_studio.domain.identity import User
 
     await init_db()
     async with SessionLocal() as s:
@@ -109,7 +109,7 @@ async def update_user(user_id: str, body: AdminUserIn, user: CurrentUser) -> Adm
     from sqlalchemy import func, select
 
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import User
+    from patent_studio.domain.identity import User
 
     await init_db()
     async with SessionLocal() as s:

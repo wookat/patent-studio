@@ -199,7 +199,7 @@ async def _forget_acl(pid: str) -> None:
     from sqlalchemy import delete
 
     from app.auth import acl
-    from app.auth.models import ProjectAcl, ShareLink
+    from patent_studio.domain.identity import ProjectAcl, ShareLink
 
     await acl.init_db()
     async with acl.SessionLocal() as s:

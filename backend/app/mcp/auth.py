@@ -46,7 +46,7 @@ async def verify_pat(token: str) -> Actor | None:
     from sqlalchemy import select
 
     from app.auth.db import SessionLocal, init_db
-    from app.auth.models import PersonalAccessToken, User
+    from patent_studio.domain.identity import PersonalAccessToken, User
 
     await init_db()
     async with SessionLocal() as s:

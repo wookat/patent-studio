@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.auth import ROLE_RANK
 from app.auth.db import SessionLocal, init_db
-from app.auth.models import ProjectAcl, ShareAccept, ShareLink, User
+from patent_studio.domain.identity import ProjectAcl, ShareAccept, ShareLink, User
 from patent_studio.kernel import critic
 
 SHARE_ROLES = ("viewer", "reviewer", "editor", "agent")
@@ -26,7 +26,7 @@ membership_lock = asyncio.Lock()
 
 
 def utc(dt: datetime | None) -> datetime | None:
-    """SQLite 不存时区：读出的 naive 值一律按 UTC 解释。"""
+    """库读出的 naive 值一律按 UTC 解释（timestamptz 正常都带时区，naive 仅作兜底）。"""
     if dt is None or dt.tzinfo is not None:
         return dt
     return dt.replace(tzinfo=UTC)

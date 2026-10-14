@@ -56,7 +56,7 @@ def client(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def on(tmp_path, monkeypatch):
+def on(tmp_path, monkeypatch, pg_schema):
     monkeypatch.setenv("PATENT_PROJECTS_DIR", str(_projects(tmp_path)))
     monkeypatch.setenv("PATENT_STUDIO_AUTH", "on")
     monkeypatch.setenv("PATENT_STUDIO_SECRET", SECRET)
@@ -149,20 +149,20 @@ def test_tags_file_roundtrip(tmp_path):
         cases.Tag(name="  ")
 
 
-def test_list_state_table(tmp_path):
-    db = str(tmp_path / "studio.db")
-    assert cases.list_states("u1", db) == {}
-    assert cases.set_state("u1", "method", "archived", db) == "archived"
-    cases.set_state("u1", "system", "trashed", db)
-    cases.set_state("u2", "method", "trashed", db)
-    assert cases.list_states("u1", db) == {"method": "archived", "system": "trashed"}
-    assert cases.get_state("u2", "method", db) == "trashed" and cases.get_state("u2", "system", db) == "active"
-    cases.set_state("u1", "method", "active", db)
-    assert cases.list_states("u1", db) == {"system": "trashed"}
-    cases.forget_project("system", db)
-    assert cases.list_states("u1", db) == {}
+def test_list_state_table(pg_schema):
+    """project_list_state（PostgreSQL）：set/upsert、active 删行、forget_project 清全用户行、非法态 CaseError。"""
+    assert cases.list_states("u1") == {}
+    assert cases.set_state("u1", "method", "archived") == "archived"
+    cases.set_state("u1", "system", "trashed")
+    cases.set_state("u2", "method", "trashed")
+    assert cases.list_states("u1") == {"method": "archived", "system": "trashed"}
+    assert cases.get_state("u2", "method") == "trashed" and cases.get_state("u2", "system") == "active"
+    cases.set_state("u1", "method", "active")
+    assert cases.list_states("u1") == {"system": "trashed"}
+    cases.forget_project("system")
+    assert cases.list_states("u1") == {}
     with pytest.raises(cases.CaseError):
-        cases.set_state("u1", "method", "gone", db)
+        cases.set_state("u1", "method", "gone")
     assert cases.user_key(None) == "local"
 
 
@@ -201,7 +201,7 @@ def test_ensure_repo_upgrades_old_exclude(tmp_path):
 # ---------------------------------------------------------------- 路由（off） ----
 
 
-def test_list_projects_backward_compatible_and_generates_case_json(client):
+def test_list_projects_backward_compatible_and_generates_case_json(client, pg_schema):
     c, projects = client
     before = {pid: _snapshot(projects / pid) for pid in ("method", "system")}
     rows = c.get("/api/projects").json()
