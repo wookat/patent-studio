@@ -8,7 +8,20 @@ import uuid
 from datetime import datetime
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, Uuid, func
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    Uuid,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from patent_studio.infra.db import Base
@@ -151,10 +164,16 @@ class Notification(Base):
     """站内通知（schemas.Notification）：kind ∈ NotificationKind；href 是前端 hash 路由；read_at 为 None ⇒ 未读。"""
 
     __tablename__ = "notifications"
-    __table_args__ = (Index("ix_notifications_user_read_created", "user_id", "read_at", "created_at"),)
+    __table_args__ = (
+        Index("ix_notifications_user_read_created", "user_id", "read_at", "created_at"),
+        Index("ix_notifications_recipient_unread", "recipient_principal_id", "read_at", "created_at"),
+        Index("ix_notifications_case_created", "case_id", "created_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(24), primary_key=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True
+    )
     kind: Mapped[str] = mapped_column(String(16))
     title: Mapped[str] = mapped_column(String(200))
     body: Mapped[str] = mapped_column(Text, default="", server_default="")
@@ -162,6 +181,25 @@ class Notification(Base):
     project_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Stage 3 domain notification extensions; legacy user/project fields remain for old clients.
+    case_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("cases.id", ondelete="RESTRICT"), nullable=True
+    )
+    recipient_principal_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("principals.id", ondelete="RESTRICT"), nullable=True
+    )
+    notification_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    work_item_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("work_items.id", ondelete="CASCADE"), nullable=True
+    )
+    proposal_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("proposals.id", ondelete="CASCADE"), nullable=True
+    )
+    release_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("releases.id", ondelete="CASCADE"), nullable=True
+    )
+    payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    dedupe_key: Mapped[str | None] = mapped_column(String(160), nullable=True, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

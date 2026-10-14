@@ -16,6 +16,7 @@ import patent_studio.domain.operations  # noqa: F401  把 Operation/outbox 表�
 import patent_studio.domain.organization  # noqa: F401  把机构/案件关系表挂进 Base.metadata
 import patent_studio.domain.proposals  # noqa: F401  把提案/变更集表挂进 Base.metadata
 import patent_studio.domain.releases  # noqa: F401  把 Release 冻结件表挂进 Base.metadata
+import patent_studio.domain.work_items  # noqa: F401  把 WorkItem/Notification 表挂进 Base.metadata
 from patent_studio.infra.db import Base, database_url
 from patent_studio.settings import get_settings
 
