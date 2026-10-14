@@ -10,6 +10,10 @@ class Settings(BaseSettings):
 
     # PostgreSQL，如 postgresql://user:pass@host:5432/patent_studio（驱动固定为 psycopg）
     database_url: str | None = None
+    # 会话认证：PATENT_STUDIO_AUTH=on 时启用 cookie+JWT 登录；secret 为 JWT 签名密钥
+    auth: str = "off"
+    secret: str = ""
+    cookie_secure: str = "off"
     # 对象存储：file:///abs/dir 或 s3://bucket[/prefix]；S3 凭证走标准 AWS_* 环境变量
     storage_url: str | None = None
     s3_endpoint_url: str | None = None

@@ -223,10 +223,9 @@ class Channel:
 
 
 async def _identify(websocket: WebSocket, working_copy_id: uuid.UUID):
-    from app import config
-    from app.auth.users import read_cookie_user
+    from patent_studio.infra.auth import auth_on, read_cookie_user
 
-    user = await read_cookie_user(websocket) if config.AUTH_ON else None
+    user = await read_cookie_user(websocket) if auth_on() else None
     if user is None:
         return None
     try:

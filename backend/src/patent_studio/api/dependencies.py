@@ -65,12 +65,13 @@ class DomainRoute(APIRoute):
 async def subject(request: Request):
     # Resolve dynamically: the existing auth module can be reloaded by test/dev mode switches.
     # May return None; `transaction` decides whether a bearer credential authenticates instead.
-    from app import auth
+    from patent_studio.infra import auth
 
     return await auth.current_user(request)
 
 
 Subject = Depends(subject)
+CurrentUser = Annotated[User | None, Depends(subject)]
 
 
 @dataclass

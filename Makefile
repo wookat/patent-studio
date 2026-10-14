@@ -29,12 +29,12 @@ fonts:
 
 dev:
 	@trap 'kill 0' INT TERM; \
-	(cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --ws-ping-interval 15 --ws-ping-timeout 20) & \
+	(cd backend && uv run uvicorn patent_studio.asgi:app --host 127.0.0.1 --port 8000 --reload --ws-ping-interval 15 --ws-ping-timeout 20) & \
 	(cd frontend && pnpm dev) & \
 	wait
 
 dev-backend:
-	cd backend && uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --ws-ping-interval 15 --ws-ping-timeout 20
+	cd backend && uv run uvicorn patent_studio.asgi:app --host 127.0.0.1 --port 8000 --reload --ws-ping-interval 15 --ws-ping-timeout 20
 
 dev-frontend:
 	cd frontend && pnpm dev
@@ -43,7 +43,7 @@ build:
 	cd frontend && pnpm build
 
 serve: build
-	cd backend && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --ws-ping-interval 15 --ws-ping-timeout 20
+	cd backend && uv run uvicorn patent_studio.asgi:app --host 0.0.0.0 --port 8000 --ws-ping-interval 15 --ws-ping-timeout 20
 
 lint:
 	cd backend && uv run ruff check .

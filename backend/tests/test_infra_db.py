@@ -53,12 +53,11 @@ def test_fresh_process_import_order_keeps_sqlalchemy_adapters():
 import fastapi_users_db_sqlalchemy.generics
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID, SQLAlchemyUserDatabase
 from patent_studio.domain.identity import User
-from app.auth.db import SessionLocal
-from app.auth.users import fastapi_users
-from app.auth.create_user import main
+from patent_studio.infra.auth import SessionLocal, _users_stack
 
+stack = _users_stack()
 assert User.__mro__[1] is SQLAlchemyBaseUserTableUUID
-assert SessionLocal and SQLAlchemyUserDatabase and fastapi_users and main
+assert SessionLocal and SQLAlchemyUserDatabase and stack["fastapi_users"]
 """
     env = {
         "PATENT_STUDIO_AUTH": "on",
