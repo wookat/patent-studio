@@ -249,6 +249,60 @@ class ArtifactOut(DTO):
     created_at: datetime
 
 
+class MaterialIn(DTO):
+    kind: Literal["upload", "url", "text"]
+    title: str = Field(min_length=1, max_length=300)
+    content: str | None = Field(default=None, max_length=5_000_000)
+    source_url: str | None = Field(default=None, max_length=2000)
+
+
+class MaterialOut(DTO):
+    id: uuid.UUID
+    case_id: uuid.UUID
+    kind: str
+    title: str
+    source_url: str | None
+    content_ref: Ref | None
+    status: str
+    created_at: datetime
+
+
+class AnchorIn(DTO):
+    locator: dict = Field(min_length=1)
+    excerpt: str | None = Field(default=None, max_length=200_000)
+
+
+class AnchorOut(DTO):
+    id: uuid.UUID
+    material_id: uuid.UUID
+    locator: dict
+    excerpt_ref: Ref | None
+    created_at: datetime
+
+
+class FactIn(DTO):
+    statement: str = Field(min_length=1, max_length=10_000)
+    material_id: uuid.UUID | None = None
+    anchor_id: uuid.UUID | None = None
+
+
+class FactOut(DTO):
+    id: uuid.UUID
+    case_id: uuid.UUID
+    material_id: uuid.UUID | None
+    anchor_id: uuid.UUID | None
+    statement: str
+    status: str
+    rejection_reason: str | None
+    decided_by_principal_id: uuid.UUID | None
+    decided_at: datetime | None
+    created_at: datetime
+
+
+class FactRejectIn(DTO):
+    reason: str | None = Field(default=None, max_length=1000)
+
+
 class WorkItemIn(DTO):
     type: Literal["draft", "review", "figure", "oa-response", "search", "client-confirm", "deliver"]
     title: str = Field(min_length=1, max_length=300)
