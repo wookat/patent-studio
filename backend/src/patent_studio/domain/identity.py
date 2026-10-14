@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from patent_studio.infra.db import Base
@@ -25,6 +25,30 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # R71-01：改密时刻（unix 秒，int 精度——JWT iat 只有秒）。签发时刻更早的会话令牌一律失效。
     password_changed_at: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class Principal(Base):
+    """统一业务参与者：人引用现有 User，Agent 使用独立稳定 key。"""
+
+    __tablename__ = "principals"
+    __table_args__ = (
+        CheckConstraint("kind IN ('human', 'agent')", name="kind"),
+        CheckConstraint(
+            "((kind = 'human' AND user_id IS NOT NULL AND agent_key IS NULL) OR "
+            "(kind = 'agent' AND user_id IS NULL AND agent_key IS NOT NULL AND length(trim(agent_key)) > 0))",
+            name="identity_source",
+        ),
+        CheckConstraint("length(trim(display_name)) > 0", name="display_name"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    agent_key: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True)
+    display_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class ProjectAcl(Base):

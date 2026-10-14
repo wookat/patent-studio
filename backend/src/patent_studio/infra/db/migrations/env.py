@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 import patent_studio.domain.identity  # noqa: F401  把全部 ORM 表挂进 Base.metadata
+import patent_studio.domain.organization  # noqa: F401  把机构/案件关系表挂进 Base.metadata
 from patent_studio.infra.db import Base, database_url
 from patent_studio.settings import get_settings
 
