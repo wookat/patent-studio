@@ -63,7 +63,58 @@
 
 ## 快速开始
 
+### 10 分钟跑起来（本地开发，实测命令）
+
+依赖：Python 3.11+、uv、Node.js 22.12+、pnpm、一个可建库的 PostgreSQL（本地或容器均可）。
+
+```bash
+# 1. 起数据库并建空库（示例使用本机 PostgreSQL，端口按实际改）
+createdb ps_dev
+#   或者容器：docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=pg postgres:17
+#   对应 URL：postgresql://postgres:pg@localhost:5432/postgres
+
+# 2. 后端依赖 + 迁移到最新 schema（Alembic，幂等可重跑）
+cd backend
+uv sync
+export PATENT_STUDIO_DATABASE_URL='postgresql://postgres@localhost:5432/ps_dev'
+export PATENT_STUDIO_STORAGE_URL='file:///tmp/ps-storage'   # 对象存储（也可 s3://…）
+export PATENT_STUDIO_AUTH=on                                 # 平台 API 需要登录主体
+export PATENT_STUDIO_SECRET='dev-secret-change-me-32-bytes'  # JWT 签名密钥（≥32 字节）
+uv run python -c "from patent_studio.infra.db import upgrade_head; upgrade_head('$PATENT_STUDIO_DATABASE_URL')"
+
+# 3. 起后端（FastAPI 应用入口）
+uv run uvicorn patent_studio.asgi:app --host 127.0.0.1 --port 8000
+
+# 4. 另开终端起前端（/api 代理到 127.0.0.1:8000，含 WebSocket）
+cd frontend && pnpm install --frozen-lockfile && pnpm dev    # http://localhost:5173
+```
+
+验证可用（在第三个终端）：
+
+```bash
+curl http://127.0.0.1:8000/api/health                       # {"ok":true}
+curl -X POST http://127.0.0.1:8000/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"dev@example.com","password":"pw-123456","display_name":"本地开发"}'  # 201，首个用户为超管
+curl -c dev.jar -X POST http://127.0.0.1:8000/api/auth/cookie/login \
+  -d 'username=dev@example.com&password=pw-123456'          # 204 + cookie
+curl -b dev.jar http://127.0.0.1:8000/api/users/me          # 200
+```
+
+跑测试一条命令（真实 PostgreSQL；未设 `PATENT_STUDIO_TEST_DATABASE_URL` 时库依赖用例自动 skip）：
+
+```bash
+cd backend && PATENT_STUDIO_TEST_DATABASE_URL='postgresql://postgres@localhost:5432/postgres' \
+  uv run pytest tests/ -q
+```
+
+打开 `http://localhost:5173/#/workbench` 进入工作台：用 `dev@example.com` 登录后即可建机构、案件与三书文稿。
+
+> **说明**：`PATENT_STUDIO_AUTH=off` 仍可启动服务（不建库、不需要密钥），但平台 `/api/v1` 写读均要求已认证主体，未登录返回 401——日常体验请用上面的 `AUTH=on` 路径。
+
 ### Docker 部署
+
+> **注意**：当前镜像入口仍指向旧应用工厂（`app.main:app`），Docker 路径待更新为 `patent_studio.asgi:app` 后恢复；请先使用上方的本地开发步骤。
 
 需要 Git、Docker 及 Docker Compose 插件。
 
@@ -91,7 +142,7 @@ docker compose down                 # 停止服务，保留数据卷
 
 没有模型密钥也可以使用编辑、检查与文档构建；真实 AI 功能需另行配置模型服务凭证，可能产生费用。
 
-当前默认 provider 为 `aicdks`，服务地址与模型路由见 [调用层实现](backend/app/ai/client.py)。实现使用 OpenAI 兼容协议，但**尚不支持通过环境变量任意切换服务地址，也不承诺所有兼容服务即插即用**。
+当前默认 provider 为 `aicdks`；真实 LLM 网关实现见 `backend/src/patent_studio/domain/agent_runtime.py`（`GatewayModel`，OpenAI 兼容协议，经 `PATENT_STUDIO_LLM_*` 配置）。实现使用 OpenAI 兼容协议，但**尚不支持通过环境变量任意切换服务地址，也不承诺所有兼容服务即插即用**。
 
 Compose 不会自动透传宿主机的 AI 密钥。可在本地新建 `docker-compose.override.yml`，添加以下环境映射，并在运行 Compose 的终端安全设置 `PATENT_STUDIO_AI_KEY` 后重新执行启动命令：
 
