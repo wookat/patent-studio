@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     llm_base_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str | None = None
+    # Run 事件 SSE：库轮询间隔 / 心跳注释帧间隔 / 单连接最长时间（秒）
+    sse_poll_seconds: float = 0.5
+    sse_heartbeat_seconds: float = 15.0
+    sse_max_seconds: float = 300.0
 
 
 @lru_cache

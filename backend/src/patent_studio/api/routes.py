@@ -1,12 +1,14 @@
 """Thin, authenticated /api/v1 commands and queries over PostgreSQL domain services."""
 import asyncio
 import hashlib
+import json
+import time
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Header, Response
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from sqlalchemy import select
 
 from patent_studio.api import schemas as s
@@ -624,6 +626,76 @@ def run_events(run_id: str, ctx: Ctx):
         ctx.session.scalars(
             select(run_domain.RunEvent).where(run_domain.RunEvent.run_id == run.id).order_by(run_domain.RunEvent.seq)
         )
+    )
+
+
+_RUN_TERMINAL = {"succeeded", "failed", "canceled"}
+
+
+def _sse_frame(event_id: int, event: str, data: dict) -> str:
+    return f"id: {event_id}\nevent: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@router.get("/runs/{run_id}/events/stream")
+def run_events_stream(
+    run_id: str,
+    ctx: Ctx,
+    last_event_id: Annotated[str | None, Header()] = None,
+):
+    """Push run events over SSE; `Last-Event-ID` resumes after the given seq.
+
+    The DB is polled at `sse_poll_seconds`; a `: hb` comment frame is emitted every
+    `sse_heartbeat_seconds` to survive proxies; the stream closes with `event: done`
+    once the run reaches a terminal state (or hits `sse_max_seconds`).
+    """
+    run = run_domain._run_for(ctx.session, run_id, ctx.principal.id)
+    case_access(ctx, run.case_id)
+    if last_event_id is None:
+        after = 0
+    else:
+        try:
+            after = int(last_event_id)
+        except ValueError:
+            raise error(422, "validation", "Last-Event-ID must be a run event seq") from None
+        if after < 0:
+            raise error(422, "validation", "Last-Event-ID must be a run event seq")
+
+    settings = get_settings()
+    session = ctx.session
+    run_pk = run.id
+
+    def stream():
+        cursor = after
+        deadline = time.monotonic() + max(settings.sse_max_seconds, 0.1)
+        last_beat = time.monotonic()
+        while time.monotonic() < deadline:
+            events = session.scalars(
+                select(run_domain.RunEvent)
+                .where(run_domain.RunEvent.run_id == run_pk, run_domain.RunEvent.seq > cursor)
+                .order_by(run_domain.RunEvent.seq)
+            ).all()
+            for event in events:
+                cursor = event.seq
+                yield _sse_frame(event.seq, "run-event", {
+                    "id": str(event.id), "run_id": str(event.run_id), "seq": event.seq,
+                    "event_type": event.event_type, "payload": event.payload or {},
+                })
+            status = session.scalar(select(run_domain.Run.status).where(run_domain.Run.id == run_pk))
+            if status in _RUN_TERMINAL:
+                yield f"event: done\ndata: {json.dumps({'status': status})}\n\n"
+                return
+            now = time.monotonic()
+            if now - last_beat >= max(settings.sse_heartbeat_seconds, 0.1):
+                yield ": hb\n\n"
+                last_beat = now
+            time.sleep(max(settings.sse_poll_seconds, 0.05))
+        status = session.scalar(select(run_domain.Run.status).where(run_domain.Run.id == run_pk))
+        yield f"event: done\ndata: {json.dumps({'status': status, 'reason': 'connection_limit'})}\n\n"
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 
