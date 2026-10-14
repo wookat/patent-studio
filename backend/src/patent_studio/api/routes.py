@@ -1,6 +1,7 @@
 """平台 /api/v1 REST 路由。已落地：组织 / 成员 / 邀请 / 案件 / 案件参与者（B3）、
 documents / revisions / working-copies（B4）、proposals / figures / releases（B5）、
-operations 查询 + runs / approvals / events SSE（B7）；materials、work-items 等域面随后续批次并入。"""
+operations 查询 + runs / approvals / events SSE（B7）、work-items / notifications（B9）；
+materials 等域面随后续批次并入。"""
 
 import asyncio
 import hashlib
@@ -23,6 +24,8 @@ from patent_studio.domain import operations as op
 from patent_studio.domain import proposals as p
 from patent_studio.domain import releases as r
 from patent_studio.domain import runs as run_domain
+from patent_studio.domain import work_items as w
+from patent_studio.domain.identity import Notification
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
 from patent_studio.infra.storage import object_ref, open_store
 from patent_studio.settings import get_settings
@@ -737,4 +740,145 @@ def decide_approval(approval_id: uuid.UUID, body: s.ApprovalDecisionIn, ctx: Ctx
             decision=body.decision,
             reason=body.reason,
         ),
+    )
+
+
+@router.get("/cases/{case_id}/work-items", response_model=list[s.WorkItemOut])
+def work_items(case_id: uuid.UUID, ctx: Ctx):
+    case_access(ctx, case_id)
+    return list(ctx.session.scalars(select(w.WorkItem).where(w.WorkItem.case_id == case_id)))
+
+
+@router.get("/work-items", response_model=list[s.WorkItemOut])
+def list_all_work_items(ctx: Ctx):
+    """跨案件工作队列查询；每个结果仍经过案件访问关系过滤。"""
+    rows = list(ctx.session.scalars(select(w.WorkItem).order_by(w.WorkItem.deadline, w.WorkItem.created_at)))
+    visible = []
+    for item in rows:
+        try:
+            case_access(ctx, item.case_id)
+        except Exception:
+            continue
+        visible.append(item)
+    return visible
+
+
+@router.post("/cases/{case_id}/work-items", response_model=s.WorkItemOut, status_code=201)
+def create_work_item(case_id: uuid.UUID, body: s.WorkItemIn, ctx: Ctx, key: Key):
+    case = case_access(ctx, case_id, manage=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "work_item.create",
+        case_id,
+        body,
+        s.WorkItemOut,
+        lambda: w.create_work_item(ctx.session, case_id, principal_id=ctx.principal.id, **body.model_dump()),
+    )
+
+
+@router.put("/work-items/{work_item_id}/assignment", response_model=s.WorkItemOut)
+def assign_work_item(work_item_id: uuid.UUID, body: s.AssignmentIn, ctx: Ctx, key: Key):
+    item = row_for(ctx, w.WorkItem, work_item_id)
+    case = case_access(ctx, item.case_id, manage=True)
+
+    def action():
+        updated = w.assign_work_item(ctx.session, work_item_id, principal_id=ctx.principal.id, **body.model_dump())
+        if updated.assignee_principal_id is not None:
+            w.record_notification(
+                ctx.session,
+                case_id=updated.case_id,
+                recipient_principal_id=updated.assignee_principal_id,
+                notification_type="work_item.assigned",
+                work_item_id=updated.id,
+                payload={"work_item_id": str(updated.id)},
+                dedupe_key=f"work-item-assigned:{updated.id}:{key}",
+            )
+        return updated
+
+    return _scoped(ctx, case, key, "work_item.assign", work_item_id, body, s.WorkItemOut, action)
+
+
+@router.put("/work-items/{work_item_id}/deadline", response_model=s.WorkItemOut)
+def reschedule(work_item_id: uuid.UUID, body: s.DeadlineIn, ctx: Ctx, key: Key):
+    item = row_for(ctx, w.WorkItem, work_item_id)
+    case = case_access(ctx, item.case_id, manage=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "work_item.reschedule",
+        work_item_id,
+        body,
+        s.WorkItemOut,
+        lambda: w.reschedule_work_item(
+            ctx.session, work_item_id, principal_id=ctx.principal.id, deadline=body.deadline
+        ),
+    )
+
+
+@router.put("/work-items/{work_item_id}/status", response_model=s.WorkItemOut)
+def transition(work_item_id: uuid.UUID, body: s.StatusIn, ctx: Ctx, key: Key):
+    item = row_for(ctx, w.WorkItem, work_item_id)
+    case = case_access(ctx, item.case_id, manage=True)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "work_item.transition",
+        work_item_id,
+        body,
+        s.WorkItemOut,
+        lambda: w.transition_work_item(ctx.session, work_item_id, principal_id=ctx.principal.id, status=body.status),
+    )
+
+
+@router.get("/notifications", response_model=list[s.NotificationOut])
+def notifications(ctx: Ctx):
+    notices = list(
+        ctx.session.scalars(select(Notification).where(Notification.recipient_principal_id == ctx.principal.id))
+    )
+    # A notification's existence does not keep revoked case access alive.
+    return [notice for notice in notices if w._assignable(ctx.session, notice.case_id, ctx.principal.id)]
+
+
+@router.get("/approvals", response_model=list[s.ApprovalOut])
+def approvals(ctx: Ctx):
+    """当前 Principal 的审批收件箱；拒绝已撤权案件的历史记录。"""
+    rows = list(
+        ctx.session.scalars(
+            select(run_domain.Approval)
+            .where(
+                run_domain.Approval.approver_principal_id == ctx.principal.id,
+                run_domain.Approval.status == "pending",
+            )
+            .order_by(run_domain.Approval.created_at)
+        )
+    )
+    visible = []
+    for approval in rows:
+        try:
+            case_access(ctx, approval.case_id)
+        except Exception:
+            continue
+        visible.append(approval)
+    return visible
+
+
+@router.post("/notifications/{notification_id}/read", response_model=s.NotificationOut)
+def read_notification(notification_id: str, ctx: Ctx, key: Key):
+    notice = row_for(ctx, Notification, notification_id)
+    if notice.recipient_principal_id != ctx.principal.id or notice.case_id is None:
+        raise error(403, "denied", "Notification belongs to another principal")
+    case = case_access(ctx, notice.case_id)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "notification.read",
+        notification_id,
+        None,
+        s.NotificationOut,
+        lambda: w.mark_notification_read(ctx.session, notification_id, principal_id=ctx.principal.id),
     )
