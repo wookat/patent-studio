@@ -14,6 +14,9 @@ export const workbenchKeys = {
   figures: (id: string) => [...workbenchKeys.case(id), 'figures'] as const,
   proposals: (id: string) => [...workbenchKeys.case(id), 'proposals'] as const,
   releases: (id: string) => [...workbenchKeys.case(id), 'releases'] as const,
+  releaseItems: (releaseId: string) => [...workbenchKeys.all, 'release-items', releaseId] as const,
+  releaseArtifacts: (releaseId: string) => [...workbenchKeys.all, 'release-artifacts', releaseId] as const,
+  preflight: (id: string) => [...workbenchKeys.case(id), 'preflight'] as const,
   participants: (id: string) => [...workbenchKeys.case(id), 'participants'] as const,
   memberships: (orgId: string) => [...workbenchKeys.all, 'memberships', orgId] as const,
   approvals: () => [...workbenchKeys.all, 'approvals'] as const,
@@ -108,6 +111,39 @@ export function useWorkbenchMutations() {
     mutationFn: ({ releaseId }: { releaseId: string; caseId: string }) => workbenchApi.sealRelease(releaseId),
     onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: workbenchKeys.releases(variables.caseId) }),
   })
+  const createFigure = useMutation({
+    mutationFn: ({ caseId, figureNo, title }: { caseId: string; figureNo: number | null; title: string }) =>
+      workbenchApi.createFigure(caseId, { figure_no: figureNo, title }),
+    onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: workbenchKeys.figures(variables.caseId) }),
+  })
+  const uploadFigureImage = useMutation({
+    mutationFn: ({ figureId, file }: { figureId: string; file: File; caseId: string }) =>
+      workbenchApi.uploadFigureImage(figureId, file),
+    onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: workbenchKeys.figures(variables.caseId) }),
+  })
+  const addReleaseItem = useMutation({
+    mutationFn: ({ releaseId, item }: { releaseId: string; item: { item_kind: 'document' | 'figure'; revision_id: string; ordinal?: number }; caseId: string }) =>
+      workbenchApi.addReleaseItem(releaseId, item),
+    onSuccess: (_data, variables) => {
+      void client.invalidateQueries({ queryKey: workbenchKeys.releaseItems(variables.releaseId) })
+      void client.invalidateQueries({ queryKey: workbenchKeys.releases(variables.caseId) })
+    },
+  })
+  const buildRelease = useMutation({
+    mutationFn: ({ releaseId }: { releaseId: string; caseId: string }) => workbenchApi.buildRelease(releaseId),
+    onSuccess: (_data, variables) => {
+      void client.invalidateQueries({ queryKey: workbenchKeys.releaseArtifacts(variables.releaseId) })
+      void client.invalidateQueries({ queryKey: workbenchKeys.releases(variables.caseId) })
+    },
+  })
+  const setWorkItemDeadline = useMutation({
+    mutationFn: ({ workItemId, deadline }: { workItemId: string; deadline: string | null; caseId: string }) =>
+      workbenchApi.setWorkItemDeadline(workItemId, deadline),
+    onSuccess: (_data, variables) => {
+      void client.invalidateQueries({ queryKey: workbenchKeys.caseWorkItems(variables.caseId) })
+      void client.invalidateQueries({ queryKey: workbenchKeys.workItems() })
+    },
+  })
   const addParticipant = useMutation({
     mutationFn: ({ caseId, principalId, role }: { caseId: string; principalId: string; role: ParticipantRole }) =>
       workbenchApi.addParticipant(caseId, principalId, role),
@@ -119,5 +155,5 @@ export function useWorkbenchMutations() {
       workbenchApi.invite(organizationId, inviteePrincipalId, role, caseId, expiresAt),
     onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: workbenchKeys.memberships(variables.organizationId) }),
   })
-  return { decideApproval, setWorkItemStatus, decideProposal, markNotificationRead, createDocument, createRelease, sealRelease, addParticipant, invite }
+  return { decideApproval, setWorkItemStatus, decideProposal, markNotificationRead, createDocument, createRelease, sealRelease, addReleaseItem, buildRelease, createFigure, uploadFigureImage, setWorkItemDeadline, addParticipant, invite }
 }

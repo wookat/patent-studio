@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Header, Response
+from fastapi import APIRouter, File, Header, Response, UploadFile
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from sqlalchemy import select
 
@@ -29,7 +29,7 @@ from patent_studio.domain import work_items as w
 from patent_studio.domain.identity import Notification
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
 from patent_studio.infra.storage import object_ref, open_store
-from patent_studio.kernel import critic
+from patent_studio.kernel import critic, preflight
 from patent_studio.kernel.ast import AstError, parse_ast
 from patent_studio.kernel.omml import to_mathml
 from patent_studio.settings import get_settings
@@ -469,6 +469,68 @@ def create_figure(case_id: uuid.UUID, body: s.FigureIn, ctx: Ctx, key: Key):
     )
 
 
+def _figure(ctx: Ctx, figure_id: uuid.UUID, *, write=False):
+    figure = f.get_figure_document(ctx.session, figure_id, principal_id=ctx.principal.id)
+    return figure, case_access(ctx, figure.case_id, write=write)
+
+
+@router.get("/figures/{figure_id}/revisions", response_model=list[s.FigureRevisionOut])
+def figure_revisions(figure_id: uuid.UUID, ctx: Ctx):
+    _figure(ctx, figure_id)
+    return f.list_figure_revisions(ctx.session, figure_id, principal_id=ctx.principal.id)
+
+
+_FIGURE_UPLOAD_MAX_BYTES = 20 * 1024 * 1024
+
+
+@router.post("/figures/{figure_id}/revisions", response_model=s.FigureRevisionOut, status_code=201)
+async def upload_figure_revision(figure_id: uuid.UUID, ctx: Ctx, key: Key, file: Annotated[UploadFile, File()]):
+    """附图图片上传（B13 附图面板）：multipart bytes → 对象存储 → 不可变 FigureRevision。"""
+    figure, case = _figure(ctx, figure_id, write=True)
+    data = await file.read(_FIGURE_UPLOAD_MAX_BYTES + 1)
+    if not data:
+        raise error(422, "validation", "Upload is empty")
+    if len(data) > _FIGURE_UPLOAD_MAX_BYTES:
+        raise error(413, "payload_too_large", "附图文件超过 20 MB")
+    ref = object_ref(data, file.content_type or "application/octet-stream")
+    await _store(get_settings()).put(data, ref.content_type)
+    return _scoped(
+        ctx,
+        case,
+        key,
+        "figure.revision.create",
+        figure_id,
+        None,
+        s.FigureRevisionOut,
+        lambda: f.create_figure_revision(
+            ctx.session,
+            figure.id,
+            author_principal_id=ctx.principal.id,
+            content_ref=ref,
+            source=ctx.revision_source,
+        ),
+    )
+
+
+@router.get("/figures/{figure_id}/content")
+async def figure_content(figure_id: uuid.UUID, ctx: Ctx):
+    """附图当前修订图片字节（缩略预览 <img src> 直连，cookie 会话鉴权）。"""
+    figure, _case = _figure(ctx, figure_id)
+    if figure.current_revision_id is None:
+        raise error(404, "not_found", "Figure has no image revision")
+    revision = row_for(ctx, f.FigureRevision, figure.current_revision_id)
+    settings = get_settings()
+    if not settings.storage_url:
+        raise error(503, "storage_unavailable", "Object storage is not configured")
+    try:
+        data = await _store(settings).get(revision.content_key)
+    except Exception as exc:
+        raise error(404, "not_found", "Figure image is unavailable") from exc
+    if len(data) != revision.content_size or hashlib.sha256(data).hexdigest() != revision.content_sha256:
+        raise error(409, "conflict", "Figure image digest does not match metadata")
+    return Response(content=data, media_type=revision.content_type)
+
+
 @router.get("/cases/{case_id}/releases", response_model=list[s.ReleaseOut])
 def releases(case_id: uuid.UUID, ctx: Ctx):
     case_access(ctx, case_id)
@@ -504,6 +566,13 @@ def add_release_item(release_id: uuid.UUID, body: s.ReleaseItemIn, ctx: Ctx, key
         s.ReleaseItemOut,
         lambda: r.add_release_item(ctx.session, release_id, principal_id=ctx.principal.id, **body.model_dump()),
     )
+
+
+@router.get("/releases/{release_id}/items", response_model=list[s.ReleaseItemOut])
+def release_items(release_id: uuid.UUID, ctx: Ctx):
+    release = r.get_release(ctx.session, release_id, principal_id=ctx.principal.id)
+    case_access(ctx, release.case_id)
+    return r.list_release_items(ctx.session, release_id)
 
 
 @router.post("/releases/{release_id}/seal", response_model=s.ReleaseOut)
@@ -1109,6 +1178,50 @@ async def document_ast(document_id: uuid.UUID, body: s.DocumentAstIn, ctx: Ctx):
     except AstError as exc:
         raise error(422, "content", str(exc), detail={"line": exc.line}) from exc
     return {"ast": ast, "content": content}
+
+
+@router.get("/cases/{case_id}/preflight")
+async def case_preflight(case_id: uuid.UUID, ctx: Ctx):
+    """案件体检（B13 审阅面板）：三书 current revisions 组装 → parse_ast + preflight.run。
+
+    缺修订的书按空书处理（kernel 容忍空节）；figures/terms 上下文不接（相关规则自跳过）。
+    """
+    case = case_access(ctx, case_id)
+    documents = list(ctx.session.scalars(select(d.Document).where(d.Document.case_id == case_id)))
+    books: dict[str, str] = {}
+    revision_ids = [doc.current_revision_id for doc in documents if doc.current_revision_id is not None]
+    if revision_ids:
+        settings = get_settings()
+        if not settings.storage_url:
+            raise error(503, "storage_unavailable", "Object storage is not configured")
+        store = _store(settings)
+        for document in documents:
+            if document.current_revision_id is None or document.book in books:
+                continue
+            revision = row_for(ctx, d.Revision, document.current_revision_id)
+            try:
+                data = await store.get(revision.content_key)
+            except Exception as exc:
+                raise error(404, "not_found", "Revision content is unavailable") from exc
+            books[document.book] = data.decode("utf-8")
+    content = (
+        f"# {case.title}\n\n## 摘要\n\n{books.get('abstract', '')}\n\n## 权利要求书\n\n"
+        f"{books.get('claims', '')}\n\n## 说明书\n\n{books.get('description', '')}\n"
+    )
+    # 附图域真值 → kernel 设置面（spec_figures 序位 ↔ 图N；abstract_figure 仅作存在性开关）。
+    # 否则 ast["figures"] 为空，figures.ref_missing / drawings_unfiled 会对已建附图全误报。
+    figure_docs = list(ctx.session.scalars(select(f.FigureDocument).where(f.FigureDocument.case_id == case_id)))
+    # spec_figures 序位 = 图号（图N 对应第 N 张）；空洞按位占位以免错位。
+    max_fig_no = max((fig.figure_no or 0) for fig in figure_docs) if figure_docs else 0
+    settings_overlay = {
+        "spec_figures": [(f"fig{i}.png", 15.0) for i in range(1, max_fig_no + 1)],
+        "abstract_figure": ("abstract.png", 15.0) if any(fig.figure_no is None for fig in figure_docs) else None,
+    }
+    try:
+        ast = parse_ast(critic.accept(content), settings=settings_overlay)
+    except AstError as exc:
+        raise error(422, "content", str(exc), detail={"line": exc.line}) from exc
+    return preflight.run(ast, settings=settings_overlay)
 
 
 @router.post("/kernel/mathml", response_model=s.MathmlOut)

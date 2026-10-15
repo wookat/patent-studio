@@ -1,6 +1,7 @@
 import { handle, netFetch, req } from '@/lib/api/net'
 import type { Ast } from '@/types/ast'
-import type { Approval, Book, CaseStatus, Document, Figure, Invitation, InvitationRole, Membership, Notification, Participant, ParticipantRole, PlatformCase, Principal, Proposal, Ref, Release, Revision, WorkItem, WorkItemStatus, WorkingCopy } from './types'
+import type { PreflightReport } from '@/types/preflight'
+import type { Approval, Book, CaseStatus, Document, Figure, Invitation, InvitationRole, Membership, Notification, Participant, ParticipantRole, PlatformCase, Principal, Proposal, Ref, Release, ReleaseItem, Revision, WorkItem, WorkItemStatus, WorkingCopy } from './types'
 
 const V1 = '/api/v1'
 
@@ -24,6 +25,26 @@ export const EMPTY_CONTENT_REF: Ref = {
   sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
   size: 0,
   content_type: 'text/markdown; charset=utf-8',
+}
+
+/** B13：POST /figures/{id}/revisions 返回（openapi.gen 冻结早于该端点，手写对齐 schemas.FigureRevisionOut）。 */
+export interface FigureRevision {
+  id: string
+  figure_document_id: string
+  revision_no: number
+  parent_revision_id: string | null
+  content_ref: Ref
+  source: string
+}
+
+/** B13：POST /releases/{id}/build 返回（openapi.gen 冻结早于该端点，手写对齐 schemas.ArtifactOut）。 */
+export interface Artifact {
+  id: string
+  release_id: string
+  filename: string
+  content_ref: Ref
+  inputs: Record<string, unknown>[]
+  created_at: string
 }
 
 // 所有写操作统一注入 Idempotency-Key；重放同一 key 服务端返回首个已完成的响应。
@@ -69,12 +90,40 @@ export const workbenchApi = {
   flushCollab: (workingCopyId: string) =>
     write<{ flushed: number }>(`${V1}/working-copies/${workingCopyId}/collab/flush`),
   figures: (caseId: string, signal?: AbortSignal) => req<Figure[]>(`${V1}/cases/${caseId}/figures`, { signal }),
+  createFigure: (caseId: string, input: { figure_no: number | null; title: string }) =>
+    write<Figure>(`${V1}/cases/${caseId}/figures`, { body: JSON.stringify(input) }),
+  /** B13：multipart 上传图片 → 新 FigureRevision（req 对 FormData 自动免 JSON 头/超时）。 */
+  uploadFigureImage: (figureId: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    return write<FigureRevision>(`${V1}/figures/${figureId}/revisions`, { body: form })
+  },
+  /** 附图当前修订图片地址：cookie 会话鉴权，<img src> 直连；current_revision_id 作 cache-bust。 */
+  figureContentUrl: (figure: Figure) =>
+    `${V1}/figures/${figure.id}/content?v=${figure.current_revision_id ?? 'empty'}`,
   proposals: (caseId: string, signal?: AbortSignal) => req<Proposal[]>(`${V1}/cases/${caseId}/proposals`, { signal }),
   decideProposal: (proposalId: string, decision: 'submit' | 'accept' | 'reject') =>
     write<Proposal>(`${V1}/proposals/${proposalId}/${decision}`),
   releases: (caseId: string, signal?: AbortSignal) => req<Release[]>(`${V1}/cases/${caseId}/releases`, { signal }),
   createRelease: (caseId: string) => write<Release>(`${V1}/cases/${caseId}/releases`),
   sealRelease: (releaseId: string) => write<Release>(`${V1}/releases/${releaseId}/seal`),
+  releaseItems: (releaseId: string, signal?: AbortSignal) =>
+    req<ReleaseItem[]>(`${V1}/releases/${releaseId}/items`, { signal }),
+  addReleaseItem: (releaseId: string, item: { item_kind: 'document' | 'figure'; revision_id: string; ordinal?: number }) =>
+    write<ReleaseItem>(`${V1}/releases/${releaseId}/items`, { body: JSON.stringify(item) }),
+  buildRelease: (releaseId: string) => write<Artifact>(`${V1}/releases/${releaseId}/build`),
+  releaseArtifacts: (releaseId: string, signal?: AbortSignal) =>
+    req<Artifact[]>(`${V1}/releases/${releaseId}/artifacts`, { signal }),
+  /** DOCX 产物下载地址：cookie 会话鉴权，<a download> 直连。 */
+  artifactUrl: (artifactId: string) => `${V1}/artifacts/${artifactId}/content`,
+  /** B13：案件体检（三书 current revisions → kernel preflight.run）。 */
+  preflight: (caseId: string, signal?: AbortSignal) =>
+    req<PreflightReport>(`${V1}/cases/${caseId}/preflight`, { signal }),
+  setWorkItemDeadline: (workItemId: string, deadline: string | null) =>
+    write<WorkItem>(`${V1}/work-items/${workItemId}/deadline`, {
+      method: 'PUT',
+      body: JSON.stringify({ deadline }),
+    }),
   participants: (caseId: string, signal?: AbortSignal) => req<Participant[]>(`${V1}/cases/${caseId}/participants`, { signal }),
   addParticipant: (caseId: string, principalId: string, role: ParticipantRole) =>
     write<Participant>(`${V1}/cases/${caseId}/participants`, {

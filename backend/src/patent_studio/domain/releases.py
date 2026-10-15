@@ -268,6 +268,11 @@ def _release_items(session: Session, release_id: uuid.UUID) -> list[ReleaseItem]
     )
 
 
+def list_release_items(session: Session, release_id: uuid.UUID) -> list[ReleaseItem]:
+    """release 组包项（按 ordinal 排序）——REST 展示面入口。"""
+    return _release_items(session, release_id)
+
+
 def render_release(
     session: Session,
     release_id: uuid.UUID,
@@ -326,7 +331,7 @@ def render_release(
         for i, (item, figure) in enumerate(figure_items, 1):
             data = read(item.content_ref)
             try:
-                ext = probe_image(data).default_ext()
+                ext = probe_image(data).ext
             except Exception as exc:
                 raise ReleaseConflict(f"figure item {item.ordinal} is not a supported image") from exc
             fname = f"fig{i}.{ext}"

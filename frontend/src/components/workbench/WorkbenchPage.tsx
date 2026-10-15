@@ -1,8 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { AlertCircle, Bell, BriefcaseBusiness, CheckCircle2, FileText, FolderKanban, Image, Inbox, LoaderCircle, Package, ShieldAlert, UserPlus, Users } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, CircleX, ClipboardCopy, Download, FileText, FolderKanban, Image, Inbox, Info, LoaderCircle, Package, ShieldAlert, Stethoscope, Upload, UserPlus, Users } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/lib/api/net'
 import { editorHash } from '@/lib/hash'
+import { BOOK_LABELS } from '@/lib/docset'
+import type { Severity } from '@/lib/types'
+import { RULE_LABEL, groupByRule } from '@/components/preflight/preflightUtils'
 import { PageChrome } from '@/components/shell/PageChrome'
 import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,7 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useWorkbenchMutations, useWorkbenchQueries, workbenchKeys } from '@/workbench/queries'
 import { workbenchApi } from '@/workbench/api'
-import type { Book, Document, InvitationRole, ParticipantRole, PlatformCase, Revision, WorkItem, WorkItemStatus } from '@/workbench/types'
+import type { Book, Document, Figure, InvitationRole, ParticipantRole, PlatformCase, Release, Revision, WorkItem, WorkItemStatus } from '@/workbench/types'
 import { WorkingCopyEditor } from './WorkingCopyEditor'
 
 type View = 'queue' | 'case' | 'approvals' | 'notifications'
@@ -199,23 +202,225 @@ export function ProposalsPanel({ caseId, proposals }: { caseId: string; proposal
   )
 }
 
-export function ReleasesPanel({ caseId, releases }: { caseId: string; releases: ReturnType<typeof useWorkbenchQueries>['releases'] }) {
-  const { createRelease, sealRelease } = useWorkbenchMutations()
+/** B13 附图面板：附图文档建立 + 图片上传（不可变 revision）+ 缩略预览 + 复制文稿引用文本。 */
+export function FiguresPanel({ caseId, figures }: { caseId: string; figures: ReturnType<typeof useWorkbenchQueries>['figures'] }) {
+  const { createFigure, uploadFigureImage } = useWorkbenchMutations()
+  const [figNo, setFigNo] = useState('')
+  const [figTitle, setFigTitle] = useState('')
+  const [copied, setCopied] = useState<string | null>(null)
+  const submit = () => {
+    const no = figNo.trim() ? Number(figNo) : null
+    if (no !== null && (!Number.isInteger(no) || no < 1)) return
+    createFigure.mutate({ caseId, figureNo: no, title: figTitle.trim() }, { onSuccess: () => { setFigNo(''); setFigTitle('') } })
+  }
+  const copyRef = (figure: Figure) => {
+    if (!figure.figure_no) return
+    void navigator.clipboard?.writeText(`图${figure.figure_no}`).then(() => {
+      setCopied(figure.id)
+      setTimeout(() => setCopied((v) => (v === figure.id ? null : v)), 1500)
+    })
+  }
+  return (
+    <div className="grid gap-3" data-testid="workbench-figures">
+      <div className="flex flex-wrap items-center gap-2">
+        <Input value={figNo} onChange={(e) => setFigNo(e.target.value)} placeholder="图号（留空=摘要附图）" className="w-40" aria-label="附图图号" />
+        <Input value={figTitle} onChange={(e) => setFigTitle(e.target.value)} placeholder="附图名称，如：方法流程图" className="min-w-48" aria-label="附图名称" />
+        <Button size="sm" variant="secondary" loading={createFigure.isPending} onClick={submit}><Image aria-hidden />新建附图</Button>
+      </div>
+      <FieldError error={createFigure.error ?? uploadFigureImage.error} />
+      {figures.isLoading ? <LoadingPanel /> : figures.isError ? <FieldError error={figures.error} /> : figures.data?.length ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {figures.data.map((figure) => (
+            <figure key={figure.id} className="rounded-md border border-border bg-sunken p-3 text-sm" data-testid={`figure-${figure.id}`}>
+              {figure.current_revision_id ? (
+                <img src={workbenchApi.figureContentUrl(figure)} alt={figure.title || `图 ${figure.figure_no}`} className="mb-2 h-28 w-full rounded-sm border border-border bg-panel object-contain" data-testid={`figure-img-${figure.id}`} />
+              ) : (
+                <div className="mb-2 flex h-28 items-center justify-center rounded-sm border border-dashed border-border-strong text-xs text-fg-muted">尚未上传图片</div>
+              )}
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-medium text-fg-strong">{figure.figure_no ? `图 ${figure.figure_no}` : '摘要附图'}</div>
+                  <div className="truncate text-xs text-fg-muted">{figure.title || '未命名附图'}</div>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  {figure.figure_no !== null && (
+                    <Button size="xs" variant="ghost" title="复制文稿引用文本" onClick={() => copyRef(figure)}><ClipboardCopy aria-hidden />{copied === figure.id ? '已复制' : `图${figure.figure_no}`}</Button>
+                  )}
+                  <label className="inline-flex cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-xs text-link hover:underline" data-testid={`figure-upload-${figure.id}`}>
+                    <Upload aria-hidden className="size-3" />{figure.current_revision_id ? '换图' : '上传'}
+                    <input type="file" accept="image/*" className="sr-only" disabled={uploadFigureImage.isPending} onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadFigureImage.mutate({ figureId: figure.id, file, caseId })
+                      e.target.value = ''
+                    }} />
+                  </label>
+                </div>
+              </div>
+            </figure>
+          ))}
+        </div>
+      ) : <EmptyState size="sm" icon={Image} title="暂无附图" reason="先建立附图再上传图片；图号附图对应说明书附图，空图号为摘要附图。" />}
+    </div>
+  )
+}
+
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+}
+
+/** B13 期限面板：case 工作项按期限排序 + 改期/清除（work_items.deadline/oa_deadline 承接旧期限台账）。 */
+export function DeadlinesPanel({ caseId, items }: { caseId: string; items: ReturnType<typeof useWorkbenchQueries>['caseWorkItems'] }) {
+  const { setWorkItemDeadline, setWorkItemStatus } = useWorkbenchMutations()
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [now] = useState(() => Date.now())
+  const rows = (items.data ?? []).slice().sort((a, b) => (a.deadline ?? '9999') < (b.deadline ?? '9999') ? -1 : 1)
+  return (
+    <div data-testid="workbench-deadlines">
+      {items.isLoading ? <LoadingPanel /> : items.isError ? <FieldError error={items.error} /> : rows.length ? (
+        <ul className="divide-y divide-border">
+          {rows.map((item) => {
+            const overdue = item.deadline ? new Date(item.deadline).getTime() < now && item.status !== 'done' && item.status !== 'canceled' : false
+            const draft = drafts[item.id] ?? (item.deadline ? toLocalInput(item.deadline) : '')
+            return (
+              <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-3" data-testid={`deadline-${item.id}`}>
+                <div className="min-w-0">
+                  <div className="font-medium text-fg-strong">{item.title}</div>
+                  <div className="mt-0.5 flex items-center gap-2 text-xs text-fg-muted">
+                    <Badge tone="neutral">{item.type}</Badge>
+                    <Badge tone={item.status === 'done' ? 'ok' : item.status === 'blocked' ? 'danger' : 'info'}>{item.status}</Badge>
+                    {item.oa_deadline && <span>OA 答复期限 {new Date(item.oa_deadline).toLocaleDateString('zh-CN')}</span>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={overdue ? 'text-sm font-medium text-danger-fg' : 'text-sm text-fg-muted'}>
+                    {item.deadline ? new Date(item.deadline).toLocaleDateString('zh-CN') : '未设期限'}{overdue && ' · 逾期'}
+                  </span>
+                  <Input type="datetime-local" value={draft} aria-label={`期限：${item.title}`} className="w-44" onChange={(e) => setDrafts((v) => ({ ...v, [item.id]: e.target.value }))} />
+                  <Button size="xs" variant="secondary" disabled={!draft || toLocalInput(item.deadline ?? '') === draft} loading={setWorkItemDeadline.isPending}
+                    onClick={() => setWorkItemDeadline.mutate({ workItemId: item.id, deadline: new Date(draft).toISOString(), caseId }, { onSuccess: () => setDrafts((v) => ({ ...v, [item.id]: '' })) })}>改期</Button>
+                  {item.deadline && <Button size="xs" variant="ghost" disabled={setWorkItemDeadline.isPending}
+                    onClick={() => setWorkItemDeadline.mutate({ workItemId: item.id, deadline: null, caseId })}>清除</Button>}
+                  {item.status !== 'done' && <Button size="xs" variant="ghost" disabled={setWorkItemStatus.isPending}
+                    onClick={() => setWorkItemStatus.mutate({ workItemId: item.id, status: 'done' })}>完成</Button>}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      ) : <EmptyState size="sm" icon={CalendarClock} title="暂无工作项" reason="工作项的期限与 OA 答复期限会汇总到这里。" />}
+      <FieldError error={setWorkItemDeadline.error ?? setWorkItemStatus.error} />
+    </div>
+  )
+}
+
+const SEVERITY_ICON: Record<Severity, ReactNode> = {
+  error: <CircleX className="text-danger-fg" aria-hidden />,
+  warning: <AlertTriangle className="text-warn-fg" aria-hidden />,
+  info: <Info className="text-info" aria-hidden />,
+}
+const SEVERITY_TONE: Record<Severity, BadgeTone> = { error: 'danger', warning: 'warn', info: 'info' }
+
+/** B13 体检面板：GET /cases/{id}/preflight → kernel preflight 报告（按规则分组，复用旧 RULE_LABEL/groupByRule）。 */
+export function HealthPanel({ caseId }: { caseId: string }) {
+  const report = useQuery({
+    queryKey: workbenchKeys.preflight(caseId),
+    queryFn: ({ signal }) => workbenchApi.preflight(caseId, signal),
+  })
+  return (
+    <div data-testid="workbench-health">
+      {report.isLoading ? <LoadingPanel /> : report.isError ? <FieldError error={report.error} /> : report.data ? (
+        <div className="grid gap-3">
+          <div className="flex flex-wrap items-center gap-2" data-testid="health-counts">
+            {(['error', 'warning', 'info'] as const).map((sev) => (
+              <Badge key={sev} tone={SEVERITY_TONE[sev]}>{{ error: '错误', warning: '警告', info: '提示' }[sev]} {report.data!.counts[sev] ?? 0}</Badge>
+            ))}
+            <Button size="xs" variant="ghost" onClick={() => void report.refetch()} disabled={report.isFetching}>重新体检</Button>
+          </div>
+          {report.data.items.length === 0 ? (
+            <EmptyState size="sm" icon={Stethoscope} title="体检通过" reason="三书当前修订未触发任何 kernel 规则。" />
+          ) : (
+            <div className="grid gap-3">{groupByRule(report.data.items).map((group) => (
+              <section key={group.rule} className="rounded-md border border-border bg-panel p-3" data-testid={`health-rule-${group.rule}`}>
+                <div className="mb-1 flex items-center gap-2 text-sm font-medium text-fg-strong">{SEVERITY_ICON[group.severity]}{RULE_LABEL[group.rule] ?? group.rule}<span className="text-xs text-fg-muted">× {group.items.length}</span></div>
+                <ul className="grid gap-1">
+                  {group.items.map((item, i) => (
+                    <li key={i} className="text-sm text-fg-muted">
+                      {item.message}
+                      <span className="ml-2 text-xs">{item.book ? BOOK_LABELS[item.book] : '全文'}{item.line ? ` · 第 ${item.line} 行` : ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}</div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/** 单个发布行：组包项 + 产物懒加载（items 决定可封存，artifacts 决定可下载）。 */
+function ReleaseRow({ release, caseId, documents, figures }: { release: Release; caseId: string; documents: Document[] | undefined; figures: Figure[] | undefined }) {
+  const { addReleaseItem, sealRelease, buildRelease } = useWorkbenchMutations()
+  const items = useQuery({ queryKey: workbenchKeys.releaseItems(release.id), queryFn: ({ signal }) => workbenchApi.releaseItems(release.id, signal) })
+  const artifacts = useQuery({ queryKey: workbenchKeys.releaseArtifacts(release.id), queryFn: ({ signal }) => workbenchApi.releaseArtifacts(release.id, signal) })
+  const packable = release.status !== 'sealed'
+  const pack = async () => {
+    const docItems = (documents ?? []).filter((doc) => doc.current_revision_id)
+      .map((doc, i) => ({ item_kind: 'document' as const, revision_id: doc.current_revision_id!, ordinal: i + 1 }))
+    const figItems = (figures ?? []).filter((fig) => fig.current_revision_id)
+      .map((fig, i) => ({ item_kind: 'figure' as const, revision_id: fig.current_revision_id!, ordinal: docItems.length + i + 1 }))
+    // mutateAsync 失败会进 mutation.error（FieldError 展示）——吃掉以免未处理 rejection 上 console。
+    for (const item of [...docItems, ...figItems]) {
+      try {
+        await addReleaseItem.mutateAsync({ releaseId: release.id, item, caseId })
+      } catch {
+        return
+      }
+    }
+  }
+  return (
+    <li className="py-3" data-testid={`release-${release.id}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-fg-strong">发布 {release.id.slice(0, 8)}</span>
+          <Badge tone={release.status === 'sealed' ? 'ok' : 'neutral'}>{release.status}</Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          {packable && <Button size="xs" variant="secondary" loading={addReleaseItem.isPending} onClick={() => void pack()} data-testid={`pack-${release.id}`}>组包三书+附图</Button>}
+          {packable && <Button size="xs" variant="secondary" loading={sealRelease.isPending} onClick={() => sealRelease.mutate({ releaseId: release.id, caseId })}>封存</Button>}
+          {release.status === 'sealed' && <Button size="xs" variant="secondary" loading={buildRelease.isPending} onClick={() => buildRelease.mutate({ releaseId: release.id, caseId })} data-testid={`build-${release.id}`}>构建 DOCX</Button>}
+        </div>
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-fg-muted">
+        <span>{items.isLoading ? '组包项加载中…' : `组包项 ${items.data?.length ?? 0} 件`}</span>
+        {(artifacts.data ?? []).map((artifact) => (
+          <a key={artifact.id} href={workbenchApi.artifactUrl(artifact.id)} download={artifact.filename} className="inline-flex items-center gap-1 text-link hover:underline" data-testid={`artifact-${artifact.id}`}>
+            <Download aria-hidden className="size-3" />{artifact.filename}
+          </a>
+        ))}
+      </div>
+      <FieldError error={addReleaseItem.error ?? sealRelease.error ?? buildRelease.error ?? items.error ?? artifacts.error} />
+    </li>
+  )
+}
+
+export function ReleasesPanel({ caseId, releases, documents, figures }: { caseId: string; releases: ReturnType<typeof useWorkbenchQueries>['releases']; documents: Document[] | undefined; figures: Figure[] | undefined }) {
+  const { createRelease } = useWorkbenchMutations()
   return (
     <div data-testid="workbench-releases">
-      <div className="mb-2 flex justify-end"><Button size="xs" variant="secondary" loading={createRelease.isPending} onClick={() => createRelease.mutate(caseId)}><Package aria-hidden />新建发布</Button></div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs text-fg-muted">流程：新建发布 → 组包三书与附图当前修订 → 封存 → 构建 DOCX 下载递交包。</p>
+        <Button size="xs" variant="secondary" loading={createRelease.isPending} onClick={() => createRelease.mutate(caseId)}><Package aria-hidden />新建发布</Button>
+      </div>
       {releases.isLoading ? <LoadingPanel /> : releases.isError ? <FieldError error={releases.error} /> : releases.data?.length ? (
         <ul className="divide-y divide-border">{releases.data.map((release) => (
-          <li key={release.id} className="flex items-center justify-between gap-2 py-3" data-testid={`release-${release.id}`}>
-            <span className="font-medium text-fg-strong">发布 {release.id.slice(0, 8)}</span>
-            <div className="flex items-center gap-2">
-              <Badge tone={release.status === 'sealed' ? 'ok' : 'neutral'}>{release.status}</Badge>
-              {release.status !== 'sealed' && <Button size="xs" variant="secondary" loading={sealRelease.isPending} onClick={() => sealRelease.mutate({ releaseId: release.id, caseId })}>封存</Button>}
-            </div>
-          </li>
+          <ReleaseRow key={release.id} release={release} caseId={caseId} documents={documents} figures={figures} />
         ))}</ul>
       ) : <EmptyState size="sm" icon={Package} title="暂无发布版本" reason="封存前可继续编辑；发布后输入版本固定。" />}
-      <FieldError error={createRelease.error ?? sealRelease.error} />
+      <FieldError error={createRelease.error} />
     </div>
   )
 }
@@ -293,10 +498,11 @@ export function MembersPanel({ caseItem, queries }: { caseItem: PlatformCase; qu
 }
 
 function CaseView({ caseItem, queries }: { caseItem: PlatformCase; queries: ReturnType<typeof useWorkbenchQueries> }) {
-  const [tab, setTab] = useState<'docs' | 'proposals' | 'figures' | 'releases' | 'members'>('docs')
+  const [tab, setTab] = useState<'docs' | 'proposals' | 'figures' | 'deadlines' | 'releases' | 'health' | 'members'>('docs')
   const tabs = ([
     ['docs', FileText, '文稿'], ['proposals', CheckCircle2, '提案'], ['figures', Image, '附图'],
-    ['releases', Package, '发布'], ['members', Users, '成员'],
+    ['deadlines', CalendarClock, '期限'], ['releases', Package, '递交'], ['health', Stethoscope, '体检'],
+    ['members', Users, '成员'],
   ] as const)
   return <section aria-labelledby="case-title" data-testid="workbench-case" className="grid gap-4">
     <div className="grid gap-4 md:grid-cols-4">
@@ -308,8 +514,10 @@ function CaseView({ caseItem, queries }: { caseItem: PlatformCase; queries: Retu
     <Panel>
       {tab === 'docs' && (queries.documents.isLoading ? <LoadingPanel /> : queries.documents.isError ? <FieldError error={queries.documents.error} /> : <DocumentsPanel caseItem={caseItem} documents={queries.documents.data} />)}
       {tab === 'proposals' && <ProposalsPanel caseId={caseItem.id} proposals={queries.proposals} />}
-      {tab === 'figures' && (queries.figures.isLoading ? <LoadingPanel /> : queries.figures.data?.length ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{queries.figures.data.map((figure) => <div key={figure.id} className="rounded-md border border-border bg-sunken p-3 text-sm"><div className="font-medium text-fg-strong">{figure.figure_no ? `图 ${figure.figure_no}` : '未编号'}</div><div className="mt-1 truncate text-xs text-fg-muted">{figure.title || '未命名附图'}</div></div>)}</div> : <EmptyState size="sm" icon={Image} title="暂无附图" reason="附图会在案件空间建立并单独版本化。" />)}
-      {tab === 'releases' && <ReleasesPanel caseId={caseItem.id} releases={queries.releases} />}
+      {tab === 'figures' && <FiguresPanel caseId={caseItem.id} figures={queries.figures} />}
+      {tab === 'deadlines' && <DeadlinesPanel caseId={caseItem.id} items={queries.caseWorkItems} />}
+      {tab === 'releases' && <ReleasesPanel caseId={caseItem.id} releases={queries.releases} documents={queries.documents.data} figures={queries.figures.data} />}
+      {tab === 'health' && <HealthPanel caseId={caseItem.id} />}
       {tab === 'members' && <MembersPanel caseItem={caseItem} queries={queries} />}
     </Panel>
     <div className="grid gap-4 xl:grid-cols-2">

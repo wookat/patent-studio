@@ -234,6 +234,15 @@ class FigureOut(FigureIn):
     current_revision_id: uuid.UUID | None
 
 
+class FigureRevisionOut(DTO):
+    id: uuid.UUID
+    figure_document_id: uuid.UUID
+    revision_no: int
+    parent_revision_id: uuid.UUID | None
+    content_ref: Ref
+    source: str
+
+
 class ReleaseOut(DTO):
     id: uuid.UUID
     case_id: uuid.UUID
