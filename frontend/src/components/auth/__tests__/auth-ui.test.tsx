@@ -154,7 +154,7 @@ describe('LoginPage（07 §7.1）', () => {
     expect(q('[data-testid="login-error"]', el)).toBeNull()
   })
 
-  it('注册成功 = 自动登录：register(email, pwd, name) 后回到进入登录页前的 pid', async () => {
+  it('注册成功 = 自动登录：register(email, pwd, name) 后落新工作台', async () => {
     window.location.hash = '#/method'
     const register = vi.fn(async () => true)
     const openProject = vi.fn(async (pid: string) => {
@@ -172,11 +172,12 @@ describe('LoginPage（07 §7.1）', () => {
     setValue(q<HTMLInputElement>('[data-testid="login-password"]', el)!, 'password1')
     await submit(el.querySelector('form')!)
     expect(register).toHaveBeenCalledWith('ann@b.c', 'password1', 'Ann')
-    expect(loadProjects).toHaveBeenCalledTimes(1)
-    expect(openProject).toHaveBeenCalledWith('method')
+    expect(loadProjects).not.toHaveBeenCalled()
+    expect(openProject).not.toHaveBeenCalled()
+    expect(window.location.hash).toBe('#/workbench')
   })
 
-  it('enterWorkspace：来处 pid 不可见则落地面板 #/（不开案）；#/share/<token> 保持不动交给 ShareAccept', async () => {
+  it('enterWorkspace：来处 pid 落新工作台 #/workbench；#/share/<token> 保持不动交给 ShareAccept', async () => {
     const openProject = vi.fn(async () => {})
     useStudio.setState({
       openProject,
@@ -187,7 +188,7 @@ describe('LoginPage（07 §7.1）', () => {
     window.location.hash = '#/login'
     await enterWorkspace('ghost')
     expect(openProject).not.toHaveBeenCalled()
-    expect(window.location.hash).toBe('#/')
+    expect(window.location.hash).toBe('#/workbench')
     window.location.hash = '#/share/tok1'
     openProject.mockClear()
     await enterWorkspace(null)
@@ -209,10 +210,10 @@ describe('LoginPage（07 §7.1）', () => {
     window.location.hash = '#/login'
     await enterWorkspace(null)
     expect(window.location.hash).toBe('#/share/tok9')
-    // 暂存已消费：下一次正常登录（无 share 来处）落地面板
+    // 暂存已消费：下一次正常登录（无 share 来处）落新工作台
     window.location.hash = '#/login'
     await enterWorkspace(null)
-    expect(window.location.hash).toBe('#/')
+    expect(window.location.hash).toBe('#/workbench')
   })
 
   it('auth=off：说明文案 + 进入工作台链接；已登录：显示邮箱与「进入工作台 / 切换账号」', async () => {
