@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="frontend/public/logo-mark.svg" alt="知撰 · Patent Studio Logo" width="88" />
-  <h1>知撰 · Patent Studio</h1>
+  <img src="frontend/public/logo-mark.svg" alt="知撰·AI 专利撰写与协同平台 Logo" width="88" />
+  <h1>知撰·AI 专利撰写与协同平台</h1>
   <p><strong>面向中国发明专利的 AI 撰写与审阅工作台</strong></p>
   <p>AI 提出建议，人决定采纳。让技术材料、三书、附图与交付文件保持可追溯。</p>
   <p>A self-hosted AI workspace for drafting and reviewing Chinese invention patents.</p>
@@ -75,10 +75,16 @@ docker compose up --build -d
 
 浏览器打开 **http://localhost:8000**。首次启动时，空数据卷会初始化 `method`、`system` 两个公开演示案例。案件和构建结果保存在命名卷 `patent-data` 中；**不要用 `docker compose down -v` 清理需要保留的案件数据**。
 
-Compose 同时启动一个 `postgres`（PostgreSQL 17）服务，承载账号、协作、通知、列表状态等应用数据（卷 `patent-pgdata`）。应用通过 `PATENT_STUDIO_DATABASE_URL` 连接，开发默认 `postgresql://patent:patent@postgres:5432/patent_studio`；自建数据库时只需覆盖该变量。数据库 schema 在**首次用到数据库时**由 Alembic 自动迁移建表，无启动迁移要求。
+Compose 同时启动一个 `postgres`（PostgreSQL 17）服务，承载平台 `/api/v1` 面数据——机构、平台案件、文稿修订、工作项、提案、发布封存等（卷 `patent-pgdata`）。应用通过 `PATENT_STUDIO_DATABASE_URL` 连接，开发默认 `postgresql://patent:patent@postgres:5432/patent_studio`；自建数据库时只需覆盖该变量。数据库 schema 在**首次用到数据库时**由 Alembic 自动迁移建表，无启动迁移要求。
 
-- `PATENT_STUDIO_AUTH=off` 且未配数据库时仍可正常浏览 / 编辑案件；归档、回收站等**写库状态变更**需要 PostgreSQL（未配置时接口返回 503 并提示设置 `PATENT_STUDIO_DATABASE_URL`）。
-- 本版本不再读写 SQLite（`studio.db`）；旧部署里的存量数据需另行一次性导入工具迁移，请勿将本版本直接切换到有数据的生产部署上。
+当前为**并存双栈**（不是 PostgreSQL 已全量接管），同一进程内两套数据面：
+
+- **旧 `/api/*` 面**：案件以文件目录为真源（`patent-data` 卷内 `content.md` / `figs/` / `studio.json` 等）；账号、ACL、邀请、站内通知、归档 / 回收站列表状态等仍存 **SQLite** `studio.db`（默认位于案件目录上一级，可用 `PATENT_STUDIO_LEGACY_DATABASE_URL` 指定路径）。
+- **平台 `/api/v1` 面**：上述 PostgreSQL + 内容寻址对象存储（`PATENT_STUDIO_STORAGE_URL`，`file://` 或 `s3://`）。
+
+据此，`PATENT_STUDIO_AUTH=off` 且未配 `PATENT_STUDIO_DATABASE_URL` 时，旧面浏览 / 编辑 / 检查 / 构建照常可用（归档、回收站写本机 SQLite，不依赖 PG）；平台 `/api/v1` 路由会返回 503 `database_unavailable`，平台文稿字节读写未配 `PATENT_STUDIO_STORAGE_URL` 时返回 503 `storage_unavailable`。Compose 默认未设 `PATENT_STUDIO_STORAGE_URL`，如需体验平台面请自行配置。
+
+两栈在 `PATENT_STUDIO_AUTH=on` 时共用同名 `studio_session` cookie 与 `PATENT_STUDIO_SECRET` 签发的会话；**但旧案卷（文件目录）与平台案件（PG）是两套独立存储，不自动双向同步**。一次性迁移可用幂等导入器 `patent-studio import <dir>`（dry-run 先出计划），详见 [部署指南](docs/deploy.md)。
 
 ```bash
 docker compose logs -f patent-studio  # 查看日志
@@ -89,21 +95,38 @@ docker compose down                 # 停止服务，保留数据卷
 
 ### AI 配置
 
-没有模型密钥也可以使用编辑、检查与文档构建；真实 AI 功能需另行配置模型服务凭证，可能产生费用。
+没有模型密钥也可以使用编辑、检查与文档构建；真实 AI 功能需另行配置模型服务凭证，可能产生费用。当前两套 AI 调用各有独立的环境变量：
 
-模型调用层实现见 [agent_runtime](backend/src/patent_studio/domain/agent_runtime.py)（OpenAI 兼容协议，经 `PATENT_STUDIO_LLM_BASE_URL` / `PATENT_STUDIO_LLM_API_KEY` / `PATENT_STUDIO_LLM_MODEL` 配置）。实现使用 OpenAI 兼容协议，但**尚不支持通过环境变量任意切换服务地址，也不承诺所有兼容服务即插即用**。
+- **工作台 AI 辅助**（起草、批注建议、问卷等，实现见 `backend/app/ai/client.py`）：`PATENT_STUDIO_AI_PROVIDER` + `PATENT_STUDIO_AI_KEY`。默认 provider `aicdks` 指向固定网关 `https://api.aicdks.com`；`mock` provider 完全离线，仅用于开发和测试，不能作为真实 AI 效果证明。
+- **平台 v1 Agent 执行体**（实现见 [agent_runtime](backend/src/patent_studio/domain/agent_runtime.py)，pydantic-ai，OpenAI 兼容协议）：`PATENT_STUDIO_LLM_BASE_URL` / `PATENT_STUDIO_LLM_API_KEY` / `PATENT_STUDIO_LLM_MODEL` 三个变量**缺一即保持 stub、不联网**；某一兼容服务能否即插即用请以实测为准。
 
-Compose 不会自动透传宿主机的 AI 密钥。可在本地新建 `docker-compose.override.yml`，添加以下环境映射，并在运行 Compose 的终端安全设置 `PATENT_STUDIO_AI_KEY` 后重新执行启动命令：
+Compose 不会自动透传宿主机的 AI 密钥。可在本地新建 `docker-compose.override.yml`，并在运行 Compose 的终端安全设置变量后重新执行启动命令。只想点亮工作台 AI 辅助时，以下示例单独可用：
 
 ```yaml
 services:
   patent-studio:
     environment:
+      # 工作台 AI 辅助（旧面）
       PATENT_STUDIO_AI_PROVIDER: aicdks
       PATENT_STUDIO_AI_KEY: ${PATENT_STUDIO_AI_KEY:?请先设置模型服务密钥}
 ```
 
-不要将真实密钥写入文件或提交到 Git。`PATENT_STUDIO_AI_PROVIDER=mock` 仅用于离线开发和测试，不能作为真实 AI 效果证明。
+平台 `/api/v1` 面为可选能力，按需另行配置——两组互不依赖：
+
+```yaml
+services:
+  patent-studio:
+    environment:
+      # 平台文稿/附图字节存储：写入已挂载的 /data 卷持久化；
+      # 仅提供存储位置，不自动导入旧案卷、不改变任何权限
+      PATENT_STUDIO_STORAGE_URL: file:///data/objects
+      # v1 Agent 执行体（可选，三件套需同时配置，缺一保持 stub）
+      PATENT_STUDIO_LLM_BASE_URL: ${PATENT_STUDIO_LLM_BASE_URL:?请先设置网关地址}
+      PATENT_STUDIO_LLM_API_KEY: ${PATENT_STUDIO_LLM_API_KEY:?请先设置模型服务密钥}
+      PATENT_STUDIO_LLM_MODEL: ${PATENT_STUDIO_LLM_MODEL:?请先设置模型名}
+```
+
+不要将真实密钥写入文件或提交到 Git。
 
 **数据边界**：远端模型与检索服务可能接收你提供的技术材料。私有部署不自动意味着数据不出网；处理未公开发明或客户资料前，请核对服务商政策及材料授权。
 
@@ -144,16 +167,16 @@ make roundtrip      # 三书拆合检查
 ```text
 技术材料 / 已有文稿
         ↓
-React + TypeScript 工作台
+React + TypeScript 工作台（hash 路由：#/ 台账 → #/p/<pid> 三书工作台 → 递交页）
         ↓
-FastAPI ── AI 建议 / 确定性检查 / 案件协作 / MCP
+FastAPI 双栈并存 ── /api/* 旧面（案件文件 + SQLite）‖ /api/v1 平台面（PostgreSQL + 对象存储）
         ↓
 Markdown 真源 → patent_studio.kernel → DOCX → LibreOffice → PDF
         ↑
 可选的本地语料与附图库（独立审核来源与使用许可）
 ```
 
-前端使用 React、Vite、CodeMirror、PDF 预览与附图编辑组件；后端使用 FastAPI 和 Python 文档构建工具。技术细节见 [系统设计](docs/design.md)。
+前端使用 React、Vite、CodeMirror、PDF 预览与附图编辑组件；后端使用 FastAPI 和 Python 文档构建工具。期限、通知、图库、递交等页面仍在旧面运行；平台能力以台账「工作项」段、收件箱「审批 / 提案」页签、工作台伴随栏（提案 / 资料 / 运行）与递交页「平台体检」等形式嵌入同一前端，新旧案卷由前端 `pid ↔ case_key` 桥接去重展示。技术细节见 [系统设计](docs/design.md) 与 [部署指南](docs/deploy.md)。
 
 ## 文档与公开示例
 
@@ -161,6 +184,7 @@ Markdown 真源 → patent_studio.kernel → DOCX → LibreOffice → PDF
 | --- | --- |
 | [使用手册](docs/user-manual.md) | 工作台操作、撰写、审阅与交付流程 |
 | [系统设计](docs/design.md) | 数据结构、文档管线与实现约定 |
+| [部署指南](docs/deploy.md) | 服务形态、环境变量全表与迁移导入器 |
 | [MCP 接入](docs/mcp.md) | 外部 Agent 的接入与权限边界 |
 | [method 案例](examples/method) | 基于已公开 CN109840487A 重建：10 项权利要求、3 张附图 |
 | [system 案例](examples/system) | 基于已公开 CN109002879B 重建：3 项权利要求、6 张附图 |
