@@ -13,6 +13,7 @@
 
 并入 app/lint.py 由 integrate 做；本模块只是纯函数。
 """
+
 from __future__ import annotations
 
 import re
@@ -29,8 +30,15 @@ _SECTION = {"abstract": "摘要", "claims": "权利要求书", "description": "�
 
 
 def _d(id_, message, line, section, block_id, markdown):
-    return {"id": id_, "severity": "warning", "source": "boundary", "message": message, "line": line,
-            "section": section, "fix": {"block_id": block_id, "markdown": markdown}}
+    return {
+        "id": id_,
+        "severity": "warning",
+        "source": "boundary",
+        "message": message,
+        "line": line,
+        "section": section,
+        "fix": {"block_id": block_id, "markdown": markdown},
+    }
 
 
 def _para_no(ast):
@@ -40,8 +48,16 @@ def _para_no(ast):
         blocks = ast["abstract"]["paragraphs"] if book == "abstract" else ast["description"]
         for b in blocks:
             if b["kind"] == "paragraph" and _PARA_NO_RE.match(b["text"]):
-                out.append(_d("boundary.para_no", "段号由内核生成，请删除手写的段号前缀", off + b["lines"]["start"],
-                              _SECTION[book], b["id"], _PARA_NO_RE.sub("", b["text"], 1)))
+                out.append(
+                    _d(
+                        "boundary.para_no",
+                        "段号由内核生成，请删除手写的段号前缀",
+                        off + b["lines"]["start"],
+                        _SECTION[book],
+                        b["id"],
+                        _PARA_NO_RE.sub("", b["text"], 1),
+                    )
+                )
     return out
 
 
@@ -54,8 +70,9 @@ def _claim_num(ast):
         lines = serialize_block(c)
         lines[0] = _CLAIM_NUM_RE.sub("%d." % c["num"], lines[0], 1)
         msg = "权利要求手写编号 %s 与其位置序号 %d 不符" % (c["num_written"], c["num"])
-        out.append(_d("boundary.claim_num", msg, off + c["lines"]["start"], _SECTION["claims"], c["id"],
-                      "\n".join(lines)))
+        out.append(
+            _d("boundary.claim_num", msg, off + c["lines"]["start"], _SECTION["claims"], c["id"], "\n".join(lines))
+        )
     return out
 
 
@@ -77,9 +94,10 @@ def _figure_num(ast):
             if k < len(figures) and int(m.group(2)) != figures[k]["num"]:
                 num = figures[k]["num"]
                 msg = "附图说明第 %d 条写的是「图%s」，对应附图为图%d" % (k + 1, m.group(2), num)
-                fixed = m.group(1) + str(num) + m.group(3) + b["text"][m.end():]
-                out.append(_d("boundary.figure_num", msg, off + b["lines"]["start"], _SECTION["description"],
-                              b["id"], fixed))
+                fixed = m.group(1) + str(num) + m.group(3) + b["text"][m.end() :]
+                out.append(
+                    _d("boundary.figure_num", msg, off + b["lines"]["start"], _SECTION["description"], b["id"], fixed)
+                )
             k += 1
     return out
 

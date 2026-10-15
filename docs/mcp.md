@@ -139,7 +139,7 @@ async with Client(streamable_http_client("http://127.0.0.1:8000/mcp", http_clien
 audit tail: {"ts": "2026-09-05T02:06:34Z", "who": "local", "tool": "build", "args": {"mode": "final", "pdf": false}, "result": "ok"}
 ```
 
-`npx -y @modelcontextprotocol/inspector --cli http://127.0.0.1:8765/mcp`（uvicorn `app.main:app`，AUTH=off，临时案卷目录）实跑：
+`npx -y @modelcontextprotocol/inspector --cli http://127.0.0.1:8765/mcp`（uvicorn `patent_studio.asgi:app`，AUTH=off，临时案卷目录）实跑：
 
 ```
 ## tools/list

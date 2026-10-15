@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """AST JSON Schema 自身合法 + 两案样例片段（fixtures/ast_sample_*.json）通过校验（04-r1-design §3）。"""
+
 import json
 import os
 
@@ -26,12 +27,23 @@ def schema():
 def test_schema_enums_are_fixed(schema):
     d = schema["$defs"]
     assert d["DescriptionPart"]["enum"] == [
-        "technical-field", "background-art", "disclosure",
-        "description-of-drawings", "mode-for-invention", "other",
+        "technical-field",
+        "background-art",
+        "disclosure",
+        "description-of-drawings",
+        "mode-for-invention",
+        "other",
     ]
     assert d["ClaimKind"]["enum"] == ["independent", "dependent"]
-    assert d["DescriptionBlockKind"]["enum"] == ["section", "subsection", "paragraph", "equation", "table",
-                                                 "code", "figure"]
+    assert d["DescriptionBlockKind"]["enum"] == [
+        "section",
+        "subsection",
+        "paragraph",
+        "equation",
+        "table",
+        "code",
+        "figure",
+    ]
     assert schema["properties"]["version"] == {"const": 1}
 
 

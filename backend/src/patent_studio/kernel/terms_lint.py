@@ -11,6 +11,7 @@ lint_terms(content, terms) → 每个别名命中一条 warning：
 scan_lines / iter_hits 是 lint 与 terms.unify 共用的扫描器：同一套跳过规则、同一套最长匹配，
 unify 额外跳过既有 CriticMarkup 标记内部（lint 面对的是 accept 后的文本，天然没有标记）。
 """
+
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -37,6 +38,7 @@ class Hit:
 @dataclass(frozen=True)
 class Line:
     """一行可扫描文本：line 1-based；section 为「## 书/### 节」；book 为 abstract/claims/description。"""
+
     line: int
     text: str
     section: str
@@ -99,8 +101,9 @@ def _masked(text: str) -> str:
     return _ASCII_PAREN_RE.sub(lambda m: " " * len(m.group(0)), text)
 
 
-def iter_hits(content: str, terms: list[dict], names: list[str] | None = None,
-              skip_marks: bool = False) -> Iterator[Hit]:
+def iter_hits(
+    content: str, terms: list[dict], names: list[str] | None = None, skip_marks: bool = False
+) -> Iterator[Hit]:
     amap = alias_map(terms, names)
     pat = build_pattern(terms, amap)
     if pat is None:
@@ -130,14 +133,16 @@ def lint_terms(content: str, terms: list[dict]) -> list[dict]:
         if key in seen:
             continue
         seen.add(key)
-        out.append({
-            "id": f"terms.alias#{h.line}:{h.alias}",
-            "severity": "warning",
-            "source": "lint",
-            "message": f"「{h.alias}」是术语「{h.name}」的别名，请统一为主名",
-            "line": h.line,
-            "section": h.section,
-            "fix": f"改为「{h.name}」",
-            "replace": {"from": h.alias, "to": h.name},
-        })
+        out.append(
+            {
+                "id": f"terms.alias#{h.line}:{h.alias}",
+                "severity": "warning",
+                "source": "lint",
+                "message": f"「{h.alias}」是术语「{h.name}」的别名，请统一为主名",
+                "line": h.line,
+                "section": h.section,
+                "fix": f"改为「{h.name}」",
+                "replace": {"from": h.alias, "to": h.name},
+            }
+        )
     return out

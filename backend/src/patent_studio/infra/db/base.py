@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """全部 ORM 模型的声明式基类。约束命名固定，Alembic 自动生成的迁移才稳定可复现。"""
+
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeBase
 

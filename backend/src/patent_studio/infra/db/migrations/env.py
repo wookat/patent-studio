@@ -1,10 +1,28 @@
 # -*- coding: utf-8 -*-
 """Alembic 环境：URL 优先取 alembic.ini / -x 覆盖，其次 PATENT_STUDIO_DATABASE_URL。"""
+
 import asyncio
 
 from alembic import context
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
+# B2 起 domain/ 层分批搬入，此处同步恢复对应 import 把 ORM 表挂进 Base.metadata
+# （现有迁移全部为显式 op.* DDL 不依赖 metadata；恢复 import 是为了 autogenerate/漂移检查可用）。
+# 尚未搬入：agent_runtime、importer、materials、runs。
+import patent_studio.domain.agents  # noqa: F401
+import patent_studio.domain.authorization  # noqa: F401
+import patent_studio.domain.collab  # noqa: F401
+import patent_studio.domain.documents  # noqa: F401
+import patent_studio.domain.figures  # noqa: F401
+import patent_studio.domain.identity  # noqa: F401
+import patent_studio.domain.materials  # noqa: F401
+import patent_studio.domain.operations  # noqa: F401
+import patent_studio.domain.organization  # noqa: F401
+import patent_studio.domain.proposals  # noqa: F401
+import patent_studio.domain.releases  # noqa: F401
+import patent_studio.domain.runs  # noqa: F401
+import patent_studio.domain.work_items  # noqa: F401
 from patent_studio.infra.db import Base, database_url
 from patent_studio.settings import get_settings
 
@@ -29,9 +47,15 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+# 迁移互斥：多 worker / 多进程同时首迁同一空库时串行化。锁取在迁移事务内部（pg_advisory_xact_lock
+# 生命周期 = 本事务），alembic_version 的读与建与全部 DDL 包在同一连接同一事务里，提交/回滚即释放。
+_MIGRATION_LOCK_SQL = "SELECT pg_advisory_xact_lock(hashtext('patent_studio:migrations'))"
+
+
 def _run_sync(connection) -> None:
     _configure(connection=connection)
     with context.begin_transaction():
+        connection.execute(text(_MIGRATION_LOCK_SQL))
         context.run_migrations()
 
 

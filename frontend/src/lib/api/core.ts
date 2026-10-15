@@ -94,9 +94,9 @@ export const coreApi = {
       p.then(res, rej).finally(() => signal.removeEventListener('abort', onAbort))
     })
   },
-  /** R3：线性公式 → MathML（复用 omml.to_mathml；prep 已实现） */
+  /** R3：线性公式 → MathML（复用 omml.to_mathml）；B12 起指向平台 /api/v1/kernel/mathml */
   mathml: (source: string, signal?: AbortSignal) =>
-    req<{ mathml: string }>('/api/mathml', { method: 'POST', body: JSON.stringify({ source }), signal }),
+    req<{ mathml: string }>('/api/v1/kernel/mathml', { method: 'POST', body: JSON.stringify({ source }), signal }),
   trackedDocxUrl: (id: string) => `${P(id)}/export/docx?mode=tracked`,
 
   /* ---------- R9 Word 导入（docs/plan/10 §5.3）；`style` = 部分采纳的样式建议（优先于 apply_styles） ---------- */

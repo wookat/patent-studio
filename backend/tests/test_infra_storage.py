@@ -3,6 +3,7 @@
 
 真实服务可选：PATENT_STUDIO_TEST_S3_ENDPOINT（如本地 SeaweedFS http://127.0.0.1:8333），未设置则跳过。
 """
+
 import asyncio
 import hashlib
 import os

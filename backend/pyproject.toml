@@ -17,7 +17,6 @@ dependencies = [
     "pillow>=10,<13",
     "fastapi-users[sqlalchemy]>=15.0.5,<16",
     "sqlalchemy[asyncio]>=2.0.52,<2.1",
-    "aiosqlite>=0.22.1,<0.23",
     "httpx>=0.27,<1",
     "mcp>=2.1.1,<3",
     "pycrdt>=0.14.4,<0.15",
@@ -28,7 +27,12 @@ dependencies = [
     "psycopg[binary]>=3.2,<4",
     "boto3>=1.38,<2",
     "pydantic-settings>=2.9,<3",
+    "temporalio>=1.8,<2",
+    "pydantic-ai-slim[openai]>=1.99,<2",
 ]
+
+[project.scripts]
+patent-studio = "patent_studio.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.8,<0.14"]

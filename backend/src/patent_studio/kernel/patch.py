@@ -19,6 +19,7 @@
 重解析失败 / 删法定章节 → PatchError(kind="content", line=<全文行>)。
 落盘不在此模块：路由层拿 PatchResult.content 走 ProjectStore.save_content（.bak + docs/*.md 镜像）。
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -111,6 +112,7 @@ def serialize_block(block):
 
 # ---------------- 定位 ----------------
 
+
 def iter_blocks(ast):
     """可编辑块：(book, block)。摘要按段；title / abstract 整块 / figures 不在内。"""
     for b in ast["abstract"]["paragraphs"]:
@@ -175,6 +177,7 @@ def _block_lines(markdown):
 
 # ---------------- 三个动作 ----------------
 
+
 def patch_block(content, block_id, markdown, settings=None, figures=None, base=None):
     ast = _reparse(content, settings, figures)
     _book, _b, s, e = find_block(ast, block_id)
@@ -199,8 +202,10 @@ def insert_block(content, kind, after_block_id=None, book=None, markdown=None, s
     else:
         raise PatchError("插入位置缺失：需给 after_block_id 或 book", kind="kind")
     if book not in KIND_BOOKS[kind]:
-        raise PatchError("%s 不能插入%s" % (kind, {"abstract": "摘要", "claims": "权利要求书",
-                                                   "description": "说明书"}[book]), kind="kind")
+        raise PatchError(
+            "%s 不能插入%s" % (kind, {"abstract": "摘要", "claims": "权利要求书", "description": "说明书"}[book]),
+            kind="kind",
+        )
     if markdown is None:
         markdown = block_templates.template(kind, num=_claim_position(ast, at), fig_num=len(ast["figures"]) + 1)
     new_lines = _block_lines(markdown)

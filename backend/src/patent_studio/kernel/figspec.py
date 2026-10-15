@@ -80,8 +80,7 @@ def _dashed(d, pts):
         pos = 0.0
         while pos < seg:
             end = min(pos + dash, seg)
-            d.line([ax + ux * pos, ay + uy * pos, ax + ux * end, ay + uy * end],
-                   fill="black", width=2 * SS)
+            d.line([ax + ux * pos, ay + uy * pos, ax + ux * end, ay + uy * end], fill="black", width=2 * SS)
             pos = end + gaplen
 
 
@@ -89,9 +88,9 @@ def _tip(d, px, py, fx, fy, w=3):
     ang = math.atan2(py - fy, px - fx)
     l = 16 * SS
     for s in (-1, 1):
-        d.line([px, py,
-                px - l * math.cos(ang + s * 0.42), py - l * math.sin(ang + s * 0.42)],
-               fill="black", width=w * SS)
+        d.line(
+            [px, py, px - l * math.cos(ang + s * 0.42), py - l * math.sin(ang + s * 0.42)], fill="black", width=w * SS
+        )
 
 
 def parse_figspec(spec):
@@ -135,8 +134,7 @@ def parse_figspec(spec):
             if weight != 1.0:
                 out["weight"] = weight
             out_blocks.append(out)
-        out_bands.append({"title": str(band.get("title") or "").strip(),
-                          "blocks": out_blocks})
+        out_bands.append({"title": str(band.get("title") or "").strip(), "blocks": out_blocks})
     edges = []
     for k, e in enumerate(spec.get("edges") or []):
         if not isinstance(e, dict):
@@ -144,9 +142,7 @@ def parse_figspec(spec):
         a, b = str(e.get("from") or ""), str(e.get("to") or "")
         if a not in nodes or b not in nodes:
             raise ValueError(f"edges[{k}] 引用未知节点：{a}->{b}")
-        edges.append({"from": a, "to": b,
-                      "label": str(e.get("label") or "").strip(),
-                      "dashed": bool(e.get("dashed"))})
+        edges.append({"from": a, "to": b, "label": str(e.get("label") or "").strip(), "dashed": bool(e.get("dashed"))})
     return {"bands": out_bands, "edges": edges, "nodes": nodes}
 
 
@@ -161,13 +157,13 @@ def render_figspec(spec):
     pad_x, pad_y = 20 * SS, 14 * SS
     line_h = 28 * SS
     wrap_px = 210 * SS
-    gap_blk = 70 * SS      # 带内块间最小间距（兼作同层边车道）
-    band_pad = 26 * SS     # 层框内边距
+    gap_blk = 70 * SS  # 带内块间最小间距（兼作同层边车道）
+    band_pad = 26 * SS  # 层框内边距
     band_title_h = 34 * SS
-    gap_band = 96 * SS     # 层间车道高（跨层边在此横移）
+    gap_band = 96 * SS  # 层间车道高（跨层边在此横移）
     margin_x = 30 * SS
     margin_y = 30 * SS
-    gutter_w = 96 * SS     # 右侧回授沟槽
+    gutter_w = 96 * SS  # 右侧回授沟槽
 
     # ---- 测量
     for band in g["bands"]:
@@ -196,7 +192,7 @@ def render_figspec(spec):
 
     y = margin_y
     band_x0 = margin_x
-    for i, band in enumerate(g["bands"]):
+    for _i, band in enumerate(g["bands"]):
         bh = max(b["h"] for b in band["blocks"])
         title_h = band_title_h if band["title"] else 0
         band["x"] = band_x0
@@ -253,7 +249,11 @@ def render_figspec(spec):
         b = blk(e["to"])
         lab = e["label"]
         dashed = e["dashed"]
-        pen = (lambda pts: _dashed(d, pts)) if dashed else (lambda pts: d.line(pts, fill="black", width=2 * SS, joint="curve"))
+        pen = (
+            (lambda pts: _dashed(d, pts))
+            if dashed
+            else (lambda pts: d.line(pts, fill="black", width=2 * SS, joint="curve"))
+        )
         band_a = node_by_id[e["from"]]["band"]
         band_b = node_by_id[e["to"]]["band"]
 
@@ -269,11 +269,19 @@ def render_figspec(spec):
             pen(pts)
             _tip(d, tx, ty, tx, lane_y if abs(sx - tx) >= 4 * SS else sy)
             if lab:
-                lx = min(max((sx + tx) / 2, d.textlength(lab, font=f_lab) / 2 + 8 * SS),
-                         W - gutter_w - d.textlength(lab, font=f_lab) / 2 - 8 * SS)
-                d.rectangle([lx - d.textlength(lab, font=f_lab) / 2 - 4 * SS, lane_y - 13 * SS,
-                             lx + d.textlength(lab, font=f_lab) / 2 + 4 * SS, lane_y + 13 * SS],
-                            fill="white")
+                lx = min(
+                    max((sx + tx) / 2, d.textlength(lab, font=f_lab) / 2 + 8 * SS),
+                    W - gutter_w - d.textlength(lab, font=f_lab) / 2 - 8 * SS,
+                )
+                d.rectangle(
+                    [
+                        lx - d.textlength(lab, font=f_lab) / 2 - 4 * SS,
+                        lane_y - 13 * SS,
+                        lx + d.textlength(lab, font=f_lab) / 2 + 4 * SS,
+                        lane_y + 13 * SS,
+                    ],
+                    fill="white",
+                )
                 d.text((lx, lane_y), lab, fill="black", font=f_lab, anchor="mm")
         elif band_b > band_a:
             # 下向跨多层：竖直段会穿过中间层块区——全程走空车道：出底部 →
@@ -289,8 +297,7 @@ def render_figspec(spec):
             if lab:
                 ly = (lane_a + lane_b) / 2
                 tw = d.textlength(lab, font=f_lab)
-                d.rectangle([gx - tw / 2 - 4 * SS, ly - 13 * SS,
-                             gx + tw / 2 + 4 * SS, ly + 13 * SS], fill="white")
+                d.rectangle([gx - tw / 2 - 4 * SS, ly - 13 * SS, gx + tw / 2 + 4 * SS, ly + 13 * SS], fill="white")
                 d.text((gx, ly), lab, fill="black", font=f_lab, anchor="mm")
         elif band_b == band_a:
             # 同层边：出顶部 → 带内顶车道横移 → 入目标顶部
@@ -301,10 +308,15 @@ def render_figspec(spec):
             pen(pts)
             _tip(d, tx, ty, tx, lane_y)
             if lab:
-                d.rectangle([(sx + tx) / 2 - d.textlength(lab, font=f_lab) / 2 - 4 * SS,
-                             lane_y - 13 * SS,
-                             (sx + tx) / 2 + d.textlength(lab, font=f_lab) / 2 + 4 * SS,
-                             lane_y + 13 * SS], fill="white")
+                d.rectangle(
+                    [
+                        (sx + tx) / 2 - d.textlength(lab, font=f_lab) / 2 - 4 * SS,
+                        lane_y - 13 * SS,
+                        (sx + tx) / 2 + d.textlength(lab, font=f_lab) / 2 + 4 * SS,
+                        lane_y + 13 * SS,
+                    ],
+                    fill="white",
+                )
                 d.text(((sx + tx) / 2, lane_y), lab, fill="black", font=f_lab, anchor="mm")
         else:
             # 回授/上行边：出底部 → 层间车道横移至右沟槽 → 沟槽竖行 →
@@ -320,8 +332,7 @@ def render_figspec(spec):
             if lab:
                 ly = (lane_a + lane_b) / 2
                 tw = d.textlength(lab, font=f_lab)
-                d.rectangle([gx - tw / 2 - 4 * SS, ly - 13 * SS,
-                             gx + tw / 2 + 4 * SS, ly + 13 * SS], fill="white")
+                d.rectangle([gx - tw / 2 - 4 * SS, ly - 13 * SS, gx + tw / 2 + 4 * SS, ly + 13 * SS], fill="white")
                 d.text((gx, ly), lab, fill="black", font=f_lab, anchor="mm")
 
     for e in g["edges"]:
@@ -335,8 +346,11 @@ def render_figspec(spec):
             x0, y0, x1, y1 = b["x"], b["y"], b["x2"], b["y2"]
             if b["shape"] == "diamond":
                 cx, cy = b["cx"], b["cy"]
-                d.polygon([(cx, y0 - 8 * SS), (x1 + 10 * SS, cy), (cx, y1 + 8 * SS),
-                           (x0 - 10 * SS, cy)], outline="black", width=2 * SS)
+                d.polygon(
+                    [(cx, y0 - 8 * SS), (x1 + 10 * SS, cy), (cx, y1 + 8 * SS), (x0 - 10 * SS, cy)],
+                    outline="black",
+                    width=2 * SS,
+                )
             else:
                 d.rectangle([x0, y0, x1, y1], outline="black", width=2 * SS)
             ty = y0 + pad_y
@@ -360,6 +374,7 @@ def render_spec_to(spec, path):
             src = f.read()
     img = render_figspec(src)
     from PIL.PngImagePlugin import PngInfo
+
     meta = PngInfo()
     meta.add_text("figspec_version", RENDER_VERSION)
     tmp = str(path) + ".tmp.png"
@@ -404,9 +419,10 @@ def mmd_to_spec(src):
     bands = []
     used = set()
     if g.clusters:
-        for cid, cl in g.clusters.items():
-            members = sorted((nid for nid in cl["members"] if nid in g.nodes),
-                             key=lambda n: (g.nodes[n].rank, order[n]))
+        for _cid, cl in g.clusters.items():
+            members = sorted(
+                (nid for nid in cl["members"] if nid in g.nodes), key=lambda n: (g.nodes[n].rank, order[n])
+            )
             if members:
                 bands.append({"title": cl["label"], "blocks": blocks_of(members)})
                 used.update(members)
@@ -420,8 +436,7 @@ def mmd_to_spec(src):
             nids.reverse()
         bands.append({"title": "", "blocks": blocks_of(nids)})
     else:
-        ranks = sorted({g.nodes[n].rank for n in g.nodes},
-                       reverse=(g.direction == "BT"))
+        ranks = sorted({g.nodes[n].rank for n in g.nodes}, reverse=(g.direction == "BT"))
         for rk in ranks:
             grp = sorted((n for n in g.nodes if g.nodes[n].rank == rk), key=order.get)
             bands.append({"title": "", "blocks": blocks_of(grp)})

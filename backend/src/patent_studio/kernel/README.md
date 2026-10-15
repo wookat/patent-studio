@@ -70,19 +70,22 @@ $$W_t = W_{t-1}·(1+b_t·r_t)$$ （3）
 
 ```python
 import os, sys
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, "<patent_studio.kernel 所在父目录>")
 from patent_studio.kernel import build_patent
 
-build_patent({
-    "content_md": os.path.join(HERE, "content.md"),
-    "out": os.path.join(HERE, "申请文件-XXX.docx"),
-    "figs_dir": os.path.join(HERE, "figs"),
-    "abstract_figure": ("fig1.png", 14.5),          # 摘要附图（文件, 宽度cm）
-    "spec_figures": [("fig1.png", 15.0), ("fig2.png", 15.0)],  # 图1..N
-    # 可选："sub_except": ("tsf_guard",)  不作下标解析的字面标识符
-    # 可选："abstract_limit": 300
-})
+build_patent(
+    {
+        "content_md": os.path.join(HERE, "content.md"),
+        "out": os.path.join(HERE, "申请文件-XXX.docx"),
+        "figs_dir": os.path.join(HERE, "figs"),
+        "abstract_figure": ("fig1.png", 14.5),  # 摘要附图（文件, 宽度cm）
+        "spec_figures": [("fig1.png", 15.0), ("fig2.png", 15.0)],  # 图1..N
+        # 可选："sub_except": ("tsf_guard",)  不作下标解析的字面标识符
+        # 可选："abstract_limit": 300
+    }
+)
 ```
 
 PDF 导出：

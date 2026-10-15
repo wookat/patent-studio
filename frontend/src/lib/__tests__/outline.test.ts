@@ -172,7 +172,7 @@ describe('toOutlineNodes（doc.outline：状态栏路径）', () => {
   it('后端样例只含部分章节 → 缺失章节 missing 占位、行号落在说明书标题', () => {
     const desc = toOutlineNodes(buildOutline(partialSystem)).find((n) => n.id === 'description')!
     expect(desc.children!.map((s) => [s.label, s.missing ?? false])).toEqual([
-      ['技术领域', true], ['背景技术', true], ['发明内容', true], ['附图说明', true], ['具体实施方式', false],
+      ['发明内容', true], ['附图说明', true], ['具体实施方式', true], ['技术领域', false], ['背景技术', false],
     ])
     expect(desc.children![0].line).toBe(partialSystem.books.description.offset)
   })

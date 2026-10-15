@@ -10,6 +10,7 @@
 全部排版常量集中在 style.DEFAULT_STYLE，可通过 config["style"] 部分覆盖；
 不覆盖时输出与原硬编码实现逐字节一致。
 """
+
 import os
 import re
 import struct
@@ -43,8 +44,7 @@ class _Emf(BaseImageHeader):
         stream.seek(24)
         l, t, r, b = struct.unpack("<4i", stream.read(16))
         dpi = 96
-        return cls(int((r - l) / 100.0 / 25.4 * dpi),
-                   int((b - t) / 100.0 / 25.4 * dpi), dpi, dpi)
+        return cls(int((r - l) / 100.0 / 25.4 * dpi), int((b - t) / 100.0 / 25.4 * dpi), dpi, dpi)
 
     @property
     def content_type(self):
@@ -130,8 +130,7 @@ class PatentBuilder:
     def _font(self, run, name, size, bold=False, label=False):
         """set_font 的 style 感知版：西文字体取自 style。"""
         fonts = self.style["fonts"]
-        set_font(run, name, size, bold,
-                 ascii_name=fonts["label_ascii"] if label else fonts["ascii"])
+        set_font(run, name, size, bold, ascii_name=fonts["label_ascii"] if label else fonts["ascii"])
 
     # --- 文本与公式 ---
     def add_math_text(self, p, text, font=None, size=None, bold=False):
@@ -154,7 +153,7 @@ class PatentBuilder:
         pos = 0
         for mm in _INLINE_MATH.finditer(text):
             if mm.start() > pos:
-                self._emit_plain_text(p, text[pos:mm.start()], font, size, bold)
+                self._emit_plain_text(p, text[pos : mm.start()], font, size, bold)
             eq = mm.group(1) or mm.group(2)
             try:
                 flat = latex_flat_inline(eq)
@@ -189,9 +188,17 @@ class PatentBuilder:
             if "sup" in marks:
                 r.font.superscript = True
 
-    def para(self, text, size=None, bold=False, font=None,
-             align=WD_ALIGN_PARAGRAPH.JUSTIFY, space_after=6, first_indent=None,
-             keep_with_next=False):
+    def para(
+        self,
+        text,
+        size=None,
+        bold=False,
+        font=None,
+        align=WD_ALIGN_PARAGRAPH.JUSTIFY,
+        space_after=6,
+        first_indent=None,
+        keep_with_next=False,
+    ):
         p = self.doc.add_paragraph()
         p.alignment = align
         p.paragraph_format.space_after = Pt(space_after)
@@ -200,17 +207,16 @@ class PatentBuilder:
             p.paragraph_format.keep_with_next = True
         if first_indent:
             p.paragraph_format.first_line_indent = Pt(first_indent)
-        self.add_math_text(p, text, font or self.song,
-                           self.sz("body") if size is None else size, bold)
+        self.add_math_text(p, text, font or self.song, self.sz("body") if size is None else size, bold)
         return p
 
     def equation(self, text, num):
         """独立成行居中公式，右侧编号与公式整体垂直居中；
         公式为 OMML 原生 Word 公式对象。以无框三列表实现：
         左空列 = 右编号列，使公式位于版心正中。"""
-        width = (self.doc.sections[-1].page_width
-                 - self.doc.sections[-1].left_margin
-                 - self.doc.sections[-1].right_margin)
+        width = (
+            self.doc.sections[-1].page_width - self.doc.sections[-1].left_margin - self.doc.sections[-1].right_margin
+        )
         side = Cm(self.style["equation"]["side_cm"])
         lside, rside = side, side
         tbl = self.doc.add_table(rows=1, cols=3)
@@ -220,8 +226,7 @@ class PatentBuilder:
         layout.set(qn("w:type"), "fixed")
         tblPr.append(layout)
         borders = OxmlElement("w:tblBorders")
-        for edge in ("top", "left", "bottom", "right",
-                     "insideH", "insideV"):
+        for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
             e = OxmlElement("w:" + edge)
             e.set(qn("w:val"), "none")
             borders.append(e)
@@ -252,12 +257,15 @@ class PatentBuilder:
         return tbl
 
     def heading(self, text, size=15):
-        return self.para(text, size=size, bold=True, font=self.hei,
-                         align=WD_ALIGN_PARAGRAPH.CENTER, space_after=12)
+        return self.para(text, size=size, bold=True, font=self.hei, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=12)
 
-    PART_CODES = {"权利要求书": "100001", "说明书": "100002",
-                  "说明书附图": "100003", "说明书摘要": "100004",
-                  "摘要附图": "100005"}
+    PART_CODES = {
+        "权利要求书": "100001",
+        "说明书": "100002",
+        "说明书附图": "100003",
+        "说明书摘要": "100004",
+        "摘要附图": "100005",
+    }
 
     def part_heading(self, section, part):
         """部分标题：写入节页眉（每页重复），黑体四号、字间加宽，
@@ -287,8 +295,7 @@ class PatentBuilder:
         run = hp.add_run(text)
         self._font(run, self.hei, self.sz("header"), label=True)
         sp = OxmlElement("w:spacing")
-        sp.set(qn("w:val"), str(hs["spacing_short"] if len(text) <= 3
-                                else hs["spacing_long"]))
+        sp.set(qn("w:val"), str(hs["spacing_short"] if len(text) <= 3 else hs["spacing_long"]))
         run._r.rPr.append(sp)
         self.part_footer(section, self.style["footer"]["codes"][part])
         return hp
@@ -367,9 +374,11 @@ class PatentBuilder:
     def add_page_field(self, footer_para):
         footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = footer_para.add_run()
-        for tag, attrs, text in (("w:fldChar", {"w:fldCharType": "begin"}, None),
-                                 ("w:instrText", {"xml:space": "preserve"}, " PAGE "),
-                                 ("w:fldChar", {"w:fldCharType": "end"}, None)):
+        for tag, attrs, text in (
+            ("w:fldChar", {"w:fldCharType": "begin"}, None),
+            ("w:instrText", {"xml:space": "preserve"}, " PAGE "),
+            ("w:fldChar", {"w:fldCharType": "end"}, None),
+        ):
             el = OxmlElement(tag)
             for k, v in attrs.items():
                 el.set(qn(k), v)
@@ -424,10 +433,18 @@ class PatentBuilder:
         if opts.get("三线"):
             tbl.style = None
             tblPr = tbl._tbl.tblPr
-            self._set_borders(tblPr, "tblBorders",
-                              {"top": ts["rule_outer_sz"], "bottom": ts["rule_outer_sz"],
-                               "left": None, "right": None, "insideH": None,
-                               "insideV": None})
+            self._set_borders(
+                tblPr,
+                "tblBorders",
+                {
+                    "top": ts["rule_outer_sz"],
+                    "bottom": ts["rule_outer_sz"],
+                    "left": None,
+                    "right": None,
+                    "insideH": None,
+                    "insideV": None,
+                },
+            )
         else:
             tbl.style = "Table Grid"
         tbl.alignment = 1  # 居中
@@ -458,8 +475,7 @@ class PatentBuilder:
                     vm = OxmlElement("w:vMerge")
                     tcPr.append(vm)  # 无 val = continue
                     txt = ""
-                elif i + 1 < len(rows) and j < len(rows[i + 1]) \
-                        and rows[i + 1][j] == "^^":
+                elif i + 1 < len(rows) and j < len(rows[i + 1]) and rows[i + 1][j] == "^^":
                     vm = OxmlElement("w:vMerge")
                     vm.set(qn("w:val"), "restart")
                     tcPr.append(vm)
@@ -483,14 +499,16 @@ class PatentBuilder:
         outer.style = None
         outer.alignment = 1
         tblPr = outer._tbl.tblPr
-        self._set_borders(tblPr, "tblBorders",
-                          {"top": None, "bottom": None, "left": None,
-                           "right": None, "insideH": None, "insideV": None})
+        self._set_borders(
+            tblPr,
+            "tblBorders",
+            {"top": None, "bottom": None, "left": None, "right": None, "insideH": None, "insideV": None},
+        )
         tw = OxmlElement("w:tblW")
         tw.set(qn("w:type"), "dxa")
-        content_width = (self.doc.sections[-1].page_width
-                         - self.doc.sections[-1].left_margin
-                         - self.doc.sections[-1].right_margin)
+        content_width = (
+            self.doc.sections[-1].page_width - self.doc.sections[-1].left_margin - self.doc.sections[-1].right_margin
+        )
         shell = min(Cm(15.4), content_width)  # 上限 15.4cm；自定义页边距收窄版心时随版心收缩
         tw.set(qn("w:w"), str(int(shell.twips)))
         tblPr.append(tw)
@@ -548,12 +566,12 @@ class PatentBuilder:
             # 保证「图+题注+间距」≤ 一页内容区（A4 约 23.7cm 可用）。
             img = probe_image(data)
             tall = img.px_height * width_cm > img.px_width * max_height_cm
-            p.add_run().add_picture(path, height=Cm(max_height_cm) if tall else None,
-                                  width=None if tall else Cm(width_cm))
+            p.add_run().add_picture(
+                path, height=Cm(max_height_cm) if tall else None, width=None if tall else Cm(width_cm)
+            )
         except Exception as e:  # noqa: BLE001 - 缺文件/格式不识别都归为附图错误
             raise FigureError(path, e) from e
-        self.para(caption, align=WD_ALIGN_PARAGRAPH.CENTER,
-                  space_after=self.gap("figure_caption"))
+        self.para(caption, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=self.gap("figure_caption"))
 
 
 def build_patent_ex(config):
@@ -564,8 +582,9 @@ def build_patent_ex(config):
     不再来自 studio.json；旧脚本（examples/*/build_docx.py CONFIG）仍直接给元组，zero_drift 三路必须同 md5。
     图号按顺序生成（图1..N），alt 不进 DOCX。"""
     style = merge_style(config.get("style"))
-    b = PatentBuilder(sub_except=config.get("sub_except", DEFAULT_SUB_EXCEPT), style=style,
-                      run_hook=config.get("run_hook"))
+    b = PatentBuilder(
+        sub_except=config.get("sub_except", DEFAULT_SUB_EXCEPT), style=style, run_hook=config.get("run_hook")
+    )
     title, abstract, claims, spec = load_md(config["content_md"])
     figs = config["figs_dir"]
     doc = b.doc
@@ -585,8 +604,7 @@ def build_patent_ex(config):
 
     first_indent = style["paragraph"]["first_indent_pt"]
     b.part_heading(doc.sections[0], "abstract")
-    b.para(title, size=b.sz("title"), font=b.hei, align=WD_ALIGN_PARAGRAPH.CENTER,
-           space_after=gap("title"))
+    b.para(title, size=b.sz("title"), font=b.hei, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=gap("title"))
     limit = config.get("abstract_limit", 300)
     assert len(abstract) <= limit, f"摘要超过{limit}字：{len(abstract)}"
     b.para(abstract, first_indent=first_indent, space_after=gap("body"))
@@ -603,21 +621,20 @@ def build_patent_ex(config):
             if seg.startswith("@EQ@"):
                 b.equation(seg[4:], "")
             else:
-                b.para(seg, first_indent=first_indent,
-                       space_after=gap("claim_inner") if i < len(segs) - 1
-                       else gap("claim_last"))
+                b.para(
+                    seg,
+                    first_indent=first_indent,
+                    space_after=gap("claim_inner") if i < len(segs) - 1 else gap("claim_last"),
+                )
 
     b.part_heading(b.new_part(restart=True), "description")
-    b.para(title, size=b.sz("title"), font=b.hei, align=WD_ALIGN_PARAGRAPH.CENTER,
-           space_after=0)
+    b.para(title, size=b.sz("title"), font=b.hei, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=0)
     b.para("", space_after=0)
     numbers = number_spec(spec)
     sec_no, sub_no = 0, 0
     for idx, item in enumerate(spec):
         nums = numbers[idx]
-        next_is_table = (idx + 1 < len(spec)
-                         and isinstance(spec[idx + 1], tuple)
-                         and spec[idx + 1][0] == "t")
+        next_is_table = idx + 1 < len(spec) and isinstance(spec[idx + 1], tuple) and spec[idx + 1][0] == "t"
         if isinstance(item, tuple):
             if item[0] == "f":
                 b.add_figure(os.path.join(figs, item[1]), item[3] or "", item[2])
@@ -630,15 +647,14 @@ def build_patent_ex(config):
                 if topts.get("段号居左"):
                     b.add_table_with_left_num(para_label(nums.para_no), item[1], topts)
                 else:
-                    b.num_para(para_label(nums.para_no), space_after=gap("table_label"),
-                               keep_with_next=True)
+                    b.num_para(para_label(nums.para_no), space_after=gap("table_label"), keep_with_next=True)
                     b.add_table(item[1], topts)
                 if topts.get("表题后置"):
-                    b.num_para(para_label(nums.caption_after_no), topts["表题后置"],
-                               space_after=gap("table_label"))
+                    b.num_para(para_label(nums.caption_after_no), topts["表题后置"], space_after=gap("table_label"))
                 if topts.get("表注"):
-                    b.num_para(para_label(nums.note_no), topts["表注"], size=b.sz("table"),
-                               space_after=gap("table_label"))
+                    b.num_para(
+                        para_label(nums.note_no), topts["表注"], size=b.sz("table"), space_after=gap("table_label")
+                    )
                 b.para("", space_after=gap("table_gap"))
                 continue
             if item[0] == "c":
@@ -652,12 +668,17 @@ def build_patent_ex(config):
                 sub_no += 1
             hs = heading_style(style, level)
             prefix = heading_prefix(hs["numbering"], sec_no, None if kind == "h" else sub_no)
-            b.para(prefix + text, size=hs["size"], font=hs["font"], bold=hs["bold"],
-                   align=_HEADING_ALIGN[hs["align"]], space_after=gap(level + "_heading"),
-                   keep_with_next=next_is_table)
+            b.para(
+                prefix + text,
+                size=hs["size"],
+                font=hs["font"],
+                bold=hs["bold"],
+                align=_HEADING_ALIGN[hs["align"]],
+                space_after=gap(level + "_heading"),
+                keep_with_next=next_is_table,
+            )
         else:
-            b.num_para(para_label(nums.para_no), item, space_after=gap("body"),
-                       keep_with_next=next_is_table)
+            b.num_para(para_label(nums.para_no), item, space_after=gap("body"), keep_with_next=next_is_table)
 
     if config.get("spec_figures"):  # 无附图案卷省略说明书附图部
         b.part_heading(b.new_part(), "figures")
@@ -665,10 +686,8 @@ def build_patent_ex(config):
             b.add_figure(os.path.join(figs, fname), f"图{i}", w)
 
     doc.save(config["out"])
-    n = max((x for nm in numbers for x in (nm.para_no, nm.caption_after_no, nm.note_no) if x),
-            default=0)
-    return BuildResult(out=config["out"], abstract_chars=len(abstract),
-                       claims=len(claims), paragraphs=n, title=title)
+    n = max((x for nm in numbers for x in (nm.para_no, nm.caption_after_no, nm.note_no) if x), default=0)
+    return BuildResult(out=config["out"], abstract_chars=len(abstract), claims=len(claims), paragraphs=n, title=title)
 
 
 def build_patent(config):
@@ -685,6 +704,5 @@ def build_patent(config):
       style           可选，排版参数覆盖（见 style.DEFAULT_STYLE；不传=原版式）
     """
     r = build_patent_ex(config)
-    print("saved", r.out, " 摘要字数:", r.abstract_chars,
-          " 权利要求项数:", r.claims, " 说明书段落数:", r.paragraphs)
+    print("saved", r.out, " 摘要字数:", r.abstract_chars, " 权利要求项数:", r.claims, " 说明书段落数:", r.paragraphs)
     return r.out

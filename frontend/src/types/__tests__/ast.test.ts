@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import astSchema from '../../../../backend/src/patent_studio/kernel/ast_schema.json'
+import astRich from '../../../../backend/tests/fixtures/ast_rich.json'
 import sampleMethod from '../../../../backend/tests/fixtures/ast_sample_method.json'
 import sampleSystem from '../../../../backend/tests/fixtures/ast_sample_system.json'
 import {
@@ -16,6 +17,7 @@ const schema = astSchema as unknown as Schema
 const samples: Record<string, Ast> = {
   method: sampleMethod as unknown as Ast,
   system: sampleSystem as unknown as Ast,
+  rich: astRich as unknown as Ast,
 }
 
 describe('types/ast ⇄ ast_schema.json', () => {
@@ -49,20 +51,20 @@ describe('types/ast ⇄ ast_schema.json', () => {
 })
 
 describe('blockAtLine / blockFullLine', () => {
-  const ast = samples.method
+  const ast = samples.rich
 
-  it('全文行 → 块（method：81 行是 [0013] 段，83 行是式（1））', () => {
-    const p = blockAtLine(ast, 81)
+  it('全文行 → 块（rich：71 行是 [0013] 段，73 行是式（3））', () => {
+    const p = blockAtLine(ast, 71)
     expect(p?.book).toBe('description')
     expect(p?.block.id).toBe('description/发明内容/技术方案/p0013')
-    const eq = blockAtLine(ast, 83)
+    const eq = blockAtLine(ast, 73)
     expect(eq?.block.kind).toBe('equation')
-    expect(eq && blockFullLine(ast, eq)).toBe(83)
+    expect(eq && blockFullLine(ast, eq)).toBe(73)
   })
 
   it('权项 / 摘要 / 未覆盖行', () => {
-    expect(blockAtLine(ast, 9)?.block.id).toBe('claims/1')
-    expect(blockAtLine(ast, 13)?.block.id).toBe('claims/1')
+    expect(blockAtLine(ast, 11)?.block.id).toBe('claims/1')
+    expect(blockAtLine(ast, 15)?.block.id).toBe('claims/1')
     expect(blockAtLine(ast, 5)?.block.id).toBe('abstract')
     expect(blockAtLine(ast, 200)).toBeNull()
   })

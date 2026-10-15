@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """S3 兼容后端（AWS S3 / SeaweedFS / Ceph RGW 等）。凭证走 boto3 标准链（AWS_* 环境变量等）。"""
+
 import asyncio
 
 import boto3
@@ -11,8 +12,9 @@ _MISSING = {"404", "NoSuchKey", "NotFound"}
 
 
 class S3ObjectStore:
-    def __init__(self, bucket: str, prefix: str = "", *, endpoint_url: str | None = None,
-                 region: str | None = None) -> None:
+    def __init__(
+        self, bucket: str, prefix: str = "", *, endpoint_url: str | None = None, region: str | None = None
+    ) -> None:
         self.bucket = bucket
         self.prefix = f"{prefix}/" if prefix else ""
         self._s3 = boto3.client("s3", endpoint_url=endpoint_url, region_name=region)
@@ -20,8 +22,9 @@ class S3ObjectStore:
     async def put(self, data: bytes, content_type: str) -> ObjectRef:
         ref = object_ref(data, content_type)
         if not await self.exists(ref.key):
-            await asyncio.to_thread(self._s3.put_object, Bucket=self.bucket, Key=self.prefix + ref.key,
-                                    Body=data, ContentType=content_type)
+            await asyncio.to_thread(
+                self._s3.put_object, Bucket=self.bucket, Key=self.prefix + ref.key, Body=data, ContentType=content_type
+            )
         return ref
 
     async def get(self, key: str) -> bytes:

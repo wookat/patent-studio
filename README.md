@@ -75,6 +75,11 @@ docker compose up --build -d
 
 浏览器打开 **http://localhost:8000**。首次启动时，空数据卷会初始化 `method`、`system` 两个公开演示案例。案件和构建结果保存在命名卷 `patent-data` 中；**不要用 `docker compose down -v` 清理需要保留的案件数据**。
 
+Compose 同时启动一个 `postgres`（PostgreSQL 17）服务，承载账号、协作、通知、列表状态等应用数据（卷 `patent-pgdata`）。应用通过 `PATENT_STUDIO_DATABASE_URL` 连接，开发默认 `postgresql://patent:patent@postgres:5432/patent_studio`；自建数据库时只需覆盖该变量。数据库 schema 在**首次用到数据库时**由 Alembic 自动迁移建表，无启动迁移要求。
+
+- `PATENT_STUDIO_AUTH=off` 且未配数据库时仍可正常浏览 / 编辑案件；归档、回收站等**写库状态变更**需要 PostgreSQL（未配置时接口返回 503 并提示设置 `PATENT_STUDIO_DATABASE_URL`）。
+- 本版本不再读写 SQLite（`studio.db`）；旧部署里的存量数据需另行一次性导入工具迁移，请勿将本版本直接切换到有数据的生产部署上。
+
 ```bash
 docker compose logs -f patent-studio  # 查看日志
 docker compose down                 # 停止服务，保留数据卷
@@ -86,7 +91,7 @@ docker compose down                 # 停止服务，保留数据卷
 
 没有模型密钥也可以使用编辑、检查与文档构建；真实 AI 功能需另行配置模型服务凭证，可能产生费用。
 
-当前默认 provider 为 `aicdks`，服务地址与模型路由见 [调用层实现](backend/app/ai/client.py)。实现使用 OpenAI 兼容协议，但**尚不支持通过环境变量任意切换服务地址，也不承诺所有兼容服务即插即用**。
+模型调用层实现见 [agent_runtime](backend/src/patent_studio/domain/agent_runtime.py)（OpenAI 兼容协议，经 `PATENT_STUDIO_LLM_BASE_URL` / `PATENT_STUDIO_LLM_API_KEY` / `PATENT_STUDIO_LLM_MODEL` 配置）。实现使用 OpenAI 兼容协议，但**尚不支持通过环境变量任意切换服务地址，也不承诺所有兼容服务即插即用**。
 
 Compose 不会自动透传宿主机的 AI 密钥。可在本地新建 `docker-compose.override.yml`，添加以下环境映射，并在运行 Compose 的终端安全设置 `PATENT_STUDIO_AI_KEY` 后重新执行启动命令：
 

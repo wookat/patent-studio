@@ -10,6 +10,7 @@
     from patent_studio.kernel import build_patent
     build_patent(config)   # config 见 builder.build_patent docstring
 """
+
 from .builder import build_patent
 from .content import dump_md, load_md
 

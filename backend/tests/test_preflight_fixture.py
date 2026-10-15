@@ -3,6 +3,7 @@
 
 figures 路由见 test_figures.py，preflight 见 test_preflight.py。
 """
+
 import json
 import os
 import re
@@ -40,11 +41,12 @@ def test_preflight_fixtures_parse(name):
         assert [f["num"] for f in ast["figures"]] == [1, 2] and ast["figures"][1]["caption"] is None
 
 
-@pytest.mark.parametrize("d,nfig", [(EXAMPLES[0], 6), (EXAMPLES[1], 5)])
+@pytest.mark.parametrize("d,nfig", [(EXAMPLES[0], 3), (EXAMPLES[1], 6)])
 def test_examples_figure_refs_baseline(d, nfig):
-    """05-r2 §1 E1/E2：两案每图都有题注且都被「图N」引用；无越界引用。"""
+    """05-r2 §1 E1/E2：两案每图都被「图N」引用；无越界引用。
+    新语料（b12a541）附图说明均无题注 → figures.caption_missing 属真命中，显式记录。"""
     ast = _load(d)
-    assert len(ast["figures"]) == nfig and all(f["caption"] and f["caption_line"] for f in ast["figures"])
+    assert len(ast["figures"]) == nfig and all(f["caption"] is None for f in ast["figures"])
     nums = set()
     for b in ast["description"]:
         if b["kind"] == "paragraph":
@@ -54,7 +56,7 @@ def test_examples_figure_refs_baseline(d, nfig):
 
 @pytest.mark.parametrize("d", EXAMPLES)
 def test_examples_claims_baseline(d):
-    """05-r2 §1 E3：两案无前向引用、无循环；method 权9 引用多引权项 8（已知真阳性，A2 的 claims.multi_multi 基线）。"""
+    """05-r2 §1 E3：两案无前向引用、无循环；新语料（b12a541）两案均无多引多引权项。"""
     ast = _load(d)
     targets = {c["num"]: sorted({t for r in c["refs"] for t in r["targets"]}) for c in ast["claims"]}
     for c in ast["claims"]:
@@ -63,4 +65,4 @@ def test_examples_claims_baseline(d):
     dependent = {c["num"] for c in ast["claims"] if c["claim_kind"] == "dependent"}
     multi = {n for n, t in targets.items() if len(t) > 1 and n in dependent}
     multi_multi = sorted(n for n in multi if any(t in multi for t in targets[n]))
-    assert multi_multi == ([9] if d.endswith("method") else [])
+    assert multi_multi == []

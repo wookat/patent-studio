@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """W4-E E2（docs/plan/17 §3.2）：PUT /api/users/me 个人资料 + 改密码契约。off 形状仍由 test_w4e_prep 锁。"""
+
 import time
 
 import test_auth
@@ -63,15 +64,21 @@ def test_change_password_checks_current_and_ends_sessions(on):
     # 旧密码仍有效（上面两次都没写库）
     _login(on, "su@example.com")
 
-    r = c.put("/api/users/me",
-              json={"password": {"current": "pw-123456", "new": "new-pass-123"}, "display_name": "改密同时改名"})
+    r = c.put(
+        "/api/users/me",
+        json={"password": {"current": "pw-123456", "new": "new-pass-123"}, "display_name": "改密同时改名"},
+    )
     assert r.status_code == 200, r.text
     assert r.json()["display_name"] == "改密同时改名"
     time.sleep(1.05)  # exp 秒精度：跨秒保证签发时刻判定确定
     # R71-01：改密后此前签发的会话一律失效（含本会话）
     assert c.get("/api/users/me").status_code == 401
-    assert TestClient(on.app).post("/api/auth/cookie/login",
-                                   data={"username": "su@example.com", "password": "pw-123456"}).status_code == 400
+    assert (
+        TestClient(on.app)
+        .post("/api/auth/cookie/login", data={"username": "su@example.com", "password": "pw-123456"})
+        .status_code
+        == 400
+    )
     c2 = _login(on, "su@example.com", password="new-pass-123")
     assert c2.get("/api/users/me").status_code == 200
 

@@ -9,6 +9,7 @@
 
 段落样板不为空：空行不会成为 AST 块，插入后前端无块可进入编辑；占位文字沿用新案模板的「……」。
 """
+
 from __future__ import annotations
 
 from typing import Literal, TypedDict
@@ -17,7 +18,15 @@ from .content import table_spec_line
 
 BlockKind = Literal["paragraph", "section", "subsection", "equation", "table", "claim", "figure-ref", "figure"]
 BLOCK_KINDS: tuple[BlockKind, ...] = (
-    "paragraph", "section", "subsection", "equation", "table", "claim", "figure-ref", "figure")
+    "paragraph",
+    "section",
+    "subsection",
+    "equation",
+    "table",
+    "claim",
+    "figure-ref",
+    "figure",
+)
 
 _ALL = ["abstract", "claims", "description"]
 _DESC = ["description"]
@@ -57,8 +66,13 @@ def template(kind: BlockKind, **ctx) -> str:
 
 
 def _t(kind: BlockKind, label: str, book: list[str], line: int, col: int, **ctx) -> Template:
-    return {"kind": kind, "label": label, "book": list(book), "markdown": template(kind, **ctx),
-            "cursor": {"line": line, "col": col}}
+    return {
+        "kind": kind,
+        "label": label,
+        "book": list(book),
+        "markdown": template(kind, **ctx),
+        "cursor": {"line": line, "col": col},
+    }
 
 
 def templates() -> list[Template]:

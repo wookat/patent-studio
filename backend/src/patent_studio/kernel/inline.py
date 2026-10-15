@@ -20,6 +20,7 @@
     inline_strip(text, sub_except=())  -> str                          去记号的纯文本（lint / 术语 / 字数）
     inline_spans(text, sub_except=())  -> [{"text", "marks": [...]}]   AST `inline[]` 形状（marks 按 MARKS 顺序）
 """
+
 import re
 
 MARKS = ("b", "i", "u", "sub", "sup")
@@ -27,8 +28,10 @@ MARKS = ("b", "i", "u", "sub", "sup")
 # builder.py 原 _SUB_RE 的捕获体（保持逐字相同：中文四词是语料里既有的下标写法）
 # 裸下标/上标字符域：ASCII 字母数字 + 希腊字母（ε_θ / μ_θ / Σ_θ 数学记号惯例）
 _GREEK = "\u0370-\u03ff"
-_SUB_BODY = (r"\{[^}]+\}|\[[^\]]+\]|检索|基线|锚|修|"
-             rf"[A-Za-z0-9{_GREEK}]+(?:,[A-Za-z0-9{_GREEK}]+)*")
+_SUB_BODY = (
+    r"\{[^}]+\}|\[[^\]]+\]|检索|基线|锚|修|"
+    rf"[A-Za-z0-9{_GREEK}]+(?:,[A-Za-z0-9{_GREEK}]+)*"
+)
 _SUP_BODY = r"\{[^}]+\}|\[[^\]]+\]|" rf"[A-Za-z0-9{_GREEK}]+(?:,[A-Za-z0-9{_GREEK}]+)*"
 
 SUB_RE = re.compile(r"_(%s)" % _SUB_BODY)
@@ -72,7 +75,7 @@ def _walk(text, marks, out):
     pos = 0
     for m in _TOKEN_RE.finditer(text):
         if m.start() > pos:
-            out.append((marks, text[pos:m.start()]))
+            out.append((marks, text[pos : m.start()]))
         kind = m.lastgroup
         if kind in ("sub", "sup"):
             out.append((marks | {kind}, _script_body(m.group(kind))))

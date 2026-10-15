@@ -6,15 +6,18 @@ import { bookBlocks, fromBookDoc } from '../fromBookDoc'
 import { toBookDoc } from '../toBookDoc'
 import astMethod from '../../../../../../backend/tests/golden/ast_method.json'
 import astSystem from '../../../../../../backend/tests/golden/ast_system.json'
+import astRich from '../../../../../../backend/tests/fixtures/ast_rich.json'
 import mdMethod from '../../../../../../examples/method/content.md?raw'
 import mdSystem from '../../../../../../examples/system/content.md?raw'
+import mdRich from '../../../../../../backend/tests/fixtures/rich/content.md?raw'
 import studioMethod from '../../../../../../examples/method/studio.json'
 import studioSystem from '../../../../../../examples/system/studio.json'
 
-/** 22 §4 golden：两案 × 四书 fromBookDoc(toBookDoc(ast, book, content)) === 该书源码（splitBooks 切出的正文）逐字节 */
+/** 22 §4 golden：各案 × 四书 fromBookDoc(toBookDoc(ast, book, content)) === 该书源码（splitBooks 切出的正文）逐字节 */
 const cases: [string, Ast, string, string[]][] = [
   ['method', astMethod as unknown as Ast, mdMethod, (studioMethod as { sub_except?: string[] }).sub_except ?? []],
   ['system', astSystem as unknown as Ast, mdSystem, (studioSystem as { sub_except?: string[] }).sub_except ?? []],
+  ['rich', astRich as unknown as Ast, mdRich, []],
 ]
 const BOOKS: BookName[] = ['abstract', 'claims', 'description']
 
@@ -37,9 +40,15 @@ describe.each(cases)('golden %s', (_name, ast, md, subExcept) => {
     const kinds = new Set<string>()
     desc.forEach((n) => {
       if (n.attrs.kind) kinds.add(n.attrs.kind)
-      if (n.type.name === 'ps_para' && n.attrs.kind === 'paragraph') expect(n.textContent).not.toMatch(/^\[\d{4}\]/)
+      // 段号是内核按位置编号：块文本本身未写段号时，doc 节点不得出现 [NNNN]
+      const blk = ast.description.find((b) => b.id === n.attrs.blockId)
+      if (n.type.name === 'ps_para' && n.attrs.kind === 'paragraph' && !(blk && 'text' in blk && /^\[\d{4}\]/.test(blk.text as string))) {
+        expect(n.textContent).not.toMatch(/^\[\d{4}\]/)
+      }
     })
-    for (const k of ['paragraph', 'section', 'subsection', 'equation', 'table', 'table-caption']) expect(kinds).toContain(k)
+    if (_name === 'rich') {
+      for (const k of ['paragraph', 'section', 'subsection', 'equation', 'table', 'table-caption']) expect(kinds).toContain(k)
+    }
     toBookDoc(ast, 'claims', md).forEach((n) => {
       expect(n.type.name).toBe('ps_claim')
       expect(n.attrs.kind).toBe('claim')

@@ -36,6 +36,9 @@ export type HashRoute =
   | { kind: 'figlib' }
   | { kind: 'legal'; page: string }
   | { kind: 'inbox' }
+  | { kind: 'workbench'; query: { caseId: string | null; view: 'queue' | 'case' | 'approvals' | 'notifications' } }
+  /** B12：平台文稿编辑器页 #/edit/<caseId>/<docId>（旧三书块编辑器接 /api/v1 working-copy） */
+  | { kind: 'edit'; caseId: string; docId: string }
   | { kind: 'project'; pid: string; legacy: boolean; query: ProjectQuery }
   | { kind: 'deliver'; pid: string }
   /** W17：附图绘制画板页 #/p/<pid>/board?src=<stem>；同一案不重开 openProject
@@ -53,7 +56,7 @@ export type HashRoute =
 export type AdminTab = 'members' | 'org' | 'audit' | 'ai'
 const ADMIN_TABS: readonly AdminTab[] = ['members', 'org', 'audit', 'ai']
 
-const PAGE_ROUTES = /^(share|c)\/|^(login|account|admin|deadlines|inbox|figlib|__ds|legal)(\?|$|\/)/
+const PAGE_ROUTES = /^(share|c|edit)\/|^(login|account|admin|deadlines|inbox|workbench|figlib|__ds|legal)(\?|$|\/)/
 
 function parseQuery(q: string | undefined): ProjectQuery {
   if (!q) return {}
@@ -89,6 +92,17 @@ export function parseHash(hash: string = window.location.hash): HashRoute {
   }
   if (h === 'deadlines' || h.startsWith('deadlines?')) return { kind: 'deadlines' }
   if (h === 'inbox' || h.startsWith('inbox?')) return { kind: 'inbox' }
+  if (h === 'workbench' || h.startsWith('workbench?')) {
+    const q = new URLSearchParams(h.split('?')[1] ?? '')
+    const view = q.get('view')
+    return {
+      kind: 'workbench',
+      query: {
+        caseId: q.get('case'),
+        view: view === 'case' || view === 'approvals' || view === 'notifications' ? view : 'queue',
+      },
+    }
+  }
   if (h === 'figlib' || h.startsWith('figlib?')) return { kind: 'figlib' }
   const legal = h.match(/^legal\/(terms|privacy|copyright)/)
   if (legal) return { kind: 'legal', page: legal[1] }
@@ -97,6 +111,8 @@ export function parseHash(hash: string = window.location.hash): HashRoute {
   if (share) return { kind: 'share', token: _decode(share[1]) }
   const client = h.match(/^c\/([^/?#]+)/)
   if (client) return { kind: 'client', token: _decode(client[1]) }
+  const edit = h.match(/^edit\/([^/?#]+)\/([^/?#]+)/)
+  if (edit) return { kind: 'edit', caseId: _decode(edit[1]), docId: _decode(edit[2]) }
   const p = h.match(/^p\/([^/?#]+)(\/(?:deliver|board|novelty))?(?:\?(.*))?$/)
   if (p) {
     const pid = _decode(p[1])
@@ -199,6 +215,9 @@ export const boardHash = (pid: string, src?: string, img?: string) =>
   `/p/${encodeURIComponent(pid)}/board${src ? `?src=${encodeURIComponent(src)}` : img ? `?img=${encodeURIComponent(img)}` : ''}`
 export const deadlinesHash = '/deadlines'
 export const inboxHash = '/inbox'
+export const workbenchHash = '/workbench'
+/** B12 文稿编辑器页 #/edit/<caseId>/<docId> */
+export const editorHash = (caseId: string, docId: string) => `/edit/${encodeURIComponent(caseId)}/${encodeURIComponent(docId)}`
 export const figlibHash = '/figlib'
 export const clientHash = (token: string) => `/c/${encodeURIComponent(token)}`
 
@@ -249,6 +268,11 @@ export function clearProjectQuery() {
   if (r.kind === 'project' && (r.query.c || r.query.focus || r.query.dl)) window.location.replace(`#${projectHash(r.pid, r.query.panel ? { panel: r.query.panel } : undefined)}`)
 }
 
+/** 工作台案件空间 → 文稿编辑器页 */
+export function goEditor(caseId: string, docId: string) {
+  const r = parseHash()
+  if (!(r.kind === 'edit' && r.caseId === caseId && r.docId === docId)) window.location.hash = editorHash(caseId, docId)
+}
 export function goDeadlines() {
   if (parseHash().kind !== 'deadlines') window.location.hash = deadlinesHash
 }

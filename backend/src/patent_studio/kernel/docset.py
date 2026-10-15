@@ -14,6 +14,7 @@
 
 `python -m patent_studio.kernel.docset --check <项目目录>...` 是 `make roundtrip` 的入口。
 """
+
 import argparse
 import dataclasses
 import json
@@ -90,9 +91,14 @@ def split(md):
             cur = book
             continue
         bodies[cur].append(ln)
-    return DocSet(head="".join(bodies["head"]), abstract="".join(bodies["abstract"]),
-                  claims="".join(bodies["claims"]), description="".join(bodies["description"]),
-                  headings=headings, order=tuple(order))
+    return DocSet(
+        head="".join(bodies["head"]),
+        abstract="".join(bodies["abstract"]),
+        claims="".join(bodies["claims"]),
+        description="".join(bodies["description"]),
+        headings=headings,
+        order=tuple(order),
+    )
 
 
 def assemble(ds):

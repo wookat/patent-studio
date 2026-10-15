@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 r"""LaTeX→OMML 排版回归（轮36）：s1 产出公式普遍是 LaTeX 记号，
 此前线性解析器不识 \frac/\sum/\mathbb/\tag 等，源码原样印进 DOCX。"""
+
 import io
 
 import pytest
@@ -50,10 +51,17 @@ def test_latex_dropped_cmds_no_residue():
     assert "𝒩" in out
 
 
-@pytest.mark.parametrize("src", [
-    r"\frac{a}{b}", r"x_i^2", r"\begin{pmatrix}a&b\\c&d\end{pmatrix}",
-    r"\sqrt[3]{x}+1", r"\operatorname{softmax}(x)", r"a\cdot b\circ c",
-])
+@pytest.mark.parametrize(
+    "src",
+    [
+        r"\frac{a}{b}",
+        r"x_i^2",
+        r"\begin{pmatrix}a&b\\c&d\end{pmatrix}",
+        r"\sqrt[3]{x}+1",
+        r"\operatorname{softmax}(x)",
+        r"a\cdot b\circ c",
+    ],
+)
 def test_no_crash_no_backslash(src):
     out = latex_to_text(src)
     assert "\\" not in out

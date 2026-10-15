@@ -4,10 +4,12 @@
 覆盖 s1 figsrc 产图源的语法面：`flowchart LR|TD|TB`（`graph` 同义）、
 节点 `ID[文本]`（方框）/`ID{文本}`（菱形判据）/`ID(文本)`/`ID((文本))`（圆角/圆点统一画圆角框）、
 `subgraph ID[标题] … end`（虚线区框）、
-边 `A-->B`、`A-->|标注|B`、`A-- 标注 -->B`、`A-.->B`（虚线边，数据/参数传递线惯例）、`A==>B`、`A---B`、多目标 `A-->B & C`。
+边 `A-->B`、`A-->|标注|B`、`A-- 标注 -->B`、`A-.->B`（虚线边，数据/参数传递线惯例）、
+`A==>B`、`A---B`、多目标 `A-->B & C`。
 不识别的行跳过；超集语法按尽力渲染（未知节点以 id 作标签）。
 CNIPA 惯例：纯白底、黑色线稿、无填充色；超采样抗锯齿。
 """
+
 import os
 import re
 
@@ -79,16 +81,21 @@ def _wrap(draw, text, font, max_px):
 def _mmd_to_dot(g):
     """_Graph → graphviz dot 源码（CNIPA：白底黑框、正交折线）。"""
     rankdir = "LR" if g.direction in ("LR", "RL") else "TB"
-    esc = lambda s: str(s).replace("\\", "\\\\").replace('"', '\\"')
-    lines = ["digraph G {", '  bgcolor="white";',
-             '  node [shape=box, style="filled", fillcolor="white", color="black",'
-             ' fontname="Noto Sans CJK SC", fontsize=12, margin="0.14,0.09"];',
-             '  edge [color="black", arrowsize=0.7, fontname="Noto Sans CJK SC", fontsize=10];',
-             f"  rankdir={rankdir};",
-             "  nodesep=0.4; ranksep=0.6; splines=ortho; concentrate=true;"]
+
+    def esc(s):
+        return str(s).replace("\\", "\\\\").replace('"', '\\"')
+
+    lines = [
+        "digraph G {",
+        '  bgcolor="white";',
+        '  node [shape=box, style="filled", fillcolor="white", color="black",'
+        ' fontname="Noto Sans CJK SC", fontsize=12, margin="0.14,0.09"];',
+        '  edge [color="black", arrowsize=0.7, fontname="Noto Sans CJK SC", fontsize=10];',
+        f"  rankdir={rankdir};",
+        "  nodesep=0.4; ranksep=0.6; splines=ortho; concentrate=true;",
+    ]
     for nid, n in g.nodes.items():
-        shape = ("diamond" if n.shape == "diamond" else
-                 "ellipse" if n.shape in ("round", "circ") else "box")
+        shape = "diamond" if n.shape == "diamond" else "ellipse" if n.shape in ("round", "circ") else "box"
         lines.append(f'  {nid} [label="{esc(n.label or nid)}", shape={shape}];')
     for cid, cl in g.clusters.items():
         lines.append(f'  subgraph cluster_{cid} {{ label="{esc(cl["label"])}"; style=dashed;')
@@ -99,15 +106,15 @@ def _mmd_to_dot(g):
     for e in g.edges:
         a, b, lab = e[0], e[1], e[2] if len(e) > 2 else ""
         dashed = (a, b) in g.dashed
-        attrs = [f'style={"dashed" if dashed else "solid"}']
+        attrs = [f"style={'dashed' if dashed else 'solid'}"]
         if lab:
             attrs.append(f'label="{esc(lab)}"')
         if (a, b) in g.bidir:
-            attrs.append('dir=both')
+            attrs.append("dir=both")
         if dashed:
             # 辅助/回授边不参与 rank 约束——否则目标节点被拖向源节点右侧，
             # 并行双路被拉歪（dinov2-10 fig2 实案：教师网络被指数滑动平均边拖到末端）
-            attrs.append('constraint=false')
+            attrs.append("constraint=false")
         lines.append(f"  {a} -> {b} [{', '.join(attrs)}];")
     lines.append("}")
     return "\n".join(lines)
@@ -133,16 +140,15 @@ def _render_via_dot(g):
     import shutil
     import subprocess
     import tempfile
+
     if not shutil.which("dot"):
         return None
     try:
-        with tempfile.NamedTemporaryFile("w", suffix=".dot", delete=False,
-                                         encoding="utf-8") as f:
+        with tempfile.NamedTemporaryFile("w", suffix=".dot", delete=False, encoding="utf-8") as f:
             f.write(_mmd_to_dot(g))
             dot_path = f.name
         png_path = dot_path + ".png"
-        r = subprocess.run(["dot", "-Tpng", "-Gdpi=150", dot_path, "-o", png_path],
-                           capture_output=True, timeout=30)
+        r = subprocess.run(["dot", "-Tpng", "-Gdpi=150", dot_path, "-o", png_path], capture_output=True, timeout=30)
         if r.returncode != 0 or not os.path.isfile(png_path):
             return None
         with open(png_path, "rb") as f:
@@ -233,6 +239,7 @@ def render_mmd(src, engine="auto"):
     # 同簇成员布局上视同连通——无边单元节点（ddpm fig5 存储器 7 程序单元实案）
     # 各成单点分量、各占一窗口会横排成细条；簇成员沿嵌套传递展开并入同分量
     _expanded: dict = {}
+
     def _members(cid, _depth=0):
         if cid in _expanded:
             return _expanded[cid]
@@ -243,6 +250,7 @@ def render_mmd(src, engine="auto"):
             out += _members(i, _depth + 1) if i in g.clusters else ([i] if i in g.nodes else [])
         _expanded[cid] = out
         return out
+
     for cid in g.clusters:
         ms = _members(cid)
         for i in ms[1:]:
@@ -311,7 +319,7 @@ def render_mmd(src, engine="auto"):
         band_span, cross = 0, 0
         for bi, band in enumerate(bands):
             acc_main, band_cross = 0, 0
-            band_lines = []      # [(行内节点, 行跨)]——带内居中用
+            band_lines = []  # [(行内节点, 行跨)]——带内居中用
             for r in band:
                 rnodes = [n for n in nodes if n.rank == r]
                 dim = max((n.w if horiz else n.h) for n in rnodes)
@@ -414,31 +422,30 @@ def render_mmd(src, engine="auto"):
     def routed_kind(a, b):
         """'back' 回边 / 'fwd' 前向跨层或跨带 / None 邻层直连。"""
         if (a, b) in g.back_edges:
-            return 'back'
+            return "back"
         na, nb = g.nodes[a], g.nodes[b]
         if nb.rank - na.rank > 1 or na._band != nb._band:
-            return 'fwd'
+            return "fwd"
         return None
 
     def lane_of(a, b, kind):
         """绕行边车道归属：('gap', (分量,带)) 带间通道 | ('in', 0) 窗口内侧边 | ('out', 0) 窗口外侧边。"""
         na = g.nodes[a]
         bi = na._band
-        if kind == 'back':
-            return ('gap', (na._comp, bi - 1)) if bi > 0 else ('in', 0)
-        return ('gap', (na._comp, bi)) if bi < na._comp_bands - 1 else ('out', 0)
+        if kind == "back":
+            return ("gap", (na._comp, bi - 1)) if bi > 0 else ("in", 0)
+        return ("gap", (na._comp, bi)) if bi < na._comp_bands - 1 else ("out", 0)
 
-    routed = {(a, b): (lab, kind, lane_of(a, b, kind))
-              for a, b, lab in g.edges if (kind := routed_kind(a, b))}
+    routed = {(a, b): (lab, kind, lane_of(a, b, kind)) for a, b, lab in g.edges if (kind := routed_kind(a, b))}
     # 分量内绕行车道计数：in/out 车道只走本分量窗口上下侧的分量间隙——
     # 画布级最边车道会纵穿其它分量窗口（resnet fig4 残差映射边绕全底实案）
     in_cnt = {ci: 0 for ci in range(len(comps))}
     out_cnt = {ci: 0 for ci in range(len(comps))}
     for (a, _b), (_, _, ln) in routed.items():
         ci = g.nodes[a]._comp
-        if ln[0] == 'in':
+        if ln[0] == "in":
             in_cnt[ci] += 1
-        elif ln[0] == 'out':
+        elif ln[0] == "out":
             out_cnt[ci] += 1
     in_space = {ci: (lane_pad + in_cnt[ci] * lane_w if in_cnt[ci] else 0.0) for ci in in_cnt}
     out_space = {ci: (lane_pad + out_cnt[ci] * lane_w if out_cnt[ci] else 0.0) for ci in out_cnt}
@@ -489,15 +496,14 @@ def render_mmd(src, engine="auto"):
                 s += max(0, ix) * max(0, iy)
             return s
 
-        cands = [(W - bw - pad, pad), (W - bw - pad, H - bh - pad),
-                 (pad, pad), (pad, H - bh - pad)]
-        cands = [(min(max(x, 0), max(0, W - bw)), min(max(y, 0), max(0, H - bh)))
-                 for x, y in cands]
+        cands = [(W - bw - pad, pad), (W - bw - pad, H - bh - pad), (pad, pad), (pad, H - bh - pad)]
+        cands = [(min(max(x, 0), max(0, W - bw)), min(max(y, 0), max(0, H - bh))) for x, y in cands]
         tx, ty = min(cands, key=lambda c: overlap(*c))
         dx, dy = tx - (bx0 - box_l), ty - (by0 - box_t)
         for n in mem:
             n.x += dx
             n.y += dy
+
     # circ 节点侧文本不占 n.w——图例簇框按有效右缘计，侧文本不再压出框外
     def _eff_right(n):
         r = n.x + n.w
@@ -509,26 +515,31 @@ def render_mmd(src, engine="auto"):
         mem = [g.nodes[i] for i in cl["members"] if i in g.nodes]
         if not mem:
             return None
-        return (min(n.x for n in mem) - 16 * SS,
-                min(n.y for n in mem) - 44 * SS,
-                max(_eff_right(n) for n in mem) + 16 * SS,
-                max(n.y + n.h for n in mem) + 16 * SS)
+        return (
+            min(n.x for n in mem) - 16 * SS,
+            min(n.y for n in mem) - 44 * SS,
+            max(_eff_right(n) for n in mem) + 16 * SS,
+            max(n.y + n.h for n in mem) + 16 * SS,
+        )
 
     def _cluster_boxes(_cid, cl):
         """按（分量, 带）分段出簇框——巨簇被劈带后每段独立成框，簇题只标首段。
         未劈簇成员同属一带 → 单框，与旧行为等价。成员按嵌套展开且跳过幽灵端点。"""
-        mem = [g.nodes[i] for i in _members(_cid)
-               if i in g.nodes and not getattr(g.nodes[i], "_ghost", False)]
+        mem = [g.nodes[i] for i in _members(_cid) if i in g.nodes and not getattr(g.nodes[i], "_ghost", False)]
         by_band: dict = {}
         for n in mem:
             by_band.setdefault((n._comp, n._band), []).append(n)
         boxes = []
         for key in sorted(by_band):
             m = by_band[key]
-            boxes.append((min(n.x for n in m) - 16 * SS,
-                          min(n.y for n in m) - (44 if not boxes else 16) * SS,
-                          max(_eff_right(n) for n in m) + 16 * SS,
-                          max(n.y + n.h for n in m) + 16 * SS))
+            boxes.append(
+                (
+                    min(n.x for n in m) - 16 * SS,
+                    min(n.y for n in m) - (44 if not boxes else 16) * SS,
+                    max(_eff_right(n) for n in m) + 16 * SS,
+                    max(n.y + n.h for n in m) + 16 * SS,
+                )
+            )
         return boxes
 
     # 边指 subgraph id（MEM -->|存储| PRG）：该 id 被落成幽灵节点框（ddpm fig5
@@ -575,8 +586,7 @@ def render_mmd(src, engine="auto"):
         e = ext.setdefault((n._comp, n._band), [1e18, -1e18])
         e[0] = min(e[0], lo_c)
         e[1] = max(e[1], hi_c)
-    gap_c = {k: (ext[k][1] + ext[(k[0], k[1] + 1)][0]) / 2
-             for k in ext if (k[0], k[1] + 1) in ext}
+    gap_c = {k: (ext[k][1] + ext[(k[0], k[1] + 1)][0]) / 2 for k in ext if (k[0], k[1] + 1) in ext}
     # in/out 车道按本分量窗口上下缘定（车道落在分量间隙内，不穿别家窗口）
     comp_lo, comp_hi = {}, {}
     for n in g.nodes.values():
@@ -585,17 +595,17 @@ def render_mmd(src, engine="auto"):
         comp_hi[n._comp] = max(comp_hi.get(n._comp, -1e18), hi_c)
     gap_cnt, gap_seen, lane_pos = {}, {}, {}
     for _, _, ln in routed.values():
-        if ln[0] == 'gap':
+        if ln[0] == "gap":
             gap_cnt[ln[1]] = gap_cnt.get(ln[1], 0) + 1
     li_in, li_out = {}, {}
     for (a, b), (_, _, ln) in routed.items():
         ci = g.nodes[a]._comp
-        if ln[0] == 'gap':
+        if ln[0] == "gap":
             gi = ln[1]
             idx = gap_seen.get(gi, 0)
             gap_seen[gi] = idx + 1
             lane_pos[(a, b)] = gap_c[gi] + (idx - (gap_cnt[gi] - 1) / 2) * lane_w
-        elif ln[0] == 'in':
+        elif ln[0] == "in":
             lane_pos[(a, b)] = comp_lo[ci] - lane_pad - li_in.get(ci, 0) * lane_w
             li_in[ci] = li_in.get(ci, 0) + 1
         else:
@@ -623,7 +633,7 @@ def render_mmd(src, engine="auto"):
         if not hit:
             continue
         ci = na._comp
-        routed[(a, b)] = (lab, 'fwd', ('out', 0))
+        routed[(a, b)] = (lab, "fwd", ("out", 0))
         lane_pos[(a, b)] = comp_hi[ci] + lane_pad + li_out.get(ci, 0) * lane_w
         li_out[ci] = li_out.get(ci, 0) + 1
         _lane_edge = comp_hi[ci] + lane_pad + (li_out[ci] - 1) * lane_w + lane_w + margin
@@ -643,8 +653,7 @@ def render_mmd(src, engine="auto"):
             pos = 0.0
             while pos < seg:
                 end = min(pos + dash, seg)
-                d.line([ax + ux * pos, ay + uy * pos, ax + ux * end, ay + uy * end],
-                       fill="black", width=2 * SS)
+                d.line([ax + ux * pos, ay + uy * pos, ax + ux * end, ay + uy * end], fill="black", width=2 * SS)
                 pos = end + gaplen
 
     # ---- 区框（虚线边界——分组记号非数据边，实线会被读成断头边）
@@ -659,11 +668,13 @@ def render_mmd(src, engine="auto"):
             tw = d.textlength(cl["label"], font=f_lab)
             th = 30 * SS
             tx, ty = x0 + 10 * SS, y0 + 8 * SS
-            while any(min(ty + th, t[3]) - max(ty, t[1]) > 0 and
-                      min(tx + tw, t[2]) - max(tx, t[0]) > 0 for t in _titles):
+            while any(
+                min(ty + th, t[3]) - max(ty, t[1]) > 0 and min(tx + tw, t[2]) - max(tx, t[0]) > 0 for t in _titles
+            ):
                 ty += th + 4 * SS
             _titles.append((tx, ty, tx + tw, ty + th))
             d.text((tx, ty), cl["label"], fill="black", font=f_lab)
+
     # ---- 边（框边中点直连 + 三角箭头）
     def port(n, toward):
         cx, cy = n.x + n.w / 2, n.y + n.h / 2
@@ -678,20 +689,22 @@ def render_mmd(src, engine="auto"):
 
     def arrow_tip(px, py, fx, fy):
         import math
+
         ang = math.atan2(py - fy, px - fx)
         l = 16 * SS
         for s in (-1, 1):
-            d.line([px, py,
-                    px - l * math.cos(ang + s * 0.42), py - l * math.sin(ang + s * 0.42)],
-                   fill="black", width=3 * SS)
+            d.line(
+                [px, py, px - l * math.cos(ang + s * 0.42), py - l * math.sin(ang + s * 0.42)],
+                fill="black",
+                width=3 * SS,
+            )
 
     def draw_label(lab, mx, my):
         tw = d.textlength(lab, font=f_lab)
         # 边标签钳回画布内——外车道上的标签中心靠边时文字不再裁出图外
         # （ddpm-r85 fig3「时间嵌入注入」右缘截断实案）
         mx = min(max(mx, tw / 2 + 6 * SS), W - tw / 2 - 6 * SS)
-        d.rectangle([mx - tw / 2 - 4 * SS, my - 14 * SS,
-                     mx + tw / 2 + 4 * SS, my + 14 * SS], fill="white")
+        d.rectangle([mx - tw / 2 - 4 * SS, my - 14 * SS, mx + tw / 2 + 4 * SS, my + 14 * SS], fill="white")
         d.text((mx, my), lab, fill="black", font=f_lab, anchor="mm")
 
     # 标签迟画：中点落上节点时先被盖住（fig5「反向转移核」首字压进 图像输出）——
@@ -719,8 +732,14 @@ def render_mmd(src, engine="auto"):
                 arrow_tip(pts[0][0], pts[0][1], pts[1][0], pts[1][1])
             if lab:
                 pending_labels.append(
-                    (lab, (pts[1][0] + pts[2][0]) / 2, (pts[1][1] + pts[2][1]) / 2,
-                     pts[2][0] - pts[1][0], pts[2][1] - pts[1][1]))
+                    (
+                        lab,
+                        (pts[1][0] + pts[2][0]) / 2,
+                        (pts[1][1] + pts[2][1]) / 2,
+                        pts[2][0] - pts[1][0],
+                        pts[2][1] - pts[1][1],
+                    )
+                )
             continue
         x0, y0 = port(na, nb)
         x1, y1 = port(nb, na)
@@ -732,45 +751,44 @@ def render_mmd(src, engine="auto"):
         if (a, b) in g.bidir:
             arrow_tip(x0, y0, x1, y1)
         if lab:
-            pending_labels.append(
-                (lab, (x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0))
+            pending_labels.append((lab, (x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0))
     # ---- 节点
     for n in g.nodes.values():
         if getattr(n, "_ghost", False):
             continue  # subgraph 幽灵端点：几何=簇框，本体不画
         if n.shape == "diamond":
             cx, cy = n.x + n.w / 2, n.y + n.h / 2
-            d.polygon([(cx, n.y), (n.x + n.w, cy), (cx, n.y + n.h), (n.x, cy)],
-                      fill="white", outline="black", width=3 * SS)
+            d.polygon(
+                [(cx, n.y), (n.x + n.w, cy), (cx, n.y + n.h), (n.x, cy)], fill="white", outline="black", width=3 * SS
+            )
         elif n.shape == "vstrip":
-            d.rectangle([n.x, n.y, n.x + n.w, n.y + n.h], fill="white",
-                        outline="black", width=3 * SS)
+            d.rectangle([n.x, n.y, n.x + n.w, n.y + n.h], fill="white", outline="black", width=3 * SS)
             cy = n.y + (n.h - len(n._vlines) * line_h) / 2 + line_h / 2
             for t in n._vlines:
-                d.text((n.x + n.w / 2, cy), t, fill="black",
-                       font=f_node, anchor="mm")
+                d.text((n.x + n.w / 2, cy), t, fill="black", font=f_node, anchor="mm")
                 cy += line_h
             continue
         elif n.shape == "circ":
             cy_mid = n.y + n.h / 2
-            d.ellipse([n.x, cy_mid - n._d / 2, n.x + n._d, cy_mid + n._d / 2],
-                      fill="white", outline="black", width=3 * SS)
-            d.text((n.x + n._d / 2, cy_mid), n._glyph, fill="black",
-                   font=f_node, anchor="mm")
+            d.ellipse(
+                [n.x, cy_mid - n._d / 2, n.x + n._d, cy_mid + n._d / 2], fill="white", outline="black", width=3 * SS
+            )
+            d.text((n.x + n._d / 2, cy_mid), n._glyph, fill="black", font=f_node, anchor="mm")
             if n._side:
                 tw = d.textlength(n._side, font=f_node)
-                sx = min(n.x + n._d + 10 * SS,
-                         max(n.x + n._d + 4 * SS, W - tw - 6 * SS))
-                d.text((sx, cy_mid), n._side, fill="black",
-                       font=f_node, anchor="lm")
+                sx = min(n.x + n._d + 10 * SS, max(n.x + n._d + 4 * SS, W - tw - 6 * SS))
+                d.text((sx, cy_mid), n._side, fill="black", font=f_node, anchor="lm")
             continue
         elif n.shape == "round":
-            d.rounded_rectangle([n.x, n.y, n.x + n.w, n.y + n.h],
-                                radius=min(n.h // 2, 18 * SS), fill="white",
-                                outline="black", width=3 * SS)
+            d.rounded_rectangle(
+                [n.x, n.y, n.x + n.w, n.y + n.h],
+                radius=min(n.h // 2, 18 * SS),
+                fill="white",
+                outline="black",
+                width=3 * SS,
+            )
         else:
-            d.rectangle([n.x, n.y, n.x + n.w, n.y + n.h], fill="white",
-                        outline="black", width=3 * SS)
+            d.rectangle([n.x, n.y, n.x + n.w, n.y + n.h], fill="white", outline="black", width=3 * SS)
         cy = n.y + (n.h - len(n._lines) * line_h) / 2 + line_h / 2
         for t in n._lines:
             d.text((n.x + n.w / 2, cy), t, fill="black", font=f_node, anchor="mm")
@@ -783,16 +801,14 @@ def render_mmd(src, engine="auto"):
         tw = d.textlength(lab, font=f_lab)
 
         def _lab_rect(xx, yy, tw=tw):
-            return (xx - tw / 2 - 4 * SS, yy - 14 * SS,
-                    xx + tw / 2 + 4 * SS, yy + 14 * SS)
+            return (xx - tw / 2 - 4 * SS, yy - 14 * SS, xx + tw / 2 + 4 * SS, yy + 14 * SS)
 
         def _lab_hit(xx, yy, tw=tw, nodes=g.nodes, placed=placed_rects):
             x0, y0, x1, y1 = _lab_rect(xx, yy, tw)
             for n in nodes.values():
                 if getattr(n, "_ghost", False):
                     continue  # 区框幽灵端点不作节点障碍——边界标签照常落位
-                if min(x1, n.x + n.w) - max(x0, n.x) > 0 and \
-                        min(y1, n.y + n.h) - max(y0, n.y) > 0:
+                if min(x1, n.x + n.w) - max(x0, n.x) > 0 and min(y1, n.y + n.h) - max(y0, n.y) > 0:
                     return True
             for px0, py0, px1, py1 in placed:
                 if min(x1, px1) - max(x0, px0) > 0 and min(y1, py1) - max(y0, py0) > 0:
@@ -801,21 +817,28 @@ def render_mmd(src, engine="auto"):
 
         if _lab_hit(lx, ly):
             _n = (edx * edx + edy * edy) ** 0.5 or 1.0
-            ux, uy = edx / _n, edy / _n   # 边单位向量
-            nx_, ny_ = -uy, ux            # 法向
-            cands = [(lx + nx_ * 20 * SS, ly + ny_ * 20 * SS),
-                     (lx - nx_ * 20 * SS, ly - ny_ * 20 * SS),
-                     (lx + ux * 24 * SS, ly + uy * 24 * SS),
-                     (lx - ux * 24 * SS, ly - uy * 24 * SS)]
+            ux, uy = edx / _n, edy / _n  # 边单位向量
+            nx_, ny_ = -uy, ux  # 法向
+            cands = [
+                (lx + nx_ * 20 * SS, ly + ny_ * 20 * SS),
+                (lx - nx_ * 20 * SS, ly - ny_ * 20 * SS),
+                (lx + ux * 24 * SS, ly + uy * 24 * SS),
+                (lx - ux * 24 * SS, ly - uy * 24 * SS),
+            ]
             # 标签比节点-区框缝隙还宽时轴向/法向都让不开（fig5「执行」压
             # 「处理器 111」实案）——环形螺旋扫描：半径递增 × 8 向取首个空位
             for r in (40, 60, 90, 120, 160):
                 rr = r * SS
-                cands += [(lx + rr, ly), (lx - rr, ly), (lx, ly + rr),
-                          (lx, ly - rr), (lx + rr * 0.707, ly + rr * 0.707),
-                          (lx - rr * 0.707, ly + rr * 0.707),
-                          (lx + rr * 0.707, ly - rr * 0.707),
-                          (lx - rr * 0.707, ly - rr * 0.707)]
+                cands += [
+                    (lx + rr, ly),
+                    (lx - rr, ly),
+                    (lx, ly + rr),
+                    (lx, ly - rr),
+                    (lx + rr * 0.707, ly + rr * 0.707),
+                    (lx - rr * 0.707, ly + rr * 0.707),
+                    (lx + rr * 0.707, ly - rr * 0.707),
+                    (lx - rr * 0.707, ly - rr * 0.707),
+                ]
             for cx, cy in cands:
                 if not _lab_hit(cx, cy):
                     lx, ly = cx, cy
@@ -825,7 +848,7 @@ def render_mmd(src, engine="auto"):
         placed_rects.append(_lab_rect(lx, ly, tw))
         draw_label(lab, lx, ly)
     out = img.resize((max(1, img.width * 2 // SS), max(1, img.height * 2 // SS)), Image.LANCZOS)
-    out.graph = g      # 布局结果外露给测试/诊断——坐标为 SS 超采样系（渲染前）
+    out.graph = g  # 布局结果外露给测试/诊断——坐标为 SS 超采样系（渲染前）
     return out
 
 
@@ -836,6 +859,7 @@ RENDER_VERSION = "16"
 def render_to(src, path):
     """渲染并原子写 PNG；返回 (宽, 高)。"""
     from PIL.PngImagePlugin import PngInfo
+
     img = render_mmd(src)
     meta = PngInfo()
     meta.add_text("mmd_render_version", RENDER_VERSION)

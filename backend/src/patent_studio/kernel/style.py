@@ -4,19 +4,20 @@
 DEFAULT_STYLE 的每一项默认值即 builder 原硬编码值；不传 style 时输出与原实现逐字节一致。
 style 以嵌套 dict 表达，允许部分覆盖（merge_style 深合并）。
 """
+
 import copy
 
 PART_KEYS = ("abstract", "abstract_figure", "claims", "description", "figures")
 
 DEFAULT_STYLE = {
     "fonts": {
-        "body_cjk": "宋体",            # 正文中文字体
-        "heading_cjk": "黑体",         # 标题/页眉/页脚/段号中文字体
-        "ascii": "Times New Roman",    # 西文默认字体
-        "label_ascii": "SimHei",       # 页眉/页脚/段号的西文字体
-        "mono": "Courier New",         # 伪代码等宽字体
+        "body_cjk": "宋体",  # 正文中文字体
+        "heading_cjk": "黑体",  # 标题/页眉/页脚/段号中文字体
+        "ascii": "Times New Roman",  # 西文默认字体
+        "label_ascii": "SimHei",  # 页眉/页脚/段号的西文字体
+        "mono": "Courier New",  # 伪代码等宽字体
     },
-    "sizes": {                         # 单位 pt
+    "sizes": {  # 单位 pt
         "body": 12,
         "title": 14,
         "section_heading": 12,
@@ -65,9 +66,9 @@ DEFAULT_STYLE = {
             "description": "说明书",
             "figures": "说明书附图",
         },
-        "spacing_short": 130,          # ≤3 字时的字间距（twips/20）
+        "spacing_short": 130,  # ≤3 字时的字间距（twips/20）
         "spacing_long": 90,
-        "rule_sz": 8,                  # 页眉下横线粗细（1/8 pt）
+        "rule_sz": 8,  # 页眉下横线粗细（1/8 pt）
         "rule_space": 6,
     },
     "footer": {
@@ -85,8 +86,8 @@ DEFAULT_STYLE = {
     "table": {
         "defaults": {"三线": False, "重复表头": False, "段号居左": False},
         "cell_space_after": 2,
-        "rule_outer_sz": 12,           # 三线表顶/底线
-        "rule_head_sz": 6,             # 三线表表头下线
+        "rule_outer_sz": 12,  # 三线表顶/底线
+        "rule_head_sz": 6,  # 三线表表头下线
     },
     "equation": {
         "side_cm": 2.2,

@@ -4,6 +4,7 @@
 材料原件、图源、构建产物、Release 冻结件都存这里；数据库只记 ObjectRef。
 同一内容只存一份，重复 put 幂等。
 """
+
 import hashlib
 from dataclasses import dataclass
 from typing import Protocol
@@ -39,8 +40,10 @@ def open_store(url: str, *, s3_endpoint_url: str | None = None, s3_region: str |
     u = urlsplit(url)
     if u.scheme == "file":
         from patent_studio.infra.storage.fs import FileObjectStore
+
         return FileObjectStore(u.path)
     if u.scheme == "s3":
         from patent_studio.infra.storage.s3 import S3ObjectStore
+
         return S3ObjectStore(u.netloc, u.path.strip("/"), endpoint_url=s3_endpoint_url, region=s3_region)
     raise ValueError(f"不支持的对象存储地址：{url!r}")

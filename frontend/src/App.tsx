@@ -14,6 +14,7 @@ import { AdminPage } from '@/components/admin/AdminPage'
 import { DeadlinesPage } from '@/components/deadlines/DeadlinesPage'
 import { FigLibraryPage } from '@/components/figlib/FigLibraryPage'
 import { InboxPage } from '@/components/notify/InboxPage'
+import { WorkbenchPage } from '@/components/workbench/WorkbenchPage'
 import { ClientReviewPage } from '@/components/client/ClientReviewPage'
 import { useOutlineModel, useOutlineSync } from '@/components/outline/useOutline'
 import { useIsDesktop, useMediaQuery } from '@/hooks/useMisc'
@@ -36,6 +37,8 @@ const MobileShell = lazy(() => import('@/components/mobile/MobileShell').then((m
 const BoardPage = lazy(() => import('@/components/figure-book/BoardPage').then((m) => ({ default: m.BoardPage })))
 /** W19 批4 查新记录卡页：lazy——只在 #/p/<pid>/novelty 路由才下载 */
 const NoveltyPage = lazy(() => import('@/components/novelty/NoveltyPage').then((m) => ({ default: m.NoveltyPage })))
+/** B12 平台文稿编辑器（旧三书 ProseMirror 编辑器接 /api/v1）：lazy——只在 #/edit/<case>/<doc> 下载 */
+const DocEditorPage = lazy(() => import('@/components/workbench/DocEditorPage').then((m) => ({ default: m.DocEditorPage })))
 
 function WorkbenchFallback() {
   return (
@@ -155,6 +158,12 @@ export default function App() {
           <DeadlinesPage />
         ) : route.kind === 'inbox' ? (
           <InboxPage />
+        ) : route.kind === 'workbench' ? (
+          <WorkbenchPage />
+        ) : route.kind === 'edit' ? (
+          <Suspense fallback={<WorkbenchFallback />}>
+            <DocEditorPage caseId={route.caseId} docId={route.docId} />
+          </Suspense>
         ) : route.kind === 'figlib' ? (
           <FigLibraryPage />
         ) : (

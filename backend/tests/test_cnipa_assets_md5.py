@@ -3,6 +3,7 @@
 patent_studio/kernel/cnipa_dtd 下的 DTD / XSL 逐字节与 tests/golden/cnipa_assets_md5.json 一致；
 tagged PDF 开关（lo.docx_to_pdf tagged=…）绝不能改变 CNIPA XML 走的 docx_to_pdf → pdftoppm 资产栅格路径。
 """
+
 import hashlib
 import json
 import os

@@ -16,8 +16,8 @@ import { SAVE_IDLE_MS, SAVE_MAX_HOLDS, createSaveScheduler } from '../useBookSav
 import { bookDomParser, bookText, focusBlockStart } from '../bookView'
 import { EquationNodeView } from '../EquationNodeView'
 import { tablePlugins } from '../../table'
-import astMethod from '../../../../../../backend/tests/golden/ast_method.json'
-import mdMethod from '../../../../../../examples/method/content.md?raw'
+import astMethod from '../../../../../../backend/tests/fixtures/ast_rich.json'
+import mdMethod from '../../../../../../backend/tests/fixtures/rich/content.md?raw'
 
 const ast = astMethod as unknown as Ast
 const md = mdMethod
@@ -229,6 +229,8 @@ describe('keymap：Enter 分段', () => {
         b.lines.end += 1
       }
     }
+    // 服务端重解析也会同步平移 figures[].caption_line（附图题注段的行号命中判定）
+    for (const f of next.figures) if (f.caption_line !== null && f.caption_line > t.lines.end - 1) f.caption_line += 1
     const split = splitBooks(md)
     split.books.description = { ...split.books.description!, text: local }
     const nextDoc = toBookDoc(next, 'description', assembleBooks(split))
@@ -486,13 +488,19 @@ describe('mergeRemoteDoc：本地有未落盘改动时三方合并（协同双 t
     const i = firstParaIndex(s0)
     const split = run(bookEnter, cursorIn(s0, i, 3)).state
     expect(split.doc.childCount).toBe(s0.doc.childCount + 1)
-    const next = remote(s0, i + 4, '远端')
+    // 远端改动目标取 i 之后的首个段落块（语料里 i+4 可能落在章节/小节标题上）
+    let ri = -1
+    for (let k = i + 1; k < s0.doc.childCount; k++) {
+      const n = s0.doc.child(k)
+      if (n.type.name === 'ps_para' && n.attrs.kind === 'paragraph') { ri = k; break }
+    }
+    const next = remote(s0, ri, '远端')
     const r = mergeRemoteDoc(split, next, s0.doc)
     expect(r).not.toBe('conflict')
     if (r === 'conflict' || r === null) return
     const s2 = split.apply(r.tr)
     expect(s2.doc.childCount).toBe(s0.doc.childCount + 1)
-    expect(s2.doc.child(i + 5).textContent.endsWith('远端')).toBe(true)
+    expect(s2.doc.child(ri + 1).textContent.endsWith('远端')).toBe(true)
     expect(s2.doc.child(i).textContent).toBe(s0.doc.child(i).textContent.slice(0, 3))
   })
 
