@@ -1,0 +1,2 @@
+{"scenario": "s3", "step": "complete", "pid": "method", "text": "对用户指纹进行图像采集，对指纹图像进行二值化处理，得到二值化指纹图像。"}
+{"scenario": "s3", "step": "complete", "pid": "system", "text": "当接收到对至少一个可视化控件的操作时，根据操作的每一个可视化控件对应的对象/实例以及映射关系，确定节点集合。"}

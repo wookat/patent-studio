@@ -88,6 +88,36 @@ def create_app() -> FastAPI:
     async def health():
         return {"ok": True}
 
+    # B16：旧前端全量恢复——旧 FastAPI 应用（aa86a66 的 backend/app/）挂载到 "/"，
+    # 旧 /api/* 面（projects/notify/admin/deliver/deadlines…）与前端静态页由它兜底；
+    # 本应用先注册的新面（/api/v1/*、/api/health、v1 collab WS）优先命中。
+    # /api/auth/* 与 /api/users/me 两套都实现：旧路由先注册，以旧面为准——
+    # 两侧 cookie 同名（studio_session）同 secret（PATENT_STUDIO_SECRET），签发的 JWT 互认。
+    try:
+        import sys
+
+        _backend_dir = str(Path(__file__).resolve().parents[2])  # backend/（app 包所在）
+        if _backend_dir not in sys.path:
+            sys.path.insert(0, _backend_dir)
+        from app import config as legacy_config
+        from app.main import app as legacy_app
+
+        if legacy_config.AUTH_ON:
+            # AUTH=on 时旧面为准：/api/auth/* 与 /api/users/me 走 sqlite 旧栈。
+            # off 模式不 include——旧桩路由（501/204）会遮蔽新面的动态认证开关。
+            from app.auth.router import router as legacy_auth_router
+            from app.auth.users_me import router as legacy_users_me_router
+
+            app.include_router(legacy_auth_router)
+            app.include_router(legacy_users_me_router)
+        legacy_available = True
+    except Exception:  # pragma: no cover - 旧树缺失时保持新面可用
+        import logging
+
+        logging.getLogger("patent_studio.asgi").warning("legacy backend mount failed", exc_info=True)
+        legacy_app = None
+        legacy_available = False
+
     from patent_studio.api import router as platform_router
     from patent_studio.api.auth_routes import router as auth_router
 
@@ -99,6 +129,9 @@ def create_app() -> FastAPI:
     @app.websocket("/api/v1/working-copies/{working_copy_id}/collab")
     async def _collab(websocket: WebSocket):
         await collab_ws(websocket)
+
+    if legacy_available:
+        app.mount("/", legacy_app, name="legacy")
 
     if os.path.isdir(STATIC_DIR):
         app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

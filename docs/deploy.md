@@ -23,6 +23,8 @@ Docker 一体化（开发/演示用）：根目录 `Dockerfile` 多阶段构建�
 |---|---|---|
 | `PATENT_STUDIO_DATABASE_URL` | —（无默认） | PostgreSQL DSN，如 `postgresql://patent:patent@postgres:5432/patent_studio`。async 侧自动适配驱动。未配置时 API 能起但所有持久化路由报 5xx |
 | `PATENT_STUDIO_STORAGE_URL` | — | 对象存储根：`file:///abs/dir`（本地）或 `s3://bucket[/prefix]`。所有正文/附图/构建产物字节按 `sha256/xx/yy/<digest>` 内容寻址写入 |
+| `PATENT_STUDIO_LEGACY_DATABASE_URL` | `<dirname(PROJECTS_DIR)>/studio.db` | **B16 旧面 SQLite**：`sqlite:////abs/path` 或裸路径。旧 `/api/*` 面（projects/notify/deadlines/auth 等）的用户、ACL、通知、期限台账都在这里，与平台 PG 完全隔离。部署 `/data/studio.db` |
+| `PATENT_PROJECTS_DIR` | `<repo>/examples` | 旧面案件目录（content.md/figs/studio.json 文件真源） |
 
 ### 认证
 
@@ -77,6 +79,8 @@ Yjs 协同走 WebSocket `GET /api/v1/working-copies/{id}/collab`，无额外配�
 ## 三、认证 / OIDC / OAuth 现状
 
 **当前实现（可用）**：本机账号体系——邮箱+密码注册登录，cookie（`studio_session`，HttpOnly+SameSite=Lax）承载 JWT，fastapi-users 栈；改密后旧 token 即时失效（`password_changed_at` 时闸）；首个注册用户自动成为 superuser。代码：`api/auth_routes.py` + `infra/auth.py`。
+
+**B16 双栈共存**：旧 `backend/app/` 应用整体挂载在 `/`（`asgi.py`），旧 `/api/*`（projects/notify/deadlines/admin/deliver 等）全部可用；`/api/v1/*`、`/api/health` 先注册优先命中。`PATENT_STUDIO_AUTH=on` 时 `/api/auth/*` 与 `/api/users/me` 以旧面为准（注册/登录走旧 sqlite 栈）；off 时走新面 501/204。两侧 cookie 同名同 secret——JWT 签名互认，但**各自在各自的库查用户**：经旧面注册的账号要在 `/api/v1` 被认出，须同名存在于 PG users 表（反之亦然）；cookie 本身可共享。旧面 sqlite 位置用 `PATENT_STUDIO_LEGACY_DATABASE_URL` 指定。
 
 **Agent 通道（可用）**：`agt_` 前缀 bearer token，`domain/agents.py:issue_agent_token` 颁发（明文只在颁发时返回一次，库中只存 sha256），`mcp/agent_server.py:MCPQueryService` 做 bearer 认证 + token scope 收窄，能力授权/幂等/审批由 `capabilities/registry.py` fail-closed 强制。
 

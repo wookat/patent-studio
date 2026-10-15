@@ -1,4 +1,4 @@
-import { readHashShareToken, takeShareToken } from '@/lib/hash'
+import { goDashboard, readHashShareToken, takeShareToken } from '@/lib/hash'
 import { useStudio } from '@/store'
 
 export const PASSWORD_MIN = 8
@@ -17,8 +17,10 @@ export function authErrorText(raw: string): string {
   return AUTH_ERROR_TEXT[raw] ?? raw
 }
 
-/** 登录成功后的去向：分享链接 → 留在 / 恢复 #/share/<token>（ShareAccept 接手）；否则落新工作台 #/workbench（旧案卷深链已退役，returnPid 仅保留签名） */
-export async function enterWorkspace(_returnPid: string | null): Promise<void> {
+/** 登录成功后的去向：分享链接 → 留在 / 恢复 #/share/<token>（ShareAccept 接手）；来处是可见案卷（深链接）→ 回该案；否则落地面板 #/（13 §5） */
+export async function enterWorkspace(returnPid: string | null): Promise<void> {
+  const s = useStudio.getState()
+  await s.loadProjects()
   if (readHashShareToken()) return
   // 领取页→登录途中 share hash 被 #/login 覆盖：token 暂存过就恢复路由，交给 ShareAccept 继续领取（R14-01）
   const stashed = takeShareToken()
@@ -26,7 +28,9 @@ export async function enterWorkspace(_returnPid: string | null): Promise<void> {
     window.location.hash = `/share/${encodeURIComponent(stashed)}`
     return
   }
-  window.location.hash = '/workbench'
+  const projects = useStudio.getState().projects
+  if (returnPid && projects.some((p) => p.id === returnPid)) await useStudio.getState().openProject(returnPid)
+  else goDashboard()
 }
 
 /** 登出：先拆掉全部协同房间（ws / 光标 / 头像），再清工作区状态并结束会话；两处登出入口（用户菜单 / 登录页「换账号」）共用 */

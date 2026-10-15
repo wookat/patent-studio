@@ -1,0 +1,2 @@
+{"scenario": "s4", "step": "select", "pid": "method", "text": {"groups": [{"primary": "夹持机构", "aliases": ["进给轴"]}]}}
+{"scenario": "s4", "step": "select", "pid": "system", "text": {"groups": [{"primary": "夹持机构", "aliases": ["进给轴"]}]}}
