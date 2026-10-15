@@ -21,6 +21,8 @@ export const workbenchKeys = {
   memberships: (orgId: string) => [...workbenchKeys.all, 'memberships', orgId] as const,
   approvals: () => [...workbenchKeys.all, 'approvals'] as const,
   notifications: () => [...workbenchKeys.all, 'notifications'] as const,
+  materials: (id: string) => [...workbenchKeys.case(id), 'materials'] as const,
+  facts: (id: string) => [...workbenchKeys.case(id), 'facts'] as const,
 }
 
 export function useWorkbenchQueries(caseId: string | null) {
@@ -149,11 +151,20 @@ export function useWorkbenchMutations() {
       workbenchApi.addParticipant(caseId, principalId, role),
     onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: workbenchKeys.participants(variables.caseId) }),
   })
+  const confirmFact = useMutation({
+    mutationFn: ({ factId }: { factId: string; caseId: string }) => workbenchApi.confirmFact(factId),
+    onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: workbenchKeys.facts(variables.caseId) }),
+  })
+  const rejectFact = useMutation({
+    mutationFn: ({ factId, reason }: { factId: string; caseId: string; reason: string | null }) =>
+      workbenchApi.rejectFact(factId, reason),
+    onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: workbenchKeys.facts(variables.caseId) }),
+  })
   const invite = useMutation({
     mutationFn: ({ organizationId, inviteePrincipalId, role, caseId, expiresAt }:
       { organizationId: string; inviteePrincipalId: string; role: InvitationRole; caseId: string | null; expiresAt: string }) =>
       workbenchApi.invite(organizationId, inviteePrincipalId, role, caseId, expiresAt),
     onSuccess: (_data, variables) => client.invalidateQueries({ queryKey: workbenchKeys.memberships(variables.organizationId) }),
   })
-  return { decideApproval, setWorkItemStatus, decideProposal, markNotificationRead, createDocument, createRelease, sealRelease, addReleaseItem, buildRelease, createFigure, uploadFigureImage, setWorkItemDeadline, addParticipant, invite }
+  return { decideApproval, setWorkItemStatus, decideProposal, markNotificationRead, createDocument, createRelease, sealRelease, addReleaseItem, buildRelease, createFigure, uploadFigureImage, setWorkItemDeadline, addParticipant, invite, confirmFact, rejectFact }
 }

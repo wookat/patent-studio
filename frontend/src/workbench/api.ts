@@ -1,7 +1,7 @@
 import { handle, netFetch, req } from '@/lib/api/net'
 import type { Ast } from '@/types/ast'
 import type { PreflightReport } from '@/types/preflight'
-import type { Approval, Book, CaseStatus, Document, Figure, Invitation, InvitationRole, Membership, Notification, Participant, ParticipantRole, PlatformCase, Principal, Proposal, Ref, Release, ReleaseItem, Revision, WorkItem, WorkItemStatus, WorkingCopy } from './types'
+import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, Notification, Participant, ParticipantRole, PlatformCase, Principal, Proposal, Ref, Release, ReleaseItem, Revision, WorkItem, WorkItemStatus, WorkingCopy } from './types'
 
 const V1 = '/api/v1'
 
@@ -158,6 +158,14 @@ export const workbenchApi = {
       method: 'PUT',
       body: JSON.stringify({ expected_version: expectedVersion, content_ref: contentRef }),
     }),
+  /** B17 M4：案件资料（B10）——上传件/链接材料，事实确认的真源。 */
+  materials: (caseId: string, signal?: AbortSignal) => req<Material[]>(`${V1}/cases/${caseId}/materials`, { signal }),
+  /** 资料原文下载地址：cookie 会话鉴权，<a> 直连。 */
+  materialContentUrl: (materialId: string) => `${V1}/materials/${materialId}/content`,
+  facts: (caseId: string, signal?: AbortSignal) => req<Fact[]>(`${V1}/cases/${caseId}/facts`, { signal }),
+  confirmFact: (factId: string) => write<Fact>(`${V1}/facts/${factId}/confirm`),
+  rejectFact: (factId: string, reason: string | null) =>
+    write<Fact>(`${V1}/facts/${factId}/reject`, { body: JSON.stringify({ reason }) }),
   statusLabel: (status: CaseStatus | string) => ({
     intake: '接案', drafting: '撰写', review: '内审', client_review: '客户确认', final: '定稿', filed: '已递交',
     oa: '审查意见', granted: '授权', rejected: '驳回', closed: '结案',

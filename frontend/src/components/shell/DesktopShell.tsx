@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils'
 import '@/components/notify/slots'
 import '@/components/timeline/slots'
 import '@/components/ai/slots'
+import '@/components/platform/slots'
 
 /**
  * 桌面壳（05 S3 · C Pro Dense）：

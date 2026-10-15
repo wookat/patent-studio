@@ -29,3 +29,27 @@ export type Operation = S['OperationOut']
 // 服务端 status 是开放式 string；UI 仍按已知集合收窄做筛选/标色。
 export type CaseStatus = 'intake' | 'drafting' | 'review' | 'client_review' | 'final' | 'filed' | 'oa' | 'granted' | 'rejected' | 'closed'
 export type WorkItemStatus = 'open' | 'in_progress' | 'blocked' | 'in_review' | 'done' | 'canceled'
+
+/** B17 M4：openapi.gen 冻结早于 B10（materials/facts）——与 FigureRevision/Artifact 同法手写对齐 schemas。 */
+export interface Material {
+  id: string
+  case_id: string
+  kind: string
+  title: string
+  source_url: string | null
+  content_ref: Ref | null
+  status: string
+  created_at: string
+}
+export interface Fact {
+  id: string
+  case_id: string
+  material_id: string | null
+  anchor_id: string | null
+  statement: string
+  status: string
+  rejection_reason: string | null
+  decided_by_principal_id: string | null
+  decided_at: string | null
+  created_at: string
+}

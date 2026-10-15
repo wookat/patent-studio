@@ -27,8 +27,8 @@ export type Density = 'compact' | 'comfortable'
  * console · problems · terms · figures · search（shell-workbench）/ deadlines · notify（dashboard 在工作台内的入口）。
  * 业务内容由 shell-workbench 的 CompanionHost 按 id 路由到各单元组件；prep 只提供空面板骨架。
  */
-export type CompanionId = 'ai' | 'review' | 'history' | 'console' | 'problems' | 'terms' | 'figures' | 'search' | 'deadlines' | 'notify' | 'lifecycle'
-export const COMPANION_IDS: readonly CompanionId[] = ['ai', 'review', 'history', 'console', 'problems', 'terms', 'figures', 'search', 'deadlines', 'notify', 'lifecycle']
+export type CompanionId = 'ai' | 'review' | 'history' | 'console' | 'problems' | 'terms' | 'figures' | 'search' | 'deadlines' | 'notify' | 'lifecycle' | 'proposals' | 'materials'
+export const COMPANION_IDS: readonly CompanionId[] = ['ai', 'review', 'history', 'console', 'problems', 'terms', 'figures', 'search', 'deadlines', 'notify', 'lifecycle', 'proposals', 'materials']
 export const isCompanionId = (v: unknown): v is CompanionId => typeof v === 'string' && (COMPANION_IDS as readonly string[]).includes(v)
 export { COMPANION_WIDTH_DEFAULT, COMPANION_WIDTH_MIN, COMPANION_WIDTH_MAX, clampCompanionWidth }
 /** 预览缩放模式：适宽 / 适页 / null = 按 ui.zoom 百分比 */
