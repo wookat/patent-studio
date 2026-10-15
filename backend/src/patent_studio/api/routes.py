@@ -706,6 +706,17 @@ def create_run(case_id: uuid.UUID, body: s.RunIn, ctx: Ctx, key: Key):
     return _scoped(ctx, case, key, "run.create", case_id, body, s.RunOut, action)
 
 
+@router.get("/cases/{case_id}/runs", response_model=list[s.RunOut])
+def list_runs(case_id: uuid.UUID, ctx: Ctx):
+    """案件运行列表（B17 M4 补口：runs 伴随栏数据源；读权限与 case_access 一致）。"""
+    case_access(ctx, case_id)
+    return list(
+        ctx.session.scalars(
+            select(run_domain.Run).where(run_domain.Run.case_id == case_id).order_by(run_domain.Run.created_at.desc())
+        ).all()
+    )
+
+
 @router.get("/runs/{run_id}", response_model=s.RunOut)
 def get_run(run_id: str, ctx: Ctx):
     run = run_domain._run_for(ctx.session, run_id, ctx.principal.id)
