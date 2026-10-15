@@ -1,10 +1,10 @@
-import { FileStack, GitPullRequest } from 'lucide-react'
+import { Activity, FileStack, GitPullRequest } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { registerCompanionBody, registerRailItem } from '@/lib/slots'
 import { RAIL_ACTIVE, RAIL_BTN } from '@/components/shell/Rail'
 import { cn } from '@/lib/utils'
 import { useStudio, type CompanionId } from '@/store'
-import { MaterialsCompanionBody, ProposalsCompanionBody } from './PlatformCompanion'
+import { MaterialsCompanionBody, ProposalsCompanionBody, RunsCompanionBody } from './PlatformCompanion'
 
 /**
  * B17 M4：platform 单元槽位——伴随栏正文（proposals / materials）+ Rail 入口。
@@ -41,5 +41,7 @@ function PlatformRailButton({ id, label, icon, testId }: { id: CompanionId; labe
 
 registerCompanionBody('proposals', ProposalsCompanionBody)
 registerCompanionBody('materials', MaterialsCompanionBody)
+registerCompanionBody('runs', RunsCompanionBody)
 registerRailItem({ id: 'platform-proposals', render: () => <PlatformRailButton id="proposals" label="提案" icon={<GitPullRequest aria-hidden />} testId="rail-proposals" /> }, 20)
 registerRailItem({ id: 'platform-materials', render: () => <PlatformRailButton id="materials" label="资料" icon={<FileStack aria-hidden />} testId="rail-materials" /> }, 21)
+registerRailItem({ id: 'platform-runs', render: () => <PlatformRailButton id="runs" label="运行" icon={<Activity aria-hidden />} testId="rail-runs" /> }, 22)

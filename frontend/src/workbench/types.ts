@@ -25,6 +25,8 @@ export type Invitation = S['InvitationOut']
 export type InvitationRole = S['InvitationIn']['role']
 export type Principal = S['PrincipalOut']
 export type Operation = S['OperationOut']
+export type Run = S['RunOut']
+export type RunEvent = S['RunEventOut']
 
 // 服务端 status 是开放式 string；UI 仍按已知集合收窄做筛选/标色。
 export type CaseStatus = 'intake' | 'drafting' | 'review' | 'client_review' | 'final' | 'filed' | 'oa' | 'granted' | 'rejected' | 'closed'

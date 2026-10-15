@@ -1,4 +1,4 @@
-import { Bell, Bot, Bug, CalendarClock, Clock, FileStack, GitPullRequest, Image, MessageSquareText, Milestone, Search, SpellCheck2, TerminalSquare } from 'lucide-react'
+import { Activity, Bell, Bot, Bug, CalendarClock, Clock, FileStack, GitPullRequest, Image, MessageSquareText, Milestone, Search, SpellCheck2, TerminalSquare } from 'lucide-react'
 import type { ReactNode } from 'react'
 import type { CompanionId } from '@/store'
 
@@ -18,4 +18,5 @@ export const COMPANION_META: Record<CompanionId, { title: string; icon: ReactNod
   // B17 M4：平台案件面板（platform 单元，registerCompanionBody 挂载；纯旧案显示未迁移空态）
   proposals: { title: '提案', icon: <GitPullRequest />, unit: 'platform' },
   materials: { title: '资料事实', icon: <FileStack />, unit: 'platform' },
+  runs: { title: '运行', icon: <Activity />, unit: 'platform' },
 }

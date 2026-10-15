@@ -149,3 +149,62 @@ function MaterialsFacts({ caseItem }: { caseItem: PlatformCase }) {
     </div>
   )
 }
+
+/** 运行伴随栏：本案 Agent/协作运行列表（B17 后端补口 GET /cases/{id}/runs），点行展开事件流。 */
+export function RunsCompanionBody() {
+  return (
+    <PlatformCompanionScope>
+      {(c) => <RunsList caseItem={c} />}
+    </PlatformCompanionScope>
+  )
+}
+
+const RUN_TONE = { running: 'info', pending: 'warn', succeeded: 'ok', failed: 'danger', canceled: 'neutral' } as const
+
+function RunsList({ caseItem }: { caseItem: PlatformCase }) {
+  const runs = useQuery({ queryKey: workbenchKeys.runs(caseItem.id), queryFn: ({ signal }) => workbenchApi.runs(caseItem.id, signal) })
+  const [open, setOpen] = useState<string | null>(null)
+  return (
+    <div className="h-full min-h-0 overflow-auto p-3" data-testid="companion-runs-body">
+      {runs.isLoading ? (
+        <p className="text-sm text-fg-muted">加载运行…</p>
+      ) : runs.isError ? (
+        <p className="text-sm text-danger-fg" role="alert">运行列表加载失败</p>
+      ) : runs.data?.length ? (
+        <ul className="grid gap-2">
+          {runs.data.map((r) => (
+            <li key={r.id} className="rounded-md border border-border bg-panel" data-testid={`run-${r.id}`}>
+              <button type="button" className="flex w-full items-center justify-between gap-2 p-2 text-left text-sm" onClick={() => setOpen(open === r.id ? null : r.id)} aria-expanded={open === r.id}>
+                <span className="min-w-0">
+                  <span className="font-medium text-fg-strong">{r.run_type}</span>
+                  <span className="ml-2 font-mono text-xs text-fg-muted">{r.run_id}</span>
+                </span>
+                <Badge tone={RUN_TONE[r.status as keyof typeof RUN_TONE] ?? 'neutral'}>{r.status}</Badge>
+              </button>
+              {open === r.id && <RunEvents runId={r.run_id} />}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-fg-muted" data-testid="runs-empty">本案暂无运行记录</p>
+      )}
+    </div>
+  )
+}
+
+function RunEvents({ runId }: { runId: string }) {
+  const events = useQuery({ queryKey: workbenchKeys.runEvents(runId), queryFn: ({ signal }) => workbenchApi.runEvents(runId, signal) })
+  if (events.isLoading) return <p className="px-2 pb-2 text-xs text-fg-muted">加载事件…</p>
+  if (events.isError) return <p className="px-2 pb-2 text-xs text-danger-fg" role="alert">事件加载失败</p>
+  const list = events.data ?? []
+  if (!list.length) return <p className="px-2 pb-2 text-xs text-fg-muted">无事件</p>
+  return (
+    <ul className="grid gap-1 border-t border-border px-2 py-2" data-testid={`run-events-${runId}`}>
+      {list.map((e) => (
+        <li key={e.id} className="text-xs text-fg-muted">
+          <span className="font-mono">#{e.seq}</span> <span className="text-fg">{e.event_type}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}

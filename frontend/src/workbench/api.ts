@@ -1,7 +1,7 @@
 import { handle, netFetch, req } from '@/lib/api/net'
 import type { Ast } from '@/types/ast'
 import type { PreflightReport } from '@/types/preflight'
-import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, Notification, Participant, ParticipantRole, PlatformCase, Principal, Proposal, Ref, Release, ReleaseItem, Revision, WorkItem, WorkItemStatus, WorkingCopy } from './types'
+import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, Notification, Participant, ParticipantRole, PlatformCase, Principal, Proposal, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemStatus, WorkingCopy } from './types'
 
 const V1 = '/api/v1'
 
@@ -166,6 +166,9 @@ export const workbenchApi = {
   confirmFact: (factId: string) => write<Fact>(`${V1}/facts/${factId}/confirm`),
   rejectFact: (factId: string, reason: string | null) =>
     write<Fact>(`${V1}/facts/${factId}/reject`, { body: JSON.stringify({ reason }) }),
+  /** B17 M4 补口：案件运行列表（GET /cases/{id}/runs）与运行事件（GET /runs/{id}/events）。 */
+  runs: (caseId: string, signal?: AbortSignal) => req<Run[]>(`${V1}/cases/${caseId}/runs`, { signal }),
+  runEvents: (runId: string, signal?: AbortSignal) => req<RunEvent[]>(`${V1}/runs/${runId}/events`, { signal }),
   statusLabel: (status: CaseStatus | string) => ({
     intake: '接案', drafting: '撰写', review: '内审', client_review: '客户确认', final: '定稿', filed: '已递交',
     oa: '审查意见', granted: '授权', rejected: '驳回', closed: '结案',

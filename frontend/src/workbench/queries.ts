@@ -23,6 +23,8 @@ export const workbenchKeys = {
   notifications: () => [...workbenchKeys.all, 'notifications'] as const,
   materials: (id: string) => [...workbenchKeys.case(id), 'materials'] as const,
   facts: (id: string) => [...workbenchKeys.case(id), 'facts'] as const,
+  runs: (id: string) => [...workbenchKeys.case(id), 'runs'] as const,
+  runEvents: (id: string) => [...workbenchKeys.all, 'run-events', id] as const,
 }
 
 export function useWorkbenchQueries(caseId: string | null) {
