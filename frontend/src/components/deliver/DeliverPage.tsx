@@ -21,6 +21,9 @@ import { fmtFull } from '@/lib/format'
 import { goWorkbench, projectHash } from '@/lib/hash'
 import type { Diagnostic } from '@/lib/types'
 import { useStudio } from '@/store'
+import { getPlatformCase } from '@/lib/platform'
+import { PlatformPreflightCard, PlatformReleasesCard } from '@/components/platform/PlatformDeliver'
+import type { PlatformCase } from '@/workbench/types'
 import { selectCheckCounts, selectCheckItems } from '@/store/checks'
 import { selectConfirmationState, selectExportEntries, type ConfirmationState } from '@/store/deliver'
 import type { ExportKind } from '@/types/deliver'
@@ -118,7 +121,18 @@ export function DeliverPage({ pid }: { pid: string }) {
   const locate = usePreflightLocate()
   const toast = useStudio((s) => s.toast)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [tab, setTab] = useState<'checks' | 'exports' | 'info'>('exports')
+  const [tab, setTab] = useState<'checks' | 'exports' | 'info' | 'releases'>('exports')
+  // M3：pid→平台案（case_key=目录名）。null ⇒ 纯旧案——发布包/平台体检入口整块不渲染，页面行为不变
+  const [pcase, setPcase] = useState<PlatformCase | null>(null)
+  useEffect(() => {
+    let on = true
+    void getPlatformCase(pid).then((c) => {
+      if (on) setPcase(c)
+    })
+    return () => {
+      on = false
+    }
+  }, [pid])
   const [downloading, setDownloading] = useState<string | null>(null)
 
   // 产物下载走 fetch → blob，不导航当前页（否则未保存守卫弹「离开站点」、后端错误 JSON 顶掉应用）
@@ -285,6 +299,7 @@ export function DeliverPage({ pid }: { pid: string }) {
         onLocate={onLocate}
         mobile={!isDesktop}
       />
+      {pcase && <PlatformPreflightCard key={pcase.id} caseId={pcase.id} />}
     </div>
   )
   const grid = (
@@ -399,13 +414,14 @@ export function DeliverPage({ pid }: { pid: string }) {
           {nothingBuilt && empty}
           {checks}
           {grid}
+          {pcase && <PlatformReleasesCard key={pcase.id} caseItem={pcase} />}
         </div>
         <div className="grid content-start gap-4">{side}</div>
       </div>
     )
   } else {
     body = (
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="grid gap-4" data-testid="deliver-mobile">
+      <Tabs value={tab === 'releases' && !pcase ? 'exports' : tab} onValueChange={(v) => setTab(v as typeof tab)} className="grid gap-4" data-testid="deliver-mobile">
         <TabsList className="-mx-page-m overflow-x-auto px-page-m scrollbar-none [&>*]:shrink-0" aria-label="递交内容" data-testid="deliver-tabs">
           <TabsTrigger value="checks" data-testid="deliver-tab-checks">
             体检{items.length ? ` · ${counts.error + counts.warning}` : ''}
@@ -416,6 +432,11 @@ export function DeliverPage({ pid }: { pid: string }) {
           <TabsTrigger value="info" data-testid="deliver-tab-info">
             期限与记录
           </TabsTrigger>
+          {pcase && (
+            <TabsTrigger value="releases" data-testid="deliver-tab-releases">
+              发布包
+            </TabsTrigger>
+          )}
         </TabsList>
         <TabsContent value="checks" className="grid gap-cards-m">
           {checks}
@@ -427,6 +448,11 @@ export function DeliverPage({ pid }: { pid: string }) {
         <TabsContent value="info" className="grid gap-cards-m">
           {side}
         </TabsContent>
+        {pcase && (
+          <TabsContent value="releases" className="grid gap-cards-m">
+            <PlatformReleasesCard key={pcase.id} caseItem={pcase} />
+          </TabsContent>
+        )}
       </Tabs>
     )
   }

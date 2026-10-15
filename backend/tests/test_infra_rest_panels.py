@@ -193,3 +193,27 @@ def test_release_items_outsider_fail_closed(on, storage):
     ).json()
     assert outsider.get(f"/api/v1/releases/{release['id']}/items").status_code == 403
     assert outsider.get(f"/api/v1/releases/{release['id']}/artifacts").status_code == 403
+
+
+def test_case_runs_list_and_fail_closed(on, storage):
+    """B17：GET /cases/{id}/runs —— runs 伴随栏数据源；owner 可见、outsider 403。"""
+    owner = _rest_user(on, "b17-runs-owner")
+    outsider = _rest_user(on, "b17-runs-side")
+    _org, case = _rest_case(owner, "b17runs")
+
+    assert owner.get(f"/api/v1/cases/{case['id']}/runs").json() == []
+
+    for i, rt in enumerate(("review", "draft")):
+        r = owner.post(
+            f"/api/v1/cases/{case['id']}/runs",
+            headers={"Idempotency-Key": f"b17-run-{i}"},
+            json={"run_type": rt},
+        )
+        assert r.status_code == 201, r.text
+
+    runs = owner.get(f"/api/v1/cases/{case['id']}/runs").json()
+    assert len(runs) == 2 and {r["run_type"] for r in runs} == {"review", "draft"}
+    # 最近创建在前（created_at desc）
+    assert runs[0]["run_type"] == "draft"
+
+    assert outsider.get(f"/api/v1/cases/{case['id']}/runs").status_code == 403

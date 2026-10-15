@@ -8,7 +8,7 @@ import { hotkeyLabel } from '@/lib/hotkeys'
 import { useStudio, type CompanionId } from '@/store'
 import { THREE_VIEWS, VIEW_HOTKEY_LABEL, VIEW_LABEL, switchToView, type ThreeView } from '@/components/workbench'
 
-const COMPANION_IDS: CompanionId[] = ['ai', 'review', 'history', 'console', 'problems', 'terms', 'figures', 'search', 'deadlines', 'notify']
+const COMPANION_IDS: CompanionId[] = ['ai', 'review', 'history', 'console', 'problems', 'terms', 'figures', 'search', 'deadlines', 'notify', 'proposals', 'materials', 'runs']
 
 /** 视图项图标与 ViewSwitch 同源（源码/版面/PDF） */
 const VIEW_ICON: Record<ThreeView, typeof Code> = { source: Code, layout: FileText, pdf: FileType }

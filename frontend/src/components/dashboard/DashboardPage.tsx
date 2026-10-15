@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { MobilePage } from '@/components/ui/mobile-page'
 import { PageHeader } from '@/components/ui/page-header'
 import { Segmented } from '@/components/ui/segmented'
+import { PlatformQueue } from '@/components/platform/PlatformQueue'
 import { Skeleton as UiSkeleton } from '@/components/ui/skeleton'
 import { useIsDesktop } from '@/hooks/useMisc'
 import { usePageScroll } from '@/hooks/usePageScroll'
@@ -42,6 +43,10 @@ const SCOPE_TITLE: Record<DashScope, string> = {
   trash: '回收站',
 }
 
+const SECTION_OPTIONS = [
+  { value: 'cases', label: '案件', 'data-testid': 'dash-section-cases' },
+  { value: 'items', label: '工作项', 'data-testid': 'dash-section-items' },
+] as const
 const VIEW_OPTIONS = [
   { value: 'list' as DashView, label: '列表', icon: <List aria-hidden />, 'data-testid': 'view-list' },
   { value: 'board' as DashView, label: '看板', icon: <LayoutGrid aria-hidden />, 'data-testid': 'view-board' },
@@ -104,6 +109,7 @@ function Empty({ scope, filtered }: { scope: DashScope; filtered: boolean }) {
  * 与工作台互不挂载（App 按 hash 二选一），所以 Toasts / CreateProjectDialog 在此再挂一次。
  */
 export function DashboardPage() {
+  const [section, setSection] = useState<'cases' | 'items'>('cases')
   const isDesktop = useIsDesktop()
   const loadDashboard = useStudio((s) => s.loadDashboard)
   const loadDashUnread = useStudio((s) => s.loadDashUnread)
@@ -264,11 +270,12 @@ export function DashboardPage() {
       >
         <MobilePage data-testid="dashboard-page">
           <section className="flex min-w-0 flex-col gap-cards-m" aria-label="视图与筛选" data-testid="dashboard-controls">
-            <Segmented options={VIEW_OPTIONS} value={view} onValueChange={setView} aria-label="视图" size="md" className="w-full" />
+            {section === 'cases' && <Segmented options={VIEW_OPTIONS} value={view} onValueChange={setView} aria-label="视图" size="md" className="w-full" />}
+            <Segmented options={SECTION_OPTIONS} value={section} onValueChange={setSection} aria-label="区块" size="md" className="w-full" />
             <TodaySummaryBar mobile />
             <FilterRail tags={tags} counts={counts} horizontal />
           </section>
-          <div className="flex min-w-0 flex-col" data-testid="dashboard">{body}</div>
+          <div className="flex min-w-0 flex-col" data-testid="dashboard">{section === 'items' ? <PlatformQueue /> : body}</div>
         </MobilePage>
         <BulkBar selected={selected} tags={tags} inTrash={scope === 'trash'} onClear={() => setSelected([])} mobile />
         <CreateProjectDialog />
@@ -294,7 +301,8 @@ export function DashboardPage() {
           className="border-b-0 bg-panel py-3 md:py-3"
           actions={
             <>
-              <Segmented options={VIEW_OPTIONS} value={view} onValueChange={setView} aria-label="视图" size="sm" />
+              {section === 'cases' && <Segmented options={VIEW_OPTIONS} value={view} onValueChange={setView} aria-label="视图" size="sm" />}
+              <Segmented options={SECTION_OPTIONS} value={section} onValueChange={setSection} aria-label="区块" size="sm" />
               <Button variant="ghost" size="sm" onClick={exportCsv} disabled={!rows.length} data-testid="export-csv" aria-label="导出 CSV">
                 <Download aria-hidden />
                 导出 CSV
@@ -305,7 +313,7 @@ export function DashboardPage() {
         <TodaySummaryBar />
         {view === 'list' && <TableToolbar sorting={sorting} onSortingChange={setSorting} columns={columns} onColumnsChange={setColumns} />}
         <BulkBar selected={selected} tags={tags} inTrash={scope === 'trash'} onClear={() => setSelected([])} />
-        <div ref={bodyWrap} className="flex min-h-0 flex-1 flex-col overflow-auto">{body}</div>
+        <div ref={bodyWrap} className="flex min-h-0 flex-1 flex-col overflow-auto">{section === 'items' ? <PlatformQueue /> : body}</div>
       </main>
       <CreateProjectDialog />
       <CaseFormDialog />
