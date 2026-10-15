@@ -96,4 +96,4 @@ EXPOSE 8000
 USER 1000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s CMD python -c "import urllib.request,sys;sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health').status==200 else 1)"
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--ws-ping-interval", "15", "--ws-ping-timeout", "20"]
+CMD ["uvicorn", "patent_studio.asgi:app", "--host", "0.0.0.0", "--port", "8000", "--ws-ping-interval", "15", "--ws-ping-timeout", "20"]

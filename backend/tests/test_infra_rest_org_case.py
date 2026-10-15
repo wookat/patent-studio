@@ -2,16 +2,16 @@
 """平台 /api/v1 org/case 面（B3）：认证 fail-closed、组织/案件/参与者 CRUD、
 邀请→接受生命周期、幂等重放。改自参照分支 test_rest_routes.py 的 org/case 段。
 
-`on`/`client`/`_register`/`_login` 基建复用 test_infra_auth（pytest_plugins 引用）。
+`on`/`client`/`_register`/`_login` 基建复用 test_auth（pytest_plugins 引用）。
 """
 
 import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
-from test_infra_auth import _login, _register
+from test_auth import _login, _register
 
-pytest_plugins = ("test_infra_auth",)
+pytest_plugins = ("test_auth",)
 
 
 def _rest_user(on, tag):

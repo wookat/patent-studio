@@ -6,9 +6,9 @@ import threading
 import uuid
 
 import pytest
-from test_infra_rest_org_case import _rest_case, _rest_user
+from test_rest_routes import _rest_case, _rest_user
 
-pytest_plugins = ("test_infra_auth",)
+pytest_plugins = ("test_auth",)
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("PATENT_STUDIO_TEST_DATABASE_URL"), reason="未设置 PATENT_STUDIO_TEST_DATABASE_URL"

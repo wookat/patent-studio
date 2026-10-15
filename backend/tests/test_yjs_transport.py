@@ -13,14 +13,14 @@ from fastapi.testclient import TestClient
 from pycrdt import Doc, Provider, Text, YMessageType, YSyncMessageType
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-from test_infra_auth import _login, _register
+from test_auth import _login, _register
 from test_infra_rest_proposal_release import _ref
 
 from patent_studio.domain.collab import CollabUpdate
 from patent_studio.infra.db import database_url
 from patent_studio.settings import get_settings
 
-pytest_plugins = ("test_infra_auth",)
+pytest_plugins = ("test_auth",)
 
 
 class Channel:

@@ -18,7 +18,7 @@ from patent_studio.domain.organization import CaseParticipant, OrganizationMembe
 from patent_studio.infra.db import database_url
 from patent_studio.infra.storage import object_ref
 
-pytest_plugins = ("test_infra_auth",)
+pytest_plugins = ("test_auth",)
 
 
 def _ref(value: str):

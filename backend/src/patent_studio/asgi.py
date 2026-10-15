@@ -1,9 +1,8 @@
 """平台应用工厂：`patent_studio.asgi:app` / `create_app()`。
 
-B2 批挂载面：/api/health、认证路由（register/login/logout/users/me，auth=off 时按旧口径 501/204）、
-静态前端（frontend/dist）、安全响应头、请求体上限、中文 422 文案。
-/api/v1 平台路由、Yjs 协同 WebSocket 等随后续批次往这里并挂；
-旧应用 `app.main:app` 不受影响，两者并存双跑。
+挂载面：/api/health、认证路由（register/login/logout/users/me，auth=off 时按 501/204 口径）、
+/api/v1 平台路由、Yjs 协同 WebSocket、静态前端（frontend/dist）、安全响应头、请求体上限、中文 422 文案。
+B11 起为唯一服务入口：旧 `app.main:app`（SQLite/内存实现）已随 backend/app/ 树整体退役。
 """
 
 import os

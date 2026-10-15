@@ -11,7 +11,28 @@ services:
     environment:
       PATENT_KEEP_BUILDS: "3"
       SOFFICE_TIMEOUT: "120"
+      # 账号 / 协作 / 通知数据都在 PostgreSQL；AUTH=off 时应用不连库也能起
+      PATENT_STUDIO_DATABASE_URL: postgresql://patent:patent@postgres:5432/patent_studio
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: patent
+      POSTGRES_PASSWORD: patent
+      POSTGRES_DB: patent_studio
+    volumes:
+      - patent-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U patent -d patent_studio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     restart: unless-stopped
 
 volumes:
   patent-data:
+  patent-pgdata:

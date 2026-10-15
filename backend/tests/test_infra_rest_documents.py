@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """平台 /api/v1 documents/revisions/working-copies 面（B4）：
 文档→修订→工作副本→commit 幂等链、内容往返+乐观锁 409、跨 case fail-closed、对象存储未配 503。
-改自参照分支 test_rest_routes.py 的 documents 段。基建复用 test_infra_auth/test_infra_rest_org_case。
+改自参照分支 test_rest_routes.py 的 documents 段。基建复用 test_auth/test_infra_rest_org_case。
 """
 
 import uuid
@@ -11,7 +11,7 @@ from test_infra_rest_org_case import _rest_case, _rest_user
 from patent_studio.infra.storage import object_ref
 from patent_studio.settings import get_settings
 
-pytest_plugins = ("test_infra_auth",)
+pytest_plugins = ("test_auth",)
 
 
 def _ref(value: str):

@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 from test_infra_rest_org_case import _rest_case, _rest_user
 
-pytest_plugins = ("test_infra_auth",)
+pytest_plugins = ("test_auth",)
 
 
 def test_work_item_assignment_writes_notification_and_read_is_idempotent(on, pg_schema):
