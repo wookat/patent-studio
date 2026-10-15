@@ -34,7 +34,7 @@ from patent_studio.kernel.style import merge_style
 from patent_studio.kernel.style_css import render_css
 
 UNIT = "share-confirm-backend"
-ORG_NAME = "Patent Studio"
+ORG_NAME = "知撰"
 router = APIRouter(tags=["public"])
 
 

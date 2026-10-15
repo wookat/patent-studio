@@ -1,4 +1,4 @@
-# Patent Studio 设计说明
+# 知撰（Patent Studio）设计说明
 
 > 目标：给 `patent_docx`（content.md → DOCX 排版内核）套一个"所见即所得"的本地 Web 编辑器 + 可视化设置面板，
 > 预览是 **真实 DOCX 经 LibreOffice 转出的 PDF**，默认设置下排版内核输出与原脚本**逐字节一致**。

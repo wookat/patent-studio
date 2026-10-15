@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢关注知撰 · Patent Studio。
+感谢关注知撰·AI 专利撰写与协同平台（技术名 Patent Studio）。
 
 ## 分支与流程
 
@@ -13,8 +13,9 @@
 
 ## 专利内容契约
 
-- Markdown 为唯一真源：AI 一律输出 Proposal/CriticMarkup 建议由人审阅采纳，
-  不得静默覆盖作者的 `content.md`。
+- Markdown 为唯一真源：AI 相关写路径默认产出 Proposal/CriticMarkup 建议，
+  由人审阅采纳；保留的直接写入口（如 MCP `direct` 模式）必须经权限门控
+  与审计，不得新增静默覆盖作者 `content.md` 的路径。
 - 三书（权利要求/说明书/摘要）、附图、标记号、术语之间的一致性由体检与
   preflight 校验，新增生成逻辑请同时补充对应校验与测试。
 

@@ -226,8 +226,8 @@ function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent data-slot="AboutDialog" data-testid="about-dialog" className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>关于 Patent Studio</DialogTitle>
-          <DialogDescription>中国发明专利申请文件撰写工作台：源码 / 版面 / PDF 三视图同源，排版直接出 Word 与 PDF。</DialogDescription>
+          <DialogTitle>关于知撰</DialogTitle>
+          <DialogDescription>知撰·AI 专利撰写与协同平台：面向中国发明专利的撰写与审阅工作台，源码 / 版面 / PDF 三视图同源，导出 Word 与 PDF。</DialogDescription>
         </DialogHeader>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
           <dt className="text-fg-muted">后端</dt>

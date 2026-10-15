@@ -123,10 +123,10 @@ export function StoreBootstrap() {
       const r = parseHash()
       if (r.kind === 'project') {
         const p = useStudio.getState().project
-        document.title = p ? `${p.title || p.id} · Patent Studio` : 'Patent Studio'
-      } else if (r.kind === 'dashboard') document.title = 'Patent Studio'
-      else if (r.kind === 'deadlines') document.title = '期限中心 · Patent Studio'
-      else if (r.kind === 'inbox') document.title = '通知中心 · Patent Studio'
+        document.title = p ? `${p.title || p.id} · 知撰` : '知撰'
+      } else if (r.kind === 'dashboard') document.title = '知撰'
+      else if (r.kind === 'deadlines') document.title = '期限中心 · 知撰'
+      else if (r.kind === 'inbox') document.title = '通知中心 · 知撰'
     }
     const unsubTitle = useStudio.subscribe((s) => s.project, applyTitle, { fireImmediately: true })
     window.addEventListener('hashchange', applyTitle)

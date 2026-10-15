@@ -189,7 +189,7 @@ describe('TopBar（1440）', () => {
     }
     // W7 qa-03：1280 仍溢出 39px（字标 + 标签同时在 xl 出现）、1024 账号只露 13px（布局按钮 lg 出现）——
     // 字标退到 2xl、布局按钮退到 xl（视图 菜单 / 快捷键仍可切布局），账号菜单在 1280 / 1024 都留在视口内
-    const wordmark = [...q<HTMLElement>('[data-testid=logo]')!.querySelectorAll('span')].find((n) => n.textContent === 'Patent Studio')
+    const wordmark = [...q<HTMLElement>('[data-testid=logo]')!.querySelectorAll('span')].find((n) => n.textContent === '知撰')
     expect(wordmark?.className).toMatch(/\bhidden\b/)
     expect(wordmark?.className).toMatch(/\b2xl:inline\b/)
     expect(wordmark?.className).not.toMatch(/\bxl:inline\b/)
@@ -429,7 +429,7 @@ describe('StoreBootstrap 路由 ↔ openProject', () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0))
     })
-    expect(document.title).toBe('一种数据处理方法 · Patent Studio')
+    expect(document.title).toBe('一种数据处理方法 · 知撰')
 
     /* hash= 赋值的 hashchange 在 jsdom 是宏任务——须 setTimeout(0) 才落地 */
     const nav = async (hash: string) => {
@@ -439,17 +439,17 @@ describe('StoreBootstrap 路由 ↔ openProject', () => {
       })
     }
     await nav('#/deadlines')
-    expect(document.title).toBe('期限中心 · Patent Studio')
+    expect(document.title).toBe('期限中心 · 知撰')
     await nav('#/inbox')
-    expect(document.title).toBe('通知中心 · Patent Studio')
+    expect(document.title).toBe('通知中心 · 知撰')
 
     /* PageChrome 页自有设置器（模拟其已落名）——applyTitle 不得覆盖 */
     await nav('#/account')
-    document.title = '账户 · Patent Studio'
+    document.title = '账户 · 知撰'
     await act(async () => {})
-    expect(document.title).toBe('账户 · Patent Studio')
+    expect(document.title).toBe('账户 · 知撰')
 
     await nav('#/p/method')
-    expect(document.title).toBe('一种数据处理方法 · Patent Studio')
+    expect(document.title).toBe('一种数据处理方法 · 知撰')
   })
 })

@@ -1,6 +1,7 @@
-# 部署指南 — Patent Studio 平台
+# 部署指南 — 知撰·AI 专利撰写与协同平台
 
-> 适用版本：B15 终态（`patent_studio.asgi:app` 为唯一服务入口；旧 `backend/app/` 树已退役）。
+> 「知撰」在仓库与代码中的技术名为 Patent Studio（包名、环境变量前缀 `PATENT_STUDIO_`、CLI `patent-studio` 均沿用）。
+> 适用版本：B16 双栈并存（`patent_studio.asgi:app` 为唯一服务入口；旧 `backend/app/` 业务面与平台 `/api/v1` 面同进程运行）。
 > 本文如实记录当前实现状态：**可用** / **脚手架（未接生产）** 均明确标注。
 
 ## 一、服务形态
@@ -49,6 +50,23 @@ Docker 一体化（开发/演示用）：根目录 `Dockerfile` 多阶段构建�
 | `PATENT_STUDIO_LLM_BASE_URL` | — | OpenAI 兼容端点 |
 | `PATENT_STUDIO_LLM_API_KEY` | — | API key |
 | `PATENT_STUDIO_LLM_MODEL` | — | 模型名。**三变量缺一即保持 stub**：能力层的 agent 执行仍以占位结果返回，不联网 |
+
+### 工作台 AI 辅助（旧 `/api/*` 面）
+
+工作台内的 AI 起草、批注建议、对话与场景任务走旧面 AI 中转通道（`backend/app/config.py` + `backend/app/ai/client.py`），与平台 LLM 三件套**互不串用**；不配密钥时编辑、检查、构建照常可用，仅 AI 功能报「未配置」。
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `PATENT_STUDIO_AI_KEY` | — | 模型服务密钥；缺失时 AI 请求返回 `no_key`（503） |
+| `PATENT_STUDIO_AI_PROVIDER` | `aicdks` | `aicdks` 指向固定网关 `https://api.aicdks.com`（代码内置，不可由环境变量改地址）；`mock` 完全离线、用 fixtures 应答，**仅供开发测试，不能作为真实 AI 效果证明** |
+| `PATENT_STUDIO_AI_CONCURRENCY` | `2` | 模型调用全局并发上限 |
+| `PATENT_STUDIO_AI_DAILY_TOKENS` | `200000` | 每案每日 token 预算缺省；机构设置可覆盖 |
+| `PATENT_STUDIO_AI_TIMEOUT_INTERACTIVE` / `_HEAVY` | `30` / `300` 秒 | 交互 / 重任务超时 |
+| `PATENT_STUDIO_AI_BACKOFF` | `1` 秒 | 429/5xx/连接错误重试前的指数退坡起点 |
+
+查新检索（s8）另有独立凭证：`PATENT_STUDIO_PRIOR_ART_PROVIDERS`（逗号序，默认 `patsnap,openalex`）、`PATENT_STUDIO_PATSNAP_KEY`、`PATENT_STUDIO_OPS_KEY` / `PATENT_STUDIO_OPS_SECRET`、`PATENT_STUDIO_PRIOR_ART_MAILTO`；全空时 s8 降级为「待检索」。
+
+**数据边界**：启用远端模型或检索服务后，相关材料会发送到对应服务商网关——私有部署不等于 AI 材料不出网。Compose 不透传宿主机密钥，如需启用可用 `docker-compose.override.yml` 注入环境变量，不要把真实密钥写入文件或提交 Git。
 
 ### SSE / 实时
 

@@ -160,7 +160,7 @@ export function ClientReviewPage({ token }: { token: string }) {
 
   useEffect(() => {
     /* meta 加载期先落通用名——否则标签页残留上一页标题（批14 auth 页同族） */
-    document.title = meta ? `${meta.title} · 客户审阅` : '客户审阅 · Patent Studio'
+    document.title = meta ? `${meta.title} · 客户审阅` : '客户审阅 · 知撰'
   }, [meta])
 
   const clearPick = useCallback(() => {

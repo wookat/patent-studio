@@ -133,7 +133,7 @@ function Jobs() {
       <EmptyState
         icon={Bot}
         title="暂无 AI 任务"
-        reason="在 AI Tab 发起审阅、一键转专利或 OA 答复后，任务进度显示在这里"
+        reason="在 AI Tab 发起审阅、材料转专利或 OA 答复后，任务进度显示在这里"
         className="flex-1"
         data-testid="mobile-console-jobs-empty"
       />

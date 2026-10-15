@@ -85,7 +85,7 @@ export function DesktopShell() {
         </aside>
 
         <main id="main-content" tabIndex={-1} className="col-start-3 row-start-2 min-h-0 min-w-0 outline-none" data-testid="main-area">
-          <h1 className="sr-only">{title ? `${title} · Patent Studio` : 'Patent Studio'}</h1>
+          <h1 className="sr-only">{title ? `${title} · 知撰` : '知撰'}</h1>
           <DockArea
             fallback={
               <>

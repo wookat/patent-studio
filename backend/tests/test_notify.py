@@ -319,7 +319,7 @@ def test_mail_sent_with_notification_when_configured(on, monkeypatch):
     )
     asyncio.run(notify.drain())
     assert _unread(su_c) == 1
-    assert sent == [("su@example.com", "[Patent Studio] 小李 指派你审阅", "截止 2026-10-01")]
+    assert sent == [("su@example.com", "[知撰] 小李 指派你审阅", "截止 2026-10-01")]
 
 
 def test_comment_mention_href_deep_links_to_comment(on):

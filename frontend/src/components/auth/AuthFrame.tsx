@@ -50,11 +50,11 @@ export function AuthBrand() {
       <div className="flex items-center gap-2 md:gap-2.5">
         <BrandMark size="sm" className="md:hidden" />
         <BrandMark className="max-md:hidden" />
-        <span className="text-base font-semibold text-fg-strong">Patent Studio</span>
+        <span className="text-base font-semibold text-fg-strong">知撰</span>
         <span className="text-xs text-fg-muted">· 机构工作台</span>
       </div>
-      <p className="mt-1 text-xs text-fg-muted md:hidden">中国发明专利全链路工作台</p>
-      <p className="mt-8 max-w-[26ch] text-2xl font-semibold text-fg-strong max-md:hidden">中国发明专利全链路工作台</p>
+      <p className="mt-1 text-xs text-fg-muted md:hidden">AI 专利撰写与协同平台</p>
+      <p className="mt-8 max-w-[26ch] text-2xl font-semibold text-fg-strong max-md:hidden">AI 专利撰写与协同平台</p>
       <p className="mt-2 max-w-[44ch] text-base text-fg-muted max-md:hidden">
         案件台账与期限中心 → 三视图协作撰写（Markdown 源码 / Word 对齐版面 / 真实 PDF）→ 确定性 DOCX → CNIPA 五书 XML。
       </p>
@@ -70,7 +70,7 @@ export function AuthBrand() {
       <PaperSample />
       <p className="mt-6 flex items-center gap-1.5 text-xs text-fg-muted max-md:hidden">
         <ShieldCheck className="size-3.5" aria-hidden />
-        数据仅存于机构私有部署 · © {new Date().getFullYear()} Patent Studio
+        支持私有化部署 · © {new Date().getFullYear()} 知撰
       </p>
     </section>
   )

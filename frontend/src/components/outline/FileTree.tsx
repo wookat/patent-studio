@@ -337,8 +337,8 @@ export function FileTree() {
               <button
                 type="button"
                 tabIndex={-1}
-                aria-label="一键转专利"
-                title={firstConvertible ? `用 ${firstConvertible.name} 转为专利` : '转为专利（交底书 / 论文 → 专利草稿）'}
+                aria-label="转专利草稿"
+                title={firstConvertible ? `用 ${firstConvertible.name} 起草专利草稿` : '起草专利草稿（交底书 / 论文 → 三书初稿）'}
                 className={HOVER_BTN}
                 onClick={convertFirst}
                 data-testid="file-attachments-convert"
