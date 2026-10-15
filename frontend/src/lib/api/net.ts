@@ -166,7 +166,7 @@ export async function netFetch(url: string, init?: RequestInit): Promise<Respons
     build / export/xml / deliver/bundle 等同步长任务传 timeout:false 豁免，
     FormData 上传自动豁免（后端 read_bounded 自管体量）。 */
 export const REQ_TIMEOUT_MS = 120_000
-type ReqInit = RequestInit & { timeout?: number | false }
+type ReqInit = RequestInit & { timeout?: number | false; expireOn401?: boolean }
 
 /** 组件内裸 fetch（PDF/附件等二进制拉取）复合调用方 signal + 默认超时——
     与 req() 同口径，半开 wedge 不再无限转圈。 */
@@ -181,7 +181,7 @@ export function reqSignal(caller: AbortSignal | undefined, ms: number | false): 
 }
 
 export async function req<T>(url: string, init?: ReqInit): Promise<T> {
-  const { timeout, ...rest } = init ?? {}
+  const { timeout, expireOn401, ...rest } = init ?? {}
   const form = rest.body instanceof FormData
   try {
     const r = await netFetch(url, {
@@ -189,7 +189,7 @@ export async function req<T>(url: string, init?: ReqInit): Promise<T> {
       signal: reqSignal(rest.signal ?? undefined, form ? false : (timeout ?? REQ_TIMEOUT_MS)),
       headers: form ? rest.headers : { 'Content-Type': 'application/json', ...(rest.headers ?? {}) },
     })
-    return await handle<T>(r)
+    return await handle<T>(r, { expireOn401 })
   } catch (e) {
     if (e instanceof DOMException && e.name === 'TimeoutError')
       throw new ApiError(0, '请求超时，请检查网络后重试')
@@ -236,11 +236,13 @@ function pydanticDetailText(detail: unknown[]): string | null {
   return ok.length ? ok.join('；') : null
 }
 
-export async function handle<T>(r: Response): Promise<T> {
+export async function handle<T>(r: Response, opts?: { expireOn401?: boolean }): Promise<T> {
   if (!r.ok) {
     /* 会话中 401 ⇒ 服务端会话失效：翻回登录墙（expireSession 内只认 authed；
-       登录页自身的 401 / 启动探测不触发）。动态引入避免 api → store 静态环 */
-    if (r.status === 401) void import('@/store').then((m) => m.useStudio.getState().expireSession())
+       登录页自身的 401 / 启动探测不触发）。动态引入避免 api → store 静态环。
+       expireOn401:false 给 /api/v1 平台面：纯旧案用户不在 PG 时 v1 恒 401，
+       该失败只隐藏新面入口，不应把旧会话一并踢下线（B17 M6/M7 修复）。 */
+    if (r.status === 401 && opts?.expireOn401 !== false) void import('@/store').then((m) => m.useStudio.getState().expireSession())
     let msg = STATUS_ZH[r.status] ?? r.statusText
     let detail: ErrorDetail | null = null
     try {
