@@ -11,14 +11,33 @@ import { useIsDesktop } from '@/hooks/useMisc'
 import { usePageScroll } from '@/hooks/usePageScroll'
 import { useStudio } from '@/store'
 import { cn } from '@/lib/utils'
+import { ApprovalsInbox, ProposalsInbox } from '@/components/platform/PlatformInbox'
 import { NotificationRow } from './NotificationRow'
 
 type InboxFilter = 'all' | 'unread'
+/** M2：收件箱页签——通知（旧 /api/notify 双源在此页内仍走原 store）｜审批｜提案（/api/v1） */
+type InboxTab = 'notify' | 'approvals' | 'proposals'
+
+const TABS = [
+  { value: 'notify', label: '通知', 'data-testid': 'inbox-tab-notify' },
+  { value: 'approvals', label: '审批', 'data-testid': 'inbox-tab-approvals' },
+  { value: 'proposals', label: '提案', 'data-testid': 'inbox-tab-proposals' },
+] as const
 
 const FILTERS = [
   { value: 'all', label: '全部', 'data-testid': 'inbox-filter-all' },
   { value: 'unread', label: '未读', 'data-testid': 'inbox-filter-unread' },
 ] as const
+
+/** `#/inbox?tab=`：解析页签（未知值回落 notify） */
+const readInboxTab = (): InboxTab => {
+  const t = new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('tab')
+  return t === 'approvals' || t === 'proposals' ? t : 'notify'
+}
+const writeInboxTab = (tab: InboxTab) => {
+  const target = tab === 'notify' ? '#/inbox' : `#/inbox?tab=${tab}`
+  if (window.location.hash !== target) window.location.hash = target.replace(/^#/, '')
+}
 
 /** 375 空态（06 §3.2）：图标 / 标题 / 文案间 8（gap-group-m），纵向 24（py-section-m），页边 16 */
 const MOBILE_EMPTY = 'gap-group-m px-page-m py-section-m'
@@ -48,18 +67,27 @@ export function InboxPage() {
   const authed = useStudio((s) => s.authStatus === 'authed')
   const markAllRead = useStudio((s) => s.markAllRead)
   const [filter, setFilter] = useState<InboxFilter>('all')
+  const [tab, setTabState] = useState<InboxTab>(readInboxTab)
   const isDesktop = useIsDesktop()
   const mobile = !isDesktop
 
+  // `#/inbox?tab=` ↔ state：hashchange 为真源（深链/后退），切页签回写 hash
+  useEffect(() => {
+    const onHash = () => setTabState(readInboxTab())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+  const setTab = (t: InboxTab) => writeInboxTab(t)
+
   /** 未登录（off / anon / unknown）时后端没有收件人，GET /api/notify 永远为空，不发；页面直接落空态 */
   useEffect(() => {
-    if (authed) void load({ limit: 100 })
-  }, [authed, load])
+    if (authed && tab === 'notify') void load({ limit: 100 })
+  }, [authed, tab, load])
 
   /** 「未读」页签走专属流仓（unreadNotifications）——每次切入都重拉首页，保证与轮询刷新的 all 流同新鲜度 */
   useEffect(() => {
-    if (authed && filter === 'unread') void loadUnread()
-  }, [authed, filter, loadUnread])
+    if (authed && tab === 'notify' && filter === 'unread') void loadUnread()
+  }, [authed, tab, filter, loadUnread])
 
   const shown = filter === 'unread' ? unreadItems : items
   const shownHasMore = filter === 'unread' ? unreadHasMore : hasMore
@@ -150,16 +178,23 @@ export function InboxPage() {
     <span data-testid="inbox-unread-count">{unread > 0 ? `${unread} 条未读` : '全部已读'}</span>
   )
 
+  const tabBody = tab === 'approvals' ? <ApprovalsInbox /> : tab === 'proposals' ? <ProposalsInbox /> : body
+
   if (mobile) {
     return (
       <OrgShell name="inbox" title="通知" current="inbox" mobile mobileTitle={<>通知 <span className="font-normal text-fg-muted">{unreadText}</span></>}>
         <MobilePage data-testid="inbox-page" className="gap-group-m">
           <div className="flex shrink-0 items-center gap-group-m" data-testid="inbox-toolbar">
-            <Segmented aria-label="通知筛选" size="md" options={FILTERS} value={filter} onValueChange={setFilter} className="flex-1" />
-            {markAll}
+            <Segmented aria-label="收件箱页签" size="md" options={TABS} value={tab} onValueChange={setTab} className="flex-1" />
+            {tab === 'notify' && markAll}
           </div>
+          {tab === 'notify' && (
+            <div className="flex shrink-0 items-center gap-group-m">
+              <Segmented aria-label="通知筛选" size="md" options={FILTERS} value={filter} onValueChange={setFilter} className="flex-1" />
+            </div>
+          )}
           <div className="-mx-page-m flex min-w-0 flex-col bg-panel" data-testid="inbox-body">
-            {body}
+            {tabBody}
           </div>
         </MobilePage>
       </OrgShell>
@@ -172,16 +207,21 @@ export function InboxPage() {
         <PageHeader
           size="lg"
           title="通知"
-          description={unreadText}
+          description={tab === 'notify' ? unreadText : undefined}
           className="bg-panel py-4 md:py-4"
           actions={
             <>
-              <Segmented aria-label="通知筛选" size="sm" options={FILTERS} value={filter} onValueChange={setFilter} />
-              {markAll}
+              <Segmented aria-label="收件箱页签" size="sm" options={TABS} value={tab} onValueChange={setTab} />
+              {tab === 'notify' && (
+                <>
+                  <Segmented aria-label="通知筛选" size="sm" options={FILTERS} value={filter} onValueChange={setFilter} />
+                  {markAll}
+                </>
+              )}
             </>
           }
         />
-        <div ref={bodyWrap} className="min-h-0 flex-1 overflow-y-auto border-t border-border">{body}</div>
+        <div ref={bodyWrap} className="min-h-0 flex-1 overflow-y-auto border-t border-border">{tabBody}</div>
       </main>
     </OrgShell>
   )
