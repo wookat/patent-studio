@@ -323,7 +323,7 @@ function HelpMenu() {
       </MenuRow>
       <MenuSeparator />
       <MenuRow noIcon onSelect={() => openDialog('about')} data-testid="help-about">
-        关于 Patent Studio
+        关于知撰
       </MenuRow>
     </Menu>
   )

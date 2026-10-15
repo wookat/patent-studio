@@ -107,7 +107,7 @@ export function MobileShell() {
       <MobileTopBar />
       {showErrorBar && <GlobalErrorBar />}
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <h1 className="sr-only">{title ? `${title} · Patent Studio` : 'Patent Studio'}</h1>
+        <h1 className="sr-only">{title ? `${title} · 知撰` : '知撰'}</h1>
         <div
           className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
           role="tabpanel"

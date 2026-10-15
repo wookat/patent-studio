@@ -73,9 +73,9 @@ export function PageChrome({
   children,
 }: PageChromeProps) {
   const isDesktop = useIsDesktop()
-  const docTitle = documentTitle ?? (typeof title === 'string' ? title : 'Patent Studio')
+  const docTitle = documentTitle ?? (typeof title === 'string' ? title : '知撰')
   useEffect(() => {
-    document.title = `${docTitle} · Patent Studio`
+    document.title = `${docTitle} · 知撰`
   }, [docTitle])
   return (
     <div data-slot="page" data-testid={`page-${name}`} className="flex h-dvh flex-col bg-app text-fg">
@@ -95,11 +95,11 @@ export function PageChrome({
             FOCUS_RING, 'inline-flex items-center justify-center gap-2 rounded-sm px-2 text-link',
             isDesktop ? 'h-md-control min-w-md-control' : 'h-sm-control min-w-sm-control',
           )}
-          aria-label="Patent Studio 首页"
+          aria-label="知撰首页"
           data-testid={`${name}-home`}
         >
           <img src="/logo-mark.svg" alt="" aria-hidden className="size-6 rounded-sm" />
-          <span className="hidden text-sm font-semibold text-fg-strong sm:inline">Patent Studio</span>
+          <span className="hidden text-sm font-semibold text-fg-strong sm:inline">知撰</span>
         </a>
         <div className="ml-auto flex items-center gap-1">
           {topbarActions}

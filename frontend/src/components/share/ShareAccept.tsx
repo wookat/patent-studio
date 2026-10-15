@@ -24,7 +24,7 @@ export function ShareAccept() {
   const [outcome, setOutcome] = useState<Outcome | null>(null)
 
   useEffect(() => {
-    document.title = '领取协作邀请 · Patent Studio'
+    document.title = '领取协作邀请 · 知撰'
   }, [])
 
   useEffect(() => {

@@ -161,7 +161,7 @@ async def _mail_users(user_ids: list[uuid.UUID], title: str, body: str) -> None:
     async with SessionLocal() as s:
         emails = list(await s.scalars(select(User.email).where(User.id.in_(user_ids), User.is_active.is_(True))))
     for to in emails:
-        await mail.send(to, f"[Patent Studio] {title}", body or title)
+        await mail.send(to, f"[知撰] {title}", body or title)
 
 
 # ---------------------------------------------------------------- 订阅者 ----

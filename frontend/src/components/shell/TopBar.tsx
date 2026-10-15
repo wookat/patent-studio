@@ -42,12 +42,12 @@ export function TopBar() {
       <a
         href="/"
         className={cn('inline-flex h-md-control shrink-0 items-center gap-2 rounded-md px-1', FOCUS_RING)}
-        aria-label="Patent Studio"
+        aria-label="知撰"
         data-testid="logo"
         onClick={(e) => e.preventDefault()}
       >
         <img src="/logo-mark.svg" alt="" aria-hidden className="size-6 rounded-sm" />
-        <span className="hidden text-base font-semibold tracking-tight text-fg-strong 2xl:inline">Patent Studio</span>
+        <span className="hidden text-base font-semibold tracking-tight text-fg-strong 2xl:inline">知撰</span>
       </a>
 
       <Tooltip>

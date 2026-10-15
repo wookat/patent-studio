@@ -374,9 +374,9 @@ export function BoardPage({ pid, src, img }: BoardPageProps) {
         <Button variant="ghost" size="sm" className="h-7 gap-1 px-1.5 text-xs" onClick={goBack} data-testid="board-back">
           <ArrowLeft aria-hidden /> 附图书
         </Button>
-        <a href="#/" className="inline-flex items-center gap-1.5 px-2 text-link" aria-label="Patent Studio 首页">
+        <a href="#/" className="inline-flex items-center gap-1.5 px-2 text-link" aria-label="知撰首页">
           <img src="/logo-mark.svg" alt="" aria-hidden className="size-5 rounded-sm" />
-          <span className="hidden text-sm font-semibold text-fg-strong sm:inline">Patent Studio</span>
+          <span className="hidden text-sm font-semibold text-fg-strong sm:inline">知撰</span>
         </a>
         <span className="mx-2 h-4 w-px bg-border" aria-hidden />
         <span className="text-sm font-medium text-fg-strong" data-testid="board-title">

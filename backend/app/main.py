@@ -88,7 +88,12 @@ async def _lifespan(_: FastAPI):
 
 
 # R6（07 §3）：project_access 是全局依赖，PATENT_STUDIO_AUTH=off 时直接返回，不产生参数、不改 OpenAPI
-app = FastAPI(title="Patent Studio API", version="0.1.0", dependencies=[Depends(project_access)], lifespan=_lifespan)
+app = FastAPI(
+    title="知撰·AI 专利撰写与协同平台 API",
+    version="0.1.0",
+    dependencies=[Depends(project_access)],
+    lifespan=_lifespan,
+)
 store = ProjectStore(config.PROJECTS_DIR)
 app.state.store = store
 

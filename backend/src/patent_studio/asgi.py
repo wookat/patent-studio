@@ -66,7 +66,7 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Patent Studio API", version="0.1.0", lifespan=_lifespan)
+    app = FastAPI(title="知撰·AI 专利撰写与协同平台 API", version="0.1.0", lifespan=_lifespan)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(BodyLimitMiddleware)
 

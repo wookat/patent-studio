@@ -30,7 +30,7 @@ export interface OrgShellProps {
  */
 export function OrgShell({ name, title, current, mobile, topbar, mobileTopbar, mobileTitle, className, children }: OrgShellProps) {
   useEffect(() => {
-    document.title = `${title} · Patent Studio`
+    document.title = `${title} · 知撰`
   }, [title])
 
   if (mobile) {
@@ -62,11 +62,11 @@ export function OrgShell({ name, title, current, mobile, topbar, mobileTopbar, m
         <a
           href="#/"
           className={cn("relative inline-flex items-center gap-2 self-stretch text-primary after:absolute after:-inset-x-1 after:-inset-y-0.5 after:content-['']", FOCUS_RING_INSET)}
-          aria-label="Patent Studio 首页"
+          aria-label="知撰首页"
           data-testid="org-home-link"
         >
           <img src="/logo-mark.svg" alt="" aria-hidden className="size-6 rounded-sm" />
-          <span className="text-sm font-bold tracking-tight text-fg-strong">Patent Studio</span>
+          <span className="text-sm font-bold tracking-tight text-fg-strong">知撰</span>
         </a>
         <DashNav current={current} />
         <div className="ml-auto flex items-center gap-1">

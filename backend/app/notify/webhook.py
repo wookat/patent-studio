@@ -66,7 +66,7 @@ def send(*, title: str, body: str = "", kind: str = "", pid: str | None = None, 
 def send_test(url: str) -> tuple[bool, str]:
     """「发送测试」按钮：同步 POST 一条 ping，返回 (ok, 错误信息)。"""
     payload = {
-        "title": "Patent Studio 通知外发测试",
+        "title": "知撰 通知外发测试",
         "body": "webhook 通道联通成功",
         "kind": "test",
         "ts": int(__import__("time").time()),

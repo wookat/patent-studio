@@ -1,7 +1,7 @@
 [project]
 name = "patent-studio-backend"
 version = "0.1.0"
-description = "Patent Studio — CN 发明专利申请文件所见即所得编辑器（FastAPI 后端 + patent_studio.kernel 排版内核）"
+description = "知撰·AI 专利撰写与协同平台 — 面向中国发明专利的撰写与审阅工作台后端（FastAPI + patent_studio.kernel 排版内核）"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115,<1",

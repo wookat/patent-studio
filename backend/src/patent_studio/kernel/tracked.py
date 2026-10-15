@@ -29,7 +29,7 @@ from .builder import build_patent_ex
 from .content import parse_md
 
 UNIT = "F2-tracked-docx"
-DEFAULT_AUTHOR = "Patent Studio"
+DEFAULT_AUTHOR = "知撰"
 
 RunKind = str  # "keep" | "ins" | "del" | "mark" | "comment"
 

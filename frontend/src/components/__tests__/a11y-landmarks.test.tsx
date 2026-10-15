@@ -141,7 +141,7 @@ describe('R6-01 标题层级由宿主决定', () => {
   it('形式检查在 dock / 375 全屏控制台（壳只有 h1）里是 h2；伴随栏正文里是 h3——heading-order 0', async () => {
     const dock = await mount(
       <main>
-        <h1>案 · Patent Studio</h1>
+        <h1>案 · 知撰</h1>
         <ConsolePanel variant="desktop" />
       </main>,
     )
@@ -154,7 +154,7 @@ describe('R6-01 标题层级由宿主决定', () => {
 
     const companion = await mount(
       <main>
-        <h1>案 · Patent Studio</h1>
+        <h1>案 · 知撰</h1>
         <CompanionPanel id="problems" title="形式检查" onClose={() => {}} presentation="column" width={320}>
           <CheckPanel />
         </CompanionPanel>
@@ -168,7 +168,7 @@ describe('R6-01 标题层级由宿主决定', () => {
   it('OA 答复卡：默认宿主 意见 N = h2、四个小节 = h3；伴随栏里顺延为 h3/h4', async () => {
     const el = await mount(
       <main>
-        <h1>案 · Patent Studio</h1>
+        <h1>案 · 知撰</h1>
         {oaCard}
       </main>,
     )

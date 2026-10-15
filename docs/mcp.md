@@ -1,6 +1,6 @@
-# Patent Studio MCP Server
+# 知撰（Patent Studio）MCP Server
 
-让 Codex / Claude Code 等智能体通过 [MCP](https://modelcontextprotocol.io) 操作专利工作台：读三书、拿块 AST、以 **CriticMarkup 建议**方式改块、lint / 体检 / 构建 / 导出 XML。设计定稿：`docs/plan/10-r7-r9-mcp-word-design.md` §3。
+让 Codex / Claude Code 等智能体通过 [MCP](https://modelcontextprotocol.io) 操作知撰专利工作台：读三书、拿块 AST、以 **CriticMarkup 建议**方式改块、lint / 体检 / 构建 / 导出 XML。设计定稿：`docs/plan/10-r7-r9-mcp-word-design.md` §3。
 
 > 状态（2026-09-05，单元 F1）：13 个 v1 工具 + 资源 `patent://{pid}/docs/{book}` 已实现并有测试（`backend/tests/test_mcp.py`，15 例）；两种传输、PAT 生成/撤销、ACL 角色门、审计均落地。实测记录见文末「验证状态」。
 

@@ -14,7 +14,7 @@ const DOCS: Record<string, { title: string; sections: [string, string[]][] }> = 
     title: '用户协议（服务条款）',
     sections: [
       ['第一条 总则', [
-        '本协议由您（下称「用户」）与 Patent Studio 服务提供方（下称「本平台」）订立。用户注册、登录或以任何方式使用本平台服务，即视为已阅读、理解并同意接受本协议全部条款。',
+        '本协议由您（下称「用户」）与知撰·AI 专利撰写与协同平台服务提供方（下称「本平台」）订立。用户注册、登录或以任何方式使用本平台服务，即视为已阅读、理解并同意接受本协议全部条款。',
         '本平台为面向中国发明专利全流程的辅助工作台，提供案卷管理、文稿撰写辅助、附图处理、递交导出与协同审阅等功能。',
       ]],
       ['第二条 服务性质与边界', [
@@ -60,7 +60,7 @@ const DOCS: Record<string, { title: string; sections: [string, string[]][] }> = 
         '审计留痕：重要操作可查询审计记录（管理员可见）。',
       ]],
       ['四、数据安全', [
-        '传输加密（HTTPS/TLS）、凭据加盐散列、权限分级与审计轨迹；公开前案卷内容的保密性由部署架构与访问控制共同保证。',
+        '传输加密（HTTPS/TLS）、凭据加盐散列、权限分级与审计轨迹；未公开案卷内容的保密同时取决于部署形态与访问控制配置，请按单位数据政策部署。',
         '如发生可能影响您数据安全的事件，将依法及时告知并处置。',
       ]],
       ['五、政策更新', [
@@ -72,7 +72,7 @@ const DOCS: Record<string, { title: string; sections: [string, string[]][] }> = 
     title: '版权与免责声明',
     sections: [
       ['版权声明', [
-        `© ${new Date().getFullYear()} Patent Studio。保留所有权利。本平台软件及文档未经许可不得复制、改编或用于再分发。`,
+        `© ${new Date().getFullYear()} 知撰。保留所有权利。本平台软件及文档未经许可不得复制、改编或用于再分发。`,
         '平台内嵌的开源组件按其各自许可证使用；中国专利公开文献内容为公有领域技术信息。',
       ]],
       ['免责声明', [
@@ -96,7 +96,7 @@ export function LegalPage({ page }: { page: string }) {
         <div className="mx-auto flex h-12 max-w-3xl items-center gap-2.5 px-4">
           <a href="#/" className="flex items-center gap-2">
             <BrandMark size="sm" />
-            <span className="text-sm font-semibold text-fg-strong">Patent Studio</span>
+            <span className="text-sm font-semibold text-fg-strong">知撰</span>
           </a>
           <a href="#/" className="ml-auto inline-flex items-center gap-1 text-sm text-fg-muted hover:text-fg transition-colors">
             <ArrowLeft className="size-4" aria-hidden /> 返回

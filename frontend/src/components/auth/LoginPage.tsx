@@ -50,7 +50,7 @@ export function LoginPage() {
 
   useEffect(() => {
     useStudio.getState().clearAuthError()
-    document.title = '登录 · Patent Studio'
+    document.title = '登录 · 知撰'
   }, [])
 
   const switchMode = (m: Mode) => {
