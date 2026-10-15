@@ -355,9 +355,26 @@ def render_release(
         except (AssertionError, ValueError) as exc:
             raise ReleaseConflict(f"release content cannot be rendered: {exc}") from exc
         with open(out_path, "rb") as fh:
-            data = fh.read()
+            data = _normalize_zip_timestamps(fh.read())
     filename = f"{_FILENAME_SAFE.sub('-', case.case_key)}-{release.id.hex[:8]}.docx"
     return filename, data, inputs
+
+
+def _normalize_zip_timestamps(data: bytes) -> bytes:
+    """ZIP 条目时间戳归一：python-docx 按当前时间写条目（2s 粒度），
+    同一 sealed release 重复 build 必须产出同 sha256，否则幂等重建被判冲突。"""
+    import io
+    import zipfile
+
+    src = zipfile.ZipFile(io.BytesIO(data))
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
+        for info in src.infolist():
+            item = zipfile.ZipInfo(info.filename, date_time=(1980, 1, 1, 0, 0, 0))
+            item.compress_type = info.compress_type
+            item.external_attr = info.external_attr
+            dst.writestr(item, src.read(info.filename))
+    return out.getvalue()
 
 
 def record_release_artifact(

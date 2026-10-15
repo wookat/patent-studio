@@ -432,18 +432,17 @@ def test_registry_rejects_duplicates_unknown_commands_and_forged_context_fields(
     with pytest.raises(UnknownCapabilityError):
         registry.get("case.unknown")
 
-    command_spec = CapabilitySpec(
-        id="case.apply",
-        version="1.0.0",
-        kind=CapabilityKind.COMMAND,
-        risk=CapabilityRisk.HIGH,
-        scope=CapabilityScope.CASE,
-        input_model=InspectInput,
-        output_model=InspectOutput,
-        handler=_inspect_handler,
-    )
     with pytest.raises(CapabilityRegistrationError):
-        registry.register(command_spec)
+        CapabilitySpec(
+            id="case.apply",
+            version="1.0.0",
+            kind=CapabilityKind.COMMAND,
+            risk=CapabilityRisk.HIGH,
+            scope=CapabilityScope.CASE,
+            input_model=InspectInput,
+            output_model=InspectOutput,
+            handler=_inspect_handler,
+        )
 
     with pytest.raises(CapabilityRegistrationError):
         CapabilitySpec(

@@ -11,6 +11,8 @@ from patent_studio.capabilities.registry import (
     CapabilityRisk,
     CapabilityScope,
     CapabilitySpec,
+    CommandInput,
+    CommandReceipt,
     InvocationContext,
     UnknownCapabilityError,
 )
@@ -26,6 +28,8 @@ __all__ = [
     "CapabilityRisk",
     "CapabilityScope",
     "CapabilitySpec",
+    "CommandInput",
+    "CommandReceipt",
     "InvocationContext",
     "UnknownCapabilityError",
 ]
