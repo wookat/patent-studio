@@ -6,24 +6,29 @@ import { fromDoc, serialize, toDoc } from '../serialize'
 import { schema } from '../schema'
 import astMethod from '../../../../../../backend/tests/golden/ast_method.json'
 import astSystem from '../../../../../../backend/tests/golden/ast_system.json'
+import astRich from '../../../../../../backend/tests/fixtures/ast_rich.json'
 import mdMethod from '../../../../../../examples/method/content.md?raw'
 import mdSystem from '../../../../../../examples/system/content.md?raw'
+import mdRich from '../../../../../../backend/tests/fixtures/rich/content.md?raw'
 
-/** 06 §4.3 golden：两案每个可编辑块 serialize(toDoc(block)) === blockSource（与后端 serialize_block 逐字节一致） */
+/** 06 §4.3 golden：各案每个可编辑块 serialize(toDoc(block)) === blockSource（与后端 serialize_block 逐字节一致） */
 const cases: [string, Ast, string][] = [
   ['method', astMethod as unknown as Ast, mdMethod],
   ['system', astSystem as unknown as Ast, mdSystem],
+  ['rich', astRich as unknown as Ast, mdRich],
 ]
 
 const editableBlocks = (ast: Ast): EditableBlock[] => [...ast.abstract.paragraphs, ...ast.claims, ...ast.description]
 
-describe.each(cases)('golden %s', (_name, ast, md) => {
-  const blocks = editableBlocks(ast)
-
-  it('覆盖全部块类型', () => {
-    const kinds = new Set(blocks.map((b) => b.kind))
+describe('golden 覆盖全部块类型（三案合集）', () => {
+  it('paragraph / claim / section / subsection / equation / table 均有块', () => {
+    const kinds = new Set(cases.flatMap(([, ast]) => editableBlocks(ast).map((b) => b.kind)))
     for (const k of ['paragraph', 'claim', 'section', 'subsection', 'equation', 'table']) expect(kinds).toContain(k)
   })
+})
+
+describe.each(cases)('golden %s', (_name, ast, md) => {
+  const blocks = editableBlocks(ast)
 
   it.each(blocks.map((b) => [b.id, b] as const))('%s 往返逐字节一致', (id, block) => {
     const src = blockSource(ast, md, id)
@@ -36,8 +41,14 @@ describe.each(cases)('golden %s', (_name, ast, md) => {
   it('doc 不含内核生成物（段号 / 权项号）', () => {
     for (const b of blocks) {
       const text = toDoc(b).textContent
-      if (b.kind === 'paragraph' && b.para_no !== null) expect(text).not.toMatch(/^\[\d{4}\]/)
-      if (b.kind === 'table') expect(text).not.toContain(`[${String(b.para_no).padStart(4, '0')}]`)
+      // 段号为内核按位置编号；语料源文未写段号时 doc 不得出现 [NNNN]
+      const src = blockSource(ast, md, b.id) ?? ''
+      if (b.kind === 'paragraph' && b.para_no !== null && !src.match(/^\[\d{4}\]/)) {
+        expect(text).not.toMatch(/^\[\d{4}\]/)
+      }
+      if (b.kind === 'table' && !src.includes(`[${String(b.para_no).padStart(4, '0')}]`)) {
+        expect(text).not.toContain(`[${String(b.para_no).padStart(4, '0')}]`)
+      }
     }
   })
 })

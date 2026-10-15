@@ -8,10 +8,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { blockSource } from '@/store'
 import type { Ast, AstTable } from '@/types/ast'
 import type { EditableBlock } from '@/components/block-model/slots'
-import astMethod from '../../../../../../backend/tests/golden/ast_method.json'
-import astSystem from '../../../../../../backend/tests/golden/ast_system.json'
-import mdMethod from '../../../../../../examples/method/content.md?raw'
-import mdSystem from '../../../../../../examples/system/content.md?raw'
+import astMethod from '../../../../../../backend/tests/fixtures/ast_rich.json'
+import mdMethod from '../../../../../../backend/tests/fixtures/rich/content.md?raw'
 import {
   MERGE_UP,
   MIN_ROWS,
@@ -64,10 +62,8 @@ const run = (state: EditorState, cmd: Exclude<TableCommand, 'col-widths' | 'capt
 const lines = (state: EditorState) => serializeLayout(state.doc).split('\n')
 
 describe('GFM 表格文本拼装 ↔ 版面 schema 往返', () => {
-  const cases: [string, Ast, string][] = [
-    ['method', astMethod as unknown as Ast, mdMethod],
-    ['system', astSystem as unknown as Ast, mdSystem],
-  ]
+  // 表格块只存在于 rich fixture（真语料指纹/可视化案均无表）
+  const cases: [string, Ast, string][] = [['rich', astMethod as unknown as Ast, mdMethod]]
   const tables = (ast: Ast) => ast.description.filter((b): b is AstTable => b.kind === 'table')
 
   it.each(cases)('%s：golden 每个表格块 serializeLayout(toLayoutDoc(block)) === 源码', (_n, ast, md) => {

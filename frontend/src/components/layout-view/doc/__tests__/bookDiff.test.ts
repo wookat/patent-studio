@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { splitBooks } from '@/lib/docset'
 import { findBlockLines } from '@/store/blocks'
 import type { Ast, BookName } from '@/types/ast'
-import fixture from '../../../../../../backend/tests/golden/ast_method.json'
-import METHOD from '../../../../../../examples/method/content.md?raw'
+import fixture from '../../../../../../backend/tests/fixtures/ast_rich.json'
+import METHOD from '../../../../../../backend/tests/fixtures/rich/content.md?raw'
 import { bookDiff } from '../bookDiff'
 
 const ast = fixture as unknown as Ast

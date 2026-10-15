@@ -2,8 +2,8 @@
 import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import goldenMethod from '../../../../../backend/tests/golden/ast_method.json'
-import content from '../../../../../examples/method/content.md?raw'
+import goldenMethod from '../../../../../backend/tests/fixtures/ast_rich.json'
+import content from '../../../../../backend/tests/fixtures/rich/content.md?raw'
 import { closeStructureDialog, useDialogStore } from '@/components/block-model/dialogs/state'
 import { StructureDialogs } from '@/components/block-model/dialogs'
 import { EditorToolbar } from '@/components/editor/EditorToolbar'
@@ -112,8 +112,8 @@ describe('集成：版面视图 × D2 表格（prosemirror-tables → GFM → pa
     expect(rows.length).toBeGreaterThanOrEqual(3)
     for (const r of rows) expect(gfmCols(r)).toBe(gfmCols(beforeRow) + 1)
     expect(rows[1]).toMatch(/^\|(\s*:?-+:?\s*\|)+$/)
-    // 非表格行（表题 / 注 / 选项注释）原样保留
-    for (const l of before.split('\n').filter((l) => !l.startsWith('|'))) expect(md).toContain(l)
+    // 非表格行（表题 / 注）原样保留；选项注释行会因加列失效列宽而重写，不参与原样比对
+    for (const l of before.split('\n').filter((l) => !l.startsWith('|') && !l.startsWith('<!--'))) expect(md).toContain(l)
     // 光标移到段落 → 工具条消失
     const para = method.description.find((b) => b.kind === 'paragraph')!
     await click(block(el, para.id))
@@ -312,8 +312,9 @@ describe('集成：`/` 插入「附图…」复用 figure-book', () => {
     expect(state.payload?.kind).toBe('formula')
     const payload = state.payload
     if (payload?.kind === 'formula') {
-      // 初始值 = 该权项首个 equation segment 的源码（golden claims/2/seg/1）
-      expect(payload.initial).toBe('g_t,c = [ē_b,c/(ē_b,c+ē_ret,c)]·clip(conf_t,c, 0, 1)')
+      // 初始值 = 首个权项 equation segment 的源码
+      const seg = method.claims.flatMap((c) => c.segments).find((s) => s.kind === 'equation')!
+      expect(payload.initial).toBe(seg.text)
       await act(async () => payload.onSubmit('x = 1'))
       await act(async () => Promise.resolve())
       expect(api.mathml).toHaveBeenCalledWith('x = 1')

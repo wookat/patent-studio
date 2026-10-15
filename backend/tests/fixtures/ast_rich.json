@@ -1,0 +1,1192 @@
+{
+ "version": 1,
+ "title": {
+  "text": "一种示例信号处理方法及装置",
+  "line": 1
+ },
+ "books": {
+  "abstract": {
+   "offset": 3,
+   "length": 5
+  },
+  "claims": {
+   "offset": 9,
+   "length": 18
+  },
+  "description": {
+   "offset": 28,
+   "length": 98
+  }
+ },
+ "abstract": {
+  "id": "abstract",
+  "kind": "abstract",
+  "lines": {
+   "start": 1,
+   "end": 5
+  },
+  "figure_num": null,
+  "paragraphs": [
+   {
+    "id": "abstract/p1",
+    "kind": "paragraph",
+    "lines": {
+     "start": 2,
+     "end": 2
+    },
+    "text": "本申请提供一种示例信号处理方法及装置，通过采集原始信号、对信号进行滤波处理并根据滤波系数输出控制量，能够提升信号处理的稳定性与精度。本申请还提供了相应的装置、电子设备及存储介质。",
+    "para_no": null,
+    "role": "body",
+    "inline": [
+     {
+      "text": "本申请提供一种示例信号处理方法及装置，通过采集原始信号、对信号进行滤波处理并根据滤波系数输出控制量，能够提升信号处理的稳定性与精度。本申请还提供了相应的装置、电子设备及存储介质。",
+      "marks": []
+     }
+    ]
+   },
+   {
+    "id": "abstract/p2",
+    "kind": "paragraph",
+    "lines": {
+     "start": 4,
+     "end": 4
+    },
+    "text": "本申请实施例的上述技术方案能够适用于多种工业控制场景。",
+    "para_no": null,
+    "role": "body",
+    "inline": [
+     {
+      "text": "本申请实施例的上述技术方案能够适用于多种工业控制场景。",
+      "marks": []
+     }
+    ]
+   }
+  ]
+ },
+ "claims": [
+  {
+   "id": "claims/1",
+   "kind": "claim",
+   "lines": {
+    "start": 2,
+    "end": 7
+   },
+   "num": 1,
+   "num_written": "1",
+   "claim_kind": "independent",
+   "category": "示例信号处理方法",
+   "refs": [],
+   "charact": {
+    "seg": 0,
+    "offset": 19
+   },
+   "segments": [
+    {
+     "id": "claims/1/seg/0",
+     "line": 2,
+     "kind": "text",
+     "text": "1.一种示例信号处理方法，其特征在于，包括以下步骤：",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "1.一种示例信号处理方法，其特征在于，包括以下步骤：",
+       "marks": []
+      }
+     ]
+    },
+    {
+     "id": "claims/1/seg/1",
+     "line": 3,
+     "kind": "text",
+     "text": "采集原始信号；",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "采集原始信号；",
+       "marks": []
+      }
+     ]
+    },
+    {
+     "id": "claims/1/seg/2",
+     "line": 4,
+     "kind": "text",
+     "text": "对所述原始信号进行滤波处理，得到滤波信号；",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "对所述原始信号进行滤波处理，得到滤波信号；",
+       "marks": []
+      }
+     ]
+    },
+    {
+     "id": "claims/1/seg/3",
+     "line": 5,
+     "kind": "text",
+     "text": "根据所述滤波信号生成控制量，所述控制量满足：",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "根据所述滤波信号生成控制量，所述控制量满足：",
+       "marks": []
+      }
+     ]
+    },
+    {
+     "id": "claims/1/seg/4",
+     "line": 6,
+     "kind": "equation",
+     "text": "u = K_p e + K_i \\int e \\, dt",
+     "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><mi>u</mi><mo>=</mo><msub><mrow><mi>K</mi></mrow><mrow><mi>p</mi></mrow></msub><mi>e</mi><mo>+</mo><msub><mrow><mi>K</mi></mrow><mrow><mi>i</mi></mrow></msub><mrow><munder><mo>∫</mo><mrow/></munder><mrow><mi>e</mi><mi>dt</mi></mrow></mrow></math>"
+    },
+    {
+     "id": "claims/1/seg/5",
+     "line": 7,
+     "kind": "text",
+     "text": "其中，Kp 为比例系数，Ki 为积分系数。",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "其中，Kp 为比例系数，Ki 为积分系数。",
+       "marks": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "claims/2",
+   "kind": "claim",
+   "lines": {
+    "start": 9,
+    "end": 11
+   },
+   "num": 2,
+   "num_written": "2",
+   "claim_kind": "dependent",
+   "category": "示例信号处理方法",
+   "refs": [
+    {
+     "text": "权利要求1",
+     "targets": [
+      1
+     ],
+     "alternative": false,
+     "seg": 0,
+     "start": 4,
+     "end": 9
+    }
+   ],
+   "charact": {
+    "seg": 0,
+    "offset": 27
+   },
+   "segments": [
+    {
+     "id": "claims/2/seg/0",
+     "line": 9,
+     "kind": "text",
+     "text": "2.根据权利要求1所述的示例信号处理方法，其特征在于，所述滤波系数满足：",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "2.根据权利要求1所述的示例信号处理方法，其特征在于，所述滤波系数满足：",
+       "marks": []
+      }
+     ]
+    },
+    {
+     "id": "claims/2/seg/1",
+     "line": 10,
+     "kind": "equation",
+     "text": "k = \\frac{\\alpha}{\\beta + \\gamma}",
+     "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><mi>k</mi><mo>=</mo><mfrac><mrow><mi>α</mi></mrow><mrow><mi>β</mi><mo>+</mo><mi>γ</mi></mrow></mfrac></math>"
+    },
+    {
+     "id": "claims/2/seg/2",
+     "line": 11,
+     "kind": "text",
+     "text": "其中，α 为调节参数，β 与 γ 为标定参数。",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "其中，α 为调节参数，β 与 γ 为标定参数。",
+       "marks": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "claims/3",
+   "kind": "claim",
+   "lines": {
+    "start": 13,
+    "end": 13
+   },
+   "num": 3,
+   "num_written": "3",
+   "claim_kind": "dependent",
+   "category": "示例信号处理方法",
+   "refs": [
+    {
+     "text": "权利要求1或2",
+     "targets": [
+      1,
+      2
+     ],
+     "alternative": true,
+     "seg": 0,
+     "start": 4,
+     "end": 11
+    }
+   ],
+   "charact": {
+    "seg": 0,
+    "offset": 29
+   },
+   "segments": [
+    {
+     "id": "claims/3/seg/0",
+     "line": 13,
+     "kind": "text",
+     "text": "3.根据权利要求1或2所述的示例信号处理方法，其特征在于，还包括：将所述控制量写入执行器。",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "3.根据权利要求1或2所述的示例信号处理方法，其特征在于，还包括：将所述控制量写入执行器。",
+       "marks": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "claims/4",
+   "kind": "claim",
+   "lines": {
+    "start": 15,
+    "end": 15
+   },
+   "num": 4,
+   "num_written": "4",
+   "claim_kind": "dependent",
+   "category": "示例信号处理方法",
+   "refs": [
+    {
+     "text": "权利要求3",
+     "targets": [
+      3
+     ],
+     "alternative": false,
+     "seg": 0,
+     "start": 4,
+     "end": 9
+    }
+   ],
+   "charact": {
+    "seg": 0,
+    "offset": 27
+   },
+   "segments": [
+    {
+     "id": "claims/4/seg/0",
+     "line": 15,
+     "kind": "text",
+     "text": "4.根据权利要求3所述的示例信号处理方法，其特征在于，所述执行器为步进电机。",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "4.根据权利要求3所述的示例信号处理方法，其特征在于，所述执行器为步进电机。",
+       "marks": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "claims/5",
+   "kind": "claim",
+   "lines": {
+    "start": 17,
+    "end": 17
+   },
+   "num": 5,
+   "num_written": "5",
+   "claim_kind": "independent",
+   "category": "示例信号处理装置",
+   "refs": [
+    {
+     "text": "权利要求1",
+     "targets": [
+      1
+     ],
+     "alternative": false,
+     "seg": 0,
+     "start": 61,
+     "end": 66
+    }
+   ],
+   "charact": {
+    "seg": 0,
+    "offset": 19
+   },
+   "segments": [
+    {
+     "id": "claims/5/seg/0",
+     "line": 17,
+     "kind": "text",
+     "text": "5.一种示例信号处理装置，其特征在于，包括采集模块、滤波模块与控制模块，所述采集模块用于采集原始信号，所述滤波模块用于执行权利要求1所述的滤波处理，所述控制模块用于生成控制量。",
+     "mathml": null,
+     "inline": [
+      {
+       "text": "5.一种示例信号处理装置，其特征在于，包括采集模块、滤波模块与控制模块，所述采集模块用于采集原始信号，所述滤波模块用于执行权利要求1所述的滤波处理，所述控制模块用于生成控制量。",
+       "marks": []
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "description": [
+  {
+   "id": "description/技术领域",
+   "kind": "section",
+   "lines": {
+    "start": 2,
+    "end": 2
+   },
+   "title": "技术领域",
+   "part": "technical-field",
+   "inline": [
+    {
+     "text": "技术领域",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/技术领域/p0001",
+   "kind": "paragraph",
+   "lines": {
+    "start": 4,
+    "end": 4
+   },
+   "text": "本申请涉及信号处理技术领域，尤其涉及一种示例信号处理方法及装置。",
+   "para_no": 1,
+   "role": "body",
+   "inline": [
+    {
+     "text": "本申请涉及信号处理技术领域，尤其涉及一种示例信号处理方法及装置。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/背景技术",
+   "kind": "section",
+   "lines": {
+    "start": 6,
+    "end": 6
+   },
+   "title": "背景技术",
+   "part": "background-art",
+   "inline": [
+    {
+     "text": "背景技术",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/背景技术/p0002",
+   "kind": "paragraph",
+   "lines": {
+    "start": 8,
+    "end": 8
+   },
+   "text": "现有技术中，信号处理通常采用固定滤波参数，难以适应工况变化。",
+   "para_no": 2,
+   "role": "body",
+   "inline": [
+    {
+     "text": "现有技术中，信号处理通常采用固定滤波参数，难以适应工况变化。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/背景技术/p0003",
+   "kind": "paragraph",
+   "lines": {
+    "start": 10,
+    "end": 10
+   },
+   "text": "因此，需要一种能够自适应调整滤波系数的信号处理方法。",
+   "para_no": 3,
+   "role": "body",
+   "inline": [
+    {
+     "text": "因此，需要一种能够自适应调整滤波系数的信号处理方法。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容",
+   "kind": "section",
+   "lines": {
+    "start": 12,
+    "end": 12
+   },
+   "title": "发明内容",
+   "part": "disclosure",
+   "inline": [
+    {
+     "text": "发明内容",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/p0004",
+   "kind": "paragraph",
+   "lines": {
+    "start": 14,
+    "end": 14
+   },
+   "text": "为克服相关技术中存在的问题，本申请提供一种示例信号处理方法及装置。",
+   "para_no": 4,
+   "role": "body",
+   "inline": [
+    {
+     "text": "为克服相关技术中存在的问题，本申请提供一种示例信号处理方法及装置。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/p0005",
+   "kind": "paragraph",
+   "lines": {
+    "start": 16,
+    "end": 16
+   },
+   "text": "本申请实施例的第一方面，提供一种示例信号处理方法，包括采集原始信号、滤波与生成控制量。",
+   "para_no": 5,
+   "role": "body",
+   "inline": [
+    {
+     "text": "本申请实施例的第一方面，提供一种示例信号处理方法，包括采集原始信号、滤波与生成控制量。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/技术方案",
+   "kind": "subsection",
+   "lines": {
+    "start": 18,
+    "end": 18
+   },
+   "title": "技术方案",
+   "part": "disclosure",
+   "inline": [
+    {
+     "text": "技术方案",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/技术方案/p0006",
+   "kind": "paragraph",
+   "lines": {
+    "start": 20,
+    "end": 20
+   },
+   "text": "所述滤波处理采用递归滤波器实现，滤波系数根据工况动态调整。",
+   "para_no": 6,
+   "role": "body",
+   "inline": [
+    {
+     "text": "所述滤波处理采用递归滤波器实现，滤波系数根据工况动态调整。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/技术方案/p0007",
+   "kind": "paragraph",
+   "lines": {
+    "start": 22,
+    "end": 22
+   },
+   "text": "在一些实施例中，控制量与误差信号之间的关系为：",
+   "para_no": 7,
+   "role": "body",
+   "inline": [
+    {
+     "text": "在一些实施例中，控制量与误差信号之间的关系为：",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/技术方案/eq1",
+   "kind": "equation",
+   "lines": {
+    "start": 24,
+    "end": 24
+   },
+   "source": "u(t) = K_p e(t) + K_i \\int_0^t e(\\tau) d\\tau + K_d \\frac{de}{dt}",
+   "label": "（1）",
+   "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><mi>u</mi><mrow><mo>(</mo><mi>t</mi><mo>)</mo></mrow><mo>=</mo><msub><mrow><mi>K</mi></mrow><mrow><mi>p</mi></mrow></msub><mi>e</mi><mrow><mo>(</mo><mi>t</mi><mo>)</mo></mrow><mo>+</mo><msub><mrow><mi>K</mi></mrow><mrow><mi>i</mi></mrow></msub><mrow><munderover><mo>∫</mo><mrow><mn>0</mn></mrow><mrow><mi>t</mi></mrow></munderover><mrow><mi>e</mi><mrow><mo>(</mo><mi>τ</mi><mo>)</mo></mrow><mi>d</mi><mi>τ</mi></mrow></mrow><mo>+</mo><msub><mrow><mi>K</mi></mrow><mrow><mi>d</mi></mrow></msub><mfrac><mrow><mi>de</mi></mrow><mrow><mi>dt</mi></mrow></mfrac></math>",
+   "anchor_para_no": 7
+  },
+  {
+   "id": "description/发明内容/技术方案/p0008",
+   "kind": "paragraph",
+   "lines": {
+    "start": 26,
+    "end": 26
+   },
+   "text": "其中，比例系数与积分系数的取值范围由下表给出。",
+   "para_no": 8,
+   "role": "body",
+   "inline": [
+    {
+     "text": "其中，比例系数与积分系数的取值范围由下表给出。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/技术方案/p0009",
+   "kind": "paragraph",
+   "lines": {
+    "start": 28,
+    "end": 28
+   },
+   "text": "表1 各实施例的系数取值范围",
+   "para_no": 9,
+   "role": "table-caption",
+   "inline": [
+    {
+     "text": "表1 各实施例的系数取值范围",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/技术方案/p0010",
+   "kind": "table",
+   "lines": {
+    "start": 30,
+    "end": 37
+   },
+   "para_no": 10,
+   "rows": [
+    [
+     "系数",
+     "下限",
+     "上限"
+    ],
+    [
+     "Kp",
+     "0.1",
+     "10"
+    ],
+    [
+     "Ki",
+     "0.01",
+     "5"
+    ],
+    [
+     "Kd",
+     "0",
+     "2"
+    ]
+   ],
+   "options": {
+    "three_line": true,
+    "repeat_header": true,
+    "num_left": true,
+    "col_widths": [
+     30.0,
+     30.0,
+     40.0
+    ]
+   },
+   "caption_after": null,
+   "note": {
+    "text": "注：系数取值经实验标定。",
+    "para_no": 11
+   }
+  },
+  {
+   "id": "description/发明内容/技术方案/p0012",
+   "kind": "paragraph",
+   "lines": {
+    "start": 39,
+    "end": 39
+   },
+   "text": "滤波器的截止频率满足：",
+   "para_no": 12,
+   "role": "body",
+   "inline": [
+    {
+     "text": "滤波器的截止频率满足：",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/技术方案/eq2",
+   "kind": "equation",
+   "lines": {
+    "start": 41,
+    "end": 41
+   },
+   "source": "f_c = \\frac{1}{2\\pi RC}",
+   "label": "（2）",
+   "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><msub><mrow><mi>f</mi></mrow><mrow><mi>c</mi></mrow></msub><mo>=</mo><mfrac><mrow><mn>1</mn></mrow><mrow><mn>2</mn><mi>π</mi><mi>RC</mi></mrow></mfrac></math>",
+   "anchor_para_no": 12
+  },
+  {
+   "id": "description/发明内容/技术方案/p0013",
+   "kind": "paragraph",
+   "lines": {
+    "start": 43,
+    "end": 43
+   },
+   "text": "在一些实施例中，采样频率 fs 与截止频率之间满足奈奎斯特约束。",
+   "para_no": 13,
+   "role": "body",
+   "inline": [
+    {
+     "text": "在一些实施例中，采样频率 fs 与截止频率之间满足奈奎斯特约束。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/技术方案/eq3",
+   "kind": "equation",
+   "lines": {
+    "start": 45,
+    "end": 45
+   },
+   "source": "f_s \\geq 2 f_c",
+   "label": "（3）",
+   "mathml": "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><msub><mrow><mi>f</mi></mrow><mrow><mi>s</mi></mrow></msub><mo>≥</mo><mn>2</mn><msub><mrow><mi>f</mi></mrow><mrow><mi>c</mi></mrow></msub></math>",
+   "anchor_para_no": 13
+  },
+  {
+   "id": "description/发明内容/控制流程",
+   "kind": "subsection",
+   "lines": {
+    "start": 47,
+    "end": 47
+   },
+   "title": "控制流程",
+   "part": "disclosure",
+   "inline": [
+    {
+     "text": "控制流程",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/控制流程/p0014",
+   "kind": "paragraph",
+   "lines": {
+    "start": 49,
+    "end": 49
+   },
+   "text": "控制流程包括初始化、采集、滤波、计算与输出五个阶段。",
+   "para_no": 14,
+   "role": "body",
+   "inline": [
+    {
+     "text": "控制流程包括初始化、采集、滤波、计算与输出五个阶段。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/控制流程/p0015",
+   "kind": "paragraph",
+   "lines": {
+    "start": 51,
+    "end": 51
+   },
+   "text": "所述初始化阶段加载标定参数。",
+   "para_no": 15,
+   "role": "body",
+   "inline": [
+    {
+     "text": "所述初始化阶段加载标定参数。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/控制流程/p0016",
+   "kind": "paragraph",
+   "lines": {
+    "start": 53,
+    "end": 53
+   },
+   "text": "表2 标定参数表",
+   "para_no": 16,
+   "role": "table-caption",
+   "inline": [
+    {
+     "text": "表2 标定参数表",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/发明内容/控制流程/p0017",
+   "kind": "table",
+   "lines": {
+    "start": 55,
+    "end": 58
+   },
+   "para_no": 17,
+   "rows": [
+    [
+     "参数",
+     "默认值"
+    ],
+    [
+     "T0",
+     "300K"
+    ],
+    [
+     "P0",
+     "101kPa"
+    ]
+   ],
+   "options": {
+    "three_line": false,
+    "repeat_header": false,
+    "num_left": false,
+    "col_widths": null
+   },
+   "caption_after": null,
+   "note": null
+  },
+  {
+   "id": "description/发明内容/控制流程/p0018",
+   "kind": "paragraph",
+   "lines": {
+    "start": 60,
+    "end": 60
+   },
+   "text": "所述输出阶段将控制量写入执行器寄存器。",
+   "para_no": 18,
+   "role": "body",
+   "inline": [
+    {
+     "text": "所述输出阶段将控制量写入执行器寄存器。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/附图说明",
+   "kind": "section",
+   "lines": {
+    "start": 62,
+    "end": 62
+   },
+   "title": "附图说明",
+   "part": "description-of-drawings",
+   "inline": [
+    {
+     "text": "附图说明",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/附图说明/p0019",
+   "kind": "paragraph",
+   "lines": {
+    "start": 64,
+    "end": 64
+   },
+   "text": "图1为本申请实施例提供的示例信号处理方法的流程图。",
+   "para_no": 19,
+   "role": "body",
+   "inline": [
+    {
+     "text": "图1为本申请实施例提供的示例信号处理方法的流程图。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/附图说明/p0020",
+   "kind": "paragraph",
+   "lines": {
+    "start": 66,
+    "end": 66
+   },
+   "text": "图2为本申请实施例提供的滤波模块的结构示意图。",
+   "para_no": 20,
+   "role": "body",
+   "inline": [
+    {
+     "text": "图2为本申请实施例提供的滤波模块的结构示意图。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/附图说明/p0021",
+   "kind": "paragraph",
+   "lines": {
+    "start": 68,
+    "end": 68
+   },
+   "text": "图3为本申请实施例提供的控制流程的时序图。",
+   "para_no": 21,
+   "role": "body",
+   "inline": [
+    {
+     "text": "图3为本申请实施例提供的控制流程的时序图。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/附图说明/p0022",
+   "kind": "paragraph",
+   "lines": {
+    "start": 70,
+    "end": 70
+   },
+   "text": "图4为本申请实施例提供的信号处理装置的结构示意图。",
+   "para_no": 22,
+   "role": "body",
+   "inline": [
+    {
+     "text": "图4为本申请实施例提供的信号处理装置的结构示意图。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/附图说明/p0023",
+   "kind": "paragraph",
+   "lines": {
+    "start": 72,
+    "end": 72
+   },
+   "text": "图5为本申请实施例提供的电子设备的结构示意图。",
+   "para_no": 23,
+   "role": "body",
+   "inline": [
+    {
+     "text": "图5为本申请实施例提供的电子设备的结构示意图。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/附图说明/p0024",
+   "kind": "paragraph",
+   "lines": {
+    "start": 74,
+    "end": 74
+   },
+   "text": "图6为本申请实施例提供的存储介质的示意图。",
+   "para_no": 24,
+   "role": "body",
+   "inline": [
+    {
+     "text": "图6为本申请实施例提供的存储介质的示意图。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式",
+   "kind": "section",
+   "lines": {
+    "start": 76,
+    "end": 76
+   },
+   "title": "具体实施方式",
+   "part": "mode-for-invention",
+   "inline": [
+    {
+     "text": "具体实施方式",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0025",
+   "kind": "paragraph",
+   "lines": {
+    "start": 78,
+    "end": 78
+   },
+   "text": "为使本申请的目的、技术方案和优点更加清楚，下面结合附图对本申请的具体实施方式进行详细说明。",
+   "para_no": 25,
+   "role": "body",
+   "inline": [
+    {
+     "text": "为使本申请的目的、技术方案和优点更加清楚，下面结合附图对本申请的具体实施方式进行详细说明。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0026",
+   "kind": "paragraph",
+   "lines": {
+    "start": 80,
+    "end": 80
+   },
+   "text": "如图1所示，示例信号处理方法包括以下步骤。",
+   "para_no": 26,
+   "role": "body",
+   "inline": [
+    {
+     "text": "如图1所示，示例信号处理方法包括以下步骤。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0027",
+   "kind": "paragraph",
+   "lines": {
+    "start": 82,
+    "end": 82
+   },
+   "text": "步骤S101，采集原始信号。所述原始信号可以是电压信号、电流信号或振动信号。",
+   "para_no": 27,
+   "role": "body",
+   "inline": [
+    {
+     "text": "步骤S101，采集原始信号。所述原始信号可以是电压信号、电流信号或振动信号。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0028",
+   "kind": "paragraph",
+   "lines": {
+    "start": 84,
+    "end": 84
+   },
+   "text": "步骤S102，对原始信号进行滤波处理。滤波处理可以消除高频噪声。",
+   "para_no": 28,
+   "role": "body",
+   "inline": [
+    {
+     "text": "步骤S102，对原始信号进行滤波处理。滤波处理可以消除高频噪声。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0029",
+   "kind": "paragraph",
+   "lines": {
+    "start": 86,
+    "end": 86
+   },
+   "text": "如图2所示，滤波模块包括输入缓冲器、系数寄存器与累加器。",
+   "para_no": 29,
+   "role": "body",
+   "inline": [
+    {
+     "text": "如图2所示，滤波模块包括输入缓冲器、系数寄存器与累加器。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0030",
+   "kind": "paragraph",
+   "lines": {
+    "start": 88,
+    "end": 88
+   },
+   "text": "步骤S103，根据滤波信号生成控制量。控制量 u 的计算如式（1）所示。",
+   "para_no": 30,
+   "role": "body",
+   "inline": [
+    {
+     "text": "步骤S103，根据滤波信号生成控制量。控制量 u 的计算如式（1）所示。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0031",
+   "kind": "paragraph",
+   "lines": {
+    "start": 90,
+    "end": 90
+   },
+   "text": "在一些实施例中，如图3所示，各阶段按固定时序执行。",
+   "para_no": 31,
+   "role": "body",
+   "inline": [
+    {
+     "text": "在一些实施例中，如图3所示，各阶段按固定时序执行。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0032",
+   "kind": "paragraph",
+   "lines": {
+    "start": 92,
+    "end": 92
+   },
+   "text": "如图4所示，信号处理装置包括采集模块401、滤波模块402与控制模块403。",
+   "para_no": 32,
+   "role": "body",
+   "inline": [
+    {
+     "text": "如图4所示，信号处理装置包括采集模块401、滤波模块402与控制模块403。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0033",
+   "kind": "paragraph",
+   "lines": {
+    "start": 94,
+    "end": 94
+   },
+   "text": "如图5所示，电子设备500包括处理器501与存储器502。",
+   "para_no": 33,
+   "role": "body",
+   "inline": [
+    {
+     "text": "如图5所示，电子设备500包括处理器501与存储器502。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0034",
+   "kind": "paragraph",
+   "lines": {
+    "start": 96,
+    "end": 96
+   },
+   "text": "如图6所示，存储介质上存储有计算机程序。",
+   "para_no": 34,
+   "role": "body",
+   "inline": [
+    {
+     "text": "如图6所示，存储介质上存储有计算机程序。",
+     "marks": []
+    }
+   ]
+  },
+  {
+   "id": "description/具体实施方式/p0035",
+   "kind": "paragraph",
+   "lines": {
+    "start": 98,
+    "end": 98
+   },
+   "text": "本领域技术人员应当理解，上述实施例仅为示例，不构成对本申请保护范围的限制。",
+   "para_no": 35,
+   "role": "body",
+   "inline": [
+    {
+     "text": "本领域技术人员应当理解，上述实施例仅为示例，不构成对本申请保护范围的限制。",
+     "marks": []
+    }
+   ]
+  }
+ ],
+ "figures": [
+  {
+   "id": "figures/1",
+   "kind": "figure",
+   "book": "figures",
+   "num": 1,
+   "file": "fig1.png",
+   "width": 15.0,
+   "alt": "图1 示例信号处理方法的流程图",
+   "caption": "本申请实施例提供的示例信号处理方法的流程图",
+   "caption_line": 64
+  },
+  {
+   "id": "figures/2",
+   "kind": "figure",
+   "book": "figures",
+   "num": 2,
+   "file": "fig2.png",
+   "width": 15.0,
+   "alt": "图2 滤波模块的结构示意图",
+   "caption": "本申请实施例提供的滤波模块的结构示意图",
+   "caption_line": 66
+  },
+  {
+   "id": "figures/3",
+   "kind": "figure",
+   "book": "figures",
+   "num": 3,
+   "file": "fig3.png",
+   "width": 15.0,
+   "alt": "图3 控制流程的时序图",
+   "caption": "本申请实施例提供的控制流程的时序图",
+   "caption_line": 68
+  },
+  {
+   "id": "figures/4",
+   "kind": "figure",
+   "book": "figures",
+   "num": 4,
+   "file": "fig4.png",
+   "width": 15.0,
+   "alt": "图4 信号处理装置的结构示意图",
+   "caption": "本申请实施例提供的信号处理装置的结构示意图",
+   "caption_line": 70
+  },
+  {
+   "id": "figures/5",
+   "kind": "figure",
+   "book": "figures",
+   "num": 5,
+   "file": "fig5.png",
+   "width": 15.0,
+   "alt": "图5 电子设备的结构示意图",
+   "caption": "本申请实施例提供的电子设备的结构示意图",
+   "caption_line": 72
+  },
+  {
+   "id": "figures/6",
+   "kind": "figure",
+   "book": "figures",
+   "num": 6,
+   "file": "fig6.png",
+   "width": 15.0,
+   "alt": "图6 存储介质的示意图",
+   "caption": "本申请实施例提供的存储介质的示意图",
+   "caption_line": 74
+  }
+ ],
+ "figures_bad_lines": []
+}

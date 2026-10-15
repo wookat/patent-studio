@@ -6,8 +6,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { Ast, AstClaim, AstEquation, AstParagraph, AstTable } from '@/types/ast'
 import { BlockEditor } from '../BlockEditor'
 import type { BlockEditorProps } from '../../slots'
-import fixtureMethod from '../../../../../../backend/tests/golden/ast_method.json'
-import content from '../../../../../../examples/method/content.md?raw'
+import fixtureMethod from '../../../../../../backend/tests/fixtures/ast_rich.json'
+import content from '../../../../../../backend/tests/fixtures/rich/content.md?raw'
 import { blockSource } from '@/store'
 
 declare global {
@@ -248,7 +248,8 @@ describe('BlockEditor（ProseMirror）', () => {
     expect(tb.querySelectorAll('td.ps-cell').length).toBe(cells.length) // 单元格内 Enter 不拆格
     await key(tb, 'Enter', { ctrlKey: true })
     const expected = src(table.id).split('\n')
-    expected[0] = expected[0].replace(table.rows[0][0], table.rows[0][0] + '改')
+    const headerIdx = expected.findIndex((l) => l.includes(table.rows[0][0]))
+    expected[headerIdx] = expected[headerIdx].replace(table.rows[0][0], table.rows[0][0] + '改')
     expect(props.onSubmit).toHaveBeenCalledWith(expected.join('\n'))
   })
 

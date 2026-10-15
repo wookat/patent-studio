@@ -4,7 +4,7 @@ import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { tableNodeTypes } from 'prosemirror-tables'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import goldenMethod from '../../../../../backend/tests/golden/ast_method.json'
+import goldenMethod from '../../../../../backend/tests/fixtures/ast_rich.json'
 import goldenSystem from '../../../../../backend/tests/golden/ast_system.json'
 import { schema } from '@/components/block-model/edit/schema'
 import { serialize } from '@/components/block-model/edit/serialize'
@@ -148,11 +148,11 @@ describe('W4-D prep：编号补全数据源 = AST（16 §4.4）', () => {
   it('两案 图 / 表 / 式 候选', () => {
     expect(numberCandidates(method, '图').map((c) => c.label)).toEqual(['图1', '图2', '图3', '图4', '图5', '图6'])
     expect(numberCandidates(method, '表').map((c) => c.label)).toEqual(['表1', '表2'])
-    expect(numberCandidates(method, '式')).toHaveLength(12)
+    expect(numberCandidates(method, '式')).toHaveLength(3)
     expect(numberCandidates(method, '式')[0]).toMatchObject({ kind: '式', label: '式（1）' })
-    expect(numberCandidates(system, '图')).toHaveLength(5)
-    expect(numberCandidates(system, '表').map((c) => c.label)).toEqual(['表1'])
-    expect(numberCandidates(system, '式').map((c) => c.label)).toEqual(['式（1）', '式（2）'])
+    expect(numberCandidates(system, '图')).toHaveLength(6)
+    expect(numberCandidates(system, '表')).toEqual([])
+    expect(numberCandidates(system, '式')).toEqual([])
     expect(numberCandidates(null, '图')).toEqual([])
     for (const c of numberCandidates(method, '表')) expect(method.description.some((b) => b.id === c.blockId)).toBe(true)
   })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import METHOD from '../../../../../examples/method/content.md?raw'
+import METHOD from '../../../../../backend/tests/fixtures/rich/content.md?raw'
 import type { Settings } from '@/lib/types'
 import { countFigureRefs, figureNodeCaption, firstFigureRefLine, listFigFiles, settingsChangedCount, visibleFigFiles } from '../fileTreeUtils'
 import { claimRefTag, paraRangeTag, refRange } from '../outlineTags'

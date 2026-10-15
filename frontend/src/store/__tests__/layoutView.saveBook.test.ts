@@ -6,8 +6,8 @@ import type { ProjectDetail } from '@/lib/types'
 import { blockSource, findBlockLines, spliceBlock, useStudio } from '@/store'
 import { CONFLICT_TOAST, registerCollabBookWriter, registerCollabContentWriter } from '@/store/layoutView'
 import type { Ast } from '@/types/ast'
-import fixture from '../../../../backend/tests/golden/ast_method.json'
-import METHOD from '../../../../examples/method/content.md?raw'
+import fixture from '../../../../backend/tests/fixtures/ast_rich.json'
+import METHOD from '../../../../backend/tests/fixtures/rich/content.md?raw'
 
 /**
  * W9 saveBook（store 入口 doc.saveBook(book, newMd, {review}) → layoutView.saveBookDoc）：
