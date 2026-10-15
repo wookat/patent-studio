@@ -367,3 +367,24 @@ class PrincipalOut(DTO):
     id: uuid.UUID
     kind: str
     display_name: str
+
+
+class DocumentAstIn(DTO):
+    """缺省 content=None → 用 current revision 正文解析；给了按所给正文解析（编辑器未保存内容的预览）。"""
+
+    content: str | None = Field(default=None, max_length=2_000_000)
+
+
+class DocumentAstOut(DTO):
+    """ast = kernel.parse_ast 的 ast_schema.json v1 全量 dict；content = 实际被解析的三书合一包裹文本（行号基准）。"""
+
+    ast: dict
+    content: str
+
+
+class MathmlIn(DTO):
+    source: str = Field(max_length=100_000)
+
+
+class MathmlOut(DTO):
+    mathml: str

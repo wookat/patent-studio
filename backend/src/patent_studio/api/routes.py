@@ -29,6 +29,9 @@ from patent_studio.domain import work_items as w
 from patent_studio.domain.identity import Notification
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
 from patent_studio.infra.storage import object_ref, open_store
+from patent_studio.kernel import critic
+from patent_studio.kernel.ast import AstError, parse_ast
+from patent_studio.kernel.omml import to_mathml
 from patent_studio.settings import get_settings
 
 router = APIRouter(
@@ -249,6 +252,17 @@ def create_revision(document_id: uuid.UUID, body: s.RevisionIn, ctx: Ctx, key: K
             parent_revision_id=body.parent_revision_id,
         ),
     )
+
+
+@router.get("/documents/{document_id}/working-copies", response_model=list[s.WorkingCopyOut])
+def list_copies(document_id: uuid.UUID, ctx: Ctx):
+    """本人对该文稿的工作副本（最近更新在前）——编辑器页刷新/重进时恢复草稿。"""
+    document, _case = _document(ctx, document_id)
+    return ctx.session.scalars(
+        select(d.WorkingCopy)
+        .where(d.WorkingCopy.document_id == document.id, d.WorkingCopy.principal_id == ctx.principal.id)
+        .order_by(d.WorkingCopy.updated_at.desc(), d.WorkingCopy.created_at.desc())
+    ).all()
 
 
 @router.post("/documents/{document_id}/working-copies", response_model=s.WorkingCopyOut, status_code=201)
@@ -1044,3 +1058,64 @@ def reject_fact(fact_id: uuid.UUID, body: s.FactRejectIn, ctx: Ctx, key: Key):
         s.FactOut,
         lambda: mat.reject_fact(ctx.session, fact_id, principal_id=ctx.principal.id, reason=body.reason),
     )
+
+
+# ---------------- 编辑器支撑（B12）：AST 解析 + MathML 转换 ----------------
+
+_BOOK_HEADS = {"abstract": "摘要", "claims": "权利要求书", "description": "说明书"}
+
+
+def _wrap_book_markdown(book: str, body: str) -> str:
+    """单书正文 → 三书合一 content.md 布局（kernel.parse_ast 需 `#` 标题 + `##` 三节齐全）。
+
+    块行号是书相对的；ast.books[book].offset 随包裹布局返回，前端以返回的 content 为基准切块。
+    """
+    bodies = {"abstract": "", "claims": "", "description": ""}
+    bodies[book] = body.strip("\n")
+    text = "# 文稿\n"
+    for b in ("abstract", "claims", "description"):
+        text += f"\n## {_BOOK_HEADS[b]}\n"
+        if bodies[b]:
+            text += f"\n{bodies[b]}\n"
+    return text
+
+
+@router.post("/documents/{document_id}/ast", response_model=s.DocumentAstOut)
+async def document_ast(document_id: uuid.UUID, body: s.DocumentAstIn, ctx: Ctx):
+    """文稿 AST（旧编辑器页面移植）：content=None → 解析 current revision；否则按所给单书正文解析。"""
+    document, _case = _document(ctx, document_id)
+    if body.content is None:
+        if document.current_revision_id is None:
+            text = ""
+        else:
+            settings = get_settings()
+            if not settings.storage_url:
+                raise error(503, "storage_unavailable", "Object storage is not configured")
+            revision = row_for(ctx, d.Revision, document.current_revision_id)
+            try:
+                data = await open_store(
+                    settings.storage_url,
+                    s3_endpoint_url=settings.s3_endpoint_url,
+                    s3_region=settings.s3_region,
+                ).get(revision.content_key)
+            except Exception as exc:
+                raise error(404, "not_found", "Revision content is unavailable") from exc
+            text = data.decode("utf-8")
+    else:
+        text = body.content
+    content = _wrap_book_markdown(document.book, text)
+    try:
+        ast = parse_ast(critic.accept(content))
+    except AstError as exc:
+        raise error(422, "content", str(exc), detail={"line": exc.line}) from exc
+    return {"ast": ast, "content": content}
+
+
+@router.post("/kernel/mathml", response_model=s.MathmlOut)
+def kernel_mathml(body: s.MathmlIn, ctx: Ctx):
+    """线性公式 / LaTeX → MathML（旧编辑器公式对话框用；kernel.omml 与 render_docx 同一变换）。"""
+    try:
+        mathml = to_mathml(body.source)
+    except Exception as exc:
+        raise error(422, "formula", f"公式无法转换：{exc}") from exc
+    return {"mathml": mathml}

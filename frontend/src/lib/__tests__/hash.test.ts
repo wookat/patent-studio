@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { atDashboard, atPageRoute, clearProjectQuery, clientHash, deliverHash, goDashboard, goDeadlines, goDeliver, goInbox, goNovelty, goWorkbench, noveltyHash, parseHash, projectHash, readHashClientToken, readHashPid, readHashProjectQuery, readHashShareToken, writeHashPid } from '../hash'
+import { atDashboard, atPageRoute, clearProjectQuery, clientHash, deliverHash, editorHash, goDashboard, goDeadlines, goDeliver, goEditor, goInbox, goNovelty, goWorkbench, noveltyHash, parseHash, projectHash, readHashClientToken, readHashPid, readHashProjectQuery, readHashShareToken, writeHashPid } from '../hash'
 
 describe('W4-A 路由（13 §5）：#/ 面板 · #/p/<pid> 规范工作台 · 旧 #/<pid> 兼容', () => {
   it('空 / #/ → dashboard', () => {
@@ -176,5 +176,26 @@ describe('R91：畸形 hash 不崩', () => {
     expect(parseHash('#/%E0%A4')).toEqual({ kind: 'project', pid: '%E0%A4', legacy: true, query: {} })
     expect(parseHash('#/share/%zz').kind).toBe('share')
     expect(parseHash('#/c/%zz').kind).toBe('client')
+  })
+})
+
+describe('B12：#/edit/<caseId>/<docId> 文稿编辑器路由', () => {
+  it('解析为 edit；editorHash 编码；goEditor 写 hash', () => {
+    expect(editorHash('c-1', 'd-2')).toBe('/edit/c-1/d-2')
+    expect(parseHash('#/edit/c-1/d-2')).toEqual({ kind: 'edit', caseId: 'c-1', docId: 'd-2' })
+    expect(parseHash('#/edit/%E6%A1%88/d%2F2')).toEqual({ kind: 'edit', caseId: '案', docId: 'd/2' })
+    window.location.hash = '#/workbench?view=case&case=c-1'
+    goEditor('c-1', 'd-2')
+    expect(parseHash()).toEqual({ kind: 'edit', caseId: 'c-1', docId: 'd-2' })
+    // 同一路由重复跳转不再写
+    goEditor('c-1', 'd-2')
+    expect(parseHash()).toEqual({ kind: 'edit', caseId: 'c-1', docId: 'd-2' })
+  })
+  it('edit 为页面路由且无 pid；残缺路径回退 project 解析', () => {
+    window.location.hash = '#/edit/c-1/d-2'
+    expect(atPageRoute()).toBe(true)
+    expect(readHashPid()).toBeNull()
+    window.location.hash = '#/edit/仅一段'
+    expect(parseHash().kind).toBe('project')
   })
 })

@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { AlertCircle, Bell, BriefcaseBusiness, CheckCircle2, FileText, FolderKanban, Image, Inbox, LoaderCircle, Package, ShieldAlert, UserPlus, Users } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/lib/api/net'
+import { editorHash } from '@/lib/hash'
 import { PageChrome } from '@/components/shell/PageChrome'
 import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -161,7 +162,10 @@ export function DocumentsPanel({ caseItem, documents }: { caseItem: PlatformCase
         <article key={doc.id} className="rounded-lg border border-border bg-panel p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div><div className="font-medium text-fg-strong">{BOOK_LABEL[doc.book] ?? doc.book}</div><div className="text-xs text-fg-muted">当前 revision：{doc.current_revision_id ?? '尚未建立'}</div></div>
-            <Button size="sm" variant={editing === doc.id ? 'secondary' : 'soft'} onClick={() => setEditing(editing === doc.id ? null : doc.id)}>{editing === doc.id ? '收起' : '编辑 / 历史'}</Button>
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm" variant="secondary"><a href={`#${editorHash(caseItem.id, doc.id)}`} data-testid={`open-doc-${doc.id}`}><FileText aria-hidden />打开文稿</a></Button>
+              <Button size="sm" variant={editing === doc.id ? 'secondary' : 'soft'} onClick={() => setEditing(editing === doc.id ? null : doc.id)}>{editing === doc.id ? '收起' : '编辑 / 历史'}</Button>
+            </div>
           </div>
           {editing === doc.id && <div className="mt-3 grid gap-3"><WorkingCopyEditor document={doc} /><RevisionsPanel documentId={doc.id} /></div>}
         </article>

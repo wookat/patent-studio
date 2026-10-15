@@ -1,4 +1,5 @@
 import { handle, netFetch, req } from '@/lib/api/net'
+import type { Ast } from '@/types/ast'
 import type { Approval, Book, CaseStatus, Document, Figure, Invitation, InvitationRole, Membership, Notification, Participant, ParticipantRole, PlatformCase, Principal, Proposal, Ref, Release, Revision, WorkItem, WorkItemStatus, WorkingCopy } from './types'
 
 const V1 = '/api/v1'
@@ -9,6 +10,20 @@ const key = () => {
   } catch {
     return `ui-${Date.now()}-${Math.random().toString(36).slice(2)}`
   }
+}
+
+/** B12 编辑器：POST /documents/{id}/ast 的返回（ast = kernel ast_schema.json v1；content = 实际被解析的三书合一文本）。 */
+export interface DocumentAstResult {
+  ast: Ast
+  content: string
+}
+
+/** 无修订文档开工作副本时服务端要求的显式 content_ref（空正文的 sha256 寻址 ref）。 */
+export const EMPTY_CONTENT_REF: Ref = {
+  key: 'sha256/e3/b0/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  size: 0,
+  content_type: 'text/markdown; charset=utf-8',
 }
 
 // 所有写操作统一注入 Idempotency-Key；重放同一 key 服务端返回首个已完成的响应。
@@ -25,9 +40,17 @@ export const workbenchApi = {
   createDocument: (caseId: string, book: Book) =>
     write<Document>(`${V1}/cases/${caseId}/documents`, { body: JSON.stringify({ book }) }),
   revisions: (documentId: string, signal?: AbortSignal) => req<Revision[]>(`${V1}/documents/${documentId}/revisions`, { signal }),
-  openWorkingCopy: (documentId: string, baseRevisionId: string | null) =>
+  document: (documentId: string, signal?: AbortSignal) => req<Document>(`${V1}/documents/${documentId}`, { signal }),
+  /** B12：kernel AST。content=null → 解析 current revision；否则按所给单书正文解析（编辑器未落盘内容的预览/刷新）。 */
+  documentAst: (documentId: string, content: string | null, signal?: AbortSignal) =>
+    req<DocumentAstResult>(`${V1}/documents/${documentId}/ast`, { method: 'POST', body: JSON.stringify({ content }), signal }),
+  /** B12：本人对该文稿的工作副本列表（最近更新在前），编辑器页据此恢复未提交草稿。 */
+  workingCopies: (documentId: string, signal?: AbortSignal) =>
+    req<WorkingCopy[]>(`${V1}/documents/${documentId}/working-copies`, { signal }),
+  openWorkingCopy: (documentId: string, baseRevisionId: string | null, contentRef?: Ref) =>
     write<WorkingCopy>(`${V1}/documents/${documentId}/working-copies`, {
-      body: JSON.stringify({ base_revision_id: baseRevisionId }),
+      // 无修订文档必须显式给 content_ref（域层 DocumentError）
+      body: JSON.stringify({ base_revision_id: baseRevisionId, content_ref: contentRef ?? null }),
     }),
   workingCopyContent: async (workingCopyId: string, signal?: AbortSignal) => {
     const response = await netFetch(`${V1}/working-copies/${workingCopyId}/content`, { signal })
