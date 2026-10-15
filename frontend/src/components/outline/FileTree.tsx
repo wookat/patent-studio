@@ -15,7 +15,6 @@ import type { FigureItem } from '@/types/figures'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { TreeRow } from './TreeRow'
-import { PlatformDocsGroup } from '@/components/platform/PlatformDocs'
 import { treeKeyDown } from './treeKeys'
 import { countFigureRefs, figureNodeCaption, firstFigureRefLine, visibleFigFiles } from './fileTreeUtils'
 
@@ -234,8 +233,6 @@ export function FileTree() {
           })}
         </div>
       )}
-
-      <PlatformDocsGroup />
 
       <DropDir testId="file-figs-drop" onFiles={uploadFigs} disabled={!canEdit}>
       <TreeRow
