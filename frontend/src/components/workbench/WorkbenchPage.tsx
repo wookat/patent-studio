@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { AlertCircle, AlertTriangle, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, CircleX, ClipboardCopy, Download, FileText, FolderKanban, Image, Inbox, Info, LoaderCircle, Package, ShieldAlert, Stethoscope, Upload, UserPlus, Users } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, CircleX, ClipboardCopy, Download, FileText, Image, Inbox, Info, LoaderCircle, Package, ShieldAlert, Stethoscope, Upload, UserPlus } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/lib/api/net'
 import { editorHash } from '@/lib/hash'
 import { BOOK_LABELS } from '@/lib/docset'
 import type { Severity } from '@/lib/types'
 import { RULE_LABEL, groupByRule } from '@/components/preflight/preflightUtils'
-import { PageChrome } from '@/components/shell/PageChrome'
 import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -23,17 +22,6 @@ const readWorkbenchQuery = () => {
   const raw = window.location.hash.split('?')[1]
   const params = new URLSearchParams(raw)
   return { caseId: params.get('case'), view: (params.get('view') as View | null) ?? 'queue' }
-}
-
-const setWorkbenchQuery = (view: View, caseId: string | null) => {
-  const p = new URLSearchParams({ view })
-  if (caseId) p.set('case', caseId)
-  window.location.hash = `/workbench?${p.toString()}`
-}
-
-const statusTone: Record<string, BadgeTone> = {
-  intake: 'info', drafting: 'violet', review: 'orange', client_review: 'teal', final: 'ok', filed: 'info',
-  oa: 'warn', granted: 'ok', rejected: 'danger', closed: 'neutral',
 }
 
 const BOOK_LABEL: Record<Book, string> = { abstract: '摘要', claims: '权利要求书', description: '说明书' }
@@ -72,18 +60,6 @@ export function FieldError({ error }: { error: unknown }) {
 
 function LoadingPanel() {
   return <div className="flex min-h-48 items-center justify-center text-fg-muted" role="status"><LoaderCircle className="mr-2 size-5 animate-spin" />正在加载平台数据…</div>
-}
-
-function CasePicker({ cases, selected, onChange }: { cases: PlatformCase[]; selected: string | null; onChange: (id: string) => void }) {
-  return (
-    <label className="flex min-w-56 items-center gap-2 text-sm text-fg-muted">
-      <span className="sr-only">选择案件</span>
-      <select className="h-md-control rounded-md border border-border-strong bg-panel px-2 text-fg" value={selected ?? ''} onChange={(e) => onChange(e.target.value)}>
-        <option value="">选择案件</option>
-        {cases.map((item) => <option key={item.id} value={item.id}>{item.case_key} · {item.title}</option>)}
-      </select>
-    </label>
-  )
 }
 
 export function QueueView({ cases, items, onOpenCase }: { cases: PlatformCase[]; items: WorkItem[]; onOpenCase: (id: string) => void }) {
@@ -497,35 +473,6 @@ export function MembersPanel({ caseItem, queries }: { caseItem: PlatformCase; qu
   )
 }
 
-function CaseView({ caseItem, queries }: { caseItem: PlatformCase; queries: ReturnType<typeof useWorkbenchQueries> }) {
-  const [tab, setTab] = useState<'docs' | 'proposals' | 'figures' | 'deadlines' | 'releases' | 'health' | 'members'>('docs')
-  const tabs = ([
-    ['docs', FileText, '文稿'], ['proposals', CheckCircle2, '提案'], ['figures', Image, '附图'],
-    ['deadlines', CalendarClock, '期限'], ['releases', Package, '递交'], ['health', Stethoscope, '体检'],
-    ['members', Users, '成员'],
-  ] as const)
-  return <section aria-labelledby="case-title" data-testid="workbench-case" className="grid gap-4">
-    <div className="grid gap-4 md:grid-cols-4">
-      <div className="rounded-lg border border-border bg-panel p-4 md:col-span-2"><div className="text-xs text-fg-muted">案件</div><h2 className="mt-1 text-xl font-semibold text-fg-strong">{caseItem.title}</h2><p className="mt-1 text-sm text-fg-muted">{caseItem.case_key} · {caseItem.kind}</p><Badge className="mt-3" tone={statusTone[caseItem.status] ?? 'neutral'}>{workbenchApi.statusLabel(caseItem.status)}</Badge></div>
-      <SummaryCard icon={FileText} label="三书文稿" value={queries.documents.data?.length ?? 0} />
-      <SummaryCard icon={Image} label="附图" value={queries.figures.data?.length ?? 0} />
-    </div>
-    <nav className="flex flex-wrap gap-1" aria-label="案件空间区块">{tabs.map(([key, Icon, label]) => <Button key={key} variant={tab === key ? 'soft' : 'ghost'} size="sm" onClick={() => setTab(key)} aria-current={tab === key ? 'page' : undefined}><Icon aria-hidden />{label}</Button>)}</nav>
-    <Panel>
-      {tab === 'docs' && (queries.documents.isLoading ? <LoadingPanel /> : queries.documents.isError ? <FieldError error={queries.documents.error} /> : <DocumentsPanel caseItem={caseItem} documents={queries.documents.data} />)}
-      {tab === 'proposals' && <ProposalsPanel caseId={caseItem.id} proposals={queries.proposals} />}
-      {tab === 'figures' && <FiguresPanel caseId={caseItem.id} figures={queries.figures} />}
-      {tab === 'deadlines' && <DeadlinesPanel caseId={caseItem.id} items={queries.caseWorkItems} />}
-      {tab === 'releases' && <ReleasesPanel caseId={caseItem.id} releases={queries.releases} documents={queries.documents.data} figures={queries.figures.data} />}
-      {tab === 'health' && <HealthPanel caseId={caseItem.id} />}
-      {tab === 'members' && <MembersPanel caseItem={caseItem} queries={queries} />}
-    </Panel>
-    <div className="grid gap-4 xl:grid-cols-2">
-      <Panel title="案件工作项" icon={BriefcaseBusiness}>{queries.caseWorkItems.isLoading ? <LoadingPanel /> : queries.caseWorkItems.data?.length ? <ul className="divide-y divide-border">{queries.caseWorkItems.data.map((item) => <li key={item.id} className="flex items-center justify-between py-2 text-sm"><span className="font-medium text-fg-strong">{item.title}</span><Badge tone={item.status === 'done' ? 'ok' : 'info'}>{item.status}</Badge></li>)}</ul> : <EmptyState size="sm" icon={BriefcaseBusiness} title="本案暂无工作项" />}</Panel>
-    </div>
-  </section>
-}
-
 export function ApprovalsView({ approvals }: { approvals: ReturnType<typeof useWorkbenchQueries>['approvals'] }) {
   const { decideApproval } = useWorkbenchMutations()
   const [reasons, setReasons] = useState<Record<string, string>>({})
@@ -535,14 +482,6 @@ export function ApprovalsView({ approvals }: { approvals: ReturnType<typeof useW
 export function NotificationsView({ notifications }: { notifications: ReturnType<typeof useWorkbenchQueries>['notifications'] }) {
   const { markNotificationRead } = useWorkbenchMutations()
   return <section data-testid="workbench-notifications" aria-labelledby="notifications-title">{notifications.isLoading ? <LoadingPanel /> : notifications.isError ? <FieldError error={notifications.error} /> : notifications.data?.length ? <div className="grid gap-2">{notifications.data.map((item) => <article key={item.id} className="rounded-lg border border-border bg-panel p-4" data-testid={`notification-${item.id}`}><div className="flex items-start justify-between gap-3"><div className="flex items-start gap-3"><Bell className="mt-0.5 size-4 text-fg-icon" aria-hidden /><div><div className="font-medium text-fg-strong">{item.notification_type ?? '系统通知'}</div><div className="mt-1 text-xs text-fg-muted">{item.read_at ? '已读' : '未读'} · {item.case_id ? `案件 ${item.case_id.slice(0, 8)}` : '全局'}</div></div></div>{!item.read_at && <Button size="xs" variant="secondary" loading={markNotificationRead.isPending} onClick={() => markNotificationRead.mutate(item.id)}>标记已读</Button>}</div></article>)}</div> : <EmptyState icon={Bell} title="暂无通知" reason="分派、期限、审批和系统事件会显示在这里。" />}<FieldError error={markNotificationRead.error} /></section>
-}
-
-function SummaryCard({ icon: Icon, label, value }: { icon: typeof FileText; label: string; value: number }) {
-  return <div className="rounded-lg border border-border bg-panel p-4"><Icon className="size-5 text-fg-icon" aria-hidden /><div className="mt-3 text-2xl font-semibold text-fg-strong">{value}</div><div className="text-sm text-fg-muted">{label}</div></div>
-}
-
-function Panel({ title, icon: Icon, children }: { title?: string; icon?: typeof FileText; children: ReactNode }) {
-  return <section className="rounded-lg border border-border bg-panel p-4">{(title || Icon) && <div className="mb-3 flex items-center gap-2">{Icon && <Icon className="size-4 text-fg-icon" aria-hidden />}{title && <h2 className="font-semibold text-fg-strong">{title}</h2>}</div>}{children}</section>
 }
 
 /**
