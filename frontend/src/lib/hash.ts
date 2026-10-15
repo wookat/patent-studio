@@ -36,6 +36,7 @@ export type HashRoute =
   | { kind: 'figlib' }
   | { kind: 'legal'; page: string }
   | { kind: 'inbox' }
+  /** B17 M7：#/workbench 已退役为 redirect shim（queue→#/、case→#/p/<case_key>、approvals/notifications→#/inbox） */
   | { kind: 'workbench'; query: { caseId: string | null; view: 'queue' | 'case' | 'approvals' | 'notifications' } }
   /** B12：平台文稿编辑器页 #/edit/<caseId>/<docId>（旧三书块编辑器接 /api/v1 working-copy） */
   | { kind: 'edit'; caseId: string; docId: string }

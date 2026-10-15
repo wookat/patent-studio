@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AlertCircle, AlertTriangle, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, CircleX, ClipboardCopy, Download, FileText, FolderKanban, Image, Inbox, Info, LoaderCircle, Package, ShieldAlert, Stethoscope, Upload, UserPlus, Users } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/lib/api/net'
@@ -545,23 +545,35 @@ function Panel({ title, icon: Icon, children }: { title?: string; icon?: typeof 
   return <section className="rounded-lg border border-border bg-panel p-4">{(title || Icon) && <div className="mb-3 flex items-center gap-2">{Icon && <Icon className="size-4 text-fg-icon" aria-hidden />}{title && <h2 className="font-semibold text-fg-strong">{title}</h2>}</div>}{children}</section>
 }
 
-export function WorkbenchPage() {
-  const initial = readWorkbenchQuery()
-  const [view, setView] = useState<View>(initial.view)
-  const [caseId, setCaseId] = useState<string | null>(initial.caseId)
-  const queries = useWorkbenchQueries(caseId)
-  const cases = queries.cases.data ?? []
-  const selectedCase = queries.selectedCase.data ?? cases.find((item) => item.id === caseId) ?? null
-  const firstError = [queries.me, queries.cases, queries.workItems, queries.approvals, queries.notifications].find((q) => q.isError)?.error
-
-  const go = (nextView: View, nextCase = caseId) => {
-    setView(nextView); setCaseId(nextCase); setWorkbenchQuery(nextView, nextCase)
-  }
-  const refresh = () => { void queries.cases.refetch(); void queries.workItems.refetch(); void queries.approvals.refetch(); void queries.notifications.refetch() }
-  const nav = <nav className="flex flex-wrap gap-1" aria-label="工作台区域">{([['queue', BriefcaseBusiness, '工作队列'], ['case', FolderKanban, '案件空间'], ['approvals', Inbox, '审批收件箱'], ['notifications', Bell, '通知']] as const).map(([key, Icon, label]) => <Button key={key} variant={view === key ? 'soft' : 'ghost'} size="sm" onClick={() => go(key)} aria-current={view === key ? 'page' : undefined}><Icon aria-hidden />{label}{key === 'approvals' && queries.approvals.data?.length ? <Badge tone="warn" className="ml-1">{queries.approvals.data.length}</Badge> : null}</Button>)}</nav>
-  return <PageChrome name="workbench" title="工作台" description="统一查看工作项、案件空间、审批和通知" width="full" actions={<><CasePicker cases={cases} selected={caseId} onChange={(id) => go('case', id)} /><Button variant="secondary" size="sm" onClick={refresh}>刷新</Button></>} headerChildren={<div className="mt-3">{nav}</div>}>
-    <div className="mx-auto grid w-full max-w-page gap-5" data-testid="workbench-content">
-      {firstError ? <ErrorPanel error={firstError} onRetry={refresh} /> : queries.cases.isLoading || queries.workItems.isLoading || queries.approvals.isLoading || queries.notifications.isLoading ? <LoadingPanel /> : view === 'queue' ? <QueueView cases={cases} items={queries.workItems.data ?? []} onOpenCase={(id) => go('case', id)} /> : view === 'case' ? selectedCase ? <CaseView caseItem={selectedCase} queries={queries} /> : <EmptyState icon={FolderKanban} title="请选择案件" reason="从右上角选择案件后查看文稿、提案、附图和交付状态。" /> : view === 'approvals' ? <ApprovalsView approvals={queries.approvals} /> : <NotificationsView notifications={queries.notifications} />}
+/**
+ * B17 M7：#/workbench 四视图已全部并入旧 IA（queue→#/dashboard 工作项分段、case→#/p/<pid>、
+ * approvals/notifications→#/inbox），本页退役为 redirect shim——外部深链/书签按 view 跳目标路由。
+ */
+export function WorkbenchRedirect() {
+  const { caseId, view } = useMemo(readWorkbenchQuery, [])
+  useEffect(() => {
+    let on = true
+    void (async () => {
+      let target = '#/'
+      if (view === 'approvals') target = '#/inbox?tab=approvals'
+      else if (view === 'notifications') target = '#/inbox'
+      else if (view === 'case' && caseId) {
+        try {
+          const c = await workbenchApi.case(caseId)
+          target = c.case_key ? `#/p/${encodeURIComponent(c.case_key)}` : '#/'
+        } catch {
+          target = '#/'
+        }
+      }
+      if (on) window.location.replace(target)
+    })()
+    return () => {
+      on = false
+    }
+  }, [caseId, view])
+  return (
+    <div className="flex h-dvh items-center justify-center bg-app" data-testid="workbench-redirect" role="status">
+      <LoaderCircle className="size-6 animate-spin text-fg-muted" aria-label="正在跳转" />
     </div>
-  </PageChrome>
+  )
 }

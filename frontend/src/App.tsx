@@ -14,7 +14,7 @@ import { AdminPage } from '@/components/admin/AdminPage'
 import { DeadlinesPage } from '@/components/deadlines/DeadlinesPage'
 import { FigLibraryPage } from '@/components/figlib/FigLibraryPage'
 import { InboxPage } from '@/components/notify/InboxPage'
-import { WorkbenchPage } from '@/components/workbench/WorkbenchPage'
+import { WorkbenchRedirect } from '@/components/workbench/WorkbenchPage'
 import { ClientReviewPage } from '@/components/client/ClientReviewPage'
 import { useOutlineModel, useOutlineSync } from '@/components/outline/useOutline'
 import { useIsDesktop, useMediaQuery } from '@/hooks/useMisc'
@@ -159,7 +159,7 @@ export default function App() {
         ) : route.kind === 'inbox' ? (
           <InboxPage />
         ) : route.kind === 'workbench' ? (
-          <WorkbenchPage />
+          <WorkbenchRedirect />
         ) : route.kind === 'edit' ? (
           <Suspense fallback={<WorkbenchFallback />}>
             <DocEditorPage caseId={route.caseId} docId={route.docId} />
