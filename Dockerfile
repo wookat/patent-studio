@@ -50,7 +50,6 @@ RUN if [ -n "$APT_MIRROR" ]; then \
 COPY docs/figure-library/ /app/docs/figure-library/
 
 # 专利文形库（生成提示词真实例句注入 + 语料重叠哨兵）：只拷运行时产物，raw/pdf 不入镜像
-COPY docs/text-corpus/forms_library.json docs/text-corpus/corpus_index.json docs/text-corpus/claim_skeletons.json docs/text-corpus/claim_trees.json docs/text-corpus/pub_vectors.json docs/text-corpus/pub_sents.json docs/text-corpus/sent_vectors.json /app/docs/text-corpus/
 
 # 字体别名（accept：用户自装授权字体存在时自动优先，缺省时落到 OFL 替身）
 COPY docker/fonts-cjk-alias.conf /etc/fonts/conf.d/64-patent-studio-cjk-alias.conf
