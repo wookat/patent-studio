@@ -105,7 +105,7 @@ export function LandingPage() {
       <section className="brand-hero border-b border-border">
         <div className="mx-auto flex max-w-5xl flex-col items-center px-4 py-14 text-center md:py-20">
           <BrandMark className="size-12 rounded-lg shadow-md" />
-          <h1 className="mt-5 text-3xl font-semibold text-fg-strong md:text-4xl">
+          <h1 className="mt-5 text-balance text-3xl font-semibold text-fg-strong md:text-4xl">
             知撰 · AI 专利撰写与协同平台
           </h1>
           <p className="mt-4 max-w-[56ch] text-base text-fg-muted md:text-lg">
