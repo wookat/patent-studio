@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { ArrowRight, BookOpenCheck, Bot, Building2, CheckCircle2, FileStack, FolderKanban, GraduationCap, Landmark, Mail, MessageSquare, PencilRuler, Scale, Send, Server, ShieldCheck, UserRound, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandMark } from '@/components/auth/AuthFrame'
@@ -77,6 +78,9 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function LandingPage() {
+  useEffect(() => {
+    document.title = '知撰·AI 专利撰写与协同平台 — 作者·代理人·机构与 AI 在一个案卷里协作办案'
+  }, [])
   return (
     <main className="min-h-dvh bg-app">
       {/* 顶栏 */}
