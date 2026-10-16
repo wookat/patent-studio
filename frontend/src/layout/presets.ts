@@ -120,7 +120,7 @@ export const LAYOUT_PRESETS: Record<LayoutPresetId, LayoutPreset> = {
   'ai-assist': {
     id: 'ai-assist',
     label: 'AI 辅助',
-    hint: '三书源码 tab | 真实 PDF | 右侧 320：术语 / OA 答复 tab 组（AI 助手与审阅在顶栏伴随栏）',
+    hint: '三书源码 tab | 真实 PDF | 右侧 320：术语 / OA 答复 tab 组（AI 智能体与审阅在顶栏伴随栏）',
     compareLock: false,
     layout: columns(
       [

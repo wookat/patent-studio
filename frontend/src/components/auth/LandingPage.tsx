@@ -1,4 +1,5 @@
-import { ArrowRight, BookOpenCheck, Building2, CheckCircle2, FileStack, FolderKanban, GraduationCap, Landmark, Mail, MessageSquare, PencilRuler, Scale, Send, ShieldCheck, UserRound, Users } from 'lucide-react'
+import { useEffect } from 'react'
+import { ArrowRight, BookOpenCheck, Bot, Building2, CheckCircle2, FileStack, FolderKanban, GraduationCap, Landmark, Mail, MessageSquare, PencilRuler, Scale, Send, Server, ShieldCheck, UserRound, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BrandMark } from '@/components/auth/AuthFrame'
 
@@ -10,19 +11,21 @@ import { BrandMark } from '@/components/auth/AuthFrame'
  */
 
 const FEATURES = [
-  { icon: FolderKanban, title: '案件台账与期限', desc: '全案卷台账、法定/内部期限中心、OA 轮次与催办通知一体收口' },
-  { icon: FileStack, title: '三视图协作撰写', desc: 'Markdown 源码 ‖ Word 对齐版面 ‖ 真实 PDF，选块定位与行内块编辑' },
-  { icon: PencilRuler, title: 'AI 辅助起草', desc: '导入论文或交底书，AI 可起草三书初稿、提出修改建议，由人复核采纳' },
-  { icon: BookOpenCheck, title: '确定性附图管线', desc: '图源绘制、灰度化、图号声明、附图说明与正文引用一体核对' },
-  { icon: Send, title: '递交体检与导出', desc: '体检规则先行纠错，导出 DOCX / PDF / CNIPA 五书 XML' },
-  { icon: Users, title: '协同与客户审阅', desc: '多人实时协同、批注修订流、客户免登录确认审阅链接' },
+  { icon: FolderKanban, title: '案件台账与事务', desc: '十档状态台账、期限红黄绿、OA 轮次与查新记录一体收口' },
+  { icon: FileStack, title: '材料成案与三书撰写', desc: '交底书/论文/Word 导入立案；源码 · 版面 · PDF 三视图同源撰写' },
+  { icon: PencilRuler, title: 'AI 办案成员', desc: '起草、专利语义检查与十个场景任务；产出只有建议·批注·待确认，逐条等人批' },
+  { icon: BookOpenCheck, title: '附图画板与图库', desc: '图源即文本真源、画板精调；公开授权案附图分类参考（114 篇 · 1021 张）' },
+  { icon: Users, title: '协同办案', desc: '作者·代理人·机构管理者同卷协作；批注·修订·提案·审批进同一收件箱，客户免登录审阅链' },
+  { icon: Send, title: '交付门禁与导出', desc: '体检规则先行纠错，导出 DOCX / PDF / CNIPA 五书 XML；人工核对后走正式递交' },
+  { icon: Bot, title: '开放接入外部 Agent', desc: 'Codex / Claude Code / Devin 经 MCP 持凭证进场，与人在同一案卷协同、同一本审计账' },
+  { icon: Server, title: '开源可自部署', desc: 'Apache-2.0，一条 compose 命令起全栈；案卷存部署方存储，模型与外发按机构与案件设置' },
 ]
 
 const STATS = [
+  ['全链路', '材料·三书·附图·期限·OA·交付同卷'],
+  ['人机协作', 'AI 出建议 · 人做决断'],
   ['开源', 'Apache-2.0 可自托管'],
-  ['三书一体', '权项/说明书/摘要同案同稿'],
   ['三态交付', 'DOCX · PDF · CNIPA XML'],
-  ['建议式 AI', '修改建议由人复核采纳'],
 ]
 
 const VIEW_POINTS = [
@@ -51,18 +54,19 @@ const DETAILS = [
 ]
 
 const PERSONAS = [
-  { icon: UserRound, title: '个人发明人', desc: '论文/交底书直接转三书，免去从零学专利文体' },
-  { icon: Users, title: '代理机构', desc: '多案卷台账 + 客户免登录审阅链，交付效率与留痕兼得' },
-  { icon: GraduationCap, title: '高校院所', desc: '课题组成果批量转申请，术语一致性有核对闸兜底' },
-  { icon: Building2, title: '企业 IP 部门', desc: '私有化部署案卷存于自有存储，权限分级 + 审计可追溯' },
+  { icon: UserRound, title: '作者 / 发明人', desc: '提交交底书或想法，在案卷内看稿、批注、与代理人讨论确认——不学专利文体也提得出意见' },
+  { icon: PencilRuler, title: '代理人 / 撰写人', desc: 'AI 起草三书与附图初稿、做专利语义检查、整理查新与 OA 争辩思路，机械劳动交给 AI' },
+  { icon: Building2, title: '机构管理者', desc: '案件是机构资产：台账、分派、期限、审批、成员与 AI 外发治理一手掌握' },
+  { icon: GraduationCap, title: '个人作者 / 开发者', desc: '独立办案压缩为单人循环，AI 补足产能；可自部署、接自选模型、外部 Agent 入场扩展' },
 ]
 
 const FAQ = [
-  ['生成的专利能直接递交吗？', '产出为待复核的递交格式文稿：三书 + 附图 + CNIPA 五书 XML。内建确定性核对把形式问题拦在递交前；实质的新颖性/创造性判断与递交决策仍需代理人把关——本平台不承诺受理或授权结果。'],
+  ['知撰是做什么的？', '知撰·AI 专利撰写与协同平台把「写专利」从散乱的文件，变成一个案卷里的协作办案：作者提交交底书、论文或想法，机构收案管理并分派代理人，代理人借助 AI 撰写三书与附图，作者与代理人在案卷内审阅、批注、讨论、确认；期限、OA、查新与交付导出都在同一案卷完成。'],
+  ['哪些人适合用知撰？', '三类角色在同一份案卷上分工：代理人/撰写人借助 AI 起草与检查，机构管理者管台账、分派、期限与审批，作者/发明人看稿、批注、讨论、确认定稿；个人作者独立使用时同一条办案链路压缩成单人循环。'],
+  ['AI 写的专利文稿能保证授权吗？', '不能。本平台产出为机器起草辅助与人审工具，不构成法律意见或授权保证；递交前应自行或委托执业专利代理师核实新颖性、创造性与支持性。'],
   ['我的论文和客户数据安全吗？', '案卷数据存于部署方自有存储，支持按机构/案卷分级授权与操作审计。需要注意：启用远端 AI 或检索服务后，相关材料会发送到对应服务商网关——通道配置由部署方决定。'],
   ['支持什么输入？', '论文 PDF（正文与附图自动抽取）、技术交底书、或直接空白起草；Word DOCX 导入亦可。'],
-  ['多人怎么协作？', '实时协同编辑 + 批注修订流；给客户发免登录审阅/确认链接，案内状态随时可视。'],
-  ['和通用大模型写专利有何不同？', '垂直工作流：AI 辅助起草、以修订建议提出修改，由人复核后采纳落稿，同时有确定性规则检查随行——不是一次性生成后直接定稿。'],
+  ['和通用大模型写专利有何不同？', 'AI 在案卷的上下文里工作：它读的是权项树、说明书支持映射、术语库与图文对应等结构化语义；产出限定为修订建议、批注与待确认操作，逐条等人裁决，并有确定性规则随写随检——不是一次性生成后直接定稿。'],
 ]
 
 function LoginLink() {
@@ -74,6 +78,9 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function LandingPage() {
+  useEffect(() => {
+    document.title = '知撰·AI 专利撰写与协同平台 — 作者·代理人·机构与 AI 在一个案卷里协作办案'
+  }, [])
   return (
     <main className="min-h-dvh bg-app">
       {/* 顶栏 */}
@@ -99,10 +106,10 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-5xl flex-col items-center px-4 py-14 text-center md:py-20">
           <BrandMark className="size-12 rounded-lg shadow-md" />
           <h1 className="mt-5 text-3xl font-semibold text-fg-strong md:text-4xl">
-            面向中国发明专利的 AI 撰写与审阅工作台
+            知撰 · AI 专利撰写与协同平台
           </h1>
           <p className="mt-4 max-w-[56ch] text-base text-fg-muted md:text-lg">
-            整理材料、撰写三书、管理附图、协同审阅、导出交付——在同一案卷内完成；AI 以建议形式辅助，每个环节由人拍板。
+            把「写专利」从散乱的文件，变成一个案卷里的协作办案——作者提交需求、机构管理分派、代理人借助 AI 撰写成稿、作者与代理人在案卷内讨论确认；材料、三书、附图、批注、期限、答复稿与交付文件都在同一案卷。
           </p>
           <div className="mt-8 flex items-center gap-3">
             <Button asChild size="lg">
@@ -112,7 +119,7 @@ export function LandingPage() {
               <a href="#features">了解功能</a>
             </Button>
           </div>
-          <p className="mt-3 text-xs text-fg-muted">开源自托管 · AI 修改建议由人复核采纳</p>
+          <p className="mt-3 text-xs text-fg-muted">开源自托管 · AI 产出为建议/批注/待确认操作，由人裁决</p>
           <img
             src="/lp/workbench.png"
             alt="知撰工作台实景：左侧案卷与文档大纲，中间说明书源码编辑区，右侧实时 PDF 排版预览——一种时间序列预测模型案卷"
@@ -137,9 +144,9 @@ export function LandingPage() {
 
       {/* 功能 */}
       <section id="features" className="mx-auto max-w-5xl scroll-mt-14 px-4 py-14 md:py-20">
-        <SectionTitle>一台覆盖撰写到递交</SectionTitle>
+        <SectionTitle>从需求到交付，一个案卷收到底</SectionTitle>
         <p className="mx-auto mt-3 max-w-[60ch] text-center text-sm text-fg-muted">
-          不只是“AI 写稿”——案卷管理、协同审阅、附图管线、递交导出一站到底。
+          不只是“AI 写稿”——材料成案、三书撰写、协同审阅、事务跟踪、附图管线、交付导出一站到底；全链路不是功能多，而是没有缺环。
         </p>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
@@ -184,7 +191,7 @@ export function LandingPage() {
           <div className="md:order-2">
             <img
               src="/lp/figlib.png"
-              alt="知撰附图图库实景：114 篇真实 CN 案 1021 张附图按 15 类工程画法分类参考"
+              alt="知撰附图图库实景：114 篇公开 CN 授权案 1021 张附图按 A–H 系细类与未分类兜底共 15 组分类参考"
               className="w-full rounded-xl border border-border/60 shadow-sm"
               loading="lazy"
             />
@@ -226,7 +233,10 @@ export function LandingPage() {
 
       {/* 适用场景 */}
       <section id="scenes" className="mx-auto max-w-5xl scroll-mt-14 px-4 py-14 md:py-20">
-        <SectionTitle>谁在用它</SectionTitle>
+        <SectionTitle>一个全能的 AI，三副面孔</SectionTitle>
+        <p className="mx-auto mt-3 max-w-[60ch] text-center text-sm text-fg-muted">
+          同一条办案链路，对不同角色给不同职责；个人作者独立使用时，链路压缩成单人循环，AI 补足产能。
+        </p>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PERSONAS.map((p) => (
             <div key={p.title} className="rounded-xl border border-border bg-panel p-5 text-center shadow-sm">
@@ -273,8 +283,8 @@ export function LandingPage() {
       <section className="border-t border-border">
         <div className="mx-auto flex max-w-5xl flex-col items-center px-4 py-14 text-center md:py-20">
           <Scale className="size-8 text-primary" aria-hidden />
-          <h2 className="mt-4 text-xl font-semibold text-fg-strong md:text-2xl">现在就开始撰写</h2>
-          <p className="mt-3 max-w-[46ch] text-sm text-fg-muted">登录进入工作台，开始撰写你的下一件专利。</p>
+          <h2 className="mt-4 text-xl font-semibold text-fg-strong md:text-2xl">现在就开始协作办案</h2>
+          <p className="mt-3 max-w-[46ch] text-sm text-fg-muted">登录进入工作台，开始你的下一件专利案卷。</p>
           <Button asChild size="lg" className="mt-6">
             <a href="#/login">进入工作台 <ArrowRight className="size-4" aria-hidden /></a>
           </Button>

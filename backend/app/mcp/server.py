@@ -17,7 +17,7 @@ from app.mcp import (
 )
 
 INSTRUCTIONS = (
-    "知撰：中国发明专利申请文件工作台。content.md 是唯一权威源；"
+    "知撰·AI 专利撰写与协同平台：中国发明专利案卷工作台。content.md 是唯一权威源；"
     "写操作默认以 CriticMarkup 建议（{++ ++} {-- --} {~~ ~> ~~}）写入，由作者接受/拒绝；"
     "direct=true 才直接改写。构建产物 DOCX/PDF 通过 build 工具返回的 URL 下载。"
     "理解某条权项时先 context_pack(pid, claim_id)，再给建议。"

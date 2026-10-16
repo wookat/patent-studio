@@ -135,7 +135,7 @@ function SaveState() {
 }
 
 const ENTRIES: { id: CompanionId; label: string; text?: string; Icon: typeof Sparkles; testId: string }[] = [
-  { id: 'ai', label: 'AI 助手（建议式，不改源码）', text: 'AI', Icon: Sparkles, testId: 'topbar-ai' },
+  { id: 'ai', label: 'AI 智能体（建议式，不改源码）', text: 'AI', Icon: Sparkles, testId: 'topbar-ai' },
 ]
 
 /**

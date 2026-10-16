@@ -88,7 +88,7 @@ export function CaseAiPanel() {
         <ToggleRow
           id="case-ai-enabled"
           label="允许把本案内容发送给 AI"
-          hint="开启后 AI 助手可读取三书正文生成建议（CriticMarkup / 批注，不直接改写源码）；模型路由 swe-2-max → swe-2-medium → swe-2-high。"
+          hint="开启后 AI 智能体可读取三书正文生成建议（CriticMarkup / 批注，不直接改写源码）；模型路由 swe-2-max → swe-2-medium → swe-2-high。"
           checked={!orgDisabled && (settings.ai_enabled ?? false)}
           disabled={orgDisabled || !canEdit}
           onChange={(v) => saveSettings({ ...settings, ai_enabled: v })}

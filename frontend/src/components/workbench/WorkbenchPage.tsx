@@ -32,7 +32,7 @@ export function ErrorPanel({ error, onRetry }: { error: unknown; onRetry?: () =>
   const status = error instanceof ApiError ? error.status : 0
   const kind = error instanceof ApiError ? error.detail?.kind : null
   if (status === 401) {
-    return <EmptyState icon={ShieldAlert} title="需要登录" reason="平台工作台需要登录会话；登录后才能读取案件、工作项和审批。" action={<Button asChild variant="secondary"><a href="#/login">去登录</a></Button>} data-testid="workbench-auth-error" />
+    return <EmptyState icon={ShieldAlert} title="需要登录" reason="需要登录会话；登录后才能读取案件、工作项和审批。" action={<Button asChild variant="secondary"><a href="#/login">去登录</a></Button>} data-testid="workbench-auth-error" />
   }
   if (status === 403) {
     return <EmptyState icon={ShieldAlert} title="没有访问权限" reason={error instanceof Error ? error.message : '当前账号不在该机构或案件的可见范围内。'} action={onRetry && <Button variant="secondary" onClick={onRetry}>重试</Button>} data-testid="workbench-forbidden" />

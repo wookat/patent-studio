@@ -21,7 +21,7 @@ const HANDLE = 6
 /** 下块显示什么 = ui.railTab：大纲 / 版本历史 / 检查提示 / 全文搜索 / 附图 / 审阅（Rail 图标与「版本历史」按钮共用一个状态） */
 const LOWER_TITLE: Record<RailTab, string> = {
   outline: '文档大纲', history: '版本历史', checks: '问题与检查', search: '全文搜索', figures: '附图', review: '审阅',
-  ai: 'AI 助手', terms: '术语',
+  ai: 'AI 智能体', terms: '术语',
 }
 
 /**

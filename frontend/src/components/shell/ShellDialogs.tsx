@@ -227,7 +227,7 @@ function AboutDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
       <DialogContent data-slot="AboutDialog" data-testid="about-dialog" className="max-w-sm">
         <DialogHeader>
           <DialogTitle>关于知撰</DialogTitle>
-          <DialogDescription>知撰·AI 专利撰写与协同平台：面向中国发明专利的撰写与审阅工作台，源码 / 版面 / PDF 三视图同源，导出 Word 与 PDF。</DialogDescription>
+          <DialogDescription>知撰·AI 专利撰写与协同平台：把写专利收进同一个案卷，作者、代理人、机构管理者与 AI 在其中协作办案；源码 / 版面 / PDF 三视图同源，可导出 DOCX / PDF / CNIPA XML。</DialogDescription>
         </DialogHeader>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
           <dt className="text-fg-muted">后端</dt>

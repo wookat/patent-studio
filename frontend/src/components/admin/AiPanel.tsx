@@ -81,7 +81,7 @@ export function AiPanel() {
         <div className="flex items-center justify-between gap-3 rounded-md border bg-panel px-3 py-2">
           <div className="min-w-0">
             <Label htmlFor="org-ai-enabled" className="text-sm">允许向 AI 服务外发案卷内容</Label>
-            <p className="text-xs text-fg-muted">关闭后所有案卷的 AI 助手、智能体与 MCP 语义工具都停止外发；各案的案级开关变为不可用。</p>
+            <p className="text-xs text-fg-muted">关闭后所有案卷的 AI 智能体与 MCP 语义工具都停止外发；各案的案级开关变为不可用。</p>
           </div>
           <Switch id="org-ai-enabled" checked={enabled} disabled={saving} onCheckedChange={onToggle} data-testid="org-ai-enabled" />
         </div>

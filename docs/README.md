@@ -5,7 +5,7 @@
 | 路径 | 内容 |
 | --- | --- |
 | [project-intro.md](project-intro.md) | 项目介绍（面向新读者的定位与使用方式） |
-| [user-manual.md](user-manual.md) | 使用手册：工作台操作、撰写、审阅与交付流程 |
+| [user-manual.md](user-manual.md) | 使用手册：平台操作、协作办案、撰写、审阅与交付流程 |
 | [deploy.md](deploy.md) | 部署指南：服务形态、环境变量全表与迁移导入器 |
 | [mcp.md](mcp.md) | MCP 接入：外部 Agent 的工具、鉴权与权限边界 |
 | [design.md](design.md) | 系统设计：数据结构、文档管线与实现约定 |
