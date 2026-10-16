@@ -10,7 +10,7 @@ export interface PanelDefinition {
   component: ComponentType
 }
 
-export const aiPanelDefinition: PanelDefinition = { id: 'ai', title: 'AI 助手', component: AiPanel }
+export const aiPanelDefinition: PanelDefinition = { id: 'ai', title: 'AI 智能体', component: AiPanel }
 export const termsPanelDefinition: PanelDefinition = { id: 'terms', title: '术语', component: TermsPanel }
 export const trackEPanels: readonly PanelDefinition[] = [aiPanelDefinition, termsPanelDefinition]
 

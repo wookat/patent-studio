@@ -28,7 +28,7 @@
 规则：
 - **单源**：任何品牌位一律引 `/logo-mark.svg`，禁止再贴 PNG 副本或 Lucide `FileText` 代替（V1 走查曾在 OrgShell/PageChrome 漏过两处）。
 - 四角圆角由使用方 `rounded-*` 类控制（小尺寸 `rounded-sm`，中尺寸 `rounded-md`），SVG 本身已带 squircle 裁切。
-- `alt=""` + `aria-hidden`：品牌位均相邻文字商标「Patent Studio」，图属装饰。
+- `alt=""` + `aria-hidden`：品牌位均相邻文字商标「知撰」，图属装饰。
 - 禁止改色/加阴影/旋转；深色主题下同一份 SVG（墨青在暗底对比合格，勿出反白版）。
 
 ## 2. 品牌色

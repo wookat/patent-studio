@@ -119,7 +119,7 @@ export function LoginPage() {
           <h1 id={titleId} className="text-2xl font-semibold text-fg-strong md:text-3xl">
             {mode === 'login' ? '登录' : '注册'}
           </h1>
-          <p className="mt-1 text-sm text-fg-muted">机构工作台 · 专利代理团队协作撰写</p>
+          <p className="mt-1 text-sm text-fg-muted">AI 专利撰写与协同平台 · 一个案卷里的协作办案</p>
 
           <Segmented
             value={mode}

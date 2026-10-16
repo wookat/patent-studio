@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
  * < md 单栏 —— 品牌区压成 120 高一行（logo 不隐藏），表单直接铺在 bg-app 上无卡。
  * 仅展示层；登录页 / 分享领取页共用。
  */
-const FLOW = ['台账 · 期限 · 通知', '源码 ‖ 版面 ‖ PDF 三视图，选块定位与行内块编辑', '协作者 · 客户免登录审阅 · CriticMarkup 审阅', '递交体检 · DOCX / PDF / XML']
+const FLOW = ['作者提交需求 · 机构管理分派', '代理人借助 AI 撰写三书与附图', '案卷内批注 · 讨论 · 确认定稿', '期限 · OA · 查新跟进，体检后交付']
 
 export function BrandMark({ className, size = 'md' }: { className?: string; size?: 'sm' | 'md' }) {
   return (
@@ -51,12 +51,12 @@ export function AuthBrand() {
         <BrandMark size="sm" className="md:hidden" />
         <BrandMark className="max-md:hidden" />
         <span className="text-base font-semibold text-fg-strong">知撰</span>
-        <span className="text-xs text-fg-muted">· 机构工作台</span>
+        <span className="text-xs text-fg-muted">· AI 专利撰写与协同平台</span>
       </div>
       <p className="mt-1 text-xs text-fg-muted md:hidden">AI 专利撰写与协同平台</p>
       <p className="mt-8 max-w-[26ch] text-2xl font-semibold text-fg-strong max-md:hidden">AI 专利撰写与协同平台</p>
       <p className="mt-2 max-w-[44ch] text-base text-fg-muted max-md:hidden">
-        案件台账与期限中心 → 三视图协作撰写（Markdown 源码 / Word 对齐版面 / 真实 PDF）→ 确定性 DOCX → CNIPA 五书 XML。
+        把「写专利」从散乱的文件收进同一个案卷：作者提交需求、机构管理分派、代理人借助 AI 撰写成稿、作者与代理人在案卷内审阅、批注、讨论、确认，期限 · OA · 查新与交付导出都在同一条链上。
       </p>
       <ol className="mt-6 max-md:hidden">
         {FLOW.map((t, i) => (
