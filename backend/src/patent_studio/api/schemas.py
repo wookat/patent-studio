@@ -103,6 +103,41 @@ class CasePageOut(DTO):
     offset: int
 
 
+class MethodAssetIn(DTO):
+    """Z30：人工录入的脱敏方法卡（method/expression，非客户发明事实）。source 只收 manual/curated。"""
+
+    title: str = Field(min_length=1, max_length=300)
+    body: str = Field(min_length=1)
+    source: Literal["manual", "curated"] = "manual"
+
+
+class MethodAssetOut(DTO):
+    id: uuid.UUID
+    organization_id: uuid.UUID
+    title: str
+    body: str
+    source: str
+    status: str
+    authorized_by_principal_id: uuid.UUID | None
+    created_by_principal_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class MethodAssetUseIn(DTO):
+    case_id: uuid.UUID | None = None
+    note: str | None = Field(default=None, max_length=300)
+
+
+class MethodAssetUseOut(DTO):
+    id: uuid.UUID
+    asset_id: uuid.UUID
+    case_id: uuid.UUID | None
+    principal_id: uuid.UUID
+    note: str | None
+    used_at: datetime
+
+
 class ParticipantIn(DTO):
     principal_id: uuid.UUID
     role: Literal[

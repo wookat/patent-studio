@@ -21,6 +21,7 @@ from patent_studio.domain import authorization as az
 from patent_studio.domain import documents as d
 from patent_studio.domain import figures as f
 from patent_studio.domain import materials as mat
+from patent_studio.domain import methods as meth
 from patent_studio.domain import operations as op
 from patent_studio.domain import proposals as p
 from patent_studio.domain import releases as r
@@ -1345,3 +1346,75 @@ def kernel_mathml(body: s.MathmlIn, ctx: Ctx):
     except Exception as exc:
         raise error(422, "formula", f"公式无法转换：{exc}") from exc
     return {"mathml": mathml}
+
+
+# ------------------------------------------------------- Z30 机构私有方法库 ----
+# 人工录入的脱敏方法卡；仅 authorized 可检索/使用；撤销即不可见；使用落 method_asset_uses。
+# 组织隔离靠 asset.organization_id + org_access/_member；case_id 必须同机构。
+
+
+@router.get("/organizations/{organization_id}/method-assets", response_model=list[s.MethodAssetOut])
+def list_method_assets(organization_id: uuid.UUID, ctx: Ctx, q: str | None = None, all_states: bool = False):
+    """检索视图：默认仅 authorized；?all_states=1 需 owner/admin。"""
+    org_access(ctx, organization_id, manage=all_states)
+    return meth.list_assets(
+        ctx.session, organization_id=organization_id, principal_id=ctx.principal.id, q=q, all_states=all_states
+    )
+
+
+@router.post("/organizations/{organization_id}/method-assets", response_model=s.MethodAssetOut, status_code=201)
+def create_method_asset(organization_id: uuid.UUID, body: s.MethodAssetIn, ctx: Ctx, key: Key):
+    org_access(ctx, organization_id)
+
+    def action():
+        a = meth.create_asset(
+            ctx.session, organization_id=organization_id, principal_id=ctx.principal.id, **body.model_dump()
+        )
+        return a, organization_id, None
+
+    return command(ctx, key, "method_asset.create", str(organization_id), body, s.MethodAssetOut, action)
+
+
+@router.post("/method-assets/{asset_id}/authorize", response_model=s.MethodAssetOut)
+def authorize_method_asset(asset_id: uuid.UUID, ctx: Ctx, key: Key):
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id, manage=True)
+
+    def action():
+        a = meth.authorize_asset(ctx.session, asset_id, ctx.principal.id)
+        return a, a.organization_id, None
+
+    return command(ctx, key, "method_asset.authorize", str(asset_id), None, s.MethodAssetOut, action)
+
+
+@router.post("/method-assets/{asset_id}/revoke", response_model=s.MethodAssetOut)
+def revoke_method_asset(asset_id: uuid.UUID, ctx: Ctx, key: Key):
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id, manage=True)
+
+    def action():
+        a = meth.revoke_asset(ctx.session, asset_id, ctx.principal.id)
+        return a, a.organization_id, None
+
+    return command(ctx, key, "method_asset.revoke", str(asset_id), None, s.MethodAssetOut, action)
+
+
+@router.post("/method-assets/{asset_id}/use", response_model=s.MethodAssetUseOut, status_code=201)
+def use_method_asset(asset_id: uuid.UUID, body: s.MethodAssetUseIn, ctx: Ctx, key: Key):
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id)
+
+    def action():
+        u = meth.record_use(
+            ctx.session, asset_id=asset_id, principal_id=ctx.principal.id, case_id=body.case_id, note=body.note
+        )
+        return u, asset.organization_id, body.case_id
+
+    return command(ctx, key, "method_asset.use", str(asset_id), body, s.MethodAssetUseOut, action)
+
+
+@router.get("/method-assets/{asset_id}/uses", response_model=list[s.MethodAssetUseOut])
+def list_method_asset_uses(asset_id: uuid.UUID, ctx: Ctx):
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id)
+    return meth.list_uses(ctx.session, asset_id=asset_id, principal_id=ctx.principal.id)

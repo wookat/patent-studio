@@ -54,12 +54,14 @@ export type HashRoute =
   | { kind: 'client'; token: string }
   | { kind: 'account' }
   | { kind: 'admin'; tab: AdminTab | null }
+  /** Z30：机构私有方法库 #/org/<orgId>/methods */
+  | { kind: 'methods'; orgId: string }
   | { kind: 'ds'; query: ProjectQuery }
 
 export type AdminTab = 'members' | 'org' | 'audit' | 'ai'
 const ADMIN_TABS: readonly AdminTab[] = ['members', 'org', 'audit', 'ai']
 
-const PAGE_ROUTES = /^(share|c|edit)\/|^(login|account|admin|deadlines|inbox|workbench|figlib|__ds|legal)(\?|$|\/)/
+const PAGE_ROUTES = /^(share|c|edit|org)\/|^(login|account|admin|deadlines|inbox|workbench|figlib|__ds|legal)(\?|$|\/)/
 
 function parseQuery(q: string | undefined): ProjectQuery {
   if (!q) return {}
@@ -116,6 +118,8 @@ export function parseHash(hash: string = window.location.hash): HashRoute {
   if (client) return { kind: 'client', token: _decode(client[1]) }
   const edit = h.match(/^edit\/([^/?#]+)\/([^/?#]+)/)
   if (edit) return { kind: 'edit', caseId: _decode(edit[1]), docId: _decode(edit[2]) }
+  const orgM = h.match(/^org\/([^/?#]+)\/methods/)
+  if (orgM) return { kind: 'methods', orgId: _decode(orgM[1]) }
   const p = h.match(/^p\/([^/?#]+)(\/(?:deliver|board|novelty|claims))?(?:\?(.*))?$/)
   if (p) {
     const pid = _decode(p[1])

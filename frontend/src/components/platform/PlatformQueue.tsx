@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { QueryClientProvider, useQuery } from '@tanstack/react-query'
-import { BriefcaseBusiness, FolderPlus, LoaderCircle } from 'lucide-react'
+import { BookMarked, BriefcaseBusiness, FolderPlus, LoaderCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -54,11 +54,24 @@ function PlatformQueueInner() {
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="text-sm text-fg-muted">聚合你可见的机构案件工作项；管理者可登记新案并分派承办人。</p>
         <Button size="sm" variant="secondary" onClick={() => setIntake(true)} data-testid="intake-open"><FolderPlus aria-hidden />登记新案</Button>
+        <OrgMethodsLink />
       </div>
       <QueueView cases={cases.data ?? []} items={items.data ?? []} onOpenCase={open} meId={me.data?.id ?? null} />
       <CaseLedger onOpenCase={open} />
       <CaseIntakeDialog open={intake} onClose={() => setIntake(false)} meId={me.data?.id ?? null} />
     </div>
+  )
+}
+
+/** Z30：跳机构方法库（#/org/<id>/methods）；无机构成员身份时不渲染 */
+function OrgMethodsLink() {
+  const orgs = useQuery({ queryKey: workbenchKeys.organizations(), queryFn: ({ signal }) => workbenchApi.organizations(signal), retry: false })
+  const first = orgs.data?.[0]
+  if (!first) return null
+  return (
+    <Button size="sm" variant="ghost" onClick={() => { window.location.hash = `/org/${first.id}/methods` }} data-testid="methods-open">
+      <BookMarked aria-hidden />方法库
+    </Button>
   )
 }
 

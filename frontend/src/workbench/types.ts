@@ -62,3 +62,25 @@ export interface Fact {
   decided_at: string | null
   created_at: string
 }
+
+/** Z30 机构私有方法库（openapi.gen 冻结早于该扩展——手写对齐 schemas.MethodAssetOut） */
+export interface MethodAsset {
+  id: string
+  organization_id: string
+  title: string
+  body: string
+  source: string
+  status: 'draft' | 'authorized' | 'revoked' | string
+  authorized_by_principal_id: string | null
+  created_by_principal_id: string
+  created_at: string
+  updated_at: string
+}
+export interface MethodAssetUse {
+  id: string
+  asset_id: string
+  case_id: string | null
+  principal_id: string
+  note: string | null
+  used_at: string
+}
