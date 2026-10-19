@@ -13,18 +13,22 @@ job.error 只透出结构化 kind + 固定文案，原始 message 可能含上�
 """
 
 from app.ai.jobs import FINAL
+from app.errors import ERROR_KINDS
 
 # 度量不导出原始错误文本（AiError message 可能拼进上游响应正文，含正文/凭证/内部细节）
 _SAFE_ERROR_MESSAGE = "任务失败；错误明细见任务时间线或服务端日志（度量不导出原始错误文本）"
 
 
 def _safe_error(err) -> dict | None:
-    """job.error → {kind, message}：kind 是 error_detail 的受控码（ai_*/internal），
-    message 一律固定文案——原始 message/detail 不透出。"""
+    """job.error → {kind, message}：kind 只透 error_detail 白名单受控码（ERROR_KINDS），
+    未知/非字符串一律归 internal——任意字符串可能携带敏感串，不能当受控码透出；
+    message 一律固定文案，原始 message/detail 不透出。"""
     if not isinstance(err, dict) or not err:
         return None
     kind = err.get("kind")
-    return {"kind": kind if isinstance(kind, str) and kind else "internal", "message": _SAFE_ERROR_MESSAGE}
+    if not isinstance(kind, str) or kind not in ERROR_KINDS:
+        kind = "internal"
+    return {"kind": kind, "message": _SAFE_ERROR_MESSAGE}
 
 
 def _job_item(j: dict) -> dict:

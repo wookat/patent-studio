@@ -271,3 +271,150 @@ def test_method_assets_manage_gates_and_source_validation(on):
         json={"title": "x", "body": "y", "source": "auto"},
     )
     assert bad.status_code == 422
+
+
+def _raw_engine(pg_schema):
+    from sqlalchemy import create_engine
+
+    from patent_studio.infra.db import database_url
+
+    return create_engine(database_url(pg_schema))
+
+
+def test_migration_0015_demotes_legacy_authorized_and_requires_reauth(on, pg_schema):
+    """复核追加：0014 的 authorized 旧卡升级 0015 后被降为 draft（旧授权人/时间清空），
+    revoked 保持撤销不复活；旧卡不可检索/使用，须补登确认 + 重新授权才恢复。"""
+    import os
+
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import text
+
+    client = _user(on, "mig")
+    org = _org(client, "mig")
+    pid = client.get("/api/v1/principals/me").json()["id"]
+    backend = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cfg = Config(os.path.join(backend, "alembic.ini"))
+    cfg.set_main_option("sqlalchemy.url", pg_schema.replace("%", "%%"))
+    aid, rid, did = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    eng = _raw_engine(pg_schema)
+    try:
+        # 回到 0014 形态（治理列未建），按旧 schema 直接插行
+        command.downgrade(cfg, "0014")
+        insert = text(
+            "INSERT INTO method_assets (id, organization_id, title, body, source, status, "
+            "authorized_by_principal_id, authorized_at, created_by_principal_id) "
+            "VALUES (:id, :o, :t, 'b', 'manual', :st, :ab, now(), :p)"
+        )
+        with eng.begin() as c:
+            for row_id, title, status, authorized_by in (
+                (aid, "旧已授权卡", "authorized", pid),
+                (rid, "旧撤销卡", "revoked", pid),
+                (did, "旧草稿卡", "draft", None),
+            ):
+                c.execute(
+                    insert,
+                    {
+                        "id": row_id,
+                        "o": uuid.UUID(org["id"]),
+                        "t": title,
+                        "st": status,
+                        "ab": uuid.UUID(authorized_by) if authorized_by else None,
+                        "p": uuid.UUID(pid),
+                    },
+                )
+        command.upgrade(cfg, "head")
+        with eng.connect() as c:
+            rows = {
+                str(r.id): r
+                for r in c.execute(
+                    text(
+                        "SELECT id, status, authorized_by_principal_id, authorized_at, "
+                        "deidentified_confirmed, provenance, authorized_scope, asset_type FROM method_assets"
+                    )
+                )
+            }
+        # authorized→draft 且旧授权痕迹清空；revoked 不复活；草稿原样未确认
+        a = rows[str(aid)]
+        assert a.status == "draft" and a.authorized_by_principal_id is None and a.authorized_at is None
+        assert a.deidentified_confirmed is False and a.provenance is None and a.authorized_scope is None
+        assert rows[str(rid)].status == "revoked" and rows[str(did)].status == "draft"
+        assert a.asset_type == "method"  # 新列按 server_default 回填
+    finally:
+        eng.dispose()
+
+    # 迁移后：默认检索不可见、使用被拒；管理者 all_states 可见为 draft
+    assert client.get(f"/api/v1/organizations/{org['id']}/method-assets").json() == []
+    states = {
+        x["id"]: x["status"]
+        for x in client.get(f"/api/v1/organizations/{org['id']}/method-assets", params={"all_states": "true"}).json()
+    }
+    assert states[str(aid)] == "draft" and states[str(rid)] == "revoked" and states[str(did)] == "draft"
+    r = client.post(f"/api/v1/method-assets/{aid}/use", headers={"Idempotency-Key": "mig-u"}, json={})
+    assert r.status_code == 403
+    # 补登确认 + 重新授权后才恢复检索/使用
+    rc = client.post(
+        f"/api/v1/method-assets/{aid}/confirm",
+        headers={"Idempotency-Key": "mig-c"},
+        json={
+            "asset_type": "method",
+            "provenance": "本所历史培训材料（脱敏改写）",
+            "authorized_scope": "本机构撰写参考",
+            "deidentified_confirmed": True,
+        },
+    )
+    assert rc.status_code == 200, rc.text
+    ra = client.post(f"/api/v1/method-assets/{aid}/authorize", headers={"Idempotency-Key": "mig-a"})
+    assert ra.status_code == 200 and ra.json()["status"] == "authorized"
+    assert [x["id"] for x in client.get(f"/api/v1/organizations/{org['id']}/method-assets").json()] == [str(aid)]
+    ru = client.post(f"/api/v1/method-assets/{aid}/use", headers={"Idempotency-Key": "mig-u2"}, json={})
+    assert ru.status_code == 201
+
+
+def test_authorized_without_governance_is_fail_closed(on, pg_schema):
+    """复核追加：库里直接残留 authorized+未确认/缺元数据的错误组合（绕过 authorize 入口）——
+    默认检索不返回、record_use 403，fail-closed 不只靠授权入口闸。"""
+    from sqlalchemy import text
+
+    client = _user(on, "fc")
+    org = _org(client, "fc")
+    aid = _mk(client, org, "fc").json()["id"]
+    assert _auth(client, aid, "fc-a").status_code == 200
+    assert len(client.get(f"/api/v1/organizations/{org['id']}/method-assets").json()) == 1
+
+    eng = _raw_engine(pg_schema)
+    try:
+        # 变体1：authorized + 未确认 + 来源/范围 NULL（0015 前的错误组合直写）
+        with eng.begin() as c:
+            c.execute(
+                text(
+                    "UPDATE method_assets SET provenance = NULL, authorized_scope = NULL, "
+                    "deidentified_confirmed = false WHERE id = :id"
+                ),
+                {"id": uuid.UUID(aid)},
+            )
+    finally:
+        eng.dispose()
+    assert client.get(f"/api/v1/organizations/{org['id']}/method-assets").json() == []
+    assert (
+        client.post(f"/api/v1/method-assets/{aid}/use", headers={"Idempotency-Key": "fc-u"}, json={}).status_code == 403
+    )
+
+    eng = _raw_engine(pg_schema)
+    try:
+        # 变体2：confirmed=true 但 provenance 为空串——length(trim())>0 同样拦下
+        with eng.begin() as c:
+            c.execute(
+                text(
+                    "UPDATE method_assets SET deidentified_confirmed = true, provenance = '', "
+                    "authorized_scope = 'x' WHERE id = :id"
+                ),
+                {"id": uuid.UUID(aid)},
+            )
+    finally:
+        eng.dispose()
+    assert client.get(f"/api/v1/organizations/{org['id']}/method-assets").json() == []
+    assert (
+        client.post(f"/api/v1/method-assets/{aid}/use", headers={"Idempotency-Key": "fc-u2"}, json={}).status_code
+        == 403
+    )

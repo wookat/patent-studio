@@ -158,11 +158,18 @@ def confirm_asset(
     return a
 
 
+def _governance_ok(a: MethodAsset) -> bool:
+    """治理字段齐备（与 authorize_asset 入口同口径）：脱敏已声明 + 来源/范围非空。
+    0015 前已授权旧卡迁移后降为 draft；若库中仍残留 authorized+未确认的组合
+    （直写库/未来迁移缺陷），读取与使用侧同样 fail-closed，不能只靠授权入口闸。"""
+    return bool(a.deidentified_confirmed and a.provenance and a.authorized_scope)
+
+
 def authorize_asset(session: Session, asset_id: uuid.UUID, principal_id: uuid.UUID) -> MethodAsset:
     a = _asset(session, asset_id)
     _member(session, a.organization_id, principal_id, manage=True)
     # 复核项6：未确认（来源/范围缺失或脱敏未声明）禁止授权——不得绕过校验上架
-    if not (a.deidentified_confirmed and a.provenance and a.authorized_scope):
+    if not _governance_ok(a):
         raise MethodLibraryError("denied: asset lacks provenance/scope/de-identification confirmation (confirm first)")
     a.status = "authorized"
     a.authorized_by_principal_id = principal_id
@@ -195,7 +202,14 @@ def list_assets(
         _member(session, organization_id, principal_id)
     stmt = select(MethodAsset).where(MethodAsset.organization_id == organization_id)
     if not all_states:
-        stmt = stmt.where(MethodAsset.status == "authorized")
+        # 复核追加：authorized 之外还要求治理字段齐备（fail-closed）——
+        # length(trim(NULL))=NULL 同样被排除，空串/纯空白也不放过。
+        stmt = stmt.where(
+            MethodAsset.status == "authorized",
+            MethodAsset.deidentified_confirmed.is_(True),
+            func.length(func.trim(MethodAsset.provenance)) > 0,
+            func.length(func.trim(MethodAsset.authorized_scope)) > 0,
+        )
     if q and q.strip():
         pat = f"%{q.strip()}%"
         stmt = stmt.where(MethodAsset.title.ilike(pat) | MethodAsset.body.ilike(pat))
@@ -213,7 +227,7 @@ def record_use(
     """引用/使用留痕：资产须 authorized；附 case_id 时案件必须同机构。"""
     a = _asset(session, asset_id)
     _member(session, a.organization_id, principal_id)
-    if a.status != "authorized":
+    if a.status != "authorized" or not _governance_ok(a):
         raise MethodLibraryError("denied: only authorized assets are retrievable")
     if case_id is not None:
         c = session.get(Case, case_id)

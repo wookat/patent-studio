@@ -9,6 +9,10 @@ Create Date: 2026-10-19
 - provenance        真实来源说明（人工填写；既有行留 NULL，不填假来源）
 - authorized_scope  授权使用范围（人工填写；既有行留 NULL）
 - deidentified_confirmed  人工脱敏声明；既有行一律 False（未确认），未确认禁止授权
+
+复核追加：仅置未确认不够——0014 既有 status='authorized' 旧卡未补治理元数据
+仍会被默认检索/使用。迁移时把 authorized 降为 draft 并清空旧授权人/时间；
+revoked 保持撤销（不复活）。旧卡须补登确认 + 重新授权后才恢复检索/使用。
 """
 
 from collections.abc import Sequence
@@ -37,6 +41,12 @@ def upgrade() -> None:
         op.f("ck_method_assets_asset_type"),
         "method_assets",
         "asset_type IN ('method', 'expression')",
+    )
+    # 0014 的 authorized 旧卡治理元数据未补齐——降为 draft 并清空旧授权痕迹，
+    # 防止未补登的来源不明卡继续可检索/可使用；revoked 行不动（不复活）。
+    op.execute(
+        "UPDATE method_assets SET status = 'draft', authorized_by_principal_id = NULL, "
+        "authorized_at = NULL WHERE status = 'authorized'"
     )
 
 

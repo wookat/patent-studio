@@ -109,6 +109,24 @@ def test_error_message_is_sanitized_not_raw():
     assert item["error"]["message"] == metrics._SAFE_ERROR_MESSAGE
 
 
+def test_unknown_error_kind_falls_back_to_internal():
+    """复核追加：kind 不在 error_detail 白名单（ERROR_KINDS）内——任意字符串可能携带
+    敏感串——统一归 internal；非字符串 kind 同样归 internal；白名单受控码不受影响。"""
+    import json as _json
+
+    job = _job("jx", "error")
+    job["error"] = {"kind": "SECRET-TOKEN-9f4e", "message": "x"}
+    m = metrics.case_metrics([job], [], [])
+    item = m["jobs"]["items"][0]
+    assert item["error"]["kind"] == "internal" and item["error"]["message"] == metrics._SAFE_ERROR_MESSAGE
+    assert "SECRET-TOKEN-9f4e" not in _json.dumps(m, ensure_ascii=False)
+    job2 = _job("jy", "error")
+    job2["error"] = {"kind": 12345, "message": "x"}
+    assert metrics.case_metrics([job2], [], [])["jobs"]["items"][0]["error"]["kind"] == "internal"
+    job3 = _job("jz", "error")
+    assert metrics.case_metrics([job3], [], [])["jobs"]["items"][0]["error"]["kind"] == "ai_upstream"
+
+
 def test_empty_case():
     m = metrics.case_metrics([], [], [])
     assert m["sample"] == {"jobs": 0, "proposals": 0, "usage_rows": 0}
