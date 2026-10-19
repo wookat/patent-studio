@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link2, Plus, Save, Trash2 } from 'lucide-react'
+import { Link2, MessageSquarePlus, Plus, Save, Trash2 } from 'lucide-react'
 import { ApiError, api } from '@/lib/api'
 import { projectHash } from '@/lib/hash'
 import { PageChrome } from '@/components/shell/PageChrome'
 import { DiscardDialog } from '@/components/ui/discard-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -11,8 +12,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { useIsDesktop } from '@/hooks/useMisc'
 import { useStudio } from '@/store'
 import {
+  EVIDENCE_STATUSES, EVIDENCE_STATUS_LABEL,
   NOVELTY_RELEVANCES, NOVELTY_RELEVANCE_LABEL,
-  type NoveltyHit, type NoveltyQuery, type NoveltyRecord, type NoveltyRelevance,
+  type EvidenceStatus, type NoveltyHit, type NoveltyQuery, type NoveltyRecord, type NoveltyRelevance,
 } from '@/types/novelty'
 
 /**
@@ -47,6 +49,13 @@ export function NoveltyPage({ pid }: { pid: string }) {
   const [saving, setSaving] = useState(false)
   const [askDiscard, setAskDiscard] = useState<string | null>(null)
   const dirtyRef = useRef(false)
+  // Z31 证据对照表单（局部状态，不进 dirty 守卫——登记即落库，随服务端回写 rec）
+  const [evHit, setEvHit] = useState('')
+  const [evClaim, setEvClaim] = useState('')
+  const [evFeature, setEvFeature] = useState('')
+  const [evQuote, setEvQuote] = useState('')
+  const [evStatus, setEvStatus] = useState<EvidenceStatus>('hit')
+  const [evBusy, setEvBusy] = useState(false)
 
   const loaded = project?.id === pid
   const role = loaded ? project.role ?? null : null
@@ -131,14 +140,48 @@ export function NoveltyPage({ pid }: { pid: string }) {
   const delHit = (i: number) => patch((r) => ({ ...r, hits: r.hits.filter((_, j) => j !== i) }))
   const addHit = () =>
     patch((r) =>
-      r.hits.length >= MAX_HITS ? r : { ...r, hits: [...r.hits, { number: '', title: '', relevance: 'A', note: '', link: '' }] },
+      r.hits.length >= MAX_HITS
+        ? r
+        : { ...r, hits: [...r.hits, { number: '', title: '', relevance: 'A', note: '', link: '', publication_date: '' }] },
     )
+
+  // 对比文件缺省取首个已登记行（下拉可换）
+  const evHitKey = evHit || (rec?.hits[0] ? rec.hits[0].number || rec.hits[0].title : '')
+
+  /** Z31：登记证据行；annotate=true 时另生成 claims/{claim} 审阅批注（不改正文） */
+  const addEvidence = async (annotate: boolean) => {
+    if (!rec || !evHitKey || evBusy) return
+    const claimNum = evClaim.trim() ? Number(evClaim) : null
+    const input = { hit: evHitKey, claim: claimNum, feature: evFeature.trim(), quote: evQuote.trim(), status: evStatus }
+    setEvBusy(true)
+    try {
+      if (annotate) {
+        if (claimNum == null) return
+        const { comment, evidence } = await api.annotateEvidence(pid, { ...input, claim: claimNum })
+        setRec((r) => (r ? { ...r, evidence: [...r.evidence, evidence] } : r))
+        setBase((b) => (b ? { ...b, evidence: [...b.evidence, evidence] } : b))
+        toast(`已生成权 ${claimNum} 审阅批注（批注 ${comment.id}，见工作台审阅面板）`, 'success')
+      } else {
+        const { evidence } = await api.addEvidence(pid, input)
+        setRec((r) => (r ? { ...r, evidence: [...r.evidence, evidence] } : r))
+        setBase((b) => (b ? { ...b, evidence: [...b.evidence, evidence] } : b))
+        toast('证据行已登记', 'success')
+      }
+      setEvFeature('')
+      setEvQuote('')
+      setEvClaim('')
+    } catch (e) {
+      toast(e instanceof ApiError ? `登记失败：${e.message}` : '登记失败', 'error')
+    } finally {
+      setEvBusy(false)
+    }
+  }
 
   const save = async () => {
     if (!rec || !canEdit || saving) return
     setSaving(true)
     try {
-      const r = await api.putNovelty(pid, { queries: rec.queries, hits: rec.hits, conclusion: rec.conclusion })
+      const r = await api.putNovelty(pid, { queries: rec.queries, hits: rec.hits, evidence: rec.evidence, conclusion: rec.conclusion })
       setRec(r)
       setBase(r)
       toast('查新记录已保存', 'success')
@@ -294,6 +337,16 @@ export function NoveltyPage({ pid }: { pid: string }) {
                     </SelectContent>
                   </Select>
                   <Input
+                    className="w-36"
+                    type="date"
+                    value={h.publication_date}
+                    disabled={!canEdit}
+                    aria-label={`公开日期 ${i + 1}`}
+                    title="公开日期"
+                    data-testid={`hit-pubdate-${i}`}
+                    onChange={(e) => setHit(i, { publication_date: e.target.value })}
+                  />
+                  <Input
                     className="min-w-40 flex-1"
                     value={h.link}
                     maxLength={CLIP.link}
@@ -341,6 +394,103 @@ export function NoveltyPage({ pid }: { pid: string }) {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section aria-labelledby="novelty-evidence" className="grid gap-2" data-testid="evidence-section">
+          <h2 id="novelty-evidence" className="text-sm font-semibold text-fg-strong">
+            证据对照批注
+            <span className="ml-1 font-normal text-fg-subtle">（{rec.evidence.length} 条 · 机器筛选记录，供人工复核，非法律意见）</span>
+          </h2>
+          {rec.evidence.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-sm text-fg-subtle" data-testid="evidence-empty">
+              尚无证据对照——登记对比文件后，把特征与证据原句逐条落在这里，并可生成锚到权项的审阅批注
+            </p>
+          ) : (
+            <ul className="grid gap-2">
+              {rec.evidence.map((ev) => (
+                <li key={ev.id} className="rounded-md border border-border bg-panel p-2 text-xs" data-testid={`evidence-row-${ev.id}`}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-fg-strong">{ev.hit}</span>
+                    {ev.claim != null && <Badge>权{ev.claim}</Badge>}
+                    <Badge tone={ev.status === 'hit' ? 'danger' : ev.status === 'missing' ? 'ok' : 'neutral'}>
+                      {EVIDENCE_STATUS_LABEL[ev.status]}
+                    </Badge>
+                  </div>
+                  {ev.feature && <p className="mt-1 text-fg">特征：{ev.feature}</p>}
+                  <p className="mt-0.5 text-fg-muted">原句：{ev.quote || '未提供（无全文/未检出），待核对'}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {canEdit && rec.hits.length > 0 && (
+            <div className="grid gap-2 rounded-md border border-border bg-panel p-3" data-testid="evidence-form">
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={evHitKey} onValueChange={setEvHit}>
+                  <SelectTrigger className="w-56" aria-label="对比文件" data-testid="evidence-hit">
+                    <SelectValue placeholder="选择对比文件" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rec.hits.map((h) => (
+                      <SelectItem key={h.number || h.title} value={h.number || h.title}>
+                        {h.number || h.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  className="w-28"
+                  type="number"
+                  min={1}
+                  value={evClaim}
+                  onChange={(e) => setEvClaim(e.target.value)}
+                  placeholder="锚定权项"
+                  aria-label="锚定权项编号"
+                  data-testid="evidence-claim"
+                />
+                <Select value={evStatus} onValueChange={(v) => setEvStatus(v as EvidenceStatus)}>
+                  <SelectTrigger className="w-40" aria-label="比对状态" data-testid="evidence-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EVIDENCE_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s} disabled={s !== 'pending' && !evQuote.trim()}>
+                        {EVIDENCE_STATUS_LABEL[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Input
+                value={evFeature}
+                onChange={(e) => setEvFeature(e.target.value)}
+                maxLength={500}
+                placeholder="对照特征（如：指纹特征点集合的构建）"
+                aria-label="对照特征"
+                data-testid="evidence-feature"
+              />
+              <Textarea
+                value={evQuote}
+                onChange={(e) => setEvQuote(e.target.value)}
+                maxLength={2000}
+                rows={2}
+                placeholder="证据原句（对比文件中的相关记载；留空则标待核对）"
+                aria-label="证据原句"
+                data-testid="evidence-quote"
+              />
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={() => void addEvidence(false)} disabled={!evHitKey || evBusy} data-testid="evidence-add">
+                  登记证据行
+                </Button>
+                <Button size="sm" onClick={() => void addEvidence(true)} disabled={!evHitKey || !evClaim.trim() || evBusy} data-testid="evidence-annotate">
+                  <MessageSquarePlus aria-hidden /> 登记并生成权项批注
+                </Button>
+                {evBusy && <span className="text-xs text-fg-muted">处理中…</span>}
+              </div>
+              <p className="text-xs text-fg-muted">
+                批注锚到 claims/权N 块并出现在工作台审阅面板（source=ai）；不修改正文。无证据原句一律记「待核对」。
+              </p>
+            </div>
+          )}
         </section>
 
         <section aria-labelledby="novelty-conclusion" className="grid gap-2">
