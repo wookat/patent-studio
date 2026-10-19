@@ -5,6 +5,7 @@ import type { Book, InvitationRole, ParticipantRole, WorkItemStatus } from './ty
 export const workbenchKeys = {
   all: ['workbench'] as const,
   me: () => [...workbenchKeys.all, 'me'] as const,
+  organizations: () => [...workbenchKeys.all, 'organizations'] as const,
   cases: () => [...workbenchKeys.all, 'cases'] as const,
   workItems: () => [...workbenchKeys.all, 'work-items'] as const,
   case: (id: string) => [...workbenchKeys.all, 'case', id] as const,

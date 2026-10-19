@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { QueryClientProvider, useQuery } from '@tanstack/react-query'
-import { LoaderCircle } from 'lucide-react'
+import { FolderPlus, LoaderCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { queryClient } from '@/lib/query'
 import { mergeCaseRows } from '@/lib/platform'
 import { projectHash } from '@/lib/hash'
@@ -7,9 +9,11 @@ import { useStudio } from '@/store'
 import { workbenchApi } from '@/workbench/api'
 import { workbenchKeys } from '@/workbench/queries'
 import { ErrorPanel, QueueView } from '@/components/workbench/WorkbenchPage'
+import { CaseIntakeDialog } from './CaseIntakeDialog'
 
 /**
  * B17 M6：dashboard「工作项」分段——平台工作队列并入案卷面板。
+ * Z06/Z10：QueueView 按「我的待办 / 未分配 / 全部」聚合；Z11/Z12：机构管理者可登记新案并分派承办人。
  * 打开工作项 = 解析 case → case_key → `#/p/<case_key>`（case_key=目录名时直达旧工作台）；
  * mergeCaseRows 去重保证一案双体只出现一次（队列按案件维度展示 case_key）。
  * 自带 QueryClientProvider——dashboard 测试裸挂载也能工作。
@@ -24,11 +28,13 @@ export function PlatformQueue() {
 
 function PlatformQueueInner() {
   const projects = useStudio((s) => s.projects)
+  const [intake, setIntake] = useState(false)
+  const me = useQuery({ queryKey: workbenchKeys.me(), queryFn: ({ signal }) => workbenchApi.me(signal), retry: false })
   const cases = useQuery({ queryKey: workbenchKeys.cases(), queryFn: ({ signal }) => workbenchApi.cases(signal), retry: false })
   const items = useQuery({ queryKey: workbenchKeys.workItems(), queryFn: ({ signal }) => workbenchApi.workItems(signal), retry: false })
-  const err = cases.error ?? items.error
-  if (err) return <div className="p-4"><ErrorPanel error={err} onRetry={() => { void cases.refetch(); void items.refetch() }} /></div>
-  if (cases.isLoading || items.isLoading) {
+  const err = me.error ?? cases.error ?? items.error
+  if (err) return <div className="p-4"><ErrorPanel error={err} onRetry={() => { void me.refetch(); void cases.refetch(); void items.refetch() }} /></div>
+  if (me.isLoading || cases.isLoading || items.isLoading) {
     return <div className="flex min-h-48 items-center justify-center text-fg-muted" role="status"><LoaderCircle className="mr-2 size-5 animate-spin" />正在加载平台工作项…</div>
   }
   // 一案双体去重：case_key 等于目录名的平台案折进目录行；目录里没有的 case_key 同样可点（未导入则旧路由 404→面板）
@@ -39,5 +45,14 @@ function PlatformQueueInner() {
     const pid = keyById.get(caseId)
     if (pid) window.location.hash = projectHash(pid)
   }
-  return <div className="p-4" data-testid="dashboard-platform-queue"><QueueView cases={cases.data ?? []} items={items.data ?? []} onOpenCase={open} /></div>
+  return (
+    <div className="p-4" data-testid="dashboard-platform-queue">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-sm text-fg-muted">聚合你可见的机构案件工作项；管理者可登记新案并分派承办人。</p>
+        <Button size="sm" variant="secondary" onClick={() => setIntake(true)} data-testid="intake-open"><FolderPlus aria-hidden />登记新案</Button>
+      </div>
+      <QueueView cases={cases.data ?? []} items={items.data ?? []} onOpenCase={open} meId={me.data?.id ?? null} />
+      <CaseIntakeDialog open={intake} onClose={() => setIntake(false)} meId={me.data?.id ?? null} />
+    </div>
+  )
 }

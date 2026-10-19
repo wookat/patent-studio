@@ -5,7 +5,7 @@ import { handle, netFetch, req } from '@/lib/api/net'
 const v1req = <T>(url: string, init?: Parameters<typeof req>[1]) => req<T>(url, { ...(init ?? {}), expireOn401: false })
 import type { Ast } from '@/types/ast'
 import type { PreflightReport } from '@/types/preflight'
-import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, Notification, Participant, ParticipantRole, PlatformCase, Principal, Proposal, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemStatus, WorkingCopy } from './types'
+import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, Notification, Participant, ParticipantRole, PlatformCase, PlatformOrg, Principal, Proposal, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemStatus, WorkingCopy } from './types'
 
 const V1 = '/api/v1'
 
@@ -57,6 +57,9 @@ const write = <T>(url: string, init: RequestInit = {}) =>
 
 export const workbenchApi = {
   me: (signal?: AbortSignal) => v1req<Principal>(`${V1}/principals/me`, { signal }),
+  organizations: (signal?: AbortSignal) => v1req<PlatformOrg[]>(`${V1}/organizations`, { signal }),
+  createCase: (organizationId: string, input: { case_key: string; title: string; kind?: PlatformCase['kind'] }) =>
+    write<PlatformCase>(`${V1}/organizations/${organizationId}/cases`, { body: JSON.stringify(input) }),
   cases: (signal?: AbortSignal) => v1req<PlatformCase[]>(`${V1}/cases`, { signal }),
   case: (caseId: string, signal?: AbortSignal) => v1req<PlatformCase>(`${V1}/cases/${caseId}`, { signal }),
   workItems: (signal?: AbortSignal) => v1req<WorkItem[]>(`${V1}/work-items`, { signal }),
@@ -157,6 +160,9 @@ export const workbenchApi = {
       method: 'PUT',
       body: JSON.stringify({ status }),
     }),
+  /** Z11/Z12：登记新案生成撰写工作项（type='draft'；可随案直接分派承办人） */
+  createWorkItem: (caseId: string, input: { type: WorkItem['type']; title: string; assignee_principal_id?: string | null; deadline?: string | null; priority?: number }) =>
+    write<WorkItem>(`${V1}/cases/${caseId}/work-items`, { body: JSON.stringify(input) }),
   saveWorkingCopy: (workingCopyId: string, expectedVersion: number, contentRef: Ref) =>
     write<WorkingCopy>(`${V1}/working-copies/${workingCopyId}`, {
       method: 'PUT',

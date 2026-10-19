@@ -10,6 +10,7 @@ import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
+import { Segmented } from '@/components/ui/segmented'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useWorkbenchMutations, useWorkbenchQueries, workbenchKeys } from '@/workbench/queries'
 import { workbenchApi } from '@/workbench/api'
@@ -25,7 +26,7 @@ const readWorkbenchQuery = () => {
 }
 
 const BOOK_LABEL: Record<Book, string> = { abstract: '摘要', claims: '权利要求书', description: '说明书' }
-const PARTICIPANT_ROLES: ParticipantRole[] = ['client', 'inventor', 'applicant', 'author', 'attorney', 'drafter', 'reviewer', 'case_manager', 'observer']
+const PARTICIPANT_ROLES: ParticipantRole[] = ['client', 'inventor', 'applicant', 'author', 'attorney', 'drafter', 'reviewer', 'case_manager', 'agent', 'observer']
 const ORG_ROLES: InvitationRole[] = ['admin', 'member']
 
 export function ErrorPanel({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
@@ -62,19 +63,46 @@ function LoadingPanel() {
   return <div className="flex min-h-48 items-center justify-center text-fg-muted" role="status"><LoaderCircle className="mr-2 size-5 animate-spin" />正在加载平台数据…</div>
 }
 
-export function QueueView({ cases, items, onOpenCase }: { cases: PlatformCase[]; items: WorkItem[]; onOpenCase: (id: string) => void }) {
+/** Z06/Z10 待办范围：mine = 分派给我（代理人/作者/承办人）；unassigned = 未分配（机构管理者视角）；all = 全部可见 */
+type QueueScope = 'mine' | 'unassigned' | 'all'
+const QUEUE_SCOPE_OPTIONS = [
+  { value: 'mine' as QueueScope, label: '我的待办', 'data-testid': 'queue-scope-mine' },
+  { value: 'unassigned' as QueueScope, label: '未分配', 'data-testid': 'queue-scope-unassigned' },
+  { value: 'all' as QueueScope, label: '全部', 'data-testid': 'queue-scope-all' },
+]
+
+const SCOPE_EMPTY: Record<QueueScope, { title: string; reason: string }> = {
+  mine: { title: '没有分派给你的待办', reason: '机构管理者分派给你的工作项会出现在这里；切换「全部」可看机构内所有工作项。' },
+  unassigned: { title: '没有未分配的工作项', reason: '所有工作项都已有承办人。登记新案或创建工作项时可指定承办人。' },
+  all: { title: '暂无待办', reason: '你可见的机构案件还没有工作项；机构管理者可在「工作项」页登记新案并分派。' },
+}
+
+export function QueueView({ cases, items, onOpenCase, meId }: { cases: PlatformCase[]; items: WorkItem[]; onOpenCase: (id: string) => void; meId: string | null }) {
   const [status, setStatus] = useState<'all' | WorkItemStatus>('all')
+  const [scope, setScope] = useState<QueueScope>('mine')
   const [search, setSearch] = useState('')
   const [now] = useState(() => Date.now())
+  const { setWorkItemStatus } = useWorkbenchMutations()
   const caseMap = useMemo(() => new Map(cases.map((item) => [item.id, item])), [cases])
-  const visible = items.filter((item) => {
+  const filtered = items.filter((item) => {
+    if (scope === 'mine') return item.assignee_principal_id === meId
+    if (scope === 'unassigned') return item.assignee_principal_id == null
+    return true
+  })
+  const visible = filtered.filter((item) => {
     const matchStatus = status === 'all' || item.status === status
     const matchText = !search.trim() || `${item.title} ${caseMap.get(item.case_id)?.case_key ?? ''}`.toLowerCase().includes(search.trim().toLowerCase())
     return matchStatus && matchText
   })
+  const empty = items.length === 0
+    ? SCOPE_EMPTY.all
+    : search.trim() || status !== 'all'
+      ? { title: '没有匹配的工作项', reason: '调整筛选条件，或从案件空间创建新的工作项。' }
+      : SCOPE_EMPTY[scope]
   return (
     <section aria-labelledby="queue-title" data-testid="workbench-queue">
       <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Segmented aria-label="待办范围" size="sm" options={QUEUE_SCOPE_OPTIONS} value={scope} onValueChange={setScope} />
         <label className="sr-only" htmlFor="queue-search">搜索工作项</label>
         <Input id="queue-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索工作项或案件号" className="max-w-sm" />
         <select aria-label="工作项状态" className="h-md-control rounded-md border border-border-strong bg-panel px-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
@@ -82,22 +110,30 @@ export function QueueView({ cases, items, onOpenCase }: { cases: PlatformCase[];
         </select>
         <span className="text-sm text-fg-muted">{visible.length} 项</span>
       </div>
-      {visible.length === 0 ? <EmptyState size="sm" icon={BriefcaseBusiness} title="没有匹配的工作项" reason="调整筛选条件，或从案件空间创建新的工作项。" /> : (
+      {visible.length === 0 ? <EmptyState size="sm" icon={BriefcaseBusiness} title={empty.title} reason={empty.reason} data-testid="queue-empty" /> : (
         <Table>
-          <TableHeader><TableRow><TableHead>工作项</TableHead><TableHead>案件</TableHead><TableHead>状态</TableHead><TableHead>期限</TableHead><TableHead className="w-24">操作</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>工作项</TableHead><TableHead>案件</TableHead><TableHead>承办人</TableHead><TableHead>状态</TableHead><TableHead>期限</TableHead><TableHead className="w-28">操作</TableHead></TableRow></TableHeader>
           <TableBody>{visible.map((item) => {
             const overdue = item.deadline ? new Date(item.deadline).getTime() < now && item.status !== 'done' : false
             const currentCase = caseMap.get(item.case_id)
+            const mine = item.assignee_principal_id != null && item.assignee_principal_id === meId
             return <TableRow key={item.id} data-testid={`work-item-${item.id}`}>
               <TableCell><div className="font-medium text-fg-strong">{item.title}</div><div className="text-xs text-fg-muted">{item.type}</div></TableCell>
               <TableCell><button className="text-left text-link hover:underline" onClick={() => onOpenCase(item.case_id)}>{currentCase?.case_key ?? '未知案件'}<span className="ml-1 text-fg-muted">{currentCase?.title}</span></button></TableCell>
+              <TableCell>{item.assignee_principal_id == null ? <Badge tone="warn">未分配</Badge> : <span className="text-sm text-fg-muted">{mine ? '我' : `${item.assignee_principal_id?.slice(0, 8)}…`}</span>}</TableCell>
               <TableCell><Badge tone={item.status === 'done' ? 'ok' : item.status === 'blocked' ? 'danger' : 'info'}>{item.status}</Badge></TableCell>
               <TableCell className={overdue ? 'font-medium text-danger-fg' : 'text-fg-muted'}>{item.deadline ? new Date(item.deadline).toLocaleDateString('zh-CN') : '—'}{overdue && <span className="ml-1 text-xs">逾期</span>}</TableCell>
-              <TableCell><Button variant="ghost" size="sm" onClick={() => onOpenCase(item.case_id)}>打开</Button></TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1">
+                  {mine && item.status === 'open' && <Button variant="secondary" size="sm" disabled={setWorkItemStatus.isPending} onClick={() => setWorkItemStatus.mutate({ workItemId: item.id, status: 'in_progress' })} data-testid={`work-item-start-${item.id}`}>开始处理</Button>}
+                  <Button variant="ghost" size="sm" onClick={() => onOpenCase(item.case_id)}>打开</Button>
+                </div>
+              </TableCell>
             </TableRow>
           })}</TableBody>
         </Table>
       )}
+      <FieldError error={setWorkItemStatus.error} />
     </section>
   )
 }

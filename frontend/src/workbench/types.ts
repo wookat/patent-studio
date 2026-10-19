@@ -19,10 +19,12 @@ export type ReleaseItem = S['ReleaseItemOut']
 export type Approval = S['ApprovalOut']
 export type Notification = S['NotificationOut']
 export type Participant = S['ParticipantOut']
-export type ParticipantRole = S['ParticipantIn']['role']
-export type Membership = S['MembershipOut']
+// Z12：DB 约束与 InvitationIn 已含 'agent'（承办人角色），openapi.gen 冻结早于该扩展——手写补齐
+export type ParticipantRole = S['ParticipantIn']['role'] | 'agent'
+export type PlatformOrg = S['OrganizationOut']
+export type Membership = S['MembershipOut'] & { display_name?: string | null }
 export type Invitation = S['InvitationOut']
-export type InvitationRole = S['InvitationIn']['role']
+export type InvitationRole = S['InvitationIn']['role'] | 'agent'
 export type Principal = S['PrincipalOut']
 export type Operation = S['OperationOut']
 export type Run = S['RunOut']

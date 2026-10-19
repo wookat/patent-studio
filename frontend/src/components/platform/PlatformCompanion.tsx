@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { queryClient } from '@/lib/query'
+import { useIsDesktop } from '@/hooks/useMisc'
 import { AmbiguousCaseError, getPlatformCase } from '@/lib/platform'
+import { cn, touchHit } from '@/lib/utils'
 import { useStudio } from '@/store'
 import { workbenchApi } from '@/workbench/api'
 import { workbenchKeys, useWorkbenchMutations } from '@/workbench/queries'
@@ -76,6 +78,9 @@ function MaterialsFacts({ caseItem }: { caseItem: PlatformCase }) {
   const { confirmFact, rejectFact } = useWorkbenchMutations()
   const [rejecting, setRejecting] = useState<string | null>(null)
   const [reason, setReason] = useState('')
+  // 底部 Sheet 触控：小屏把控件升到 md 36 + touchHit ≥44（桌面仍 xs/sm 紧凑）
+  const mobile = !useIsDesktop()
+  const factBtn = mobile ? 'md' : 'xs'
 
   const factsByMaterial = new Map<string, string>()
   for (const m of materials.data ?? []) factsByMaterial.set(m.id, m.title)
@@ -99,7 +104,7 @@ function MaterialsFacts({ caseItem }: { caseItem: PlatformCase }) {
                 <div className="mt-1 flex items-center gap-2 text-xs text-fg-muted">
                   <Badge tone="neutral">{m.kind}</Badge>
                   {m.content_ref && (
-                    <a href={workbenchApi.materialContentUrl(m.id)} className="text-link hover:underline" data-testid={`material-content-${m.id}`}>查看原文</a>
+                    <a href={workbenchApi.materialContentUrl(m.id)} className={cn('inline-flex items-center text-link hover:underline', mobile && touchHit)} data-testid={`material-content-${m.id}`}>查看原文</a>
                   )}
                   {m.source_url && <span className="truncate" title={m.source_url}>{m.source_url}</span>}
                 </div>
@@ -125,9 +130,9 @@ function MaterialsFacts({ caseItem }: { caseItem: PlatformCase }) {
                   <Badge tone={FACT_TONE[f.status as keyof typeof FACT_TONE] ?? 'neutral'}>{FACT_STATUS[f.status] ?? f.status}</Badge>
                   {f.material_id && factsByMaterial.get(f.material_id) && <span className="text-xs text-fg-muted">出自《{factsByMaterial.get(f.material_id)}》</span>}
                   {f.status === 'pending' && rejecting !== f.id && (
-                    <span className="ml-auto flex gap-1">
-                      <Button size="xs" variant="secondary" disabled={confirmFact.isPending} onClick={() => confirmFact.mutate({ factId: f.id, caseId: caseItem.id })} data-testid={`fact-confirm-${f.id}`}><Check aria-hidden />确认</Button>
-                      <Button size="xs" variant="ghost" onClick={() => { setRejecting(f.id); setReason('') }} data-testid={`fact-reject-${f.id}`}><X aria-hidden />驳回</Button>
+                    <span className={cn('flex gap-1', mobile ? 'mt-1' : 'ml-auto')}>
+                      <Button size={factBtn} variant="secondary" disabled={confirmFact.isPending} onClick={() => confirmFact.mutate({ factId: f.id, caseId: caseItem.id })} data-testid={`fact-confirm-${f.id}`}><Check aria-hidden />确认</Button>
+                      <Button size={factBtn} variant="ghost" onClick={() => { setRejecting(f.id); setReason('') }} data-testid={`fact-reject-${f.id}`}><X aria-hidden />驳回</Button>
                     </span>
                   )}
                 </div>

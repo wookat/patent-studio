@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { queryClient } from '@/lib/query'
 import { QueueView } from '../WorkbenchPage'
 import type { PlatformCase, WorkItem } from '@/workbench/types'
 
@@ -35,7 +37,11 @@ const items: WorkItem[] = [
 describe('workbench queue', () => {
   it('renders queue rows, filters by status, and opens the case', async () => {
     let opened = ''
-    const el = await mount(<QueueView cases={cases} items={items} onOpenCase={(id) => { opened = id }} />)
+    const el = await mount(
+      <QueryClientProvider client={queryClient}>
+        <QueueView cases={cases} items={items} onOpenCase={(id) => { opened = id }} meId="p1" />
+      </QueryClientProvider>,
+    )
     expect(el.querySelector('[data-testid="work-item-w1"]')?.textContent).toContain('复核权利要求')
     expect(el.querySelector('[data-testid="work-item-w2"]')).not.toBeNull()
     const select = el.querySelector('select[aria-label="工作项状态"]') as HTMLSelectElement
