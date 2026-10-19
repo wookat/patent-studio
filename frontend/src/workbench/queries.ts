@@ -7,6 +7,10 @@ export const workbenchKeys = {
   me: () => [...workbenchKeys.all, 'me'] as const,
   organizations: () => [...workbenchKeys.all, 'organizations'] as const,
   cases: () => [...workbenchKeys.all, 'cases'] as const,
+  /** Z29：服务端分页台账与精确 case_key 解析各自独立 key */
+  casesPage: (p: { limit: number; offset: number; q: string; status: string }) =>
+    [...workbenchKeys.all, 'cases-page', p] as const,
+  caseByKey: (caseKey: string) => [...workbenchKeys.all, 'case-by-key', caseKey] as const,
   workItems: () => [...workbenchKeys.all, 'work-items'] as const,
   case: (id: string) => [...workbenchKeys.all, 'case', id] as const,
   caseWorkItems: (id: string) => [...workbenchKeys.case(id), 'work-items'] as const,

@@ -61,6 +61,15 @@ export const workbenchApi = {
   createCase: (organizationId: string, input: { case_key: string; title: string; kind?: PlatformCase['kind'] }) =>
     write<PlatformCase>(`${V1}/organizations/${organizationId}/cases`, { body: JSON.stringify(input) }),
   cases: (signal?: AbortSignal) => v1req<PlatformCase[]>(`${V1}/cases`, { signal }),
+  /** Z29 规模化台账：服务端分页（稳定排序 updated_at desc, case_key, id）；q=case_key 前缀或 title 子串 */
+  casesPage: (params: { limit?: number; offset?: number; q?: string; kind?: string; status?: string; organization_id?: string }, signal?: AbortSignal) => {
+    const sp = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) if (v != null && v !== '') sp.set(k, String(v))
+    return v1req<{ items: PlatformCase[]; total: number; limit: number; offset: number }>(`${V1}/cases/page?${sp}`, { signal })
+  },
+  /** Z29：legacy pid → 平台案精确作用域；返回全部同 key 可见案（0/1/N），不拉全库 */
+  casesByKey: (caseKey: string, signal?: AbortSignal) =>
+    v1req<PlatformCase[]>(`${V1}/cases/by-key/${encodeURIComponent(caseKey)}`, { signal }),
   case: (caseId: string, signal?: AbortSignal) => v1req<PlatformCase>(`${V1}/cases/${caseId}`, { signal }),
   workItems: (signal?: AbortSignal) => v1req<WorkItem[]>(`${V1}/work-items`, { signal }),
   caseWorkItems: (caseId: string, signal?: AbortSignal) => v1req<WorkItem[]>(`${V1}/cases/${caseId}/work-items`, { signal }),

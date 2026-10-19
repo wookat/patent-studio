@@ -67,13 +67,16 @@ export function mergeCaseRows(
   return rows
 }
 
-/** GET /api/v1/cases 直取（给非 React 上下文；React 侧统一走 usePlatformCases 复用 react-query 缓存） */
+/** GET /api/v1/cases 直取（跨案聚合视图用；React 侧统一走 usePlatformCases 复用 react-query 缓存） */
 export const listPlatformCases = (signal?: AbortSignal) => workbenchApi.cases(signal)
+
+/** Z29：pid → 平台案精确作用域查询（GET /cases/by-key/{pid}，不拉全库；跨机构同名全部返回） */
+export const listCasesByKey = (pid: string, signal?: AbortSignal) => workbenchApi.casesByKey(pid, signal)
 
 /** 未匹配返回 null；服务错误与身份冲突由调用方明确呈现。 */
 export async function getPlatformCase(pid: string | null | undefined, signal?: AbortSignal): Promise<PlatformCase | null> {
   if (!pid) return null
-  return resolveCaseByPid(await listPlatformCases(signal), pid)
+  return resolveCaseByPid(await listCasesByKey(pid, signal), pid)
 }
 
 /** React：当前主体可见平台案列表（与 WorkbenchPage 共缓存，不自建 key） */
@@ -88,8 +91,8 @@ export function usePlatformCases() {
  */
 export function usePlatformCase(pid: string | null | undefined) {
   return useQuery({
-    queryKey: workbenchKeys.cases(),
-    queryFn: ({ signal }) => workbenchApi.cases(signal),
+    queryKey: workbenchKeys.caseByKey(pid ?? ''),
+    queryFn: ({ signal }) => workbenchApi.casesByKey(pid!, signal),
     enabled: !!pid,
     select: (cs) => resolveCaseByPid(cs, pid ?? null),
   })

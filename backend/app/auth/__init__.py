@@ -76,6 +76,7 @@ ROUTE_ROLE = {
     # apply 写 content.md ⇒ reviewer 进门 + check_source_write；dismiss reviewer
     "/api/projects/{pid}/agent/run": "viewer",
     "/api/projects/{pid}/agent/jobs": "viewer",
+    "/api/projects/{pid}/agent/metrics": "viewer",  # Z32：聚合计数可读，不含正文/凭证
     "/api/projects/{pid}/agent/proposals": "viewer",
     "/api/projects/{pid}/agent/proposals/{proposal_id}/apply": "reviewer",
     "/api/projects/{pid}/agent/proposals/{proposal_id}/dismiss": "reviewer",

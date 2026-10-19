@@ -13,7 +13,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Header, Response, UploadFile
 from fastapi.responses import PlainTextResponse, StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from patent_studio.api import schemas as s
 from patent_studio.api.dependencies import Ctx, DomainRoute, case_access, command, error, org_access, row_for
@@ -191,6 +191,73 @@ def list_cases(ctx: Ctx):
                 | (Case.created_by_principal_id == ctx.principal.id)
             )
             .order_by(Case.updated_at.desc(), Case.case_key)
+        ).all()
+    )
+
+
+def _visible_cases_stmt(ctx):
+    """Z29：与 /cases 相同的可见域谓词（成员机构 ∪ 参与者 ∪ 创建者），抽出供分页/精确查找复用。"""
+    member_orgs = select(OrganizationMembership.organization_id).where(
+        OrganizationMembership.principal_id == ctx.principal.id,
+        OrganizationMembership.status == "active",
+    )
+    participant_cases = select(CaseParticipant.case_id).where(
+        CaseParticipant.principal_id == ctx.principal.id,
+        CaseParticipant.status == "active",
+    )
+    return (
+        (Case.organization_id.in_(member_orgs))
+        | (Case.id.in_(participant_cases))
+        | (Case.created_by_principal_id == ctx.principal.id)
+    )
+
+
+@router.get("/cases/page", response_model=s.CasePageOut)
+def list_cases_page(
+    ctx: Ctx,
+    limit: int = 50,
+    offset: int = 0,
+    q: str | None = None,
+    kind: str | None = None,
+    status: str | None = None,
+    organization_id: uuid.UUID | None = None,
+):
+    """Z29 规模化台账：权限域内服务端分页。稳定排序 (updated_at desc, case_key, id)；
+    q 命中 case_key 前缀或 title 子串（不区分大小写）；total 为过滤后总数供页数计算。"""
+    limit = min(max(limit, 1), 200)
+    offset = max(offset, 0)
+    stmt = select(Case).where(_visible_cases_stmt(ctx))
+    count_stmt = select(func.count(Case.id)).where(_visible_cases_stmt(ctx))
+    if organization_id is not None:
+        stmt = stmt.where(Case.organization_id == organization_id)
+        count_stmt = count_stmt.where(Case.organization_id == organization_id)
+    if kind:
+        stmt = stmt.where(Case.kind == kind)
+        count_stmt = count_stmt.where(Case.kind == kind)
+    if status:
+        stmt = stmt.where(Case.status == status)
+        count_stmt = count_stmt.where(Case.status == status)
+    if q and q.strip():
+        pat = q.strip()
+        filt = (Case.case_key.ilike(f"{pat}%")) | (Case.title.ilike(f"%{pat}%"))
+        stmt = stmt.where(filt)
+        count_stmt = count_stmt.where(filt)
+    total = ctx.session.scalar(count_stmt) or 0
+    items = list(
+        ctx.session.scalars(
+            stmt.order_by(Case.updated_at.desc(), Case.case_key, Case.id).limit(limit).offset(offset)
+        ).all()
+    )
+    return s.CasePageOut(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get("/cases/by-key/{case_key}", response_model=list[s.CaseOut])
+def get_cases_by_key(case_key: str, ctx: Ctx):
+    """Z29：legacy pid → 平台案精确作用域解析。返回权限域内全部同 key 案（0/1/N），
+    前端据此 0=旧案 / 1=直达 / N=歧义阻断，不再拉全库本地匹配。"""
+    return list(
+        ctx.session.scalars(
+            select(Case).where(_visible_cases_stmt(ctx), Case.case_key == case_key).order_by(Case.case_key, Case.id)
         ).all()
     )
 

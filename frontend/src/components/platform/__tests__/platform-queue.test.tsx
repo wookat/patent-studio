@@ -138,6 +138,47 @@ describe('Z06/Z10：角色待办范围与空态', () => {
   })
 })
 
+describe('Z29：案件台账服务端分页', () => {
+  const CASE = (i: number) => ({ id: `c${i}`, organization_id: 'o1', case_key: `K-${i}`, title: `案 ${i}`, kind: 'invention', status: 'intake' })
+  function mockLedger(pages: Record<string, { items: unknown[]; total: number }>) {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.startsWith('/api/v1/cases/page')) {
+        const u = new URL(url, 'http://x')
+        const k = `${u.searchParams.get('q') ?? ''}|${u.searchParams.get('offset') ?? '0'}`
+        const hit = pages[k] ?? { items: [], total: 0 }
+        return json({ ...hit, limit: 20, offset: Number(u.searchParams.get('offset') ?? 0) })
+      }
+      if (url === '/api/v1/principals/me') return json(ME)
+      if (url === '/api/v1/cases') return json([])
+      if (url === '/api/v1/work-items') return json([])
+      return json({ detail: 'not found' }, 404)
+    }))
+  }
+
+  it('台账分页渲染 + 下一页拉取第二页；行「打开」按 case_key 导航', async () => {
+    mockLedger({ '|0': { items: [CASE(1), CASE(2)], total: 3 }, '|20': { items: [CASE(3)], total: 3 } })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ledger-case-c1"]')).not.toBeNull())
+    expect(host.querySelector('[data-testid="ledger-total"]')?.textContent).toContain('共 3 案')
+    expect(host.querySelector('[data-testid="ledger-pager"]')?.textContent).toContain('第 1 / 1 页') // limit=20 ≥ total=3
+    await act(async () => (host.querySelector('[data-testid="ledger-open-c1"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(window.location.hash).toBe('#/p/K-1'))
+  })
+
+  it('q 筛选带上服务端参数；无命中 → 空态', async () => {
+    mockLedger({ '|0': { items: [CASE(1)], total: 1 }, 'ZZ|0': { items: [], total: 0 } })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ledger-case-c1"]')).not.toBeNull())
+    const input = host.querySelector('#ledger-q') as HTMLInputElement
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setter.call(input, 'ZZ')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ledger-empty"]')).not.toBeNull())
+  })
+})
+
 describe('Z11/Z12：机构工作台登记新案', () => {
   it('打开登记新案对话框：机构成员列表驱动承办人选项', async () => {
     mockApi({

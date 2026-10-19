@@ -32,6 +32,8 @@ function mockApi(opts: { cases?: unknown; casesStatus?: number } = {}) {
     'fetch',
     vi.fn(async (url: string) => {
       calls.push(url)
+      // Z29：pid 解析改走精确作用域 /cases/by-key/{pid}
+      if (url.startsWith('/api/v1/cases/by-key/')) return json(opts.cases ?? [CASE], opts.casesStatus ?? 200)
       if (url === '/api/v1/cases') return json(opts.cases ?? [CASE], opts.casesStatus ?? 200)
       if (url === '/api/v1/cases/c1/proposals') return json(PROPOSALS)
       if (url === '/api/v1/cases/c1/materials') return json(MATERIALS)

@@ -94,6 +94,15 @@ class CaseOut(CaseIn):
     status: str
 
 
+class CasePageOut(DTO):
+    """Z29 规模化台账：服务端分页信封。items 按 (updated_at desc, case_key, id) 稳定排序。"""
+
+    items: list[CaseOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class ParticipantIn(DTO):
     principal_id: uuid.UUID
     role: Literal[
