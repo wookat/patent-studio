@@ -42,6 +42,7 @@ from app.routes.agent import router as agent_router
 from app.routes.ai import router as ai_router
 from app.routes.ast import router as ast_router
 from app.routes.attachments import router as attachments_router
+from app.routes.audit_export import router as audit_export_router
 from app.routes.cases import router as cases_router
 from app.routes.comments import router as comments_router
 from app.routes.convert import router as convert_router
@@ -133,6 +134,7 @@ app.include_router(import_router)
 app.include_router(templates_router)
 app.include_router(cases_router)
 app.include_router(deliver_router)  # W4-E E1：/deliver 清单 + /deliver/bundle
+app.include_router(audit_export_router)  # Z33：案卷审计轨迹导出 /audit/export
 # W5（docs/plan/21 §7.4.8）：期限 / 通知 / 公开分享 / 时间线 / AI 智能体；各 routes/*.py 内实现，经 events.py 解耦
 app.include_router(deadlines_router)
 app.include_router(notify_router)
