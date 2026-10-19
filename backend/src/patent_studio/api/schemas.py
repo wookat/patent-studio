@@ -49,6 +49,7 @@ class MembershipOut(DTO):
     principal_id: uuid.UUID
     role: str
     status: str
+    display_name: str | None = None
 
 
 class InvitationIn(DTO):
@@ -64,6 +65,7 @@ class InvitationIn(DTO):
         "drafter",
         "reviewer",
         "case_manager",
+        "agent",
         "observer",
     ]
     case_id: uuid.UUID | None = None
@@ -95,7 +97,16 @@ class CaseOut(CaseIn):
 class ParticipantIn(DTO):
     principal_id: uuid.UUID
     role: Literal[
-        "client", "inventor", "applicant", "author", "attorney", "drafter", "reviewer", "case_manager", "observer"
+        "client",
+        "inventor",
+        "applicant",
+        "author",
+        "attorney",
+        "drafter",
+        "reviewer",
+        "case_manager",
+        "agent",
+        "observer",
     ]
 
 

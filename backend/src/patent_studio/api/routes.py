@@ -26,7 +26,7 @@ from patent_studio.domain import proposals as p
 from patent_studio.domain import releases as r
 from patent_studio.domain import runs as run_domain
 from patent_studio.domain import work_items as w
-from patent_studio.domain.identity import Notification
+from patent_studio.domain.identity import Notification, Principal
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
 from patent_studio.infra.storage import object_ref, open_store
 from patent_studio.kernel import critic, preflight
@@ -72,14 +72,43 @@ def create_organization(body: s.OrganizationIn, ctx: Ctx, key: Key):
     return command(ctx, key, "organization.create", "organizations", body, s.OrganizationOut, action)
 
 
+@router.get("/organizations", response_model=list[s.OrganizationOut])
+def list_organizations(ctx: Ctx):
+    """当前 Principal 持活跃成员身份的机构（机构工作台登记新案的组织选择）。agent token 带机构范围时收窄。"""
+    query = (
+        select(Organization)
+        .join(OrganizationMembership, OrganizationMembership.organization_id == Organization.id)
+        .where(
+            OrganizationMembership.principal_id == ctx.principal.id,
+            OrganizationMembership.status == "active",
+            Organization.status == "active",
+        )
+        .order_by(Organization.name)
+    )
+    token = ctx.agent_token
+    if token is not None and token.organization_id is not None:
+        query = query.where(Organization.id == token.organization_id)
+    return list(ctx.session.scalars(query))
+
+
 @router.get("/organizations/{organization_id}/memberships", response_model=list[s.MembershipOut])
 def memberships(organization_id: uuid.UUID, ctx: Ctx):
     org_access(ctx, organization_id)
-    return list(
-        ctx.session.scalars(
-            select(OrganizationMembership).where(OrganizationMembership.organization_id == organization_id)
+    rows = ctx.session.execute(
+        select(OrganizationMembership, Principal.display_name)
+        .join(Principal, Principal.id == OrganizationMembership.principal_id)
+        .where(OrganizationMembership.organization_id == organization_id)
+    ).all()
+    return [
+        s.MembershipOut(
+            organization_id=m.organization_id,
+            principal_id=m.principal_id,
+            role=m.role,
+            status=m.status,
+            display_name=name,
         )
-    )
+        for m, name in rows
+    ]
 
 
 @router.post("/organizations/{organization_id}/invitations", response_model=s.InvitationOut, status_code=201)
@@ -916,7 +945,13 @@ def reschedule(work_item_id: uuid.UUID, body: s.DeadlineIn, ctx: Ctx, key: Key):
 @router.put("/work-items/{work_item_id}/status", response_model=s.WorkItemOut)
 def transition(work_item_id: uuid.UUID, body: s.StatusIn, ctx: Ctx, key: Key):
     item = row_for(ctx, w.WorkItem, work_item_id)
-    case = case_access(ctx, item.case_id, manage=True)
+    if body.status == "in_progress" and item.assignee_principal_id == ctx.principal.id:
+        # Z12：分派到人后只有负责人自己能把工作项推进 in_progress（开始/恢复处理）
+        case = case_access(ctx, item.case_id)
+    else:
+        case = case_access(ctx, item.case_id, manage=True)
+        if body.status == "in_progress" and item.assignee_principal_id is not None:
+            raise error(403, "denied", "Only the assignee may start this work item")
     return _scoped(
         ctx,
         case,

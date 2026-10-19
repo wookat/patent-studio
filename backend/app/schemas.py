@@ -60,6 +60,8 @@ class DeadlineItem(BaseModel):
     extensions: list[Extension] = Field(default_factory=list)
     # R77-01：行级写操作门控用——当前用户在 pid 案的角色；off/匿名 ⇒ None（前端视为可写）
     my_role: str | None = None
+    # Z22：届满年份的节假日表是否已核对（False ⇒ 只按周末顺延过，届满日有不确定性）
+    holidays_verified: bool = True
 
 
 class DeadlineListResponse(BaseModel):
