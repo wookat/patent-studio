@@ -17,6 +17,7 @@ import { useQuery } from '@tanstack/react-query'
 import { queryClient } from '@/lib/query'
 import { projectHash } from '@/lib/hash'
 import { selectReadonly, useStudio } from '@/store'
+import { useIsDesktop } from '@/hooks/useMisc'
 import { SpecCanvas } from './SpecCanvas'
 import { SpecForm } from './SpecForm'
 import { DRAW_STEM_RE, DRAW_TEMPLATE, SPEC_TEMPLATE, cutImageRegion, imageBlobToScene, parseSourceToScene, sceneToPng, type ExcalidrawApi, type ParsedScene, type SceneRect } from './figureDraw'
@@ -41,6 +42,7 @@ export function BoardPage({ pid, src, img }: BoardPageProps) {
   const figures = useStudio((s) => s.figures)
   const readOnly = useStudio(selectReadonly)
   const project = useStudio((s) => s.project)
+  const desktop = useIsDesktop()
 
   const { data: sourceData } = useQuery({
     queryKey: ['figure-sources', pid],
@@ -378,8 +380,8 @@ export function BoardPage({ pid, src, img }: BoardPageProps) {
           <img src="/logo-mark.svg" alt="" aria-hidden className="size-5 rounded-sm" />
           <span className="hidden text-sm font-semibold text-fg-strong sm:inline">知撰</span>
         </a>
-        <span className="mx-2 h-4 w-px bg-border" aria-hidden />
-        <span className="text-sm font-medium text-fg-strong" data-testid="board-title">
+        <span className="mx-2 h-4 w-px shrink-0 bg-border" aria-hidden />
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg-strong" title={project?.title ?? undefined} data-testid="board-title">
           绘制附图 · 画板{project?.title ? ` · ${project.title}` : ''}
         </span>
         <div className="ml-auto flex items-center gap-1">
@@ -387,7 +389,8 @@ export function BoardPage({ pid, src, img }: BoardPageProps) {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2 border-b bg-card px-2 py-1.5">
+      {/* 390：单行横滚收敛密集工具（不堆 5 行）；≥lg 恢复折行 */}
+      <div className={cn('flex items-center gap-2 border-b bg-card px-2 py-1.5 [&>*]:shrink-0', desktop ? 'flex-wrap' : 'flex-nowrap overflow-x-auto')} data-testid="board-toolbar">
         <Select value="" onValueChange={(n) => { if (n) openSource(n) }} disabled={!sources.length}>
           <SelectTrigger size="sm" className="w-44" aria-label="打开已有图源" data-testid="board-source-select">
             <SelectValue placeholder={sources.length ? `打开已有（${sources.length}）…` : '暂无已存图源'} />
@@ -507,7 +510,7 @@ export function BoardPage({ pid, src, img }: BoardPageProps) {
       </div>
 
       {markList.length > 0 && srcOpen && kind === 'mmd' && (
-        <div className="flex flex-wrap items-center gap-1 border-b bg-card px-2 py-1" data-testid="board-marks">
+        <div className={cn('flex items-center gap-1 border-b bg-card px-2 py-1 [&>*]:shrink-0', desktop ? 'flex-wrap' : 'flex-nowrap overflow-x-auto')} data-testid="board-marks">
           <span className="text-xs text-fg-muted">案卷标号：</span>
           {markList.map(([num, label]) => (
             <button
