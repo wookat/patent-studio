@@ -65,7 +65,13 @@ async def agent_run(pid: str, body: AgentRunIn, request: Request, user: CurrentU
         budget.check_heavy(p.dir, settings)
     jobs = request.app.state.jobs
     # 同场景重复投递（客户端超时重试 / 双击）→ 409，避免并行双写提案与双倍 AI 消耗（与 convert 同口径）
-    job = jobs.create_unless_busy(job_kind(scenario), pid, queue_key=heavy_queue_key(pid) if heavy else None)
+    # payload 记录续跑入参（Z14）：interrupted 后 POST /api/ai/jobs/{id}/resume 按原参数重进
+    job = jobs.create_unless_busy(
+        job_kind(scenario),
+        pid,
+        queue_key=heavy_queue_key(pid) if heavy else None,
+        payload={"scenario": scenario, "params": dict(body.params)},
+    )
     if job is None:
         raise HTTPException(409, error_detail("job_busy", "本案已有同一场景任务在进行中", detail=UNIT))
     ai = request.app.state.ai

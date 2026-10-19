@@ -193,6 +193,16 @@ class FilePatch(BaseModel):
 Patch = BlocksPatch | FilePatch
 
 
+class ProposalSource(BaseModel):
+    """提案来源（阶段3 Z18）：comment = 由批注（客户 / 内部）一键转出的修改提案。"""
+
+    kind: Literal["comment"] = "comment"
+    comment_id: str
+    quote: str = ""
+    author: str = ""
+    body: str = ""
+
+
 class Proposal(BaseModel):
     """永不直接改 content.md 最终文本：critic → 用户点「写入为修订」；comment → 批注；patch → 用户点「应用」。"""
 
@@ -209,6 +219,7 @@ class Proposal(BaseModel):
     usage: Usage = Field(default_factory=Usage)
     created_at: float
     state: ProposalState = "pending"
+    source: ProposalSource | None = None
 
 
 class ProposalsResponse(BaseModel):
@@ -248,6 +259,8 @@ class AgentJobOut(BaseModel):
     updated_at: float
     steps: list[StepEvent] = Field(default_factory=list)
     queue_key: str | None = None
+    payload: dict | None = None  # 续跑入参（Z14）；None ⇒ 该任务不可续跑
+    proposal_ids: list[str] = Field(default_factory=list)  # 产出提案 id（Z27 诊断链）
 
 
 class AgentJobsResponse(BaseModel):

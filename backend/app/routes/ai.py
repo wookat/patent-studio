@@ -25,6 +25,7 @@ from app.ai.client import MODELS, PROBE_TIMEOUT, AiClient, AiError, ChatResult, 
 from app.ai.jobs import JobStore
 from app.auth import CurrentUser
 from app.domain import comments as comments_mod
+from app.domain import events
 from app.domain.lint import lint
 from app.domain.org import ai_enabled as _org_ai_enabled
 from app.domain.org import require_org_ai
@@ -490,6 +491,42 @@ def _review_to_comments(items: list, ast: dict, lines: list[str], existing: list
     return {"comment_ids": ids, "dropped": dropped, "counts": counts}
 
 
+async def _review_exec(
+    store, ai: AiClient, jobs: JobStore, pid: str, job, scope: str, who: str | None
+) -> dict:
+    """审阅任务体（新建与 resume 共用）：全文 / 分批在协程内按当前 content 现算——续跑时以落盘正文为准。"""
+    p = store.get(pid)
+    content = store.read_content(pid)
+    ast = _ast_or_422(content, p.settings)
+    lines = content.split("\n")
+    batches = _review_blocks(ast, lines, scope)
+    if not batches:
+        raise AiError("format", "审阅范围内没有可审阅的块")
+    items: list = []
+    n = len(batches)
+    for i, batch in enumerate(batches):
+        jobs.progress(job.id, 0.05 + 0.8 * i / n, f"审阅第 {i + 1}/{n} 批（{len(batch)} 块）")
+        data = await _json_call(
+            ai,
+            prompts.review_messages(batch, scope),
+            "heavy",
+            prompts.SCHEMAS["review"],
+            project_dir=p.dir,
+            job_id=job.id,
+            user=who,
+        )
+        got = data.get("items")
+        items.extend(got if isinstance(got, list) else [])
+    jobs.progress(job.id, 0.9, "写入批注")
+    async with comments_mod.ledger_lock(p.dir):
+        with comments_mod.file_lock(p.dir):  # R92：跨进程写锁
+            existing = comments_mod.load(p.dir)
+            result = _review_to_comments(items, ast, lines, existing)
+            comments_mod.save(p.dir, existing)
+    result["scope"] = scope
+    return result
+
+
 @router.post("/api/projects/{pid}/ai/review", status_code=202, dependencies=[Depends(require_org_ai)])
 async def ai_review(pid: str, body: ReviewIn, request: Request, user: CurrentUser):
     store = request.app.state.store
@@ -504,39 +541,11 @@ async def ai_review(pid: str, body: ReviewIn, request: Request, user: CurrentUse
         raise HTTPException(409, error_detail("job_busy", "本案已有进行中的 AI 审阅任务", detail=UNIT))
     content = body.content if body.content is not None else store.read_content(pid)
     ast = _ast_or_422(content, p.settings)
-    lines = content.split("\n")
-    batches = _review_blocks(ast, lines, scope)
-    if not batches:
+    if not _review_blocks(ast, content.split("\n"), scope):
         raise HTTPException(422, error_detail("content", "审阅范围内没有可审阅的块", detail=UNIT))
-    job = jobs.create("review", pid)
-    who = _who(user)
-
-    async def work() -> dict:
-        items: list = []
-        n = len(batches)
-        for i, batch in enumerate(batches):
-            jobs.progress(job.id, 0.05 + 0.8 * i / n, f"审阅第 {i + 1}/{n} 批（{len(batch)} 块）")
-            data = await _json_call(
-                ai,
-                prompts.review_messages(batch, scope),
-                "heavy",
-                prompts.SCHEMAS["review"],
-                project_dir=p.dir,
-                job_id=job.id,
-                user=who,
-            )
-            got = data.get("items")
-            items.extend(got if isinstance(got, list) else [])
-        jobs.progress(job.id, 0.9, "写入批注")
-        async with comments_mod.ledger_lock(p.dir):
-            with comments_mod.file_lock(p.dir):  # R92：跨进程写锁
-                existing = comments_mod.load(p.dir)
-                result = _review_to_comments(items, ast, lines, existing)
-                comments_mod.save(p.dir, existing)
-        result["scope"] = scope
-        return result
-
-    jobs.run(job, work)
+    # payload 记录续跑入参（Z14）：interrupted 后 POST /api/ai/jobs/{id}/resume 按同 scope 重跑
+    job = jobs.create("review", pid, payload={"scope": scope})
+    jobs.run(job, lambda: _review_exec(store, ai, jobs, pid, job, scope, _who(user)))
     return job.to_dict()
 
 
@@ -585,6 +594,50 @@ async def ai_job(job_id: str, request: Request, user: CurrentUser):
 async def ai_job_cancel(job_id: str, request: Request, user: CurrentUser):
     job = await _job_or_404(request, job_id, user, "editor")
     return request.app.state.jobs.cancel(job.id).to_dict()
+
+
+@router.post("/api/ai/jobs/{job_id}/resume", status_code=202, dependencies=[Depends(require_org_ai)])
+async def ai_job_resume(job_id: str, request: Request, user: CurrentUser):
+    """Z14 续跑：interrupted / error 任务按 job.payload 重建协程、queued 重排（queue_key FIFO 依旧）。
+    agent:* 重进 run_scenario——已有落盘提案即断点收尾（不重复生成，幂等）；review 按原 scope 重跑；
+    无 payload 或不支持的 kind ⇒ 422；其余状态 ⇒ 409。角色门槛与首发一致（场景 min_role）。"""
+    from app.agent.types import SCENARIO_BY_ID
+
+    job = await _job_or_404(request, job_id, user, "viewer")
+    if job.status not in ("interrupted", "error"):
+        raise HTTPException(409, error_detail("conflict", "任务未处于中断 / 失败状态，不能续跑", detail=UNIT))
+    if not isinstance(job.payload, dict):
+        raise HTTPException(422, error_detail("validation", "该任务未记录续跑入参，不能续跑", detail=UNIT))
+    store = request.app.state.store
+    jobs: JobStore = request.app.state.jobs
+    ai: AiClient = request.app.state.ai
+    require_enabled(store, job.pid, UNIT)
+    who = _who(user)
+    factory = None
+    if job.kind.startswith("agent:"):
+        scenario = str(job.payload.get("scenario") or job.kind.split(":", 1)[1])
+        info = SCENARIO_BY_ID.get(scenario)
+        if info is None:
+            raise HTTPException(422, error_detail("validation", f"未知场景：{scenario}", detail=UNIT))
+        role = await auth.my_role(job.pid, user)
+        if role is not None and not auth.role_at_least(role, info.min_role):
+            raise auth.forbidden(info.min_role)
+        from app.agent import loop as agent_loop
+
+        params = dict(job.payload.get("params") or {})
+        factory = lambda: agent_loop.run_scenario(  # noqa: E731
+            job.pid, scenario, params, job, store=store, jobs=jobs, ai=ai, who=who, actor=events.actor_of(user)
+        )
+    elif job.kind == "review":
+        scope = str(job.payload.get("scope") or "all")
+        if scope not in ("all", "claims", "description"):
+            raise HTTPException(422, error_detail("validation", f"未知审阅范围：{scope}", detail=UNIT))
+        factory = lambda: _review_exec(store, ai, jobs, job.pid, job, scope, who)  # noqa: E731
+    if factory is None:
+        raise HTTPException(422, error_detail("validation", f"该类型任务不支持续跑：{job.kind}", detail=UNIT))
+    job = jobs.resume(job.id)
+    jobs.run(job, factory)
+    return job.to_dict()
 
 
 @router.get("/api/ai/jobs/{job_id}/events")

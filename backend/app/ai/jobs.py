@@ -10,6 +10,12 @@ W5（docs/plan/21 §6.2）：
 - create(kind, pid, queue_key=...)：同 queue_key 的任务 FIFO 串行（heavy 场景 `{pid}:heavy`）；None 不排队。
 - add_step(job_id, kind, data) 追加步骤并推给 watch_steps() 订阅者；gen_delta 只推不存。
 - cancel() 对排队中任务同样有效（出队 → interrupted）；运行中任务 CancelledError 传到每一步与 AI 流。
+
+阶段3 Z14/Z27：
+- Job 增 payload（续跑入参：agent:* 记 {scenario, params}；review 记 {scope}）与 proposal_ids
+  （产出提案检查点——提案在 propose 时即落盘，中断后已产出部分不丢、不重跑）。
+- resume(job_id)：interrupted / error → queued 重排，steps / proposal_ids 保留；路由层按 payload
+  重建协程再 run()。任务详情 / 事件经 proposal_ids 追到提案（audit trail）。
 """
 
 import asyncio
@@ -51,6 +57,8 @@ class Job:
     updated_at: float
     steps: list[dict] = field(default_factory=list)
     queue_key: str | None = None
+    payload: dict | None = None  # 续跑入参（无 ⇒ 重启后只能整任务重做）
+    proposal_ids: list[str] = field(default_factory=list)  # 已落盘提案（产出检查点 / 诊断链）
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -71,10 +79,21 @@ class JobStore:
         self._turn: dict[str, asyncio.Event] = {}
         self._seq: dict[str, int] = {}  # 下一个 StepEvent.seq（含不落盘的 gen_delta）
 
-    def create(self, kind: str, pid: str, queue_key: str | None = None) -> Job:
+    def create(self, kind: str, pid: str, queue_key: str | None = None, payload: dict | None = None) -> Job:
         now = time.time()
         job = Job(
-            "job_" + secrets.token_hex(6), kind, pid, "queued", 0.0, "排队中", None, None, now, now, queue_key=queue_key
+            "job_" + secrets.token_hex(6),
+            kind,
+            pid,
+            "queued",
+            0.0,
+            "排队中",
+            None,
+            None,
+            now,
+            now,
+            queue_key=queue_key,
+            payload=payload,
         )
         self._jobs[job.id] = job
         self._persist(job)
@@ -139,12 +158,14 @@ class JobStore:
     def busy(self, pid: str, kind: str) -> bool:
         return any(j.kind == kind and j.status in ("queued", "running") for j in self._jobs.values() if j.pid == pid)
 
-    def create_unless_busy(self, kind: str, pid: str, queue_key: str | None = None) -> Job | None:
+    def create_unless_busy(
+        self, kind: str, pid: str, queue_key: str | None = None, payload: dict | None = None
+    ) -> Job | None:
         """busy ⇒ None；busy 判定与 create 在同一同步调用内完成——R75-01：路由层 check→await→create 的
         TOCTOU 窗口会让并发请求双双过闸产重复 job，把闸门并进 create 才原子。"""
         if self.busy(pid, kind):
             return None
-        return self.create(kind, pid, queue_key)
+        return self.create(kind, pid, queue_key, payload)
 
     def run(self, job: Job, coro_factory: Callable[[], Awaitable[dict | None]]) -> asyncio.Task:
         """create_task；协程返回 dict ⇒ done+result；AiError ⇒ error{kind:ai_<kind>}；其他异常 ⇒ error{internal}。
@@ -222,6 +243,14 @@ class JobStore:
         if task is not None:
             task.cancel()
         return self.update(job, status="interrupted", message="已取消")
+
+    def resume(self, job_id: str) -> Job | None:
+        """interrupted / error → queued 重排（steps 与 proposal_ids 断点保留）；其余状态原样返回。
+        协程由路由层按 job.payload 重建后再 run()——JobStore 不知道任务怎么跑。"""
+        job = self.get(job_id)
+        if job is None or job.status not in ("interrupted", "error"):
+            return job
+        return self.update(job, status="queued", progress=0.0, message="续跑排队中", error=None)
 
     async def watch(self, job_id: str) -> AsyncIterator[Job]:
         """先发当前状态，再逐次更新；终态发出后结束。"""
