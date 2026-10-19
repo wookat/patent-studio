@@ -1,5 +1,7 @@
 import { P, req } from './net'
 import type { Comment, CommentAnchor, CriticMark } from '../types'
+import type { AiJob } from '@/types/ai'
+import type { Proposal } from '@/types/agent'
 
 export const commentsApi = {
   critic: (id: string, body: { content?: string } = {}, signal?: AbortSignal) =>
@@ -18,6 +20,9 @@ export const commentsApi = {
       method: 'POST',
       body: JSON.stringify({ resolved }),
     }),
+  /** Z18 批注一键转修改提案：返回 comment2proposal 任务 + 落盘的 critic 提案（source 记批注） */
+  commentToProposal: (id: string, cid: string) =>
+    req<{ job: AiJob; proposal: Proposal }>(`${P(id)}/comments/${encodeURIComponent(cid)}/proposal`, { method: 'POST' }),
 
   /* ---- R6 历史（07 §4.3）---- */
 }

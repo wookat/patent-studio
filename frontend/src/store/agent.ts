@@ -45,6 +45,8 @@ export interface AgentSlice {
   loadAgentBudget(pid: string): Promise<void>
   runScenario(pid: string, scenario: Scenario, params?: AgentRunIn['params']): Promise<AgentJob | null>
   cancelAgentJob(jobId: string): Promise<void>
+  /** Z14 续跑：interrupted / error 任务按 payload 重进队列 */
+  resumeAgentJob(jobId: string): Promise<void>
   upsertAgentJob(job: AgentJob): void
   /** 选中并订阅（回放 steps + SSE）；null 只取消选中 */
   watchAgentJob(jobId: string | null): void
@@ -340,6 +342,16 @@ export const agentSlice: Slice<AgentSlice> = (set, get) => {
         const job = await api.agentCancel(jobId)
         upsert(job)
         finish(jobId)
+      } catch (e) {
+        fail(e)
+      }
+    },
+
+    resumeAgentJob: async (jobId) => {
+      try {
+        const job = await api.agentResume(jobId)
+        upsert(job)
+        subscribe(jobId)  // 续跑后重回队列：继续收 SSE / 轮询到终态
       } catch (e) {
         fail(e)
       }

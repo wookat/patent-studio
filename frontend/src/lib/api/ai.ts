@@ -38,6 +38,8 @@ export const aiApi = {
   agentRun: (id: string, body: AgentRunIn) => req<AgentJob>(`${P(id)}/agent/run`, { method: 'POST', body: JSON.stringify(body) }),
   agentJobs: (id: string, signal?: AbortSignal) => req<{ jobs: AgentJob[] }>(`${P(id)}/agent/jobs`, { signal }),
   agentCancel: (jobId: string) => req<AgentJob>(`/api/ai/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' }),
+  /** Z14 续跑：interrupted / error 任务按 payload 重进（已落盘提案不重复生成） */
+  agentResume: (jobId: string) => req<AgentJob>(`/api/ai/jobs/${encodeURIComponent(jobId)}/resume`, { method: 'POST' }),
   proposals: (id: string, state?: ProposalState, signal?: AbortSignal) =>
     req<{ proposals: Proposal[] }>(`${P(id)}/agent/proposals${qs({ state })}`, { signal }),
   applyProposal: (id: string, proposalId: string) =>

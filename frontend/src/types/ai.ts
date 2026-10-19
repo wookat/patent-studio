@@ -15,7 +15,7 @@ export interface AiStatus {
   org_ai_enabled?: boolean
 }
 
-export type AiJobKind = 'review' | 'convert' | 'oa_answer'
+export type AiJobKind = 'review' | 'convert' | 'oa_answer' | 'rewrite' | 'comment2proposal'
 export type AiJobStatus = 'queued' | 'running' | 'done' | 'error' | 'interrupted'
 
 /** GET /api/ai/jobs/{id}；SSE `job` 事件的 data 同形 */
@@ -31,6 +31,10 @@ export interface AiJob {
   error: { kind: string; message: string } | null
   created_at: number
   updated_at: number
+  /** 续跑入参（Z14）；null / 缺省 ⇒ 不可续跑 */
+  payload?: Record<string, unknown> | null
+  /** 产出提案 id（Z27 诊断链） */
+  proposal_ids?: string[]
 }
 
 export type ChatRole = 'system' | 'user' | 'assistant'

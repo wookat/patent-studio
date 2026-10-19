@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { fmtTokens } from '@/lib/format'
-import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardList, FileText, ListTodo, Scissors, Wrench, XCircle, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardList, FileText, ListTodo, RotateCcw, Scissors, Wrench, XCircle, type LucideIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -116,6 +116,11 @@ function JobRow({ job, selected, compact, canCancel, onSelect, onCancel }: { job
   const live = job.status === 'queued' || job.status === 'running'
   const evs = useStudio((s) => s.agentEvents[job.id])
   const truncated = jobTruncated(evs)
+  const resume = useStudio((s) => s.resumeAgentJob)
+  const setAgentTab = useStudio((s) => s.setAgentTab)
+  const proposalCount = job.proposal_ids?.length ?? 0
+  // Z14/Z25：interrupted / error 且记录了续跑入参 ⇒ 「续跑 / 重试」；已产出提案数可跳到建议 tab（Z27）
+  const resumable = (job.status === 'interrupted' || job.status === 'error') && job.payload != null
   return (
     <li className={cn('flex flex-col rounded-lg border border-border bg-panel shadow-sm', selected && 'border-brand-300 bg-selected/40')} data-testid={`ai-job-${job.id}`} data-status={job.status}>
       <div className="flex items-center gap-1">
@@ -138,9 +143,21 @@ function JobRow({ job, selected, compact, canCancel, onSelect, onCancel }: { job
         )}
         <span className="ml-auto shrink-0 font-mono text-2xs text-fg-muted">{fmtTime(job.created_at)}</span>
       </button>
+      {proposalCount > 0 && (
+        <Badge tone="violet" className="mr-1 shrink-0" title={`产出 ${proposalCount} 条建议，点击到「建议」tab 查看`} data-testid={`ai-job-proposals-${job.id}`}>
+          <button type="button" className={FOCUS_RING} onClick={(e) => { e.stopPropagation(); setAgentTab('proposals') }}>
+            建议 ×{proposalCount}
+          </button>
+        </Badge>
+      )}
       {live && (
         <Button size={compact ? 'md' : 'xs'} variant="ghost" className="mr-1 shrink-0" disabled={!canCancel} title={canCancel ? undefined : '取消任务需要编辑者及以上角色'} onClick={onCancel} aria-label={`取消任务 ${scenarioOf(job)}`} data-testid={`ai-job-cancel-${job.id}`}>
           <XCircle /> 取消
+        </Button>
+      )}
+      {resumable && (
+        <Button size={compact ? 'md' : 'xs'} variant="ghost" className="mr-1 shrink-0" disabled={!canCancel} title={canCancel ? '按原参数续跑，已产出建议不重复生成' : '续跑任务需要编辑者及以上角色'} onClick={() => void resume(job.id)} aria-label={`续跑任务 ${scenarioOf(job)}`} data-testid={`ai-job-resume-${job.id}`}>
+          <RotateCcw /> {job.status === 'error' ? '重试' : '续跑'}
         </Button>
       )}
       </div>
