@@ -21,7 +21,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel, Field
 
-from app import config
+from app import atomic, config
 from app.auth import CurrentUser
 from app.domain import comments as comments_mod
 from app.domain import events, public_share
@@ -70,6 +70,9 @@ class PublicCommentIn(BaseModel):
 class PublicConfirmIn(BaseModel):
     name: str = Field(min_length=1, max_length=64)
     note: str | None = Field(default=None, max_length=2000)
+    expected_version: int = Field(ge=0)
+    expected_sha: str = Field(max_length=64)
+    expected_content_sha: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 def _off():
@@ -130,18 +133,30 @@ async def revoke_public_link(pid: str, token: str, request: Request, user: Curre
 async def public_meta(token: str, request: Request):
     g = await _grant(token, request)
     store = request.app.state.store
-    return public_share.meta(store.get(g.pid), g, ORG_NAME, store.read_content(g.pid))
+    project = store.get(g.pid)
+    with atomic.studio_lock(project.dir, "content"):
+        return public_share.meta(project, g, ORG_NAME, store.read_content(g.pid))
 
 
 @router.get("/api/public/{token}/pdf")
-async def public_pdf(token: str, request: Request):
+async def public_pdf(
+    token: str,
+    request: Request,
+    expected_version: int | None = None,
+    expected_sha: str | None = None,
+    expected_content_sha: str | None = None,
+):
     g = await _grant(token, request)
     store = request.app.state.store
     project = store.get(g.pid)
+    with atomic.studio_lock(project.dir, "content"):
+        public_share.require_revision(store, project, expected_version, expected_sha, expected_content_sha)
     path = await asyncio.to_thread(public_share.baseline_pdf, store, project, g.baseline)
     if path is None:
         raise kind_error("not_found", "PDF 尚未生成，请稍后再试")
     data, ok = await asyncio.to_thread(public_share.watermarked_pdf, path, token)
+    with atomic.studio_lock(project.dir, "content"):
+        public_share.require_revision(store, project, expected_version, expected_sha, expected_content_sha)
     disposition = "attachment" if g.allow_download else "inline"
     headers = {
         "Content-Disposition": f"{disposition}; filename*=UTF-8''{quote(project.title + '.pdf')}",
@@ -152,16 +167,31 @@ async def public_pdf(token: str, request: Request):
 
 
 @router.get("/api/public/{token}/layout-ast")
-async def public_layout_ast(token: str, request: Request):
+async def public_layout_ast(
+    token: str,
+    request: Request,
+    expected_version: int | None = None,
+    expected_sha: str | None = None,
+    expected_content_sha: str | None = None,
+):
     g = await _grant(token, request)
     store = request.app.state.store
-    content = critic.resolve(store.read_content(g.pid), g.baseline)
+    project = store.get(g.pid)
+    with atomic.studio_lock(project.dir, "content"):
+        public_share.require_revision(store, project, expected_version, expected_sha, expected_content_sha)
+        content = critic.resolve(store.read_content(g.pid), g.baseline)
     return parse_project_ast(store, g.pid, content, None)
 
 
 @router.get("/api/public/{token}/ast")
-async def public_ast(token: str, request: Request):
-    return await public_layout_ast(token, request)
+async def public_ast(
+    token: str,
+    request: Request,
+    expected_version: int | None = None,
+    expected_sha: str | None = None,
+    expected_content_sha: str | None = None,
+):
+    return await public_layout_ast(token, request, expected_version, expected_sha, expected_content_sha)
 
 
 @router.get("/api/public/{token}/layout-css")
@@ -214,5 +244,17 @@ async def public_confirm(token: str, body: PublicConfirmIn, request: Request):
         raise kind_error("share.scope", "此链接不能确认定稿")
     ip, ua = _client(request)
     project = request.app.state.store.get(g.pid)
-    rec = public_share.confirm(project, g, body.name.strip(), body.note, ip, ua)
+    rec = await asyncio.to_thread(
+        public_share.confirm,
+        request.app.state.store,
+        project,
+        g,
+        body.name.strip(),
+        body.note,
+        ip,
+        ua,
+        body.expected_version,
+        body.expected_sha,
+        body.expected_content_sha,
+    )
     return public_share.confirmation_out(rec)

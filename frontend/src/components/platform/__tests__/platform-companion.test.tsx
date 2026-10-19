@@ -97,10 +97,11 @@ describe('M4 工作台伴随栏：平台案件作用域', () => {
     await vi.waitFor(() => expect(q('[data-testid="platform-not-migrated"]')).not.toBeNull())
   })
 
-  it('/api/v1/cases 401 → getPlatformCase 吞错 ⇒ 未迁移空态（fail-closed 约定）', async () => {
+  it('/api/v1/cases 401 → 显示加载失败，不冒充未关联', async () => {
     mockApi({ casesStatus: 401 })
     await mount(<ProposalsCompanionBody />)
-    await vi.waitFor(() => expect(q('[data-testid="platform-not-migrated"]')).not.toBeNull())
+    await vi.waitFor(() => expect(q('[data-testid="platform-error"]')).not.toBeNull())
+    expect(q('[data-testid="platform-not-migrated"]')).toBeNull()
   })
 
   it('无 pid → 未打开案卷空态', async () => {
@@ -108,5 +109,19 @@ describe('M4 工作台伴随栏：平台案件作用域', () => {
     mockApi()
     await mount(<ProposalsCompanionBody />)
     expect(q('[data-testid="platform-no-case"]')).not.toBeNull()
+  })
+
+  it('跨机构同案号不读取任何案件的提案或材料', async () => {
+    const calls = mockApi({ cases: [CASE, { ...CASE, id: 'c2', organization_id: 'other-org' }] })
+    await mount(<ProposalsCompanionBody />)
+    await vi.waitFor(() => expect(q('[data-testid="platform-error"]')?.textContent).toContain('多个同案号'))
+    expect(calls.some((url) => /\/cases\/[^/]+\/(proposals|materials|facts)/.test(url))).toBe(false)
+  })
+
+  it('服务 503 不显示为未关联案件', async () => {
+    mockApi({ casesStatus: 503 })
+    await mount(<MaterialsCompanionBody />)
+    await vi.waitFor(() => expect(q('[data-testid="platform-error"]')).not.toBeNull())
+    expect(q('[data-testid="platform-not-migrated"]')).toBeNull()
   })
 })

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { queryClient } from '@/lib/query'
-import { getPlatformCase } from '@/lib/platform'
+import { AmbiguousCaseError, getPlatformCase } from '@/lib/platform'
 import { useStudio } from '@/store'
 import { workbenchApi } from '@/workbench/api'
 import { workbenchKeys, useWorkbenchMutations } from '@/workbench/queries'
@@ -16,21 +16,21 @@ import { ProposalsPanel } from '@/components/workbench/WorkbenchPage'
 /**
  * B17 M4：工作台伴随栏平台面板（`?panel=proposals|materials`）。
  * 作用域解析：store.pid（目录名）→ getPlatformCase → PG case_id；
- * 纯旧案（未回灌 / /api/v1 401）⇒ 「未迁移」空态，不报错。
+ * 身份冲突或读取失败时阻断本面板读写，不伪装成未关联。
  * 正文自带 QueryClientProvider——伴随栏单元测试裸挂载也能工作。
  */
 export function PlatformCompanionScope({ children }: { children: (caseItem: PlatformCase) => ReactNode }) {
   const pid = useStudio((s) => s.pid)
-  const [resolved, setResolved] = useState<{ pid: string; caseItem: PlatformCase | null; failed: boolean } | null>(null)
+  const [resolved, setResolved] = useState<{ pid: string; caseItem: PlatformCase | null; error: string | null } | null>(null)
   useEffect(() => {
     if (!pid) return
     let on = true
     void getPlatformCase(pid)
       .then((c) => {
-        if (on) setResolved({ pid, caseItem: c, failed: false })
+        if (on) setResolved({ pid, caseItem: c, error: null })
       })
-      .catch(() => {
-        if (on) setResolved({ pid, caseItem: null, failed: true })
+      .catch((error: unknown) => {
+        if (on) setResolved({ pid, caseItem: null, error: error instanceof AmbiguousCaseError ? error.message : '读取案件失败，请检查登录状态或稍后重试。' })
       })
     return () => {
       on = false
@@ -39,8 +39,8 @@ export function PlatformCompanionScope({ children }: { children: (caseItem: Plat
   if (!pid) return <EmptyState size="sm" icon={FileText} title="未打开案卷" reason="先在工作台打开一个案件。" data-testid="platform-no-case" />
   const fresh = resolved && resolved.pid === pid ? resolved : null // pid 切换后旧解析作废，渲染回 loading
   if (!fresh) return <div className="flex min-h-24 items-center justify-center text-fg-muted" role="status"><LoaderCircle className="mr-2 size-5 animate-spin" />正在解析平台案件…</div>
-  if (fresh.failed) return <EmptyState size="sm" icon={ShieldAlert} title="平台数据不可用" reason="读取平台案件失败，请刷新重试。" data-testid="platform-error" />
-  if (!fresh.caseItem) return <EmptyState size="sm" icon={GitPullRequest} title="该案未迁移" reason="此面板需要案件已回灌到平台库（case_key 与目录名一致）。" data-testid="platform-not-migrated" />
+  if (fresh.error) return <EmptyState size="sm" icon={ShieldAlert} title="案件数据不可用" reason={fresh.error} data-testid="platform-error" />
+  if (!fresh.caseItem) return <EmptyState size="sm" icon={GitPullRequest} title="未关联协作案件" reason="此案卷尚未关联可访问的机构案件，请联系案件管理者。" data-testid="platform-not-migrated" />
   return <QueryClientProvider client={queryClient}>{children(fresh.caseItem)}</QueryClientProvider>
 }
 

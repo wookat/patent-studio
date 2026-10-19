@@ -184,6 +184,7 @@ class Confirmation(BaseModel):
 
     version: int
     sha: str
+    content_sha: str | None = None
     name: str
     note: str | None = None
     confirmed_at: float

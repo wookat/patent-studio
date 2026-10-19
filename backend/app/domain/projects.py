@@ -347,6 +347,10 @@ class ProjectStore:
     def save_content(self, pid, content, backup=True):
         """写 content.md + 三书镜像 + history commit，末尾通知协同房间（R8）。
         backup=False 供协同去抖写回用（git 已是安全网）。"""
+        with atomic.studio_lock(self._dir(pid), "content"):
+            return self._save_content(pid, content, backup)
+
+    def _save_content(self, pid, content, backup):
         d = self._dir(pid)
         path = os.path.join(d, "content.md")
         name = None

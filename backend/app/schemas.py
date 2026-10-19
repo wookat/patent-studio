@@ -154,6 +154,7 @@ class PublicShareLinkIn(BaseModel):
 class Confirmation(BaseModel):
     version: int
     sha: str
+    content_sha: str | None = None
     name: str
     note: str | None = None
     confirmed_at: float
@@ -166,6 +167,7 @@ class PublicShareMeta(BaseModel):
     status: CaseStatus
     version: int
     sha: str
+    content_sha: str
     scope: PublicShareScope
     baseline: PublicShareBaseline = "original"
     # 当前正文里尚未接受 / 拒绝的修订数（ins / del / sub）；>0 时客户页提示本审阅版按 baseline 渲染

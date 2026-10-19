@@ -51,6 +51,7 @@ const meta: PublicShareMeta = {
   status: 'drafting',
   version: 3,
   sha: 'abc123',
+  content_sha: 'd'.repeat(64),
   scope: 'confirm',
   baseline: 'original',
   pending_revisions: 0,
@@ -281,7 +282,7 @@ describe('ClientReviewPage `#/c/<token>`（21 §4.5）', () => {
     localStorage.setItem(GUEST_NAME_KEY, '张客户')
     useStudio.setState({ guestName: '张客户' })
     const confirmed_at = Math.floor(Date.now() / 1000)
-    const confirm = vi.spyOn(api, 'publicConfirm').mockResolvedValue({ version: 3, sha: 'abc123', name: '张客户', note: '同意', confirmed_at })
+    const confirm = vi.spyOn(api, 'publicConfirm').mockResolvedValue({ version: 3, sha: 'abc123', content_sha: meta.content_sha, name: '张客户', note: '同意', confirmed_at })
     const el = await mount(<ClientReviewPage token="tok-1" />)
     await click(q('[data-testid="client-confirm"]', el)!)
     const dlg = q('[data-testid="client-confirm-dialog"]')!
@@ -290,7 +291,7 @@ describe('ClientReviewPage `#/c/<token>`（21 §4.5）', () => {
     await type(q<HTMLTextAreaElement>('[data-testid="client-confirm-note"]')!, '同意')
     await click(q('[data-testid="client-confirm-submit"]')!)
 
-    expect(confirm).toHaveBeenCalledWith('tok-1', { name: '张客户', note: '同意' })
+    expect(confirm).toHaveBeenCalledWith('tok-1', { name: '张客户', note: '同意', expected_version: 3, expected_sha: 'abc123', expected_content_sha: meta.content_sha })
     expect(q('[data-testid="client-confirm-dialog"]')).toBeNull()
     const done = q('[data-testid="client-confirmed"]', el)!
     expect(done.textContent).toContain('张客户')
@@ -324,7 +325,7 @@ describe('ClientReviewPage `#/c/<token>`（21 §4.5）', () => {
     vi.spyOn(api, 'publicMeta').mockResolvedValue({ ...meta, allow_download: true })
     const el = await mount(<ClientReviewPage token="tok-1" />)
     const dl = q<HTMLAnchorElement>('[data-testid="client-download"]', el)!
-    expect(dl.getAttribute('href')).toBe(api.publicPdfUrl('tok-1'))
+    expect(dl.getAttribute('href')).toBe(api.publicPdfUrl('tok-1', meta))
     expect(dl.hasAttribute('download')).toBe(true)
   })
 

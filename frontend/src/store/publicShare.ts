@@ -73,7 +73,7 @@ function loadPublic(token: string): Promise<PublicPayload> {
   const p = (async () => {
     const meta = await api.publicMeta(token)
     const [ast, comments, css] = await Promise.all([
-      api.publicAst(token),
+      api.publicAst(token, undefined, meta),
       meta.scope === 'read' ? Promise.resolve([]) : api.publicComments(token),
       api.publicLayoutCss(token).catch(() => null),
     ])
@@ -189,11 +189,15 @@ export const publicShareSlice: Slice<PublicShareSlice> = (set, get) => {
     },
 
     confirmPublic: async (note) => {
-      const { publicToken, guestName } = get()
-      if (!publicToken) return false
+      const { publicToken, publicMeta, guestName } = get()
+      if (!publicToken || !publicMeta) return false
       try {
-        const confirmation = await api.publicConfirm(publicToken, { name: guestName, note })
-        set((s) => ({ publicMeta: s.publicMeta ? { ...s.publicMeta, confirmation } : s.publicMeta }))
+        const confirmation = await api.publicConfirm(publicToken, {
+          name: guestName, note, expected_version: publicMeta.version,
+          expected_sha: publicMeta.sha, expected_content_sha: publicMeta.content_sha,
+        })
+        if (get().publicToken !== publicToken || get().publicMeta !== publicMeta) return false
+        set({ publicMeta: { ...publicMeta, confirmation } })
         return true
       } catch (e) {
         return fail(e, 'publicUnavailable')

@@ -229,10 +229,11 @@ export function ClientReviewPage({ token }: { token: string }) {
     toast('此链接不允许复制内容', 'info')
   }
 
-  const pdfUrl = api.publicPdfUrl(token)
+  const pdfUrl = api.publicPdfUrl(token, meta)
   const canComment = meta != null && meta.scope !== 'read' && meta.allow_comment
   const canConfirm = meta?.scope === 'confirm'
   const confirmedThis = meta?.confirmation != null && meta.confirmation.version === meta.version
+    && meta.confirmation.sha === meta.sha && meta.confirmation.content_sha === meta.content_sha
   const left = daysLeft(meta?.expires_at ?? null)
   const openCount = comments.filter((c) => !c.resolved).length
   const ready = meta != null && ast != null && !expired && !invalid

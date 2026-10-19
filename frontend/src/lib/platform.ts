@@ -5,25 +5,26 @@ import type { ProjectSummary } from '@/lib/types'
 import type { PlatformCase } from '@/workbench/types'
 
 /**
- * B17 M1 桥接层：旧案卷（pid = `PATENT_PROJECTS_DIR` 下目录名，文件真源）
- * 与新平台案件（PG `cases.case_key`）之间的纯前端解析。
- *
- * 映射契约：importer 缺省以**目录名为 case_key**（backend/src/patent_studio/cli.py L80：
- * `args.case_key or plan.source_dir.rsplit("/", 1)[-1]`），故 `case_key === pid` 即同一案。
- * pid 是 hash 路由 decodeURIComponent 后的目录名，case_key 是字面串——两侧都是原名，精确相等即可。
- *
- * 后端零新增：`GET /api/v1/cases` 已返回当前主体可见案件全集（机构成员 ∪ 案件参与者 ∪ 创建者），
- * 前端按 case_key 过滤；该案不在任何可见机构 / 未回灌 ⇒ 一律 null，调用方走「纯旧案」分支。
+ * 目录案卷到当前主体可访问机构案件的解析。
+ * 案号只用于寻找唯一候选：重名阻断，加载失败保留错误，后续读写使用案件 UUID。
  */
 
 /**
  * pid → PlatformCase；无匹配返回 null。
- * 跨机构重名（不同 org 同 case_key）时取列表首位——`GET /api/v1/cases` 后端按
- * `updated_at DESC, case_key` 排序（api/routes.py list_cases），首位即最近活动的案。
+ * 重名案件没有可靠的目录绑定，必须拒绝解析，不能靠更新时间猜测身份。
  */
 export function resolveCaseByPid(cases: readonly PlatformCase[] | undefined | null, pid: string | null | undefined): PlatformCase | null {
   if (!pid || !cases) return null
-  return cases.find((c) => c.case_key === pid) ?? null
+  const matches = resolveCasesByPid(cases, pid)
+  if (matches.length > 1) throw new AmbiguousCaseError()
+  return matches[0] ?? null
+}
+
+export class AmbiguousCaseError extends Error {
+  constructor() {
+    super('发现多个同案号案件，请从机构工作台按案件身份打开；当前面板已停止读写。')
+    this.name = 'AmbiguousCaseError'
+  }
 }
 
 /** 同一 pid 命中的全部平台案（跨机构重名时 >1）；无命中 ⇒ [] */
@@ -39,13 +40,12 @@ export interface MergedCaseRow {
   project: ProjectSummary | null
   /** 主匹配平台案（`resolveCaseByPid` 结果）；纯目录案 / 未回灌 ⇒ null */
   platformCase: PlatformCase | null
-  /** 同 case_key 的全部平台案；无 ⇒ [] */
+  /** 已确定身份的案件；身份不明确时为空，不把其他机构的数据并入目录行。 */
   platformCases: PlatformCase[]
 }
 
 /**
- * 一案双体去重：目录案件与 PG 案件 case_key 相同 ⇒ 折进同一行（`platformCase` 挂上），
- * 绝不出现两张卡。无目录对应的平台案追加为 platform-only 行（`pid/project` 为 null）。
+ * 唯一同案号候选合并为一行。重名案件按独立 UUID 展示，不猜测目录归属。
  * 行序：目录案保持 `projects` 原序；platform-only 行按 cases 原序（updated_at desc）缀后。
  */
 export function mergeCaseRows(
@@ -56,8 +56,9 @@ export function mergeCaseRows(
   const folded = new Set<string>()
   for (const p of projects ?? []) {
     const matched = resolveCasesByPid(cases, p.id)
-    for (const c of matched) folded.add(c.id)
-    rows.push({ pid: p.id, project: p, platformCase: matched[0] ?? null, platformCases: matched })
+    const unique = matched.length === 1 ? matched[0] : null
+    if (unique) folded.add(unique.id)
+    rows.push({ pid: p.id, project: p, platformCase: unique, platformCases: unique ? [unique] : [] })
   }
   for (const c of cases ?? []) {
     if (folded.has(c.id)) continue
@@ -69,14 +70,10 @@ export function mergeCaseRows(
 /** GET /api/v1/cases 直取（给非 React 上下文；React 侧统一走 usePlatformCases 复用 react-query 缓存） */
 export const listPlatformCases = (signal?: AbortSignal) => workbenchApi.cases(signal)
 
-/** pid → 平台案（异步一次性版）：拉全量后按 case_key 命中；未命中 / 401 / 无 pid ⇒ null */
+/** 未匹配返回 null；服务错误与身份冲突由调用方明确呈现。 */
 export async function getPlatformCase(pid: string | null | undefined, signal?: AbortSignal): Promise<PlatformCase | null> {
   if (!pid) return null
-  try {
-    return resolveCaseByPid(await listPlatformCases(signal), pid)
-  } catch {
-    return null // 未登录 / /api/v1 fail-closed ⇒ 视为纯旧案，不抛给调用方
-  }
+  return resolveCaseByPid(await listPlatformCases(signal), pid)
 }
 
 /** React：当前主体可见平台案列表（与 WorkbenchPage 共缓存，不自建 key） */

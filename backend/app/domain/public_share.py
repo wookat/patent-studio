@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import glob
+import hashlib
 import io
 import json
 import logging
@@ -251,6 +252,18 @@ def version_of(project_dir: str) -> tuple[int, str]:
     return len(versions), (versions[0]["sha"] if versions else "")
 
 
+def content_sha(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def require_revision(store, project, version: int | None, sha: str | None, digest: str | None) -> None:
+    """读和确认共用同一版本约束；调用方在 content 锁内执行。"""
+    if version is None and sha is None and digest is None:
+        return
+    if (version, sha) != version_of(project.dir) or digest != content_sha(store.read_content(project.id)):
+        raise kind_error("conflict", "审阅版本已更新，请重新打开并阅读后再确认。")
+
+
 def _build_dirs(project) -> list[str]:
     return sorted(glob.glob(os.path.join(project.studio_dir, "builds", "*")), key=os.path.getmtime, reverse=True)
 
@@ -286,11 +299,10 @@ def _build(store, pid: str, mode: str) -> str | None:
 
 
 def baseline_pdf(store, project, baseline: str) -> str | None:
-    """客户端 PDF：正文无未决修订 ⇒ 最新构建；
-    有 ⇒ content.md 与 critic.resolve(源码, baseline) 一致的最新构建，没有则按 baseline 构建。"""
+    """只复用与审阅正文一致的 PDF；已过期的构建不得冒充当前版本。"""
     raw = store.read_content(project.id)
-    if not pending_revisions(raw):
-        return latest_pdf(project)
+    if latest_pdf(project) is None:
+        return None
     want = critic.resolve(raw, baseline)
     for d in _build_dirs(project):
         p, md = os.path.join(d, "out.pdf"), os.path.join(d, "content.md")
@@ -303,7 +315,14 @@ def baseline_pdf(store, project, baseline: str) -> str | None:
 
 def confirmation_out(c: cases.Confirmation) -> dict:
     """schemas.Confirmation 形状。"""
-    return {"version": c.version, "sha": c.sha, "name": c.name, "note": c.note, "confirmed_at": c.confirmed_at}
+    return {
+        "version": c.version,
+        "sha": c.sha,
+        "content_sha": c.content_sha,
+        "name": c.name,
+        "note": c.note,
+        "confirmed_at": c.confirmed_at,
+    }
 
 
 def meta(project, grant: Grant, org_name: str, content: str = "") -> dict:
@@ -317,6 +336,7 @@ def meta(project, grant: Grant, org_name: str, content: str = "") -> dict:
         "status": case.status,
         "version": version,
         "sha": sha,
+        "content_sha": content_sha(content),
         "scope": grant.scope,
         "baseline": grant.baseline,
         "pending_revisions": pending_revisions(content),
@@ -333,18 +353,43 @@ def meta(project, grant: Grant, org_name: str, content: str = "") -> dict:
 # ---------------- 确认定稿 ----------------
 
 
-def confirm(project, grant: Grant, name: str, note: str | None, ip: str | None, ua: str | None) -> cases.Confirmation:
+def confirm(
+    store,
+    project,
+    grant: Grant,
+    name: str,
+    note: str | None,
+    ip: str | None,
+    ua: str | None,
+    expected_version: int,
+    expected_sha: str,
+    expected_content_sha: str,
+) -> cases.Confirmation:
     """追加 case.json.confirmations[] 并 emit share.confirmed（actor 为访客：client:<name>，无用户 id）。
     同链同人同版本重复提交（双击/重试）幂等返回既有记录，不重复落账/发事件。"""
-    version, sha = version_of(project.dir)
-    with atomic.studio_lock(project.dir, "case"):
+    with (
+        atomic.studio_lock(project.dir, "case"),
+        atomic.studio_lock(project.dir, "content"),
+        history.repo_lock(project.dir),
+    ):
+        require_revision(store, project, expected_version, expected_sha, expected_content_sha)
+        version, sha = expected_version, expected_sha
+        if not sha:
+            raise kind_error("conflict", "此案尚无已保存版本，请联系撰写人保存后重新审阅。")
         case = cases.ensure_case(project.dir)
         for c in reversed(case.confirmations):
-            if c.token == grant.token and c.version == version and c.sha == sha and c.name == name:
+            if (
+                c.token == grant.token
+                and c.version == version
+                and c.sha == sha
+                and c.content_sha == expected_content_sha
+                and c.name == name
+            ):
                 return c
         rec = cases.Confirmation(
             version=version,
             sha=sha,
+            content_sha=expected_content_sha,
             name=name,
             note=note,
             confirmed_at=time.time(),
@@ -359,7 +404,14 @@ def confirm(project, grant: Grant, name: str, note: str | None, ip: str | None, 
         "share.confirmed",
         pid=project.id,
         actor=None,
-        data={"token": grant.token, "name": name, "version": version, "sha": sha, "note": note},
+        data={
+            "token": grant.token,
+            "name": name,
+            "version": version,
+            "sha": sha,
+            "content_sha": expected_content_sha,
+            "note": note,
+        },
     )
     return rec
 

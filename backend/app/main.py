@@ -488,7 +488,16 @@ async def put_settings(pid: str, body: SettingsIn):
 async def build(pid: str, body: BuildIn, user: auth.CurrentUser):
     store.get(pid)
     outcome = await asyncio.to_thread(
-        run_build, store, pid, body.content, body.settings, body.pdf, body.mode, tagged=True, author=author_name(user)
+        run_build,
+        store,
+        pid,
+        body.content,
+        body.settings,
+        body.pdf,
+        body.mode,
+        tagged=True,
+        preview=True,
+        author=author_name(user),
     )
     return {**outcome.to_dict(), "mode": body.mode}
 
