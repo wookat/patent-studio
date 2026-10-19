@@ -53,14 +53,22 @@ def test_status_buckets_dedup_and_resumed():
     props = [_prop("p1", "j1", "pending"), _prop("p2", "j1", "applied"), _prop("p3", "j2", "dismissed")]
     m = metrics.case_metrics(jobs, props, [{"total_tokens": 100}, {"total_tokens": 50}])
     assert m["jobs"]["total"] == 4
-    assert m["jobs"]["done"] == 1 and m["jobs"]["error"] == 1 and m["jobs"]["interrupted"] == 1 and m["jobs"]["running"] == 1
+    assert (
+        m["jobs"]["done"] == 1
+        and m["jobs"]["error"] == 1
+        and m["jobs"]["interrupted"] == 1
+        and m["jobs"]["running"] == 1
+    )
     assert m["jobs"]["resumed"] == 1
     j1 = next(i for i in m["jobs"]["items"] if i["id"] == "j1")
     assert j1["duration_s"] == 60.0 and j1["resumed"] and j1["proposal_ids"] == ["p1"]
     j2 = next(i for i in m["jobs"]["items"] if i["id"] == "j2")
     assert j2["error"]["kind"] == "ai_upstream"  # 失败可追踪到 kind/message
     assert m["proposals"] == {
-        "produced": 3, "pending": 1, "applied": 1, "dismissed": 1,
+        "produced": 3,
+        "pending": 1,
+        "applied": 1,
+        "dismissed": 1,
         "items": m["proposals"]["items"],
     }
     assert [p["state"] for p in m["proposals"]["items"]] == ["pending", "applied", "dismissed"]

@@ -46,7 +46,10 @@ def test_method_asset_lifecycle_and_retrieval(on):
     a = _mk(client, org, "m1", title="独权布局法").json()
     assert a["status"] == "draft" and a["source"] == "manual"
     assert client.get(f"/api/v1/organizations/{org['id']}/method-assets").json() == []
-    assert client.get(f"/api/v1/organizations/{org['id']}/method-assets", params={"all_states": "true"}).json()[0]["id"] == a["id"]
+    assert (
+        client.get(f"/api/v1/organizations/{org['id']}/method-assets", params={"all_states": "true"}).json()[0]["id"]
+        == a["id"]
+    )
     # 未授权不能使用
     r = client.post(f"/api/v1/method-assets/{a['id']}/use", headers={"Idempotency-Key": "u0"}, json={})
     assert r.status_code == 403
@@ -55,7 +58,9 @@ def test_method_asset_lifecycle_and_retrieval(on):
     assert a["status"] == "authorized" and a["authorized_by_principal_id"]
     got = client.get(f"/api/v1/organizations/{org['id']}/method-assets").json()
     assert [x["id"] for x in got] == [a["id"]]
-    assert client.get(f"/api/v1/organizations/{org['id']}/method-assets", params={"q": "布局"}).json()[0]["id"] == a["id"]
+    assert (
+        client.get(f"/api/v1/organizations/{org['id']}/method-assets", params={"q": "布局"}).json()[0]["id"] == a["id"]
+    )
     # 使用留痕（附同机构 case）
     case = client.post(
         f"/api/v1/organizations/{org['id']}/cases",
@@ -86,9 +91,17 @@ def test_method_assets_cross_org_isolation(on):
     _auth(a_client, a["id"], "b-au")
     # B 机构成员：不可见 / 不可授权 / 不可使用 / 不可查 uses
     assert b_client.get(f"/api/v1/organizations/{org_a['id']}/method-assets").status_code == 403
-    assert b_client.post(f"/api/v1/method-assets/{a['id']}/authorize", headers={"Idempotency-Key": "x1"}).status_code == 403
-    assert b_client.post(f"/api/v1/method-assets/{a['id']}/revoke", headers={"Idempotency-Key": "x2"}).status_code == 403
-    assert b_client.post(f"/api/v1/method-assets/{a['id']}/use", headers={"Idempotency-Key": "x3"}, json={}).status_code == 403
+    assert (
+        b_client.post(f"/api/v1/method-assets/{a['id']}/authorize", headers={"Idempotency-Key": "x1"}).status_code
+        == 403
+    )
+    assert (
+        b_client.post(f"/api/v1/method-assets/{a['id']}/revoke", headers={"Idempotency-Key": "x2"}).status_code == 403
+    )
+    assert (
+        b_client.post(f"/api/v1/method-assets/{a['id']}/use", headers={"Idempotency-Key": "x3"}, json={}).status_code
+        == 403
+    )
     assert b_client.get(f"/api/v1/method-assets/{a['id']}/uses").status_code == 403
     assert b_client.get(f"/api/v1/organizations/{org_b['id']}/method-assets").json() == []
 
@@ -113,9 +126,13 @@ def test_method_asset_use_rejects_cross_org_case(on):
         headers={"Idempotency-Key": "d-c"},
         json={"case_key": "A-1", "title": "A案", "kind": "invention"},
     ).json()
-    ok = a_client.post(f"/api/v1/method-assets/{a['id']}/use", headers={"Idempotency-Key": "d-u1"}, json={"case_id": other_case["id"]})
+    ok = a_client.post(
+        f"/api/v1/method-assets/{a['id']}/use", headers={"Idempotency-Key": "d-u1"}, json={"case_id": other_case["id"]}
+    )
     assert ok.status_code == 201
-    bad = a_client.post(f"/api/v1/method-assets/{a['id']}/use", headers={"Idempotency-Key": "d-u2"}, json={"case_id": case_b["id"]})
+    bad = a_client.post(
+        f"/api/v1/method-assets/{a['id']}/use", headers={"Idempotency-Key": "d-u2"}, json={"case_id": case_b["id"]}
+    )
     assert bad.status_code == 403
 
 
@@ -127,18 +144,30 @@ def test_method_assets_manage_gates_and_source_validation(on):
     inv = owner.post(
         f"/api/v1/organizations/{org['id']}/invitations",
         headers={"Idempotency-Key": "f-inv"},
-        json={"invitee_principal_id": member.get("/api/v1/principals/me").json()["id"], "role": "member", "expires_at": "2999-01-01T00:00:00Z"},
+        json={
+            "invitee_principal_id": member.get("/api/v1/principals/me").json()["id"],
+            "role": "member",
+            "expires_at": "2999-01-01T00:00:00Z",
+        },
     ).json()
     member.post(f"/api/v1/invitations/{inv['id']}/accept", headers={"Idempotency-Key": "f-acc"})
     a = _mk(owner, org, "f1").json()
     # 普通成员：可读 authorized / 可录入 / 可检索；不可授权、不可看全部状态
-    assert member.get(f"/api/v1/organizations/{org['id']}/method-assets", params={"all_states": "true"}).status_code == 403
-    assert member.post(f"/api/v1/method-assets/{a['id']}/authorize", headers={"Idempotency-Key": "g-au"}).status_code == 403
-    assert member.post(
-        f"/api/v1/organizations/{org['id']}/method-assets",
-        headers={"Idempotency-Key": "g-m"},
-        json={"title": "成员卡", "body": "步骤", "source": "curated"},
-    ).status_code == 201
+    assert (
+        member.get(f"/api/v1/organizations/{org['id']}/method-assets", params={"all_states": "true"}).status_code == 403
+    )
+    assert (
+        member.post(f"/api/v1/method-assets/{a['id']}/authorize", headers={"Idempotency-Key": "g-au"}).status_code
+        == 403
+    )
+    assert (
+        member.post(
+            f"/api/v1/organizations/{org['id']}/method-assets",
+            headers={"Idempotency-Key": "g-m"},
+            json={"title": "成员卡", "body": "步骤", "source": "curated"},
+        ).status_code
+        == 201
+    )
     # source 白名单：拒绝 auto/其它来源（不自动收录）
     bad = owner.post(
         f"/api/v1/organizations/{org['id']}/method-assets",

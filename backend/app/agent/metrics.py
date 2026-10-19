@@ -15,9 +15,15 @@ from app.ai.jobs import FINAL
 
 def _job_item(j: dict) -> dict:
     steps = j.get("steps") or []
-    resumed = bool((j.get("result") or {}).get("resumed")) or any(bool((s.get("data") or {}).get("resumed")) for s in steps)
+    resumed = bool((j.get("result") or {}).get("resumed")) or any(
+        bool((s.get("data") or {}).get("resumed")) for s in steps
+    )
     duration = None
-    if j.get("status") in FINAL and isinstance(j.get("created_at"), (int, float)) and isinstance(j.get("updated_at"), (int, float)):
+    if (
+        j.get("status") in FINAL
+        and isinstance(j.get("created_at"), (int, float))
+        and isinstance(j.get("updated_at"), (int, float))
+    ):
         d = j["updated_at"] - j["created_at"]
         duration = round(d, 1) if d >= 0 else None
     return {
