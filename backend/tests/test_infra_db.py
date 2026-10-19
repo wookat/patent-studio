@@ -48,6 +48,8 @@ EXPECTED_TABLES = frozenset(
         "grants",
         "invitations",
         "materials",
+        "method_asset_uses",
+        "method_assets",
         "notifications",
         "operations",
         "org_audit_events",
