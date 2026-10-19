@@ -16,7 +16,7 @@ SSE 步骤流在 routes_ai `GET /api/ai/jobs/{id}/events`（agent:* 任务走 wa
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.agent import budget, loop, proposals, registry
+from app.agent import budget, loop, metrics, proposals, registry
 from app.agent.types import (
     SCENARIO_BY_ID,
     AgentJobOut,
@@ -89,6 +89,18 @@ async def agent_jobs(pid: str, request: Request):
     request.app.state.store.get(pid)
     jobs = request.app.state.jobs.list(pid)
     return AgentJobsResponse(jobs=[_job_out(j) for j in jobs if j.kind.startswith("agent:")])
+
+
+@router.get("/api/projects/{pid}/agent/metrics")
+async def agent_metrics(pid: str, request: Request):
+    """Z32 成果度量（viewer）：jobs 状态去重分桶 + proposals 审态分桶 + usage token；
+    费用/人工改动无证据源 ⇒ 显式 collected=false，不拿调用数当质量。"""
+    store = request.app.state.store
+    p = store.get(pid)
+    jobs = [j.to_dict() for j in request.app.state.jobs.list(pid)]
+    props = [pr.model_dump() for pr in proposals.load(p.dir, pid, None)]
+    rows = read_usage(p.dir)
+    return metrics.case_metrics(jobs, props, rows)
 
 
 @router.get("/api/projects/{pid}/agent/proposals", response_model=ProposalsResponse)

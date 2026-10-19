@@ -2,6 +2,54 @@ import { P, handle, netFetch, qs, req } from './net'
 import type { AgentJob, AgentRunIn, Proposal, ProposalApplyAllResult, ProposalApplyResult, ProposalState } from '@/types/agent'
 import type { AiJob, AiStatus, AiUsageRecord, ChatContext, ChatResume, RewriteRequest, RewriteResult } from '@/types/ai'
 
+/** Z32 成果度量（backend app/agent/metrics.case_metrics 同形） */
+export interface AgentMetricsJobItem {
+  id: string
+  kind: string
+  status: 'queued' | 'running' | 'done' | 'error' | 'interrupted'
+  progress: number
+  created_at: number | null
+  updated_at: number | null
+  /** 终态任务才有（含排队/中断间隔）；非终态/异常为 null */
+  duration_s: number | null
+  resumed: boolean
+  proposal_ids: string[]
+  error: { kind?: string; message?: string } | null
+}
+export interface AgentMetricsProposalItem {
+  id: string
+  job_id: string | null
+  scenario: string | null
+  kind: string | null
+  state: 'pending' | 'applied' | 'dismissed'
+  model: string | null
+  created_at: number | null
+}
+export interface AgentMetrics {
+  sample: { jobs: number; proposals: number; usage_rows: number }
+  jobs: {
+    total: number
+    queued: number
+    running: number
+    done: number
+    error: number
+    interrupted: number
+    resumed: number
+    items: AgentMetricsJobItem[]
+  }
+  proposals: {
+    produced: number
+    pending: number
+    applied: number
+    dismissed: number
+    items: AgentMetricsProposalItem[]
+  }
+  usage: { rows: number; total_tokens: number | null }
+  cost: { collected: boolean; reason: string }
+  human_edits: { collected: boolean; reason: string }
+  limits: string[]
+}
+
 export const aiApi = {
   aiStatus: (probe = false) => req<AiStatus>(`/api/ai/status${probe ? '?probe=1' : ''}`),
   /** SSE：返回原始 Response，由 store.ai.sendChat 读 body 流；非 2xx 走 handle 抛 ApiError */
@@ -37,6 +85,9 @@ export const aiApi = {
   /* ---- 轨道 E · 术语（09 §3.2）---- */
   agentRun: (id: string, body: AgentRunIn) => req<AgentJob>(`${P(id)}/agent/run`, { method: 'POST', body: JSON.stringify(body) }),
   agentJobs: (id: string, signal?: AbortSignal) => req<{ jobs: AgentJob[] }>(`${P(id)}/agent/jobs`, { signal }),
+  /** Z32：本案 agent 成果度量（样本量+局限+未采集显式标注） */
+  agentMetrics: (id: string, signal?: AbortSignal) =>
+    req<AgentMetrics>(`${P(id)}/agent/metrics`, { signal }),
   agentCancel: (jobId: string) => req<AgentJob>(`/api/ai/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' }),
   /** Z14 续跑：interrupted / error 任务按 payload 重进（已落盘提案不重复生成） */
   agentResume: (jobId: string) => req<AgentJob>(`/api/ai/jobs/${encodeURIComponent(jobId)}/resume`, { method: 'POST' }),

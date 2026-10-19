@@ -1,5 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { fmtTokens } from '@/lib/format'
+import { api, ApiError } from '@/lib/api'
+import type { AgentMetrics } from '@/lib/api/ai'
 import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardList, FileText, ListTodo, RotateCcw, Scissors, Wrench, XCircle, type LucideIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -68,6 +70,7 @@ export function AiJobsTab({ pid, compact }: { pid: string | null; compact: boole
   return (
     <div className="flex flex-col gap-3" data-testid="ai-jobs-tab">
       <BudgetBar pid={pid} />
+      <MetricsCard pid={pid} refreshKey={jobs.length + ':' + jobs.filter((j) => j.status === 'done' || j.status === 'error' || j.status === 'interrupted').length} />
       {unavailable ? (
         <EmptyState size="sm" icon={ListTodo} title={NOT_IMPLEMENTED_TITLE} reason="智能体任务接口尚未落地。" data-testid="ai-jobs-unavailable" />
       ) : jobs.length === 0 && !loading ? (
@@ -83,6 +86,115 @@ export function AiJobsTab({ pid, compact }: { pid: string | null; compact: boole
         </>
       )}
     </div>
+  )
+}
+
+/** Z32 成果度量卡：已产出/待审/采纳/拒绝/失败/中断/恢复计数 + 可回溯明细 + 样本量与局限。
+ *  耗时/费用/人工改动仅在有证据时展示，否则「未采集」；计数不作质量排名。 */
+function MetricsCard({ pid, refreshKey }: { pid: string | null; refreshKey: string }) {
+  const [m, setM] = useState<AgentMetrics | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+  const watch = useStudio((s) => s.watchAgentJob)
+  const setAgentTab = useStudio((s) => s.setAgentTab)
+
+  useEffect(() => {
+    if (!pid) return
+    const ac = new AbortController()
+    api
+      .agentMetrics(pid, ac.signal)
+      .then(setM)
+      .catch((e: unknown) => setErr(e instanceof ApiError ? e.message : '度量加载失败'))
+    return () => ac.abort()
+  }, [pid, refreshKey])
+
+  if (err) return <p className="rounded-lg border border-border bg-panel px-3 py-2 text-xs text-danger-fg" role="alert">{err}</p>
+  if (!m || m.sample.jobs === 0 && m.sample.proposals === 0) return null
+
+  const timed = m.jobs.items.filter((i) => i.duration_s != null)
+  const attention = m.jobs.items.filter((i) => i.status === 'error' || i.status === 'interrupted' || i.resumed)
+  const pendingProps = m.proposals.items.filter((p) => p.state === 'pending')
+
+  return (
+    <section className="rounded-lg border border-border bg-panel px-3 py-2 text-xs shadow-sm" data-testid="ai-metrics" aria-label="Agent 成果度量">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium text-fg-strong">成果度量</span>
+        <span className="font-mono text-2xs text-fg-muted" title={`样本：任务 ${m.sample.jobs} · 提案 ${m.sample.proposals} · 用量行 ${m.sample.usage_rows}`}>
+          n={m.sample.jobs}/{m.sample.proposals}
+        </span>
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1" data-testid="ai-metrics-counts">
+        <Badge tone="violet">产出 {m.proposals.produced}</Badge>
+        <Badge tone="info">待审 {m.proposals.pending}</Badge>
+        <Badge tone="ok">采纳 {m.proposals.applied}</Badge>
+        <Badge tone="neutral">拒绝 {m.proposals.dismissed}</Badge>
+        <Badge tone={m.jobs.error ? 'danger' : 'neutral'}>失败 {m.jobs.error}</Badge>
+        <Badge tone={m.jobs.interrupted ? 'warn' : 'neutral'}>中断 {m.jobs.interrupted}</Badge>
+        <Badge tone={m.jobs.resumed ? 'brand' : 'neutral'}>恢复 {m.jobs.resumed}</Badge>
+      </div>
+      <dl className="mt-1.5 grid grid-cols-[4.5rem_1fr] gap-y-0.5 text-2xs text-fg-muted">
+        <dt>耗时</dt>
+        <dd>{timed.length ? `${timed.length} 个终态任务可计量（含排队/中断间隔，非推理时长）` : '未采集'}</dd>
+        <dt>token</dt>
+        <dd>{m.usage.total_tokens == null ? '未采集' : `${fmtTokens(m.usage.total_tokens)}（${m.usage.rows} 行，非费用）`}</dd>
+        <dt>费用</dt>
+        <dd title={m.cost.reason}>未采集</dd>
+        <dt>人工改动</dt>
+        <dd title={m.human_edits.reason}>未采集</dd>
+      </dl>
+      <button
+        type="button"
+        className={cn('mt-1 text-2xs text-link hover:underline', FOCUS_RING)}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        data-testid="ai-metrics-toggle"
+      >
+        {open ? '收起明细与局限' : '明细与局限'}
+      </button>
+      {open && (
+        <div className="mt-1 space-y-1.5" data-testid="ai-metrics-detail">
+          {attention.length > 0 && (
+            <p className="text-2xs text-fg-muted">
+              失败/中断/恢复：
+              {attention.map((j) => (
+                <button
+                  key={j.id}
+                  type="button"
+                  className={cn('ml-1 rounded-xs border border-border bg-sunken px-1 hover:bg-hover', FOCUS_RING)}
+                  title={`${j.kind} · ${STATUS_LABEL[j.status]}${j.error?.message ? ` · ${j.error.message}` : ''}`}
+                  onClick={() => watch(j.id)}
+                  data-testid={`ai-metrics-job-${j.id}`}
+                >
+                  {j.id.slice(-6)}
+                </button>
+              ))}
+            </p>
+          )}
+          {pendingProps.length > 0 && (
+            <p className="text-2xs text-fg-muted">
+              待审提案：
+              {pendingProps.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={cn('ml-1 rounded-xs border border-border bg-sunken px-1 hover:bg-hover', FOCUS_RING)}
+                  title={`${p.scenario ?? ''} · ${p.job_id ?? ''}`}
+                  onClick={() => setAgentTab('proposals')}
+                  data-testid={`ai-metrics-prop-${p.id}`}
+                >
+                  {p.id.slice(-6)}
+                </button>
+              ))}
+            </p>
+          )}
+          <ul className="list-disc space-y-0.5 pl-4 text-2xs text-fg-muted" data-testid="ai-metrics-limits">
+            {m.limits.map((l, i) => (
+              <li key={i}>{l}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   )
 }
 
