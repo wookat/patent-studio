@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useNamedLandmarkHost } from '@/components/ui/landmark-host'
 import { FOCUS_RING, FOCUS_RING_INSET, cn } from '@/lib/utils'
 import { selectPreflightStale, useStudio } from '@/store'
+import { claimsHash } from '@/lib/hash'
 import type { PreflightReport, PreflightView } from '@/types/preflight'
 import { ClaimTree } from './ClaimTree'
 import { ItemsView } from './ItemsView'
@@ -31,7 +32,7 @@ const VIEW_EMPTY: Record<PreflightView, string> = {
   support: '权项里没有可核对的术语',
 }
 
-function ViewBody({ view, report }: { view: PreflightView; report: PreflightReport }) {
+function ViewBody({ view, report, pid }: { view: PreflightView; report: PreflightReport; pid: string | null }) {
   const rows =
     view === 'items' ? report.items.length : view === 'claims' ? report.claim_tree.length : view === 'numerals' ? report.numerals.length : report.support_map.length
   if (rows === 0) {
@@ -43,7 +44,19 @@ function ViewBody({ view, report }: { view: PreflightView; report: PreflightRepo
     )
   }
   if (view === 'items') return <ItemsView items={report.items} />
-  if (view === 'claims') return <ClaimTree nodes={report.claim_tree} />
+  if (view === 'claims')
+    return (
+      <>
+        <ClaimTree nodes={report.claim_tree} />
+        {pid && (
+          <p className="border-t border-border px-2.5 py-1.5 text-xs">
+            <a className={cn('text-link hover:underline', FOCUS_RING)} href={`#${claimsHash(pid)}`}>
+              打开权项沙盘：依赖详情与「若调整引用」安全预览 →
+            </a>
+          </p>
+        )}
+      </>
+    )
   if (view === 'numerals') return <NumeralsTable rows={report.numerals} />
   return <SupportTable rows={report.support_map} />
 }
@@ -199,7 +212,7 @@ export function PreflightPanel({ variant = 'desktop', className }: PreflightPane
             {empty}
           </p>
         ) : (
-          <ViewBody view={view} report={report!} />
+          <ViewBody view={view} report={report!} pid={pid} />
         )}
       </div>
     </section>

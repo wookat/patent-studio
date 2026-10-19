@@ -13,6 +13,7 @@ import { oaApi } from './api/oa'
 import { convertApi } from './api/convert'
 import { templatesApi } from './api/templates'
 import { noveltyApi } from './api/novelty'
+import { claimsApi } from './api/claims'
 import { accountApi } from './api/account'
 import { collabApi } from './api/collab'
 import { lifecycleApi } from './api/lifecycle'
@@ -31,6 +32,7 @@ export const api = {
   ...convertApi,
   ...templatesApi,
   ...noveltyApi,
+  ...claimsApi,
   ...accountApi,
   ...collabApi,
   ...lifecycleApi,

@@ -44,6 +44,7 @@ from app.routes.ast import router as ast_router
 from app.routes.attachments import router as attachments_router
 from app.routes.audit_export import router as audit_export_router
 from app.routes.cases import router as cases_router
+from app.routes.claim_sandbox import router as claim_sandbox_router
 from app.routes.comments import router as comments_router
 from app.routes.convert import router as convert_router
 from app.routes.deadlines import router as deadlines_router
@@ -115,6 +116,7 @@ app.include_router(figures_router)
 app.include_router(figlib_router)  # 附图图库：docs/figure-library 只读浏览
 app.include_router(attachments_router)  # W4-C：/attachments 上传 / 预览 / 删除
 app.include_router(preflight_router)
+app.include_router(claim_sandbox_router)
 app.include_router(patch_router)
 app.include_router(style_router)  # W4-D D1：/style.css（prep 501）
 app.include_router(auth_router)

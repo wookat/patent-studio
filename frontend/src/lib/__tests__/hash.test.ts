@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { atDashboard, atPageRoute, clearProjectQuery, clientHash, deliverHash, editorHash, goDashboard, goDeadlines, goDeliver, goEditor, goInbox, goNovelty, goWorkbench, noveltyHash, parseHash, projectHash, readHashClientToken, readHashPid, readHashProjectQuery, readHashShareToken, writeHashPid } from '../hash'
+import { atDashboard, atPageRoute, claimsHash, clearProjectQuery, clientHash, deliverHash, editorHash, goClaims, goDashboard, goDeadlines, goDeliver, goEditor, goInbox, goNovelty, goWorkbench, noveltyHash, parseHash, projectHash, readHashClientToken, readHashPid, readHashProjectQuery, readHashShareToken, writeHashPid } from '../hash'
 
 describe('W4-A 路由（13 §5）：#/ 面板 · #/p/<pid> 规范工作台 · 旧 #/<pid> 兼容', () => {
   it('空 / #/ → dashboard', () => {
@@ -106,6 +106,19 @@ describe('W4-E 路由（17 §1.3）：#/p/<pid>/deliver 递交页 · #/account �
     expect(parseHash().kind).toBe('project')
     goNovelty('other')
     expect(parseHash()).toEqual({ kind: 'novelty', pid: 'other' })
+  })
+  it('Z20：#/p/<pid>/claims → claims；claimsHash 编码；writeHashPid 在同案沙盘页不动；goClaims 往返', () => {
+    window.location.hash = `#${claimsHash('案 a/b')}`
+    expect(parseHash()).toEqual({ kind: 'claims', pid: '案 a/b' })
+    expect(readHashPid()).toBe('案 a/b')
+    writeHashPid('案 a/b')
+    expect(parseHash()).toEqual({ kind: 'claims', pid: '案 a/b' })
+    goClaims('案 a/b')
+    expect(window.location.hash).toBe('#/p/%E6%A1%88%20a%2Fb/claims')
+    goWorkbench('案 a/b')
+    expect(parseHash().kind).toBe('project')
+    goClaims('other')
+    expect(parseHash()).toEqual({ kind: 'claims', pid: 'other' })
   })
   it('#/account · #/admin 不带 pid；readHashPid 为 null', () => {
     window.location.hash = '#/account'

@@ -47,6 +47,8 @@ export type HashRoute =
   | { kind: 'board'; pid: string; src: string | null; img: string | null }
   /** W19 批4：查新记录卡页 #/p/<pid>/novelty；同一案不重开 openProject */
   | { kind: 'novelty'; pid: string }
+  /** Z20：权项沙盘页 #/p/<pid>/claims（只读依赖图 + 引用调整预览） */
+  | { kind: 'claims'; pid: string }
   | { kind: 'login' }
   | { kind: 'share'; token: string }
   | { kind: 'client'; token: string }
@@ -114,7 +116,7 @@ export function parseHash(hash: string = window.location.hash): HashRoute {
   if (client) return { kind: 'client', token: _decode(client[1]) }
   const edit = h.match(/^edit\/([^/?#]+)\/([^/?#]+)/)
   if (edit) return { kind: 'edit', caseId: _decode(edit[1]), docId: _decode(edit[2]) }
-  const p = h.match(/^p\/([^/?#]+)(\/(?:deliver|board|novelty))?(?:\?(.*))?$/)
+  const p = h.match(/^p\/([^/?#]+)(\/(?:deliver|board|novelty|claims))?(?:\?(.*))?$/)
   if (p) {
     const pid = _decode(p[1])
     if (p[2] === '/board') {
@@ -124,6 +126,7 @@ export function parseHash(hash: string = window.location.hash): HashRoute {
       return { kind: 'board', pid, src: src ? _decode(src) : null, img: img ? _decode(img) : null }
     }
     if (p[2] === '/novelty') return { kind: 'novelty', pid }
+    if (p[2] === '/claims') return { kind: 'claims', pid }
     return p[2] ? { kind: 'deliver', pid } : { kind: 'project', pid, legacy: false, query: parseQuery(p[3]) }
   }
   return { kind: 'project', pid: _decode(h.split('?')[0]), legacy: true, query: parseQuery(h.split('?')[1]) }
@@ -132,7 +135,7 @@ export function parseHash(hash: string = window.location.hash): HashRoute {
 /** 当前 hash 指向的案卷 id（工作台 / 递交页 / 画板页 / 旧路径）；面板 / 页面路由 ⇒ null */
 export function readHashPid(): string | null {
   const r = parseHash()
-  return r.kind === 'project' || r.kind === 'deliver' || r.kind === 'board' || r.kind === 'novelty' ? r.pid : null
+  return r.kind === 'project' || r.kind === 'deliver' || r.kind === 'board' || r.kind === 'novelty' || r.kind === 'claims' ? r.pid : null
 }
 
 /** 当前 hash 是页面路由（#/login、#/share/…、#/c/…、#/account、#/admin、#/deadlines、#/inbox、#/__ds）而非案卷 id / 面板 */
@@ -211,6 +214,8 @@ export const deliverHash = (pid: string) => `${projectHash(pid)}/deliver`
 
 /** W19 批4：查新记录卡页 */
 export const noveltyHash = (pid: string) => `${projectHash(pid)}/novelty`
+/** Z20：权项沙盘页 */
+export const claimsHash = (pid: string) => `${projectHash(pid)}/claims`
 /** 画板页 #/p/<pid>/board?src=<stem>：src 缺省 = 新建图源；?img=<figs 图名> = 位图标注改图 */
 export const boardHash = (pid: string, src?: string, img?: string) =>
   `/p/${encodeURIComponent(pid)}/board${src ? `?src=${encodeURIComponent(src)}` : img ? `?img=${encodeURIComponent(img)}` : ''}`
@@ -225,7 +230,7 @@ export const clientHash = (token: string) => `/c/${encodeURIComponent(token)}`
 /** 写规范路径；旧 #/<pid> 打开同一案时也改写（replace，不多留一条历史）；已在该案递交页/画板页时不动 */
 export function writeHashPid(pid: string) {
   const r = parseHash()
-  if ((r.kind === 'deliver' || r.kind === 'board' || r.kind === 'novelty') && r.pid === pid) return
+  if ((r.kind === 'deliver' || r.kind === 'board' || r.kind === 'novelty' || r.kind === 'claims') && r.pid === pid) return
   if (r.kind === 'project' && r.pid === pid && !r.legacy) return
   if (r.kind === 'project' && r.pid === pid) window.location.replace(`#${projectHash(pid)}`)
   else window.location.hash = projectHash(pid)
@@ -245,6 +250,12 @@ export function goDeliver(pid: string) {
 export function goNovelty(pid: string) {
   const r = parseHash()
   if (!(r.kind === 'novelty' && r.pid === pid)) window.location.hash = noveltyHash(pid)
+}
+
+/** 工作台 → 权项沙盘页（同一案不重开 openProject） */
+export function goClaims(pid: string) {
+  const r = parseHash()
+  if (!(r.kind === 'claims' && r.pid === pid)) window.location.hash = claimsHash(pid)
 }
 
 /** 工作台 → 画板页（同一案：StoreBootstrap 的 hashchange 不会重开案） */

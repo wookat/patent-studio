@@ -14,7 +14,7 @@ const refText = (n: ClaimNode) => (n.refs.length ? `→${n.refs.join(n.alternati
  * 多引多 / 循环 / 前向红点，其余问题黄点；点节点 → 跳权项首行 + 结构块 + PDF。
  * 循环引用会让某些从属权项从任何根都到不了 → 单列「未挂树」分组；同一权项在环里只渲染一次（visited）。
  */
-export function ClaimTree({ nodes }: { nodes: ClaimNode[] }) {
+export function ClaimTree({ nodes, onSelect }: { nodes: ClaimNode[]; onSelect?: (num: number) => void }) {
   const locate = usePreflightLocate()
   const [collapsed, setCollapsed] = useState<Set<number>>(() => new Set())
   const [current, setCurrent] = useState<number | null>(null)
@@ -31,7 +31,8 @@ export function ClaimTree({ nodes }: { nodes: ClaimNode[] }) {
     })
   const activate = (n: ClaimNode) => {
     setCurrent(n.num)
-    locate(n.line, `claims/${n.num}`)
+    if (onSelect) onSelect(n.num)
+    else locate(n.line, `claims/${n.num}`)
   }
 
   // visited = 当前路径（防环）；rendered = 本次渲染已出现过的权项（未挂树分组里避免同一环渲染两遍）
