@@ -14,8 +14,13 @@ export type Revision = S['RevisionOut']
 export type WorkingCopy = S['WorkingCopyOut']
 export type Proposal = S['ProposalOut']
 export type Figure = S['FigureOut']
-export type Release = S['ReleaseOut']
-export type ReleaseItem = S['ReleaseItemOut']
+/** Z24：schemas.ReleaseOut/ReleaseItemOut 已加冻结指纹字段；openapi.gen 冻结早于该扩展——手写补齐 */
+export type Release = S['ReleaseOut'] & { created_at?: string; sealed_at?: string | null }
+export type ReleaseItem = S['ReleaseItemOut'] & {
+  document_revision_id?: string | null
+  figure_revision_id?: string | null
+  content_sha256?: string
+}
 export type Approval = S['ApprovalOut']
 export type Notification = S['NotificationOut']
 export type Participant = S['ParticipantOut']

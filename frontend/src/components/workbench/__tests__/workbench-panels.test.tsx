@@ -44,7 +44,7 @@ const figure: Figure = {
 }
 const doc: Document = { id: 'd1', case_id: 'c1', book: 'claims', current_revision_id: 'rev-d1' }
 const release: Release = { id: 'rel1', case_id: 'c1', status: 'created' }
-const sealed: Release = { id: 'rel2', case_id: 'c1', status: 'sealed' }
+const sealed: Release = { id: 'rel2', case_id: 'c1', status: 'sealed', sealed_at: '2026-10-18T08:30:00Z' }
 const item: WorkItem = {
   id: 'w1', case_id: 'c1', type: 'oa-response', title: 'OA1 答复', status: 'open',
   reporter_principal_id: 'p1', assignee_principal_id: null,
@@ -116,7 +116,8 @@ describe('B13 workbench panels', () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = String(input)
       const method = (init as RequestInit | undefined)?.method ?? 'GET'
-      if (url.endsWith('/items') && method === 'GET') return json([])
+      if (url.endsWith('/items') && method === 'GET')
+        return json(url.includes('rel2') ? [{ id: 'i2', release_id: 'rel2', ordinal: 1, item_kind: 'document', document_revision_id: 'revd-1234-abcd', figure_revision_id: null, content_sha256: 'b'.repeat(64) }] : [])
       if (url.includes('/artifacts')) return json([{ id: 'a1', release_id: 'rel2', filename: 'CN-1-rel2.docx', content_ref: { key: 'k', sha256: 'a'.repeat(64), size: 10, content_type: 'application/x' }, inputs: [], created_at: '2026-10-14T00:00:00Z' }])
       if (url.endsWith('/items')) return json({ id: 'i1', release_id: 'rel1', ordinal: 1, item_kind: 'document' })
       if (url.endsWith('/seal')) return json({ ...release, status: 'sealed' })
@@ -146,6 +147,13 @@ describe('B13 workbench panels', () => {
     const link = el.querySelector('[data-testid="artifact-a1"]') as HTMLAnchorElement
     expect(link.getAttribute('href')).toBe('/api/v1/artifacts/a1/content')
     expect(link.getAttribute('download')).toBe('CN-1-rel2.docx')
+    expect(link.getAttribute('title')).toBe(`sha256:${'a'.repeat(64)}`)
+
+    // Z24：sealed 行透出冻结时间与逐项版本指纹（revision+sha256）
+    expect(el.querySelector('[data-testid="sealed-at-rel2"]')!.textContent).toContain('冻结于')
+    const snap = el.querySelector('[data-testid="snapshot-i2"]')!
+    expect(snap.textContent).toContain('revd-123')
+    expect(snap.textContent).toContain('b'.repeat(12))
   })
 
   it('health panel groups kernel preflight items by rule', async () => {

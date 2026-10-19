@@ -403,13 +403,30 @@ function ReleaseRow({ release, caseId, documents, figures }: { release: Release;
         <div className="flex items-center gap-2">
           {packable && <Button size="xs" variant="secondary" loading={addReleaseItem.isPending} onClick={() => void pack()} data-testid={`pack-${release.id}`}>组包三书+附图</Button>}
           {packable && <Button size="xs" variant="secondary" loading={sealRelease.isPending} onClick={() => sealRelease.mutate({ releaseId: release.id, caseId })}>封存</Button>}
-          {release.status === 'sealed' && <Button size="xs" variant="secondary" loading={buildRelease.isPending} onClick={() => buildRelease.mutate({ releaseId: release.id, caseId })} data-testid={`build-${release.id}`}>构建 DOCX</Button>}
+          {release.status === 'sealed' && (
+            <>
+              {release.sealed_at && (
+                <span className="text-xs text-fg-muted" data-testid={`sealed-at-${release.id}`}>
+                  冻结于 {new Date(release.sealed_at).toLocaleString('zh-CN', { hour12: false })}
+                </span>
+              )}
+              <Button size="xs" variant="secondary" loading={buildRelease.isPending} onClick={() => buildRelease.mutate({ releaseId: release.id, caseId })} data-testid={`build-${release.id}`}>构建 DOCX</Button>
+            </>
+          )}
         </div>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-fg-muted">
         <span>{items.isLoading ? '组包项加载中…' : `组包项 ${items.data?.length ?? 0} 件`}</span>
+        {release.status === 'sealed' &&
+          (items.data ?? [])
+            .filter((it) => it.content_sha256)
+            .map((it) => (
+              <span key={it.id} className="inline-flex items-center gap-1 font-mono" title={`内容指纹 sha256:${it.content_sha256}`} data-testid={`snapshot-${it.id}`}>
+                {it.item_kind === 'document' ? '文档' : '附图'}·{(it.document_revision_id ?? it.figure_revision_id ?? '').slice(0, 8)}·{(it.content_sha256 ?? '').slice(0, 12)}
+              </span>
+            ))}
         {(artifacts.data ?? []).map((artifact) => (
-          <a key={artifact.id} href={workbenchApi.artifactUrl(artifact.id)} download={artifact.filename} className="inline-flex items-center gap-1 text-link hover:underline" data-testid={`artifact-${artifact.id}`}>
+          <a key={artifact.id} href={workbenchApi.artifactUrl(artifact.id)} download={artifact.filename} title={`sha256:${artifact.content_ref.sha256}`} className="inline-flex items-center gap-1 text-link hover:underline" data-testid={`artifact-${artifact.id}`}>
             <Download aria-hidden className="size-3" />{artifact.filename}
           </a>
         ))}

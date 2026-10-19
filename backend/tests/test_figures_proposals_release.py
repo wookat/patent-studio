@@ -171,3 +171,54 @@ def test_release_seal_freezes_revision_snapshot(db):
             )
         with pytest.raises(ReleaseConflict):
             seal_release(session, release.id, principal_id=owner.id)
+
+def test_sealed_release_rebuild_sha_identical_and_artifact_replay(db):
+    """Z24：sealed Release 重复 render 出同一 sha256；record_release_artifact 同名同指纹
+    重放返回既有行、异指纹判冲突（不可变交付物）。"""
+    import hashlib
+
+    from patent_studio.domain.releases import (
+        list_release_artifacts,
+        record_release_artifact,
+        render_release,
+    )
+    from patent_studio.infra.storage import object_ref
+
+    with Session(db) as session:
+        _org, case, owner = _case(session, "z24")
+        blobs = {}
+        revisions = []
+        for book in ("abstract", "claims", "description"):
+            doc = create_document(session, case.id, book=book, principal_id=owner.id)
+            data = f"{book} 正文".encode()
+            ref = object_ref(data, "text/markdown")
+            blobs[ref.key] = data
+            rev = create_revision(session, doc.id, author_principal_id=owner.id, content_ref=ref)
+            revisions.append(rev)
+
+        release = create_release(session, case.id, principal_id=owner.id)
+        for rev in revisions:
+            add_release_item(session, release.id, principal_id=owner.id, item_kind="document", revision_id=rev.id)
+        seal_release(session, release.id, principal_id=owner.id)
+
+        read = lambda ref: blobs[ref.key]  # noqa: E731
+        fn1, data1, inputs1 = render_release(session, release.id, principal_id=owner.id, read=read)
+        fn2, data2, inputs2 = render_release(session, release.id, principal_id=owner.id, read=read)
+        assert fn1 == fn2 and hashlib.sha256(data1).hexdigest() == hashlib.sha256(data2).hexdigest()
+        assert inputs1 == inputs2 and all(i["sha256"] for i in inputs1)
+
+        ref = object_ref(data1, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        a1 = record_release_artifact(
+            session, release.id, principal_id=owner.id, filename=fn1, content_ref=ref, inputs=inputs1
+        )
+        a2 = record_release_artifact(
+            session, release.id, principal_id=owner.id, filename=fn1, content_ref=ref, inputs=inputs1
+        )
+        assert a1.id == a2.id  # 同指纹重放幂等
+        assert len(list_release_artifacts(session, release.id, principal_id=owner.id)) == 1
+
+        other = object_ref(b"different", ref.content_type)
+        with pytest.raises(ReleaseConflict):
+            record_release_artifact(
+                session, release.id, principal_id=owner.id, filename=fn1, content_ref=other, inputs=inputs1
+            )

@@ -258,6 +258,8 @@ class ReleaseOut(DTO):
     id: uuid.UUID
     case_id: uuid.UUID
     status: str
+    created_at: datetime
+    sealed_at: datetime | None
 
 
 class ReleaseItemIn(DTO):
@@ -267,10 +269,15 @@ class ReleaseItemIn(DTO):
 
 
 class ReleaseItemOut(DTO):
+    """Z24 冻结版本指纹：revision_id + content_sha256 即该项的不可变快照凭据。"""
+
     id: uuid.UUID
     release_id: uuid.UUID
     ordinal: int
     item_kind: str
+    document_revision_id: uuid.UUID | None
+    figure_revision_id: uuid.UUID | None
+    content_sha256: str
 
 
 class ArtifactOut(DTO):
