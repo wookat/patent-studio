@@ -108,7 +108,9 @@ export function ClaimsSandboxPage({ pid }: { pid: string }) {
     api
       .getPreflight(pid, {}, ac.signal)
       .then((r) => setTree(r.claim_tree ?? []))
-      .catch((e: ApiError) => setError(e.message ?? '加载体检报告失败'))
+      .catch((e: ApiError) => {
+        if (e.name !== 'AbortError' && !ac.signal.aborted) setError(e.message ?? '加载体检报告失败')
+      })
     return () => ac.abort()
   }, [pid])
 

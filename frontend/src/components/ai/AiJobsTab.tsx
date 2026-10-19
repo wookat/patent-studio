@@ -104,7 +104,10 @@ function MetricsCard({ pid, refreshKey }: { pid: string | null; refreshKey: stri
     api
       .agentMetrics(pid, ac.signal)
       .then(setM)
-      .catch((e: unknown) => setErr(e instanceof ApiError ? e.message : '度量加载失败'))
+      .catch((e: unknown) => {
+        if (ac.signal.aborted) return
+        setErr(e instanceof ApiError ? e.message : '度量加载失败')
+      })
     return () => ac.abort()
   }, [pid, refreshKey])
 
