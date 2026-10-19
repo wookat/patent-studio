@@ -262,3 +262,36 @@ def test_oa_items_roundtrip_restores_workset(client):
     assert body["answers"][0]["points"] == ["改过的要点"]
 
     assert c.get("/api/projects/nope/oa/items").status_code == 404
+
+
+def test_oa_item_status_chain_pending_answered_delivered(client):
+    """Z23 闭环：每条意见透出 待答/已答/已交付 状态与所属轮次（证据链）。"""
+    from app.oa import rounds
+
+    c, projects, _ = client
+    c.post("/api/projects/method/oa/parse", json={"text": NOTICE})
+    body = c.get("/api/projects/method/oa/items").json()
+    assert [it["status"] for it in body["items"]] == ["pending"] * 3
+    assert [it["round_id"] for it in body["items"]] == [None] * 3
+
+    # 拆条挂到轮次（与 multipart parse round_id 同路径：rounds.attach_items）
+    pdir = str(projects / "method")
+    rnd = rounds.create_round(pdir, kind="first", issued_on="2025-01-10", delivery="electronic")
+    items = answer.load_items(pdir)
+    rounds.attach_items(pdir, rnd["id"], NOTICE, items)
+    body = c.get("/api/projects/method/oa/items").json()
+    assert [it["round_id"] for it in body["items"]] == [rnd["id"]] * 3
+    assert [it["status"] for it in body["items"]] == ["pending"] * 3
+
+    # 生成一条答复 → 该条 answered，其余仍 pending
+    c.put("/api/projects/method/settings", json={"ai_enabled": True})
+    job = c.post("/api/projects/method/oa/answer", json={"item_ids": ["oa-2"]}).json()
+    _wait(c, job["id"])
+    body = c.get("/api/projects/method/oa/items").json()
+    assert [it["status"] for it in body["items"]] == ["pending", "answered", "pending"]
+
+    # 轮次登记递交日 ⇒ 该轮全部条目 delivered
+    r = c.put(f"/api/projects/method/oa/rounds/{rnd['id']}", json={"filed_on": "2025-02-01"})
+    assert r.status_code == 200
+    body = c.get("/api/projects/method/oa/items").json()
+    assert [it["status"] for it in body["items"]] == ["delivered"] * 3
