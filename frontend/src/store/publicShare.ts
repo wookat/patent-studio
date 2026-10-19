@@ -12,7 +12,7 @@ import type { Slice } from './types'
  */
 export const GUEST_NAME_KEY = 'patent-studio:guest-name'
 
-export type PublicView = 'pdf' | 'layout'
+export type PublicView = 'pdf' | 'layout' | 'text'
 
 export interface PublicShareSlice {
   publicLinks: PublicShareLink[]
