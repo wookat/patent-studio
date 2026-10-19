@@ -80,8 +80,22 @@ export const workbenchApi = {
     if (allStates) sp.set('all_states', 'true')
     return v1req<MethodAsset[]>(`${V1}/organizations/${orgId}/method-assets?${sp}`, { signal })
   },
-  createMethodAsset: (orgId: string, input: { title: string; body: string; source?: 'manual' | 'curated' }) =>
-    write<MethodAsset>(`${V1}/organizations/${orgId}/method-assets`, { body: JSON.stringify(input) }),
+  createMethodAsset: (
+    orgId: string,
+    input: {
+      title: string
+      body: string
+      source?: 'manual' | 'curated'
+      asset_type: 'method' | 'expression'
+      provenance: string
+      authorized_scope: string
+      deidentified_confirmed: boolean
+    },
+  ) => write<MethodAsset>(`${V1}/organizations/${orgId}/method-assets`, { body: JSON.stringify(input) }),
+  confirmMethodAsset: (
+    assetId: string,
+    input: { asset_type: 'method' | 'expression'; provenance: string; authorized_scope: string; deidentified_confirmed: boolean },
+  ) => write<MethodAsset>(`${V1}/method-assets/${assetId}/confirm`, { body: JSON.stringify(input) }),
   authorizeMethodAsset: (assetId: string) => write<MethodAsset>(`${V1}/method-assets/${assetId}/authorize`),
   revokeMethodAsset: (assetId: string) => write<MethodAsset>(`${V1}/method-assets/${assetId}/revoke`),
   useMethodAsset: (assetId: string, input: { case_id?: string; note?: string }) =>

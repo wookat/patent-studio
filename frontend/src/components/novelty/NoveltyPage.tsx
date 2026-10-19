@@ -70,12 +70,19 @@ export function NoveltyPage({ pid }: { pid: string }) {
   }, [dirty])
 
   // 换案（同页不同 pid）→ 渲染期重置（React 官方 adjust-state-on-prop-change，避免 effect 内同步 setState）
+  // 复核项3：证据登记表单也一并清空——半填的 hit/claim/feature/quote 不能串到另一案
   const [prevPid, setPrevPid] = useState(pid)
   if (prevPid !== pid) {
     setPrevPid(pid)
     setRec(null)
     setBase(null)
     setLoadError(null)
+    setEvHit('')
+    setEvClaim('')
+    setEvFeature('')
+    setEvQuote('')
+    setEvStatus('hit')
+    setEvBusy(false)
   }
 
   const loadSeq = useRef(0)
@@ -424,13 +431,22 @@ export function NoveltyPage({ pid }: { pid: string }) {
           )}
           {canEdit && rec.hits.length > 0 && (
             <div className="grid gap-2 rounded-md border border-border bg-panel p-3" data-testid="evidence-form">
+              {dirty ? (
+                /* 复核项3：有未保存改动时先保存再登记——否则证据可能锚到未入库/即将被改名的对比文件，
+                   且服务端只认已落库的 hit（未保存行只能吃到 422）。登记成功后仅把新证据行合并进
+                   rec/base（其余未保存字段原样保留，不丢）。 */
+                <p className="text-xs text-warn-fg" data-testid="evidence-dirty-hint">
+                  有未保存的检索式 / 对比文件 / 结论改动——请先「保存」后再登记证据行，避免证据锚到尚未入库的对比文件。
+                </p>
+              ) : (
+                <>
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={evHitKey} onValueChange={setEvHit}>
                   <SelectTrigger className="w-56" aria-label="对比文件" data-testid="evidence-hit">
                     <SelectValue placeholder="选择对比文件" />
                   </SelectTrigger>
                   <SelectContent>
-                    {rec.hits.map((h) => (
+                    {(base?.hits ?? rec.hits).map((h) => (
                       <SelectItem key={h.number || h.title} value={h.number || h.title}>
                         {h.number || h.title}
                       </SelectItem>
@@ -489,6 +505,8 @@ export function NoveltyPage({ pid }: { pid: string }) {
               <p className="text-xs text-fg-muted">
                 批注锚到 claims/权N 块并出现在工作台审阅面板（source=ai）；不修改正文。无证据原句一律记「待核对」。
               </p>
+                </>
+              )}
             </div>
           )}
         </section>

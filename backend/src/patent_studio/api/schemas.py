@@ -104,11 +104,28 @@ class CasePageOut(DTO):
 
 
 class MethodAssetIn(DTO):
-    """Z30：人工录入的脱敏方法卡（method/expression，非客户发明事实）。source 只收 manual/curated。"""
+    """Z30：人工录入的脱敏方法卡（method/expression，非客户发明事实）。source 只收 manual/curated。
+
+    复核项6 元数据（服务端强制）：asset_type 类型、provenance 真实来源说明、
+    authorized_scope 授权使用范围、deidentified_confirmed 人工脱敏声明——必须是字面 True
+    （Literal[True] 之外的值 422；声明≠系统验证过正文，仅录入人负责）。"""
 
     title: str = Field(min_length=1, max_length=300)
     body: str = Field(min_length=1)
     source: Literal["manual", "curated"] = "manual"
+    asset_type: Literal["method", "expression"] = "method"
+    provenance: str = Field(min_length=1, max_length=500)
+    authorized_scope: str = Field(min_length=1, max_length=500)
+    deidentified_confirmed: Literal[True]
+
+
+class MethodAssetConfirmIn(DTO):
+    """复核项6：既有草稿（0015 迁移前创建、元数据缺失）的补登确认载荷。"""
+
+    asset_type: Literal["method", "expression"]
+    provenance: str = Field(min_length=1, max_length=500)
+    authorized_scope: str = Field(min_length=1, max_length=500)
+    deidentified_confirmed: Literal[True]
 
 
 class MethodAssetOut(DTO):
@@ -118,7 +135,12 @@ class MethodAssetOut(DTO):
     body: str
     source: str
     status: str
+    asset_type: str
+    provenance: str | None
+    authorized_scope: str | None
+    deidentified_confirmed: bool
     authorized_by_principal_id: uuid.UUID | None
+    authorized_at: datetime | None
     created_by_principal_id: uuid.UUID
     created_at: datetime
     updated_at: datetime

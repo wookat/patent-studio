@@ -3,7 +3,7 @@ import type { SupportRow } from '@/types/preflight'
 
 /** Z20 权项沙盘：后端 domain/claim_sandbox 的返回形状。 */
 export interface ClaimBlocker {
-  kind: 'unknown_claim' | 'missing' | 'self' | 'forward' | 'cycle'
+  kind: 'unknown_claim' | 'invalid_ref' | 'missing' | 'self' | 'forward' | 'cycle'
   message: string
   refs?: number[]
   path?: number[]
@@ -41,9 +41,10 @@ export interface ClaimPreview {
 export const claimsApi = {
   claimDetail: (pid: string, num: number, signal?: AbortSignal) =>
     req<ClaimDetail>(`/api/projects/${encodeURIComponent(pid)}/claims/${num}`, { signal }),
-  claimPreview: (pid: string, num: number, refs: number[]) =>
+  claimPreview: (pid: string, num: number, refs: number[], signal?: AbortSignal) =>
     req<ClaimPreview>(`/api/projects/${encodeURIComponent(pid)}/claims/${num}/preview`, {
       method: 'POST',
       body: JSON.stringify({ refs }),
+      signal,
     }),
 }

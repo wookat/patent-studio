@@ -27,11 +27,21 @@ def _org(client, tag):
     ).json()
 
 
-def _mk(client, org, tag, title="方法卡", body="撰写步骤…"):
+def _mk(client, org, tag, title="方法卡", body="撰写步骤…", **extra):
+    payload = {
+        "title": title,
+        "body": body,
+        "source": "manual",
+        "asset_type": "method",
+        "provenance": "本所内部撰写培训材料整理",
+        "authorized_scope": "仅限本机构案件撰写参考",
+        "deidentified_confirmed": True,
+    }
+    payload.update(extra)
     return client.post(
         f"/api/v1/organizations/{org['id']}/method-assets",
         headers={"Idempotency-Key": f"{tag}-m"},
-        json={"title": title, "body": body, "source": "manual"},
+        json=payload,
     )
 
 
@@ -136,6 +146,84 @@ def test_method_asset_use_rejects_cross_org_case(on):
     assert bad.status_code == 403
 
 
+def test_create_requires_governance_metadata(on):
+    """复核项6：缺来源/范围/脱敏确认一律 422——服务端强制，不靠前端复选框。"""
+    client = _user(on, "meta")
+    org = _org(client, "meta")
+    r = client.post(
+        f"/api/v1/organizations/{org['id']}/method-assets",
+        headers={"Idempotency-Key": "meta-1"},
+        json={"title": "卡", "body": "正文", "source": "manual"},  # 三个新字段全缺
+    )
+    assert r.status_code == 422
+    r2 = client.post(
+        f"/api/v1/organizations/{org['id']}/method-assets",
+        headers={"Idempotency-Key": "meta-2"},
+        json={
+            "title": "卡",
+            "body": "正文",
+            "source": "manual",
+            "asset_type": "method",
+            "provenance": "内部培训",
+            "authorized_scope": "本机构",
+            "deidentified_confirmed": False,  # 必须是字面 True
+        },
+    )
+    assert r2.status_code == 422
+
+
+def test_legacy_unconfirmed_draft_cannot_be_authorized(on, pg_schema):
+    """复核项6：迁移前旧卡（来源/范围 NULL、脱敏未声明）授权被拒；补登确认后可授权。"""
+    client = _user(on, "leg")
+    org = _org(client, "leg")
+    aid = _mk(client, org, "leg").json()["id"]
+    # 模拟 0015 之前的旧草稿：直接回写库为未确认态
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+
+    from patent_studio.domain.methods import MethodAsset
+    from patent_studio.infra.db import database_url
+
+    eng = create_engine(database_url(pg_schema))
+    try:
+        with Session(eng) as s:
+            a = s.get(MethodAsset, uuid.UUID(aid))
+            a.provenance = None
+            a.authorized_scope = None
+            a.deidentified_confirmed = False
+            s.commit()
+    finally:
+        eng.dispose()
+    r = client.post(f"/api/v1/method-assets/{aid}/authorize", headers={"Idempotency-Key": "leg-a"})
+    assert r.status_code == 403
+    rc = client.post(
+        f"/api/v1/method-assets/{aid}/confirm",
+        headers={"Idempotency-Key": "leg-c"},
+        json={
+            "asset_type": "expression",
+            "provenance": "资深代理师经验沉淀（脱敏改写）",
+            "authorized_scope": "全机构撰写参考",
+            "deidentified_confirmed": True,
+        },
+    )
+    assert rc.status_code == 200, rc.text
+    assert rc.json()["asset_type"] == "expression" and rc.json()["deidentified_confirmed"] is True
+    r2 = client.post(f"/api/v1/method-assets/{aid}/authorize", headers={"Idempotency-Key": "leg-b"})
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["authorized_by_principal_id"] and r2.json()["authorized_at"]
+
+
+def test_confirm_requires_draft_state(on):
+    """复核项6：confirm 仅草稿可补登；已授权卡不可重复确认。"""
+    client = _user(on, "cnf")
+    org = _org(client, "cnf")
+    aid = _mk(client, org, "cnf").json()["id"]
+    body = {"asset_type": "method", "provenance": "x", "authorized_scope": "y", "deidentified_confirmed": True}
+    assert client.post(f"/api/v1/method-assets/{aid}/authorize", headers={"Idempotency-Key": "c1"}).status_code == 200
+    r = client.post(f"/api/v1/method-assets/{aid}/confirm", headers={"Idempotency-Key": "c2"}, json=body)
+    assert r.status_code == 422
+
+
 def test_method_assets_manage_gates_and_source_validation(on):
     owner = _user(on, "ml-f")
     member = _user(on, "ml-g")
@@ -164,7 +252,15 @@ def test_method_assets_manage_gates_and_source_validation(on):
         member.post(
             f"/api/v1/organizations/{org['id']}/method-assets",
             headers={"Idempotency-Key": "g-m"},
-            json={"title": "成员卡", "body": "步骤", "source": "curated"},
+            json={
+                "title": "成员卡",
+                "body": "步骤",
+                "source": "curated",
+                "asset_type": "expression",
+                "provenance": "成员个人整理撰写经验",
+                "authorized_scope": "本机构参考",
+                "deidentified_confirmed": True,
+            },
         ).status_code
         == 201
     )

@@ -11,7 +11,7 @@ POST /api/projects/{pid}/claims/{num}/preview  —— 「若引用改为 refs」
 """
 
 from fastapi import APIRouter, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.domain.claim_sandbox import detail as claim_detail
 from app.domain.claim_sandbox import preview as claim_preview
@@ -33,7 +33,21 @@ async def get_claim(pid: str, num: int, request: Request):
 
 
 class ClaimPreviewIn(BaseModel):
+    """refs 必须是严格的正整数列表：list[int] 默认会把 true→1、1.0→1、'1'→1 静默收编，
+    故在 mode='before' 校验原始值——bool / 浮点 / 字符串 / ≤0 一律 422，预览不执行。
+    合法空列表表示「移除全部引用 → 变独立权」；不设权项数上限（超大值走 missing 语义）。"""
+
     refs: list[int] = Field(default_factory=list)
+
+    @field_validator("refs", mode="before")
+    @classmethod
+    def _strict_positive_refs(cls, v):
+        if not isinstance(v, list):
+            return v  # 交给 pydantic 自身的 list 校验报错
+        for i, item in enumerate(v):
+            if isinstance(item, bool) or not isinstance(item, int) or item < 1:
+                raise ValueError(f"refs[{i}] 必须是正整数权项编号")
+        return v
 
 
 @router.post("/claims/{num}/preview")

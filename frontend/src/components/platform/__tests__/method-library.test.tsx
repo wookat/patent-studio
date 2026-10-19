@@ -16,9 +16,14 @@ let host: HTMLElement
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 const ME = { id: 'p1', kind: 'human', display_name: '所长' }
-const ASSET = (id: string, status: string) => ({
+const ASSET = (id: string, status: string, unconfirmed = false) => ({
   id, organization_id: 'o1', title: `卡-${id}`, body: '步骤…', source: 'manual', status,
+  asset_type: 'method',
+  provenance: unconfirmed ? null : '内部培训材料整理',
+  authorized_scope: unconfirmed ? null : '本机构参考',
+  deidentified_confirmed: !unconfirmed,
   authorized_by_principal_id: status === 'authorized' ? 'p1' : null,
+  authorized_at: status === 'authorized' ? '2026-01-02T00:00:00Z' : null,
   created_by_principal_id: 'p1', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
 })
 
@@ -31,6 +36,7 @@ function mockApi(opts: { assets?: unknown[]; role?: string; assetsStatus?: numbe
     if (url === '/api/v1/organizations/o1/memberships') return json([{ organization_id: 'o1', principal_id: 'p1', role: opts.role ?? 'owner', status: 'active' }])
     if (url.startsWith('/api/v1/organizations/o1/method-assets')) return json(opts.assets ?? [ASSET('a1', 'authorized'), ASSET('a2', 'draft')], opts.assetsStatus ?? 200)
     if (url === '/api/v1/method-assets/a1/uses') return json([{ id: 'u1', asset_id: 'a1', case_id: 'c9', principal_id: 'p1', note: '权1套用', used_at: '2026-01-02T00:00:00Z' }])
+    if (url.endsWith('/confirm')) return json(ASSET('a2', 'draft'), 200)
     if (url.endsWith('/authorize') || url.endsWith('/revoke') || url.endsWith('/use')) return json(ASSET('a1', url.endsWith('revoke') ? 'revoked' : 'authorized'), 201)
     return json({ detail: 'not found' }, 404)
   }))
@@ -97,5 +103,35 @@ describe('Z30 机构方法库页', () => {
     await mount(<MethodLibraryPage orgId="o1" />)
     await vi.waitFor(() => expect(host.querySelector('[data-testid="ml-empty"]')).not.toBeNull())
     expect(host.querySelector('[data-testid="ml-empty"]')!.textContent).toContain('授权')
+  })
+
+  it('复核项6：未确认旧草稿无授权按钮，显示补登确认表单与元数据', async () => {
+    const calls = mockApi({ assets: [ASSET('a2', 'draft', true)] })
+    await mount(<MethodLibraryPage orgId="o1" />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ml-asset-a2"]')).not.toBeNull())
+    const card = host.querySelector('[data-testid="ml-asset-a2"]')!
+    expect(card.textContent).toContain('未确认')
+    expect(card.textContent).toContain('早期草稿未填写')
+    expect(host.querySelector('[data-testid="ml-authorize-a2"]')).toBeNull()
+    expect(host.querySelector('[data-testid="ml-confirm-a2"]')).not.toBeNull()
+    // 填元数据 + 勾确认 → 提交 confirm
+    await act(async () => {
+      const p = host.querySelector('[data-testid="ml-confirm-a2-prov"]') as HTMLInputElement
+      const s = host.querySelector('[data-testid="ml-confirm-a2-scope"]') as HTMLInputElement
+      const d = host.querySelector('[data-testid="ml-confirm-a2-deid"]') as HTMLInputElement
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!
+      setter.call(p, '内部沉淀'); p.dispatchEvent(new Event('input', { bubbles: true }))
+      setter.call(s, '本机构'); s.dispatchEvent(new Event('input', { bubbles: true }))
+      d.click()
+    })
+    await act(async () => (host.querySelector('[data-testid="ml-confirm-submit-a2"]') as HTMLButtonElement).click())
+    await vi.waitFor(() => expect(calls.some((c) => c === 'POST /api/v1/method-assets/a2/confirm')).toBe(true))
+  })
+
+  it('复核项6：返回工作台链接存在', async () => {
+    mockApi({})
+    await mount(<MethodLibraryPage orgId="o1" />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ml-asset-a1"]')).not.toBeNull())
+    expect((host.querySelector('[data-testid="ml-back"]') as HTMLAnchorElement).getAttribute('href')).toBe('#/workbench')
   })
 })

@@ -1,16 +1,30 @@
 # -*- coding: utf-8 -*-
-"""Z32 外部Agent成果度量：Job/Proposal/usage 关联的纯聚合（不新增账本）。
+"""Z32 成果度量：本案 agent:* Job/Proposal/usage 关联的纯聚合（不新增账本，仅本案口径）。
 
 口径（全部证据可回溯，不用调用数/采纳率当质量排名）：
 - jobs：按 id 去重；resumed = result.resumed 或任一步骤 data.resumed（Z14 恢复链路留痕）；
   duration_s = updated_at − created_at（含排队与中断间隔，≠ 模型推理时长，见 limits）。
-- proposals：jsonl 同 id 取末行后按 state 分桶 pending/applied/dismissed；produced = 全量。
+- proposals：jsonl 同 id 取末行（函数内去重自证契约，调用方给重放行也不重复计数）后按
+  state 分桶 pending/applied/dismissed；produced = 去重后全量。
 - usage：read_usage 行数与 total_tokens 求和；token≠费用（无单价/币种采集 ⇒ cost.collected=False）。
 - human_edits：人工改动量无采集管道 ⇒ collected=False。
-返回 items 均带 id/job_id/state，前端可点回具体提案/任务；不输出正文与凭证。
+返回 items 均带 id/job_id/state，前端可点回具体提案/任务；不输出正文与凭证——
+job.error 只透出结构化 kind + 固定文案，原始 message 可能含上游响应正文/凭证，绝不外发。
 """
 
 from app.ai.jobs import FINAL
+
+# 度量不导出原始错误文本（AiError message 可能拼进上游响应正文，含正文/凭证/内部细节）
+_SAFE_ERROR_MESSAGE = "任务失败；错误明细见任务时间线或服务端日志（度量不导出原始错误文本）"
+
+
+def _safe_error(err) -> dict | None:
+    """job.error → {kind, message}：kind 是 error_detail 的受控码（ai_*/internal），
+    message 一律固定文案——原始 message/detail 不透出。"""
+    if not isinstance(err, dict) or not err:
+        return None
+    kind = err.get("kind")
+    return {"kind": kind if isinstance(kind, str) and kind else "internal", "message": _SAFE_ERROR_MESSAGE}
 
 
 def _job_item(j: dict) -> dict:
@@ -36,7 +50,7 @@ def _job_item(j: dict) -> dict:
         "duration_s": duration,
         "resumed": resumed,
         "proposal_ids": j.get("proposal_ids") or [],
-        "error": j.get("error"),
+        "error": _safe_error(j.get("error")),
     }
 
 
@@ -63,7 +77,12 @@ def case_metrics(jobs: list[dict], proposals: list[dict], usage_rows: list[dict]
     for it in items:
         status_counts[it["status"]] = status_counts.get(it["status"], 0) + 1
 
-    p_items = [_proposal_item(p) for p in proposals]
+    # jsonl 追加日志：同 id 末行 = 最新状态。proposals.load 已给 latest，函数内仍去重自证
+    # 契约——直接把重放行列表传进来也不会把同一提案重复计入两个状态桶。
+    last_by_id: dict[str, dict] = {}
+    for p in proposals:
+        last_by_id[p["id"] if p.get("id") else f"#{len(last_by_id)}"] = p
+    p_items = [_proposal_item(p) for p in sorted(last_by_id.values(), key=lambda x: x.get("created_at") or 0)]
     p_states: dict[str, int] = {}
     for it in p_items:
         p_states[it["state"]] = p_states.get(it["state"], 0) + 1

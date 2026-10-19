@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, FlaskConical } from 'lucide-react'
 import { api } from '@/lib/api'
 import type { ApiError } from '@/lib/api'
@@ -73,7 +73,7 @@ function PreviewResult({ r, onPick }: { r: ClaimPreview; onPick: (n: number) => 
         </div>
       ) : (
         <div className="rounded-md border border-border bg-panel p-3">
-          <p className="text-xs font-semibold text-fg-strong">预览通过：调整在当前图上不引入结构错误</p>
+          <p className="text-xs font-semibold text-fg-strong">引用结构检查通过：调整在当前依赖图上不引入缺失/自引/前向/循环问题</p>
           {r.warnings.length > 0 && (
             <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-warn-fg" data-testid="preview-warnings">
               {r.warnings.map((w, i) => <li key={i}>{w.message}</li>)}
@@ -89,7 +89,7 @@ function PreviewResult({ r, onPick }: { r: ClaimPreview; onPick: (n: number) => 
           </dl>
         </div>
       )}
-      <p className="text-xs text-fg-muted">仅为沙盘推演，未修改正文。确认调整请回工作台修订权利要求书文本；AI 变更一律经提案通道由人工采纳。</p>
+      <p className="text-xs text-fg-muted">仅校验权项引用结构，不代表说明书支持、形式规范等其他体检规则全部合规；沙盘推演未修改正文。确认调整请回工作台修订权利要求书文本；AI 变更一律经提案通道由人工采纳。</p>
     </div>
   )
 }
@@ -102,6 +102,36 @@ export function ClaimsSandboxPage({ pid }: { pid: string }) {
   const [refsInput, setRefsInput] = useState('')
   const [preview, setPreview] = useState<ClaimPreview | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [inputError, setInputError] = useState<string | null>(null)
+  // 乱序闸：detail/preview 各自单调序号 + AbortController——快切时慢响应不得覆盖新选择的展示
+  const detailSeq = useRef(0)
+  const previewSeq = useRef(0)
+  const detailReq = useRef<AbortController | null>(null)
+  const previewReq = useRef<AbortController | null>(null)
+
+  // 换案（同页不同 pid）→ 渲染期重置全部本地态 + 序号作废在途响应（React adjust-state-on-prop-change）
+  const [prevPid, setPrevPid] = useState(pid)
+  if (prevPid !== pid) {
+    setPrevPid(pid)
+    detailSeq.current += 1
+    previewSeq.current += 1
+    setTree(null)
+    setError(null)
+    setSelected(null)
+    setDetail(null)
+    setRefsInput('')
+    setPreview(null)
+    setPreviewLoading(false)
+    setInputError(null)
+  }
+
+  // 卸载 / 换案：取消在途 detail / preview 请求（其 catch 里 aborted 守卫挡掉回写）
+  useEffect(() => {
+    return () => {
+      detailReq.current?.abort()
+      previewReq.current?.abort()
+    }
+  }, [pid])
 
   useEffect(() => {
     const ac = new AbortController()
@@ -114,17 +144,37 @@ export function ClaimsSandboxPage({ pid }: { pid: string }) {
     return () => ac.abort()
   }, [pid])
 
+  /** 使在途与已展示的预览失效（输入变了 / 选项变了，旧结果不得当作新输入的结论） */
+  const invalidatePreview = useCallback(() => {
+    previewSeq.current += 1
+    previewReq.current?.abort()
+    previewReq.current = null
+    setPreview(null)
+    setPreviewLoading(false)
+  }, [])
+
   const select = useCallback(
     (num: number) => {
       setSelected(num)
-      setPreview(null)
       setRefsInput('')
+      setInputError(null)
+      invalidatePreview()
+      setDetail(null) // 立即清旧详情——慢响应不得留下「新选择权项 + 旧权项详情」的拼接态
+      detailReq.current?.abort()
+      const ac = new AbortController()
+      detailReq.current = ac
+      const seq = ++detailSeq.current
       api
-        .claimDetail(pid, num)
-        .then(setDetail)
-        .catch((e: ApiError) => setDetail({ claim: num, ok: false, blockers: [{ kind: 'unknown_claim', message: e.message }] }))
+        .claimDetail(pid, num, ac.signal)
+        .then((d) => {
+          if (detailSeq.current === seq && !ac.signal.aborted) setDetail(d)
+        })
+        .catch((e: ApiError) => {
+          if (detailSeq.current !== seq || ac.signal.aborted || e.name === 'AbortError') return
+          setDetail({ claim: num, ok: false, blockers: [{ kind: 'unknown_claim', message: e.message }] })
+        })
     },
-    [pid],
+    [pid, invalidatePreview],
   )
 
   const byNum = useMemo(() => new Map((tree ?? []).map((n) => [n.num, n])), [tree])
@@ -135,18 +185,45 @@ export function ClaimsSandboxPage({ pid }: { pid: string }) {
 
   const runPreview = () => {
     if (selected == null) return
-    const refs = refsInput
+    // 严格正整数解析：非法 token（abc / 1.5 / -1 / 0 / 超精度）显式报错且不发送预览——
+    // 不能静默过滤后拿「通过」结果误导；后端 pydantic/纯函数同口径兜底。
+    const tokens = refsInput
       .split(/[,，、\s]+/)
       .map((s) => s.trim())
       .filter(Boolean)
-      .map((s) => Number(s))
-      .filter((n) => Number.isInteger(n))
+    const refs: number[] = []
+    const invalid: string[] = []
+    for (const t of tokens) {
+      const n = /^\d+$/.test(t) ? Number(t) : NaN
+      if (Number.isSafeInteger(n) && n >= 1) {
+        if (!refs.includes(n)) refs.push(n)
+      } else {
+        invalid.push(t)
+      }
+    }
+    if (invalid.length) {
+      invalidatePreview()
+      setInputError(`引用编号格式不合法：${invalid.join('、')}（需正整数，多个用逗号分隔）`)
+      return
+    }
+    setInputError(null)
+    previewReq.current?.abort()
+    const ac = new AbortController()
+    previewReq.current = ac
+    const seq = ++previewSeq.current
     setPreviewLoading(true)
     api
-      .claimPreview(pid, selected, refs)
-      .then(setPreview)
-      .catch((e: ApiError) => setPreview({ claim: selected, ok: false, blockers: [{ kind: 'unknown_claim', message: e.message }], warnings: [] }))
-      .finally(() => setPreviewLoading(false))
+      .claimPreview(pid, selected, refs, ac.signal)
+      .then((r) => {
+        if (previewSeq.current === seq && !ac.signal.aborted) setPreview(r)
+      })
+      .catch((e: ApiError) => {
+        if (previewSeq.current !== seq || ac.signal.aborted || e.name === 'AbortError') return
+        setPreview({ claim: selected, ok: false, blockers: [{ kind: 'unknown_claim', message: e.message }], warnings: [] })
+      })
+      .finally(() => {
+        if (previewSeq.current === seq) setPreviewLoading(false)
+      })
   }
 
   const node = selected != null ? byNum.get(selected) : undefined
@@ -219,7 +296,12 @@ export function ClaimsSandboxPage({ pid }: { pid: string }) {
                 <div className="mt-2 flex items-center gap-2">
                   <Input
                     value={refsInput}
-                    onChange={(e) => setRefsInput(e.target.value)}
+                    onChange={(e) => {
+                      setRefsInput(e.target.value)
+                      // 输入一变旧预览即失效——不能把上一次的推演结果当作当前输入的结论
+                      invalidatePreview()
+                      setInputError(null)
+                    }}
                     placeholder={detail.current_refs?.length ? `当前：${detail.current_refs.join(',')}` : '如：1, 2'}
                     className="h-sm-control w-48 text-xs"
                     aria-label="调整后引用编号"
@@ -237,18 +319,25 @@ export function ClaimsSandboxPage({ pid }: { pid: string }) {
                         key={n}
                         type="button"
                         className="ml-1 inline-flex h-5 rounded-sm border border-border bg-panel px-1.5 text-xs hover:bg-hover"
-                        onClick={() =>
+                        onClick={() => {
+                          invalidatePreview()
+                          setInputError(null)
                           setRefsInput((cur) => {
                             const set = new Set(cur.split(/[,，、\s]+/).map((s) => s.trim()).filter(Boolean))
                             if (set.has(String(n))) set.delete(String(n))
                             else set.add(String(n))
                             return [...set].sort((a, b) => Number(a) - Number(b)).join(',')
                           })
-                        }
+                        }}
                       >
                         {n}
                       </button>
                     ))}
+                  </p>
+                )}
+                {inputError && (
+                  <p className="mt-2 text-xs text-danger-fg" role="alert" data-testid="preview-input-error">
+                    {inputError}
                   </p>
                 )}
                 {preview && <PreviewResult r={preview} onPick={select} />}

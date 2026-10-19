@@ -71,7 +71,12 @@ export interface MethodAsset {
   body: string
   source: string
   status: 'draft' | 'authorized' | 'revoked' | string
+  asset_type: 'method' | 'expression' | string
+  provenance: string | null
+  authorized_scope: string | null
+  deidentified_confirmed: boolean
   authorized_by_principal_id: string | null
+  authorized_at: string | null
   created_by_principal_id: string
   created_at: string
   updated_at: string

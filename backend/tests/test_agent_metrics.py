@@ -9,7 +9,6 @@ import importlib
 import os
 import shutil
 import sys
-import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -63,7 +62,8 @@ def test_status_buckets_dedup_and_resumed():
     j1 = next(i for i in m["jobs"]["items"] if i["id"] == "j1")
     assert j1["duration_s"] == 60.0 and j1["resumed"] and j1["proposal_ids"] == ["p1"]
     j2 = next(i for i in m["jobs"]["items"] if i["id"] == "j2")
-    assert j2["error"]["kind"] == "ai_upstream"  # 失败可追踪到 kind/message
+    # 复核项4：失败可追踪到受控 kind，但原始 message（boom）不透出
+    assert j2["error"]["kind"] == "ai_upstream" and "boom" not in j2["error"]["message"]
     assert m["proposals"] == {
         "produced": 3,
         "pending": 1,
@@ -76,6 +76,37 @@ def test_status_buckets_dedup_and_resumed():
     assert m["cost"]["collected"] is False and "未采集" in m["cost"]["reason"]
     assert m["human_edits"]["collected"] is False
     assert any("采纳率" in x for x in m["limits"])
+
+
+def test_proposals_dedup_latest_wins_inside_function():
+    """复核项4：case_metrics 自身按 id 去重取末行——重放行列表不能把同一提案计入两个状态桶。"""
+    props = [
+        _prop("p1", "j1", "pending"),
+        _prop("p1", "j1", "applied"),  # 同 id 末行覆盖：只计 applied
+        _prop("p2", "j1", "dismissed"),
+    ]
+    m = metrics.case_metrics([], props, [])
+    assert m["proposals"]["produced"] == 2
+    assert m["proposals"]["applied"] == 1 and m["proposals"]["dismissed"] == 1
+    assert m["proposals"]["pending"] == 0
+    assert sorted(p["id"] for p in m["proposals"]["items"]) == ["p1", "p2"]
+    p1 = next(i for i in m["proposals"]["items"] if i["id"] == "p1")
+    assert p1["state"] == "applied"
+
+
+def test_error_message_is_sanitized_not_raw():
+    """复核项4：原始错误（可能含凭证/正文/上游报文）不落度量响应——SECRET-TOKEN 断言。"""
+    secret = "SECRET-TOKEN-9f4e"
+    job = _job("j9", "error")
+    job["error"] = {"kind": "ai_upstream", "message": f"upstream 401: Authorization Bearer {secret}\n<body>…</body>"}
+    m = metrics.case_metrics([job], [], [])
+    import json as _json
+
+    blob = _json.dumps(m, ensure_ascii=False)
+    assert secret not in blob
+    item = m["jobs"]["items"][0]
+    assert item["error"]["kind"] == "ai_upstream"
+    assert item["error"]["message"] == metrics._SAFE_ERROR_MESSAGE
 
 
 def test_empty_case():

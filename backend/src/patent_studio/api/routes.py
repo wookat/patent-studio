@@ -1375,6 +1375,20 @@ def create_method_asset(organization_id: uuid.UUID, body: s.MethodAssetIn, ctx: 
     return command(ctx, key, "method_asset.create", str(organization_id), body, s.MethodAssetOut, action)
 
 
+@router.post("/method-assets/{asset_id}/confirm", response_model=s.MethodAssetOut)
+def confirm_method_asset(asset_id: uuid.UUID, body: s.MethodAssetConfirmIn, ctx: Ctx, key: Key):
+    """复核项6：既有草稿补登 asset_type/provenance/authorized_scope + 人工脱敏确认（需 manage）。
+    未确认卡禁止授权（authorize 服务端闸）。"""
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id, manage=True)
+
+    def action():
+        a = meth.confirm_asset(ctx.session, asset_id, ctx.principal.id, **body.model_dump())
+        return a, a.organization_id, None
+
+    return command(ctx, key, "method_asset.confirm", str(asset_id), body, s.MethodAssetOut, action)
+
+
 @router.post("/method-assets/{asset_id}/authorize", response_model=s.MethodAssetOut)
 def authorize_method_asset(asset_id: uuid.UUID, ctx: Ctx, key: Key):
     asset = meth._asset(ctx.session, asset_id)

@@ -88,14 +88,28 @@ def preview(nodes: list[dict], support_map: list[dict], claim_num: int, new_refs
             "warnings": [],
         }
 
-    # 归一：去重保序、只收正整数
+    # 归一：去重保序、只收正整数。非法 token（bool / ≤0 / 浮点 / 字符串）不静默吞——
+    # 显式 invalid_ref 阻断（路由层另有 422；纯函数被直调时同样拒绝产生 ok=true 假象）。
     refs: list[int] = []
+    invalid: list = []
     for r in new_refs:
-        if isinstance(r, int) and not isinstance(r, bool) and r >= 1 and r not in refs:
-            refs.append(r)
+        if isinstance(r, int) and not isinstance(r, bool) and r >= 1:
+            if r not in refs:
+                refs.append(r)
+        else:
+            invalid.append(r)
 
     blockers: list[dict] = []
     warnings: list[dict] = []
+
+    if invalid:
+        blockers.append(
+            {
+                "kind": "invalid_ref",
+                "message": f"引用编号必须是正整数，非法输入：{invalid}",
+                "refs": invalid,
+            }
+        )
 
     missing = [r for r in refs if r not in nums]
     if missing:

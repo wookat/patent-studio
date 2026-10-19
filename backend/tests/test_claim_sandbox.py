@@ -84,6 +84,22 @@ def test_preview_blockers():
     assert unknown["ok"] is False and unknown["blockers"][0]["kind"] == "unknown_claim"
 
 
+def test_preview_invalid_refs_not_silently_dropped():
+    """复核项1：纯函数对非法 token 必须显式阻断，不能过滤后返 ok=true。"""
+    for bad in ([-1], [0], [True], [1.0], ["abc"], [1.5]):
+        r = sb.preview(TREE, SUPPORT, 5, bad)
+        assert r["ok"] is False, bad
+        assert any(b["kind"] == "invalid_ref" for b in r["blockers"]), bad
+    # 合法与非法混合：非法项单独点名，合法项仍按语义校验（missing 也在）
+    mixed = sb.preview(TREE, SUPPORT, 5, [1, -2, 99])
+    assert mixed["ok"] is False
+    kinds = {b["kind"] for b in mixed["blockers"]}
+    assert "invalid_ref" in kinds and "missing" in kinds
+    # 合法空列表 = 移除全部引用 → 变独立权（不视为非法输入）
+    clearing = sb.preview(TREE, SUPPORT, 5, [])
+    assert clearing["ok"] is True and any(w["kind"] == "becomes_independent" for w in clearing["warnings"])
+
+
 def test_preview_cycle_blocked_with_path():
     # 若权2 改为引用权4，而 4→2 已存在 → 2→4→2 成环
     r = sb.preview(TREE, SUPPORT, 2, [4])
@@ -137,6 +153,34 @@ def test_routes_readonly_sandbox(client):
 
     miss = client.post("/api/projects/method/claims/3/preview", json={"refs": [42]})
     assert miss.json()["ok"] is False and miss.json()["blockers"][0]["kind"] == "missing"
+
+
+def test_preview_route_rejects_non_strict_refs(client):
+    """复核项1：API 层严格正整数——bool/浮点/字符串/≤0/非列表一律 422，不进入 preview。"""
+    for body in (
+        {"refs": [True]},
+        {"refs": [False, 1]},
+        {"refs": [1.0]},
+        {"refs": [1.5]},
+        {"refs": ["1"]},
+        {"refs": ["abc"]},
+        {"refs": [-1]},
+        {"refs": [0]},
+        {"refs": "1,2"},
+        {"refs": 3},
+        {"refs": None},
+    ):
+        r = client.post("/api/projects/method/claims/5/preview", json=body)
+        assert r.status_code == 422, (body, r.status_code, r.text)
+    # 不设权项数上限：超大正整数走 missing 语义而非 422
+    big = client.post("/api/projects/method/claims/5/preview", json={"refs": [999]})
+    assert big.status_code == 200 and big.json()["ok"] is False
+    assert any(b["kind"] == "missing" for b in big.json()["blockers"])
+    # 空列表合法（清空全部引用）
+    empty = client.post("/api/projects/method/claims/5/preview", json={"refs": []})
+    assert empty.status_code == 200 and empty.json()["ok"] is True
+    no_key = client.post("/api/projects/method/claims/5/preview", json={})
+    assert no_key.status_code == 200 and no_key.json()["ok"] is True
 
 
 def test_preview_never_writes(tmp_path, monkeypatch):
