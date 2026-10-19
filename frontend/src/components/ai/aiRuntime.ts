@@ -21,14 +21,15 @@ export interface AiRuntime {
 }
 
 /**
- * AI 运行态（面板头 + 伴随栏头共用）：关闭 → 接入层未就绪（501） → 探测中 → 中转站不可达 → 运行中 → 就绪 / 未配置 key。
- * 只读 store，不发请求。
+ * AI 运行态（面板头 + 伴随栏头共用）：接入层未就绪（501） → 机构未许可 → 本案未开启 → 探测中 → 中转站不可达 → 凭证未配置 → 运行中 → 已就绪。
+ * 只读 store，不发请求。无凭证不得显示绿色就绪。
  */
 export function useAiRuntime(): AiRuntime {
   const enabled = useStudio(selectAiEnabled)
   const status = useStudio((s) => s.aiStatus)
   const statusLoading = useStudio((s) => s.aiStatusLoading)
   const unavailable = useStudio((s) => s.aiUnavailable)
+  const disabledByOrg = useStudio((s) => s.agentDisabledByOrg)
   const runningJobs = useStudio(selectAiRunning)
   const streaming = useStudio((s) => s.chatStreaming)
   const liveJobs = useStudio((s) => s.agentJobs.filter((j) => j.status === 'queued' || j.status === 'running').length)
@@ -36,10 +37,12 @@ export function useAiRuntime(): AiRuntime {
   const suffix = status ? ` · ${status.provider}` : ''
 
   if (unavailable) return { tone: 'warn', label: '接入层未就绪（501）', suffix, busy }
-  if (!enabled) return { tone: 'neutral', label: '外发关闭', suffix, busy }
+  if (disabledByOrg || status?.org_ai_enabled === false) return { tone: 'warn', label: '机构未许可 AI', suffix, busy }
+  if (!enabled) return { tone: 'neutral', label: '本案未开启', suffix, busy }
   if (statusLoading && !status) return { tone: 'info', label: '探测中…', suffix, busy }
   if (status?.reachable === false || status?.error) return { tone: 'danger', label: '中转站不可达', suffix, busy }
+  if (status && !status.key_present) return { tone: 'warn', label: '凭证未配置', suffix, busy }
   if (busy) return { tone: 'info', label: '运行中', suffix, busy }
-  if (status) return { tone: 'ok', label: status.key_present ? '就绪' : '未配置 key', suffix, busy }
+  if (status) return { tone: 'ok', label: '已就绪', suffix, busy }
   return { tone: 'neutral', label: '未探测', suffix, busy }
 }
