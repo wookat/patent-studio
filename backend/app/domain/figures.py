@@ -762,9 +762,7 @@ def promote_figure_sources(store, pid):
                 oi += 1
                 n = len(rebuilt) + 1
                 rebuilt.append(
-                    figures_md.Figure(
-                        file=f.file, width=f.width, alt=f"图{n} {caps[n]}" if caps.get(n) else f"图{n}"
-                    )
+                    figures_md.Figure(file=f.file, width=f.width, alt=f"图{n} {caps[n]}" if caps.get(n) else f"图{n}")
                 )
         doc.spec = rebuilt
     for fname in appended:

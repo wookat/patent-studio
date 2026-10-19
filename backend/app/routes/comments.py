@@ -329,16 +329,12 @@ async def comment_to_proposal(pid: str, cid: str, request: Request, user: Curren
             anchor=BlockAnchor(book=book, block_id=c.anchor.block_id, line_start=a, line_end=b),
             critic_markdown=marked,
             checks=[
-                CheckResult(
-                    name="roundtrip", ok=critic.reject(marked) == "\n".join(orig), why="拒绝视图须等于锚块原文"
-                )
+                CheckResult(name="roundtrip", ok=critic.reject(marked) == "\n".join(orig), why="拒绝视图须等于锚块原文")
             ],
             model=r.model,
             usage=Usage(prompt=r.usage.prompt_tokens, completion=r.usage.completion_tokens),
             created_at=time.time(),
-            source=ProposalSource(
-                comment_id=c.id, quote=c.anchor.quote, author=c.author.name, body=c.body[:400]
-            ),
+            source=ProposalSource(comment_id=c.id, quote=c.anchor.quote, author=c.author.name, body=c.body[:400]),
         )
         proposals_mod.append(p.dir, pid, prop, by=who)
         cur = jobs.get(job.id)

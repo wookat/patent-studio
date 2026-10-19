@@ -491,9 +491,7 @@ def _review_to_comments(items: list, ast: dict, lines: list[str], existing: list
     return {"comment_ids": ids, "dropped": dropped, "counts": counts}
 
 
-async def _review_exec(
-    store, ai: AiClient, jobs: JobStore, pid: str, job, scope: str, who: str | None
-) -> dict:
+async def _review_exec(store, ai: AiClient, jobs: JobStore, pid: str, job, scope: str, who: str | None) -> dict:
     """审阅任务体（新建与 resume 共用）：全文 / 分批在协程内按当前 content 现算——续跑时以落盘正文为准。"""
     p = store.get(pid)
     content = store.read_content(pid)

@@ -172,6 +172,7 @@ def test_release_seal_freezes_revision_snapshot(db):
         with pytest.raises(ReleaseConflict):
             seal_release(session, release.id, principal_id=owner.id)
 
+
 def test_sealed_release_rebuild_sha_identical_and_artifact_replay(db):
     """Z24：sealed Release 重复 render 出同一 sha256；record_release_artifact 同名同指纹
     重放返回既有行、异指纹判冲突（不可变交付物）。"""
