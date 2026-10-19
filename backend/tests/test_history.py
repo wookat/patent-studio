@@ -273,12 +273,9 @@ def test_restore_drill_recovers_case_and_lint_clean(client):
     assert "摘要" in _read(pdir / "docs" / "abstract.md") or _read(pdir / "docs" / "abstract.md")
 
     # 恢复后 lint 可运行且结构完整（spec.sections/abstract.empty 等结构 error 不应出现）
+    import app.config as cfg
     from app.domain import lint as lint_mod
     from app.domain.projects import ProjectStore
-
-    store = c.app.state.store if hasattr(c, "app") else None
-    del store
-    import app.config as cfg
 
     store = ProjectStore(cfg.PROJECTS_DIR)
     rep = lint_mod.lint(original, store.get("method").settings, store.get("method").figs_dir, with_preflight=True)
