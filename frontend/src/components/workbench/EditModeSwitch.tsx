@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { selectCanSwitchMode, selectEditorMode, useStudio } from '@/store'
 import type { EditorMode } from '@/types/collab-center'
 
-const MODE_LABEL: Record<Exclude<EditorMode, 'readonly'>, string> = { edit: '编辑', review: '审阅' }
+const MODE_LABEL: Record<Exclude<EditorMode, 'readonly'>, string> = { edit: '编辑', review: '审阅修订' }
 const MODE_HINT: Record<Exclude<EditorMode, 'readonly'>, string> = {
   edit: '编辑：直接改正文（Markdown 唯一真源）',
   review: '审阅：键入即 CriticMarkup 建议，接受 / 拒绝后落正文',

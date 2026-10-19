@@ -18,9 +18,9 @@ export const SIDE_SECTION_MIN = 120
 /** 与 index.css --h-side-handle 一致 */
 const HANDLE = 6
 
-/** 下块显示什么 = ui.railTab：大纲 / 版本历史 / 检查提示 / 全文搜索 / 附图 / 审阅（Rail 图标与「版本历史」按钮共用一个状态） */
+/** 下块显示什么 = ui.railTab：大纲 / 版本历史 / 检查提示 / 全文搜索 / 附图 / 审阅修订（Rail 图标与「版本历史」按钮共用一个状态） */
 const LOWER_TITLE: Record<RailTab, string> = {
-  outline: '文档大纲', history: '版本历史', checks: '问题与检查', search: '全文搜索', figures: '附图', review: '审阅',
+  outline: '文档大纲', history: '版本历史', checks: '问题与检查', search: '全文搜索', figures: '附图', review: '审阅修订',
   ai: 'AI 智能体', terms: '术语',
 }
 

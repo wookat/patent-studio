@@ -164,7 +164,7 @@ export function MoreSheet() {
           </button>
           <button type="button" className={ITEM} disabled={!pid} onClick={go(() => openCompanion('review'))} data-testid="more-review">
             <MessageSquareText />
-            审阅 · 建议与批注
+            审阅修订 · 建议与批注
           </button>
           <button type="button" className={ITEM} disabled={!pid} onClick={() => openMobileNav('history')} data-testid="more-history">
             <History />

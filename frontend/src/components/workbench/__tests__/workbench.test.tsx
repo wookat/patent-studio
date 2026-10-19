@@ -242,7 +242,7 @@ describe('EditModeSwitch（编辑 | 审阅）', () => {
     const el = await mount(<EditModeSwitch />)
     const group = q(el, '[data-testid="edit-mode-switch"]')
     expect(group.getAttribute('role')).toBe('radiogroup')
-    expect(Array.from(group.querySelectorAll('button')).map((b) => b.textContent)).toEqual(['编辑', '审阅'])
+    expect(Array.from(group.querySelectorAll('button')).map((b) => b.textContent)).toEqual(['编辑', '审阅修订'])
     expect(q(el, '[data-testid="edit-mode-edit"]').getAttribute('aria-checked')).toBe('true')
     await click(el, '[data-testid="edit-mode-review"]')
     expect(useStudio.getState().editorMode).toBe('review')
