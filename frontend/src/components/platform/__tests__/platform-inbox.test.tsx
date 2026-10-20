@@ -35,30 +35,42 @@ const PROPOSALS = Array.from({ length: 25 }, (_, i) =>
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 let shrinkTotal = false
+let statusOverrides: Record<string, string> = {}
+let hangOnStatus: string | null = null
+const reqLog: { method: string; url: string }[] = []
 
 function mockApi(mode: 'ok' | '401' = 'ok') {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (url: string) => {
-      if (url === '/api/v1/approvals') return mode === '401' ? json({ detail: { kind: 'auth', message: '需要登录' } }, 401) : json(APPROVALS)
+    vi.fn(async (url: string, init?: RequestInit) => {
+      const u = new URL(url, 'http://x')
+      reqLog.push({ method: init?.method ?? 'GET', url })
+      if (u.pathname === '/api/v1/approvals') return mode === '401' ? json({ detail: { kind: 'auth', message: '需要登录' } }, 401) : json(APPROVALS)
       // 阶段6收口哨兵：跨案提案走 /api/v1/proposals 单页查询；全量 /cases、/cases/page、
       // 逐案 /proposals 任何一处被发起都视为回归直接抛错。
-      if (url === '/api/v1/cases' || url.startsWith('/api/v1/cases/page')) throw new Error('不应拉案件列表')
-      if (/^\/api\/v1\/cases\/[^/]+\/proposals/.test(url)) throw new Error('不应逐案拉 proposals')
-      if (url.startsWith('/api/v1/proposals')) {
+      if (u.pathname === '/api/v1/cases' || u.pathname === '/api/v1/cases/page') throw new Error('不应拉案件列表')
+      if (/^\/api\/v1\/cases\/[^/]+\/proposals/.test(u.pathname)) throw new Error('不应逐案拉 proposals')
+      // 决策 mutation：path + method 双判（此前 startsWith 前缀会把 mutation 误当列表返回）
+      const dm = u.pathname.match(/^\/api\/v1\/proposals\/([^/]+)\/(submit|accept|reject)$/)
+      if (dm && init?.method === 'POST') {
+        const [, pid, decision] = dm
+        statusOverrides[pid] = decision === 'accept' ? 'accepted' : decision === 'reject' ? 'rejected' : 'submitted'
+        return json({ id: pid, status: statusOverrides[pid] })
+      }
+      if (u.pathname === '/api/v1/proposals') {
         if (mode === '401') return json({ detail: { kind: 'auth', message: '需要登录' } }, 401)
-        const u = new URL(url, 'http://x')
+        const status = u.searchParams.get('status') ?? ''
+        // deferred fetch：指定 status 的请求故意永不 resolve（跨筛选 placeholder 回归用）
+        if (hangOnStatus === status) return new Promise<Response>(() => {})
         const limit = Number(u.searchParams.get('limit') ?? 20)
         const offset = Number(u.searchParams.get('offset') ?? 0)
-        const status = u.searchParams.get('status') ?? ''
         const qq = u.searchParams.get('q') ?? ''
-        let items = PROPOSALS
+        let items = PROPOSALS.map((p) => ({ ...p, status: statusOverrides[p.id] ?? p.status }))
         if (status) items = items.filter((p) => p.status === status)
         if (qq) items = items.filter((p) => p.case.case_key.includes(qq) || p.case.title.includes(qq))
         const total = shrinkTotal ? Math.min(items.length, 5) : items.length
         return json({ items: items.slice(offset, offset + limit), total, limit, offset })
       }
-      if (url.startsWith('/api/v1/proposals/')) return json({ id: url.split('/').at(-2), status: 'accepted' })
       if (url.startsWith('/api/notify')) return json({ items: [], unread: 0 })
       return json({ detail: 'not found' }, 404)
     }),
@@ -75,6 +87,9 @@ beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   window.location.hash = ''
   shrinkTotal = false
+  statusOverrides = {}
+  hangOnStatus = null
+  reqLog.length = 0
   useStudio.getState().resetNotify()
   useStudio.setState({
     pid: 'p1', authStatus: 'authed', user: { id: 'u1', email: 'me@x.com', display_name: '我', is_superuser: false } as never,
@@ -184,6 +199,72 @@ describe('M2 inbox 页签：#/inbox?tab= 并入审批与提案', () => {
       expect(q('[data-testid="inbox-pager"]')?.textContent).toContain('第 1 / 1 页')
       expect(q('[data-testid="inbox-proposal-pr000000"]')).not.toBeNull()
     })
+  })
+
+  it('点「采纳」→ POST mutation 真实生效：状态徽标变化 + 筛选口径 total 缩小 + 失效全部页', async () => {
+    mockApi()
+    window.location.hash = '#/inbox?tab=proposals'
+    await mount()
+    await vi.waitFor(() => expect(q('[data-testid="inbox-proposal-pr000000"]')).not.toBeNull())
+    // 先到第2页建立缓存页（验证失效覆盖非当前页）
+    await act(async () => ([...q('[data-testid="inbox-pager"]')!.querySelectorAll('button')].find((b) => b.textContent === '下一页') as HTMLElement).click())
+    await vi.waitFor(() => {
+      expect(q('[data-testid="inbox-pager"]')?.textContent).toContain('第 2 / 2 页')
+      expect(q('[data-testid="inbox-proposal-pr000024"]')).not.toBeNull()
+    })
+    // 回第1页（等 prev 按钮解除 disabled——页数据拉取中点击会静默丢失），对 pr000000 点「采纳」
+    await vi.waitFor(() => {
+      const prev = [...q('[data-testid="inbox-pager"]')!.querySelectorAll('button')].find((b) => b.textContent === '上一页') as HTMLButtonElement
+      expect(prev.disabled).toBe(false)
+    })
+    await act(async () => ([...q('[data-testid="inbox-pager"]')!.querySelectorAll('button')].find((b) => b.textContent === '上一页') as HTMLElement).click())
+    await vi.waitFor(() => expect(q('[data-testid="inbox-proposal-pr000000"]')).not.toBeNull())
+    const acceptBtn = [...q('[data-testid="inbox-proposal-pr000000"]')!.querySelectorAll('button')].find((b) => b.textContent === '采纳') as HTMLElement
+    await act(async () => acceptBtn.click())
+    // POST 真实发出且为 accept；失效后列表重取，该行徽标变「已采纳」
+    await vi.waitFor(() => {
+      expect(q('[data-testid="inbox-proposal-pr000000"]')?.textContent).toContain('已采纳')
+    })
+    expect(reqLog.some((r) => r.method === 'POST' && r.url === '/api/v1/proposals/pr000000/accept')).toBe(true)
+    // 切到「待决」筛选：被采纳的提案不再命中 → total 25→24
+    await act(async () => {
+      const sel = q('select[aria-label="提案状态"]') as HTMLSelectElement
+      sel.value = 'submitted'
+      sel.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await vi.waitFor(() => {
+      expect(q('[data-testid="inbox-proposals-total"]')?.textContent).toContain('共 24 条')
+      expect(q('[data-testid="inbox-proposal-pr000000"]')).toBeNull()
+    })
+    // 失效覆盖全部收件箱页：回到无筛选会看到第2页(offset=20)的重新拉取
+    const postIdx = reqLog.findIndex((r) => r.method === 'POST')
+    expect(reqLog.slice(postIdx).some((r) => r.method === 'GET' && r.url.includes('offset=0'))).toBe(true)
+    await act(async () => {
+      const sel = q('select[aria-label="提案状态"]') as HTMLSelectElement
+      sel.value = ''
+      sel.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await vi.waitFor(() => expect(q('[data-testid="inbox-proposals-total"]')?.textContent).toContain('共 25 条'))
+  })
+
+  it('筛选变更后 fetch 挂起中强制 rerender：旧筛选记录始终不可见（跨筛选无 placeholder）', async () => {
+    mockApi()
+    hangOnStatus = 'draft' // draft 筛选请求永不 resolve
+    window.location.hash = '#/inbox?tab=proposals'
+    await mount()
+    await vi.waitFor(() => expect(q('[data-testid="inbox-proposal-pr000000"]')).not.toBeNull())
+    await act(async () => {
+      const sel = q('select[aria-label="提案状态"]') as HTMLSelectElement
+      sel.value = 'draft'
+      sel.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await vi.waitFor(() => expect(reqLog.some((r) => r.url.includes('status=draft'))).toBe(true))
+    // 强制父组件 rerender（再 render 同一棵树）：旧筛选行仍不可见
+    await act(async () => root!.render(
+      <QueryClientProvider client={client}><TooltipProvider><InboxPage /></TooltipProvider></QueryClientProvider>,
+    ))
+    expect(q('[data-testid="inbox-proposal-pr000000"]')).toBeNull()
+    expect(q('[role="status"]')).not.toBeNull()
   })
 
   it('审批 tab：/api/v1 401 → 需要登录空态（fail-closed，不崩页）', async () => {

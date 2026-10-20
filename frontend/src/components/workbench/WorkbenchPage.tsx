@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AlertCircle, AlertTriangle, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, CircleX, ClipboardCopy, Download, FileText, Image, Inbox, Info, LoaderCircle, Package, ShieldAlert, Stethoscope, Upload, UserPlus } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/lib/api/net'
@@ -117,11 +117,9 @@ export function QueueView({ onOpenCase, meId }: { onOpenCase: (id: string, caseK
     q: search.trim(),
     assignee: scope === 'mine' ? 'me' : scope === 'unassigned' ? 'none' : '',
   }
-  /* 阶段6收口：placeholder 仅同筛选键保留——筛选变更（scope/status/q）时旧页数据不再
-   * 残留（否则「未分配」会短暂显示上一筛选「我的待办」的行）。筛选键用 ref 记录上一次
-   * 实际渲染的键，翻页不改筛选才走 keepPrevious。 */
-  const filterKey = `${scope}|${status}|${params.q}`
-  const lastFilter = useRef(filterKey)
+  /* 阶段6收口：placeholderData 用 previousQuery 的实际 queryKey 判定——比较筛选参数
+   * （status/q/assignee，忽略 offset/limit），只有同筛选翻页或失效重取才保留旧页；
+   * 跨筛选一律无 placeholder，旧筛选的行不会在新筛选下残留。 */
   const query = useQuery({
     queryKey: workbenchKeys.workItemsPage(params),
     queryFn: ({ signal }) =>
@@ -136,17 +134,19 @@ export function QueueView({ onOpenCase, meId }: { onOpenCase: (id: string, caseK
         signal,
       ),
     retry: false,
-    placeholderData: lastFilter.current === filterKey ? (prev) => prev : undefined,
+    placeholderData: (prev, prevQuery) => {
+      const p = prevQuery?.queryKey.at(-1) as { status: string; q: string; assignee: string } | undefined
+      return p && p.status === params.status && p.q === params.q && p.assignee === params.assignee ? prev : undefined
+    },
   })
   const d = query.data
   const total = d?.total ?? 0
   const lastPage = Math.max(0, Math.ceil(total / QUEUE_PAGE) - 1)
   useEffect(() => {
-    lastFilter.current = filterKey
     /* mutation/权限变化使 total 缩小后，当前 offset 可能越出末页——自动回退最后有效页，
      * 否则用户看到空页并误以为没有记录。 */
     if (d && page > lastPage) setPage(lastPage)
-  }, [d, filterKey, lastPage, page])
+  }, [d, lastPage, page])
   if (query.isError) return <div className="mt-4"><ErrorPanel error={query.error} onRetry={() => void query.refetch()} /></div>
   const pages = Math.max(1, Math.ceil(total / QUEUE_PAGE))
   const filtered = Boolean(params.q) || status !== 'all'

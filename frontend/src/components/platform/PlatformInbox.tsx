@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, LoaderCircle } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -46,7 +46,8 @@ export function ProposalsInbox() {
 
   const q = search.trim()
   const filterKey = `${status}|${q}`
-  const lastFilter = useRef(filterKey)
+  // placeholderData 以 previousQuery 的实际 queryKey 判定（忽略 offset/limit）：
+  // 只有同筛选翻页或失效重取才保留旧页，跨筛选不残留旧筛选的行。
   const rows = useQuery({
     queryKey: workbenchKeys.proposalsPage({ limit: INBOX_PAGE, offset: page * INBOX_PAGE, status, q }),
     queryFn: ({ signal }) =>
@@ -55,16 +56,18 @@ export function ProposalsInbox() {
         signal,
       ),
     retry: false,
-    placeholderData: lastFilter.current === filterKey ? (prev) => prev : undefined,
+    placeholderData: (prev, prevQuery) => {
+      const p = prevQuery?.queryKey.at(-1) as { status: string; q: string } | undefined
+      return p && p.status === status && p.q === q ? prev : undefined
+    },
   })
   const d = rows.data
   const total = d?.total ?? 0
   const lastPage = Math.max(0, Math.ceil(total / INBOX_PAGE) - 1)
   useEffect(() => {
-    lastFilter.current = filterKey
     // mutation/权限变化缩小 total 后自动回退有效页，避免空页漏看记录
     if (d && page > lastPage) setPage(lastPage)
-  }, [d, filterKey, lastPage, page])
+  }, [d, lastPage, page])
   const pages = Math.max(1, Math.ceil(total / INBOX_PAGE))
 
   // 仅按本页案件分组——分页不代表全部案件，组头标明「本页」

@@ -173,5 +173,14 @@ describe('workbench queue（阶段6 服务端分页契约）', () => {
     // 切换瞬间：上一筛选的 w1 立即消失，显示加载态而非「未分配」下的我的待办行
     expect(el.querySelector('[data-testid="work-item-w1"]')).toBeNull()
     expect(el.querySelector('[role="status"]')).not.toBeNull()
+    // fetch 仍挂起时强制父组件 rerender（再 render 同树）：旧筛选行仍不可见——
+    // placeholderData 只认 previousQuery 的同筛选 key，不因多次 render 重新启用
+    await act(async () => root!.render(
+      <QueryClientProvider client={queryClient}>
+        <QueueView onOpenCase={() => {}} meId="p1" />
+      </QueryClientProvider>,
+    ))
+    expect(el.querySelector('[data-testid="work-item-w1"]')).toBeNull()
+    expect(el.querySelector('[role="status"]')).not.toBeNull()
   })
 })
