@@ -438,6 +438,17 @@ class WorkItemQueueOut(WorkItemOut):
     case: CaseOut
 
 
+class WorkItemQueuePageOut(DTO):
+    """阶段6：工作项队列服务端分页信封（与 CasePageOut 同款 items/total/limit/offset）。
+
+    items 按 (deadline ASC NULLS LAST, created_at, id) 稳定排序。"""
+
+    items: list[WorkItemQueueOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class AssignmentIn(DTO):
     assignee_principal_id: uuid.UUID | None
 

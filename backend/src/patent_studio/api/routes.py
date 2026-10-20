@@ -941,19 +941,92 @@ def work_items(case_id: uuid.UUID, ctx: Ctx):
     return list(ctx.session.scalars(select(w.WorkItem).where(w.WorkItem.case_id == case_id)))
 
 
-@router.get("/work-items", response_model=list[s.WorkItemQueueOut])
-def list_all_work_items(ctx: Ctx):
-    """跨案件工作队列查询；逐条经案件访问关系过滤，已取回的 Case 元数据随附返回。"""
-    rows = list(ctx.session.scalars(select(w.WorkItem).order_by(w.WorkItem.deadline, w.WorkItem.created_at)))
-    visible = []
-    for item in rows:
-        try:
-            case = case_access(ctx, item.case_id)
-        except Exception:
-            continue
-        item_out = s.WorkItemOut.model_validate(item)
-        visible.append(s.WorkItemQueueOut(**item_out.model_dump(), case=s.CaseOut.model_validate(case)))
-    return visible
+def _queue_case_predicate(ctx):
+    """GET /work-items 队列的可见案件谓词：与逐条 case_access 读路径（write=False/manage=False）等价。
+
+    - 可见域：机构 active 成员 ∪ 案件 active 参与者（与 _ensure_case_access 一致；
+      不含 created_by 放宽——_ensure_case_access 本身也不含，_visible_cases_stmt 才有）。
+    - 机构本身必须 status == 'active'（case_access 对 inactive org 一律 403）。
+    - agent token 作用域收窄：organization_id / case_id 限定（_enforce_token_scope）。
+    - principal 活跃性：human 已由 transaction 校验 User.is_active，agent token 认证期
+      _agent 校验 kind=='agent'；调用处再补一次 _active_principal 兜底，保持完全等价。
+    """
+    member_orgs = select(OrganizationMembership.organization_id).where(
+        OrganizationMembership.principal_id == ctx.principal.id,
+        OrganizationMembership.status == "active",
+    )
+    participant_cases = select(CaseParticipant.case_id).where(
+        CaseParticipant.principal_id == ctx.principal.id,
+        CaseParticipant.status == "active",
+    )
+    predicate = ((Case.organization_id.in_(member_orgs)) | (Case.id.in_(participant_cases))) & (
+        Case.organization_id.in_(select(Organization.id).where(Organization.status == "active"))
+    )
+    token = ctx.agent_token
+    if token is not None:
+        if token.organization_id is not None:
+            predicate = predicate & (Case.organization_id == token.organization_id)
+        if token.case_id is not None:
+            predicate = predicate & (Case.id == token.case_id)
+    return predicate
+
+
+@router.get("/work-items", response_model=s.WorkItemQueuePageOut)
+def list_all_work_items(
+    ctx: Ctx,
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    q: str | None = None,
+    assignee: str | None = None,
+):
+    """跨案件工作队列：可见案件域内服务端分页（与 /cases/page 同款 limit/offset 口径）。
+
+    可见性谓词与逐条 case_access 读路径等价；case 元数据随 items join 一次取回，
+    不再逐行鉴权。assignee=me|none、status、q（标题子串或案件号子串，不分大小写）
+    均先于分页过滤，total 与筛选口径一致。稳定排序：deadline ASC NULLS LAST →
+    created_at → id（原全量口径 deadline 升序在 PG 下本就 NULLS LAST，此处显式声明）。"""
+    limit = min(max(limit, 1), 200)
+    offset = max(offset, 0)
+    if assignee is not None and assignee not in {"me", "none"}:
+        raise error(422, "validation", "assignee must be 'me' or 'none'")
+    if not d._active_principal(ctx.session, ctx.principal.id):
+        # 与逐条 case_access 全数被拒等价：inactive principal 看不到任何工作项
+        return s.WorkItemQueuePageOut(items=[], total=0, limit=limit, offset=offset)
+    predicate = _queue_case_predicate(ctx)
+    stmt = select(w.WorkItem, Case).join(Case, w.WorkItem.case_id == Case.id).where(predicate)
+    count_stmt = select(func.count(w.WorkItem.id)).join(Case, w.WorkItem.case_id == Case.id).where(predicate)
+    if assignee == "me":
+        filt = w.WorkItem.assignee_principal_id == ctx.principal.id
+    elif assignee == "none":
+        filt = w.WorkItem.assignee_principal_id.is_(None)
+    else:
+        filt = None
+    if filt is not None:
+        stmt = stmt.where(filt)
+        count_stmt = count_stmt.where(filt)
+    if status:
+        stmt = stmt.where(w.WorkItem.status == status)
+        count_stmt = count_stmt.where(w.WorkItem.status == status)
+    if q and q.strip():
+        pat = q.strip()
+        filt = (w.WorkItem.title.ilike(f"%{pat}%")) | (Case.case_key.ilike(f"%{pat}%"))
+        stmt = stmt.where(filt)
+        count_stmt = count_stmt.where(filt)
+    total = ctx.session.scalar(count_stmt) or 0
+    rows = ctx.session.execute(
+        stmt.order_by(w.WorkItem.deadline.asc().nulls_last(), w.WorkItem.created_at.asc(), w.WorkItem.id.asc())
+        .limit(limit)
+        .offset(offset)
+    ).all()
+    items = [
+        s.WorkItemQueueOut(
+            **s.WorkItemOut.model_validate(item).model_dump(),
+            case=s.CaseOut.model_validate(case),
+        )
+        for item, case in rows
+    ]
+    return s.WorkItemQueuePageOut(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("/cases/{case_id}/work-items", response_model=s.WorkItemOut, status_code=201)

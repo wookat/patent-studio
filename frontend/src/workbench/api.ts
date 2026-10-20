@@ -5,7 +5,7 @@ import { handle, netFetch, req } from '@/lib/api/net'
 const v1req = <T>(url: string, init?: Parameters<typeof req>[1]) => req<T>(url, { ...(init ?? {}), expireOn401: false })
 import type { Ast } from '@/types/ast'
 import type { PreflightReport } from '@/types/preflight'
-import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, MethodAsset, MethodAssetUse, Notification, Participant, ParticipantRole, PlatformCase, PlatformOrg, Principal, Proposal, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemQueueItem, WorkItemStatus, WorkingCopy } from './types'
+import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, MethodAsset, MethodAssetUse, Notification, Participant, ParticipantRole, PlatformCase, PlatformOrg, Principal, Proposal, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemQueuePage, WorkItemStatus, WorkingCopy } from './types'
 
 const V1 = '/api/v1'
 
@@ -60,7 +60,6 @@ export const workbenchApi = {
   organizations: (signal?: AbortSignal) => v1req<PlatformOrg[]>(`${V1}/organizations`, { signal }),
   createCase: (organizationId: string, input: { case_key: string; title: string; kind?: PlatformCase['kind'] }) =>
     write<PlatformCase>(`${V1}/organizations/${organizationId}/cases`, { body: JSON.stringify(input) }),
-  cases: (signal?: AbortSignal) => v1req<PlatformCase[]>(`${V1}/cases`, { signal }),
   /** Z29 规模化台账：服务端分页（稳定排序 updated_at desc, case_key, id）；q=case_key 前缀或 title 子串 */
   casesPage: (params: { limit?: number; offset?: number; q?: string; kind?: string; status?: string; organization_id?: string }, signal?: AbortSignal) => {
     const sp = new URLSearchParams()
@@ -71,7 +70,13 @@ export const workbenchApi = {
   casesByKey: (caseKey: string, signal?: AbortSignal) =>
     v1req<PlatformCase[]>(`${V1}/cases/by-key/${encodeURIComponent(caseKey)}`, { signal }),
   case: (caseId: string, signal?: AbortSignal) => v1req<PlatformCase>(`${V1}/cases/${caseId}`, { signal }),
-  workItems: (signal?: AbortSignal) => v1req<WorkItemQueueItem[]>(`${V1}/work-items`, { signal }),
+  /** 阶段6：工作项队列服务端分页（与 /cases/page 同款 limit/offset 口径）。
+      assignee=me|none、status、q（标题/案件号子串）先于分页过滤，total 与筛选口径一致。 */
+  workItems: (params: { limit?: number; offset?: number; status?: string; q?: string; assignee?: 'me' | 'none' }, signal?: AbortSignal) => {
+    const sp = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) if (v != null && v !== '') sp.set(k, String(v))
+    return v1req<WorkItemQueuePage>(`${V1}/work-items?${sp}`, { signal })
+  },
   caseWorkItems: (caseId: string, signal?: AbortSignal) => v1req<WorkItem[]>(`${V1}/cases/${caseId}/work-items`, { signal }),
   /* ---- Z30 机构私有方法库：人工录入脱敏方法卡；仅 authorized 可检索；use 留痕 ---- */
   methodAssets: (orgId: string, q?: string, allStates?: boolean, signal?: AbortSignal) => {

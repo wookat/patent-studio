@@ -11,7 +11,10 @@ export const workbenchKeys = {
   casesPage: (p: { limit: number; offset: number; q: string; status: string }) =>
     [...workbenchKeys.all, 'cases-page', p] as const,
   caseByKey: (caseKey: string) => [...workbenchKeys.all, 'case-by-key', caseKey] as const,
+  /** work-items 前缀（失效用）；分页参数进 workItemsPage 的 key，mutation 以前缀失效全部页 */
   workItems: () => [...workbenchKeys.all, 'work-items'] as const,
+  workItemsPage: (p: { limit: number; offset: number; status: string; q: string; assignee: string }) =>
+    [...workbenchKeys.workItems(), p] as const,
   case: (id: string) => [...workbenchKeys.all, 'case', id] as const,
   caseWorkItems: (id: string) => [...workbenchKeys.case(id), 'work-items'] as const,
   documents: (id: string) => [...workbenchKeys.case(id), 'documents'] as const,
@@ -34,8 +37,8 @@ export const workbenchKeys = {
 
 export function useWorkbenchQueries(caseId: string | null) {
   const me = useQuery({ queryKey: workbenchKeys.me(), queryFn: ({ signal }) => workbenchApi.me(signal) })
-  const cases = useQuery({ queryKey: workbenchKeys.cases(), queryFn: ({ signal }) => workbenchApi.cases(signal) })
-  const workItems = useQuery({ queryKey: workbenchKeys.workItems(), queryFn: ({ signal }) => workbenchApi.workItems(signal) })
+  // 阶段6收口：原全量 /cases 与 /work-items 两个无参数查询已移除（该 hook 目前仅作
+  // 面板 props 类型来源、无页面挂载）；跨案列表走 casesPage/workItemsPage。
   const approvals = useQuery({ queryKey: workbenchKeys.approvals(), queryFn: ({ signal }) => workbenchApi.approvals(signal) })
   const notifications = useQuery({ queryKey: workbenchKeys.notifications(), queryFn: ({ signal }) => workbenchApi.notifications(signal) })
   const selectedCase = useQuery({
@@ -78,7 +81,7 @@ export function useWorkbenchQueries(caseId: string | null) {
     queryFn: ({ signal }) => workbenchApi.memberships(selectedCase.data!.organization_id, signal),
     enabled: Boolean(selectedCase.data),
   })
-  return { me, cases, workItems, approvals, notifications, selectedCase, caseWorkItems, documents, figures, proposals, releases, participants, memberships }
+  return { me, approvals, notifications, selectedCase, caseWorkItems, documents, figures, proposals, releases, participants, memberships }
 }
 
 export function useWorkbenchMutations() {

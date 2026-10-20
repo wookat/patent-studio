@@ -32,7 +32,9 @@ function mockApi(mode: 'ok' | '401' = 'ok') {
     'fetch',
     vi.fn(async (url: string) => {
       if (url === '/api/v1/approvals') return mode === '401' ? json({ detail: { kind: 'auth', message: '需要登录' } }, 401) : json(APPROVALS)
-      if (url === '/api/v1/cases') return mode === '401' ? json({ detail: { kind: 'auth', message: '需要登录' } }, 401) : json(CASES)
+      // 阶段6：提案聚合改为 /cases/page 逐页取尽；无参数 /cases 视为回归直接抛错
+      if (url === '/api/v1/cases') throw new Error('不应再拉全量 /cases')
+      if (url.startsWith('/api/v1/cases/page')) return mode === '401' ? json({ detail: { kind: 'auth', message: '需要登录' } }, 401) : json({ items: CASES, total: CASES.length, limit: 200, offset: 0 })
       if (url === '/api/v1/cases/c1/proposals') return json(PROPOSALS)
       if (url.startsWith('/api/notify')) return json({ items: [], unread: 0 })
       return json({ detail: 'not found' }, 404)

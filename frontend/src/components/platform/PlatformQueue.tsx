@@ -11,7 +11,6 @@ import { projectHash } from '@/lib/hash'
 import { KIND_LABEL } from '@/types/case'
 import { workbenchApi } from '@/workbench/api'
 import { workbenchKeys } from '@/workbench/queries'
-import type { PlatformCase } from '@/workbench/types'
 import { ErrorPanel, QueueView } from '@/components/workbench/WorkbenchPage'
 import { CaseIntakeDialog } from './CaseIntakeDialog'
 
@@ -19,7 +18,8 @@ import { CaseIntakeDialog } from './CaseIntakeDialog'
  * B17 M6：dashboard「工作项」分段——平台工作队列并入案卷面板。
  * Z06/Z10：QueueView 按「我的待办 / 未分配 / 全部」聚合；Z11/Z12：机构管理者可登记新案并分派承办人。
  * 打开工作项 = 随附 case → case_key → `#/p/<case_key>`（case_key=目录名时直达旧工作台）；
- * Z29 收口：GET /work-items 逐项随附 case 元数据，案件列与 UUID→case_key 导航均由其派生，不再回拉全量 /cases。
+ * 阶段6：GET /work-items 服务端分页 + 逐项随附 case 元数据，案件列与导航均由其派生，
+ * 不再回拉全量 /cases；手机 <lg 队列渲染卡片列。
  * 自带 QueryClientProvider——dashboard 测试裸挂载也能工作。
  */
 export function PlatformQueue() {
@@ -33,18 +33,13 @@ export function PlatformQueue() {
 function PlatformQueueInner() {
   const [intake, setIntake] = useState(false)
   const me = useQuery({ queryKey: workbenchKeys.me(), queryFn: ({ signal }) => workbenchApi.me(signal), retry: false })
-  const items = useQuery({ queryKey: workbenchKeys.workItems(), queryFn: ({ signal }) => workbenchApi.workItems(signal), retry: false })
-  const err = me.error ?? items.error
-  if (err) return <div className="p-4"><ErrorPanel error={err} onRetry={() => { void me.refetch(); void items.refetch() }} /></div>
-  if (me.isLoading || items.isLoading) {
+  if (me.isError) return <div className="p-4"><ErrorPanel error={me.error} onRetry={() => void me.refetch()} /></div>
+  if (me.isLoading) {
     return <div className="flex min-h-48 items-center justify-center text-fg-muted" role="status"><LoaderCircle className="mr-2 size-5 animate-spin" />正在加载平台工作项…</div>
   }
-  // 队列项随附 case：案件列展示与 UUID→case_key 打开均由此派生（同案多项去重）；case_key=目录名时直达旧工作台
-  const caseById = new Map<string, PlatformCase>()
-  for (const it of items.data ?? []) caseById.set(it.case.id, it.case)
-  const open = (caseId: string, caseKey?: string) => {
-    const pid = caseById.get(caseId)?.case_key ?? caseKey
-    if (pid) window.location.hash = projectHash(pid)
+  // 队列项/台账行均随附 case_key：UUID→case_key 直达旧工作台（case_key=目录名）
+  const open = (_caseId: string, caseKey?: string) => {
+    if (caseKey) window.location.hash = projectHash(caseKey)
   }
   return (
     <div className="p-4" data-testid="dashboard-platform-queue">
@@ -53,7 +48,7 @@ function PlatformQueueInner() {
         <Button size="sm" variant="secondary" onClick={() => setIntake(true)} data-testid="intake-open"><FolderPlus aria-hidden />登记新案</Button>
         <OrgMethodsLink />
       </div>
-      <QueueView cases={[...caseById.values()]} items={items.data ?? []} onOpenCase={open} meId={me.data?.id ?? null} />
+      <QueueView onOpenCase={open} meId={me.data?.id ?? null} />
       <CaseLedger onOpenCase={open} />
       <CaseIntakeDialog open={intake} onClose={() => setIntake(false)} meId={me.data?.id ?? null} />
     </div>

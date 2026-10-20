@@ -155,7 +155,7 @@ function RescheduleDialog({ d, onClose }: { d: DeadlineItem; onClose(): void }) 
   )
 }
 
-/** 行动作：催办（有责任人才可） / 改期 / 完成 ⇄ 撤销；桌面 ghost sm，375 卡��二级动作 md 36 平分一行（命中区 touchHit ≥ 44，06 §2.1） */
+/** 行动作：催办（有责任人才可） / 改期 / 完成 ⇄ 撤销；桌面 ghost sm，375 卡片二级动作 md 36 平分一行（命中区 touchHit ≥ 44，06 §2.1） */
 function RowActions({ d, mobile }: { d: DeadlineItem; mobile: boolean }) {
   const nudge = useStudio((s) => s.nudgeDeadline)
   const setDone = useStudio((s) => s.setDeadlineDone)
