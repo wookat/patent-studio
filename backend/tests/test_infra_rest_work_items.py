@@ -221,3 +221,35 @@ def test_work_items_and_notifications_fail_closed_for_outsider(on, pg_schema):
         json={},
     )
     assert denied.status_code == 403
+
+
+def test_work_items_queue_list_embeds_case_metadata(on, pg_schema):
+    """Z29 收口：GET /work-items 队列项随附 case 元数据（前端不再回拉全量 /cases）；越权案仍被过滤。"""
+    owner = _rest_user(on, "z29q-owner")
+    outsider = _rest_user(on, "z29q-out")
+    _org, case = _rest_case(owner, "z29q")
+
+    item = owner.post(
+        f"/api/v1/cases/{case['id']}/work-items",
+        headers={"Idempotency-Key": "z29q-wi"},
+        json={"type": "review", "title": "台账关联复核", "priority": 2},
+    )
+    assert item.status_code == 201, item.text
+    item_id = item.json()["id"]
+
+    rows = owner.get("/api/v1/work-items").json()
+    hit = [r for r in rows if r["id"] == item_id]
+    assert hit, "owner 的跨案队列应包含其工作项"
+    assert hit[0]["case"]["id"] == case["id"]
+    assert hit[0]["case"]["case_key"] == case["case_key"]
+    assert hit[0]["case"]["title"] == case["title"]
+    assert hit[0]["case"]["organization_id"] == _org["id"]
+
+    # 无权限机构/案件的工作项仍被逐条过滤，不泄露行也不泄露 case 元数据
+    outsider_rows = outsider.get("/api/v1/work-items").json()
+    assert item_id not in [r["id"] for r in outsider_rows]
+    assert case["id"] not in [r.get("case", {}).get("id") for r in outsider_rows]
+
+    # 案件内列表维持原 WorkItemOut 口径（不随附 case）
+    case_rows = owner.get(f"/api/v1/cases/{case['id']}/work-items").json()
+    assert case_rows and "case" not in case_rows[0]

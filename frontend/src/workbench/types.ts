@@ -7,6 +7,8 @@ type S = components['schemas']
 export type PlatformCase = S['CaseOut']
 export type CaseKind = PlatformCase['kind']
 export type WorkItem = S['WorkItemOut']
+/** Z29 收口：GET /api/v1/work-items 队列项随附案件元数据（openapi.gen 冻结早于该扩展——手写对齐 schemas.WorkItemQueueOut） */
+export type WorkItemQueueItem = WorkItem & { case: PlatformCase }
 export type Ref = S['Ref']
 export type Document = S['DocumentOut']
 export type Book = Document['book']

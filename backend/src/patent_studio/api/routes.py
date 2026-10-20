@@ -941,17 +941,18 @@ def work_items(case_id: uuid.UUID, ctx: Ctx):
     return list(ctx.session.scalars(select(w.WorkItem).where(w.WorkItem.case_id == case_id)))
 
 
-@router.get("/work-items", response_model=list[s.WorkItemOut])
+@router.get("/work-items", response_model=list[s.WorkItemQueueOut])
 def list_all_work_items(ctx: Ctx):
-    """跨案件工作队列查询；每个结果仍经过案件访问关系过滤。"""
+    """跨案件工作队列查询；逐条经案件访问关系过滤，已取回的 Case 元数据随附返回。"""
     rows = list(ctx.session.scalars(select(w.WorkItem).order_by(w.WorkItem.deadline, w.WorkItem.created_at)))
     visible = []
     for item in rows:
         try:
-            case_access(ctx, item.case_id)
+            case = case_access(ctx, item.case_id)
         except Exception:
             continue
-        visible.append(item)
+        item_out = s.WorkItemOut.model_validate(item)
+        visible.append(s.WorkItemQueueOut(**item_out.model_dump(), case=s.CaseOut.model_validate(case)))
     return visible
 
 

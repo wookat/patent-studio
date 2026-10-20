@@ -5,7 +5,7 @@ import { handle, netFetch, req } from '@/lib/api/net'
 const v1req = <T>(url: string, init?: Parameters<typeof req>[1]) => req<T>(url, { ...(init ?? {}), expireOn401: false })
 import type { Ast } from '@/types/ast'
 import type { PreflightReport } from '@/types/preflight'
-import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, MethodAsset, MethodAssetUse, Notification, Participant, ParticipantRole, PlatformCase, PlatformOrg, Principal, Proposal, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemStatus, WorkingCopy } from './types'
+import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, MethodAsset, MethodAssetUse, Notification, Participant, ParticipantRole, PlatformCase, PlatformOrg, Principal, Proposal, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemQueueItem, WorkItemStatus, WorkingCopy } from './types'
 
 const V1 = '/api/v1'
 
@@ -71,7 +71,7 @@ export const workbenchApi = {
   casesByKey: (caseKey: string, signal?: AbortSignal) =>
     v1req<PlatformCase[]>(`${V1}/cases/by-key/${encodeURIComponent(caseKey)}`, { signal }),
   case: (caseId: string, signal?: AbortSignal) => v1req<PlatformCase>(`${V1}/cases/${caseId}`, { signal }),
-  workItems: (signal?: AbortSignal) => v1req<WorkItem[]>(`${V1}/work-items`, { signal }),
+  workItems: (signal?: AbortSignal) => v1req<WorkItemQueueItem[]>(`${V1}/work-items`, { signal }),
   caseWorkItems: (caseId: string, signal?: AbortSignal) => v1req<WorkItem[]>(`${V1}/cases/${caseId}/work-items`, { signal }),
   /* ---- Z30 机构私有方法库：人工录入脱敏方法卡；仅 authorized 可检索；use 留痕 ---- */
   methodAssets: (orgId: string, q?: string, allStates?: boolean, signal?: AbortSignal) => {

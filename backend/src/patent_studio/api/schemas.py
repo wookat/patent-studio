@@ -430,6 +430,14 @@ class WorkItemOut(WorkItemIn):
     reporter_principal_id: uuid.UUID
 
 
+class WorkItemQueueOut(WorkItemOut):
+    """Z29 收口：跨案队列列表项随附所关联案件元数据（台账页不再回拉全量 /cases）。
+
+    仅用于 GET /work-items 列表响应；mutation 与案件内列表维持 WorkItemOut 口径。"""
+
+    case: CaseOut
+
+
 class AssignmentIn(DTO):
     assignee_principal_id: uuid.UUID | None
 
