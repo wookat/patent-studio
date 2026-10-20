@@ -20,7 +20,7 @@ const TABS: { id: NavTab; label: string; Icon: typeof History }[] = [
   { id: 'outline', label: '大纲', Icon: ListTree },
   { id: 'history', label: '历史', Icon: History },
   { id: 'figures', label: '附图书', Icon: Image },
-  { id: 'review', label: '审阅', Icon: MessageSquareText },
+  { id: 'review', label: '审阅修订', Icon: MessageSquareText },
   { id: 'terms', label: '术语', Icon: BookA },
 ]
 

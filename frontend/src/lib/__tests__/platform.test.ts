@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mergeCaseRows, resolveCaseByPid, resolveCasesByPid } from '../platform'
+import { AmbiguousCaseError, mergeCaseRows, resolveCaseByPid, resolveCasesByPid } from '../platform'
 import type { ProjectSummary } from '@/lib/types'
 import type { PlatformCase } from '@/workbench/types'
 
@@ -33,10 +33,10 @@ describe('platform 桥接：pid(目录名) ↔ case_key', () => {
     expect(resolveCaseByPid(cases, 'Method-X')).toBeNull()
   })
 
-  it('resolveCaseByPid：跨机构重名取列表首位（后端 updated_at desc ⇒ 最近活动）', () => {
+  it('resolveCaseByPid：跨机构重名必须阻断，不按列表顺序猜测案件', () => {
     const cases = [pc('c-new', 'method', 'oA'), pc('c-old', 'method', 'oB')]
-    expect(resolveCaseByPid(cases, 'method')?.id).toBe('c-new')
-    // resolveCasesByPid 返回全部命中，主匹配是其首位
+    expect(() => resolveCaseByPid(cases, 'method')).toThrow(AmbiguousCaseError)
+    expect(() => resolveCaseByPid([...cases].reverse(), 'method')).toThrow(AmbiguousCaseError)
     const all = resolveCasesByPid(cases, 'method')
     expect(all.map((c) => c.id)).toEqual(['c-new', 'c-old'])
   })
@@ -67,13 +67,14 @@ describe('platform 桥接：pid(目录名) ↔ case_key', () => {
     expect(rows.filter((r) => r.platformCase?.id === 'c1')).toHaveLength(1)
   })
 
-  it('mergeCaseRows：重名平台案全折叠进目录行（platformCases 保留全部供消费方甄别）', () => {
+  it('mergeCaseRows：重名案件保持独立 UUID 行，不折叠进不确定的目录案', () => {
     const projects = [proj('method')]
     const cases = [pc('cA', 'method', 'oA'), pc('cB', 'method', 'oB')]
     const rows = mergeCaseRows(projects, cases)
-    expect(rows).toHaveLength(1)
-    expect(rows[0].platformCase?.id).toBe('cA')
-    expect(rows[0].platformCases.map((c) => c.id)).toEqual(['cA', 'cB'])
+    expect(rows).toHaveLength(3)
+    expect(rows[0].platformCase).toBeNull()
+    expect(rows[0].platformCases).toEqual([])
+    expect(rows.slice(1).map((r) => r.platformCase?.id)).toEqual(['cA', 'cB'])
   })
 
   it('mergeCaseRows：目录行保持 projects 原序；空入参安全', () => {

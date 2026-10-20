@@ -67,6 +67,19 @@ function DeadlineHeat({ d, size }: { d: DeadlineItem; size?: 'sm' | 'md' }) {
   )
 }
 
+/** Z22：届满年份节假日表未核对 ⇒ 届满日只按周末顺延过，行内标出不确定性（规则引擎不改，只展示） */
+function HolidayUncertain({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn('inline-flex items-center gap-0.5 whitespace-nowrap text-xs text-warn-fg', className)}
+      title="该期限届满年份的法定节假日表未核对，届满日仅按周末顺延；请以官方通知书为准。"
+      data-testid="deadline-holiday-uncertain"
+    >
+      ≈ 节假日未核对
+    </span>
+  )
+}
+
 /** 目标递交倒计时（ux-04 只读）：后端 target_filing_days_left 直出，Heat 分桶与普通期限同一套；不是期限条目，无催办 / 完成 */
 function TargetHeat({ t, size }: { t: TargetFilingItem; size?: 'sm' | 'md' }) {
   return (
@@ -142,7 +155,7 @@ function RescheduleDialog({ d, onClose }: { d: DeadlineItem; onClose(): void }) 
   )
 }
 
-/** 行动作：催办（有责任人才可） / 改期 / 完成 ⇄ 撤销；桌面 ghost sm，375 卡��二级动作 md 36 平分一行（命中区 touchHit ≥ 44，06 §2.1） */
+/** 行动作：催办（有责任人才可） / 改期 / 完成 ⇄ 撤销；桌面 ghost sm，375 卡片二级动作 md 36 平分一行（命中区 touchHit ≥ 44，06 §2.1） */
 function RowActions({ d, mobile }: { d: DeadlineItem; mobile: boolean }) {
   const nudge = useStudio((s) => s.nudgeDeadline)
   const setDone = useStudio((s) => s.setDeadlineDone)
@@ -316,7 +329,12 @@ function DesktopTable({ groups, targets }: { groups: Record<DeadlineGroup, Deadl
                     </span>
                   </div>
                 </TableCell>
-                <TableCell className="text-sm tabular-nums">{d.due}</TableCell>
+                <TableCell className="text-sm tabular-nums">
+                  <div className="flex flex-col leading-tight">
+                    <span>{d.due}</span>
+                    {d.holidays_verified === false && <HolidayUncertain />}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <DeadlineHeat d={d} />
                 </TableCell>
@@ -397,6 +415,7 @@ function MobileList({ groups, targets }: { groups: Record<DeadlineGroup, Deadlin
                   <span className="tabular-nums">{d.case_no || '未取号'}</span>
                   <span>{DEADLINE_KIND_LABEL[d.kind]}</span>
                   <span className="tabular-nums">届满 {d.due}</span>
+                  {d.holidays_verified === false && <HolidayUncertain />}
                   <DeadlineStatusDot status={d.status} className="text-xs" />
                   <Owner owner={d.owner} compact />
                 </div>

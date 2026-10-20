@@ -298,7 +298,7 @@ describe('23-w12 §4 第二步：顶栏唯一「审阅」入口（ReviewDrawerBu
     expect(b.getAttribute('aria-pressed')).toBe('false')
     expect(b.getAttribute('aria-label')).toContain('3 处修订、1 条未解决批注')
     expect(b.querySelector('[data-testid="topbar-review-badge"]')!.textContent).toBe('4')
-    const text = [...b.querySelectorAll('span')].find((n) => n.textContent === '审阅')!
+    const text = [...b.querySelectorAll('span')].find((n) => n.textContent === '审阅修订')!
     expect(text.className).toMatch(/\bhidden\b/)
     expect(text.className).toMatch(/\bxl:inline\b/)
     await act(async () => b.click())

@@ -249,3 +249,40 @@ def test_concurrent_commits_serialized(tmp_path):
         results = list(ex.map(lambda i: history.commit_draft(str(d), f"# T {i}\n", f"draft {i}"), range(20)))
     assert all(results) and len(set(results)) == 20
     assert len(history.log(str(d))) == 21  # init + 20 draft——update-ref 串行，不丢
+
+
+def test_restore_drill_recovers_case_and_lint_clean(client):
+    """Z28 恢复演练：工作区 content.md 被毁后，从 .studio/history 恢复案卷，
+    恢复稿能过 lint（无新增 error）且带备份迁移提交——恢复路径可用断言。"""
+    c, pdir = client
+    original = _read(pdir / "content.md")
+    v2 = original + "\n第二版追加句。\n"
+    assert c.put("/api/projects/method/content", json={"content": v2}).json()["ok"] is True
+    versions = c.get("/api/projects/method/history").json()
+    target = next(v["sha"] for v in versions if v["message"].startswith("backup "))
+
+    # 模拟损坏：截断 content.md 并删掉三书镜像
+    with open(pdir / "content.md", "w", encoding="utf-8") as f:
+        f.write("# 损坏\n\n## 说明书\n\n只剩一半")
+    for name in ("abstract.md", "claims.md", "description.md"):
+        os.remove(pdir / "docs" / name)
+
+    r = c.post(f"/api/projects/method/history/{target[:7]}/restore")
+    assert r.status_code == 200 and r.json()["changed"] is True
+    assert _read(pdir / "content.md") == original
+    assert "摘要" in _read(pdir / "docs" / "abstract.md") or _read(pdir / "docs" / "abstract.md")
+
+    # 恢复后 lint 可运行且结构完整（spec.sections/abstract.empty 等结构 error 不应出现）
+    import app.config as cfg
+    from app.domain import lint as lint_mod
+    from app.domain.projects import ProjectStore
+
+    store = ProjectStore(cfg.PROJECTS_DIR)
+    rep = lint_mod.lint(original, store.get("method").settings, store.get("method").figs_dir, with_preflight=True)
+    structural = [
+        d
+        for d in rep["diagnostics"]
+        if d["severity"] == "error"
+        and d["id"].split("#")[0] in ("abstract.empty", "spec.sections", "spec.unknown_section")
+    ]
+    assert structural == []

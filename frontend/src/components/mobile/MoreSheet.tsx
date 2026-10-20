@@ -4,6 +4,7 @@ import {
   Download,
   ExternalLink,
   FileInput,
+  FileStack,
   FileText,
   FolderPlus,
   History,
@@ -164,7 +165,11 @@ export function MoreSheet() {
           </button>
           <button type="button" className={ITEM} disabled={!pid} onClick={go(() => openCompanion('review'))} data-testid="more-review">
             <MessageSquareText />
-            审阅 · 建议与批注
+            审阅修订 · 建议与批注
+          </button>
+          <button type="button" className={ITEM} disabled={!pid} onClick={go(() => openCompanion('materials'))} data-testid="more-materials">
+            <FileStack />
+            资料事实 · 材料与事实确认
           </button>
           <button type="button" className={ITEM} disabled={!pid} onClick={() => openMobileNav('history')} data-testid="more-history">
             <History />

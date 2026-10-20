@@ -10,7 +10,8 @@
 - 上下文一律经 `ctx.clip()`（budget.clip 唯一裁剪点），truncated 写进 done 事件。
 - 工具调用写 audit.jsonl（who=agent:<job_id>）；正文不落盘，只记字符数。
 - 产出只有 Proposal：critic / patch 等用户确认；comment 在 done 时立即写入批注（§6.3）。
-  job 运行期间不写 content.md / docs/*.md。
+  job 运行期间不写 content.md / docs/*.md；但提案本身在 propose 时即落盘 + 记 job.proposal_ids
+  （Z14/Z27：中断后 resume 以已产出部分收尾，不重复生成——run_scenario 入口按 job_id 找回）。
 - 失败：AiError / 其他异常 → done{error} 事件后向上抛，JobStore 记 status=error。
 """
 
@@ -206,10 +207,20 @@ class RunContext:
             created_at=time.time(),
         )
         self.proposals.append(prop)
+        _persist_proposal(self, prop)  # Z14 断点：产出即落盘 + 记 job.proposal_ids，中断可续
         self._event(
             "proposal", {"id": prop.id, "kind": kind, "anchor": anchor.model_dump(), "preview": proposals.preview(prop)}
         )
         return prop
+
+
+def _persist_proposal(ctx, prop: Proposal) -> None:
+    """提案产出即落盘（Z14 检查点）并把 id 记进 job.proposal_ids（Z27 诊断链）。
+    中断 / 重启后按 job_id 找回已产出部分——resume 不再重生成。"""
+    proposals.append(ctx.project_dir, ctx.pid, prop, by=ctx.agent_id)
+    job = ctx.jobs.get(ctx.job.id)
+    if job is not None and prop.id not in job.proposal_ids:
+        ctx.jobs.update(job, proposal_ids=[*job.proposal_ids, prop.id])
 
 
 def _scalar_args(args: dict) -> dict:
@@ -301,6 +312,11 @@ class PlanContext(plans.RunContext):
     def new_proposal_id(self) -> str:
         return proposals.new_id()
 
+    def propose(self, kind: ProposalKind, anchor: Anchor, **kw) -> Proposal:
+        prop = super().propose(kind, anchor, **kw)
+        _persist_proposal(self, prop)  # 与 RunContext.propose 同一断点语义
+        return prop
+
     async def gen(self, step: str, messages: list[dict], purpose: Purpose | None = None) -> ChatResult:
         self.sent_chars += sum(len(m.get("content") or "") for m in messages)
         r = await super().gen(step, messages, purpose)
@@ -334,6 +350,10 @@ async def run_scenario(
         ctx = RunContext(
             store=store, jobs=jobs, ai=ai, pid=pid, scenario=scenario, params=params, job=job, who=who, actor=actor
         )
+    # Z14 续跑断点：本任务此前已落盘的提案即产出——resume 重进时不再调模型重生成（幂等），直接收尾
+    recovered = [p for p in proposals.load(ctx.project_dir, pid) if p.job_id == job.id]
+    if recovered:
+        return await _finish_recovered(ctx, recovered, actor)
     try:
         await handler(ctx)
     except asyncio.CancelledError:
@@ -351,8 +371,15 @@ async def run_scenario(
         )
         raise
     by = ctx.agent_id
+    persisted = {p.id for p in proposals.load(ctx.project_dir, pid)}
     for prop in ctx.proposals:
-        proposals.append(ctx.project_dir, pid, prop, by=by)
+        if prop.id not in persisted:
+            proposals.append(ctx.project_dir, pid, prop, by=by)
+    # job 产出台账兜底合并：eager 路径已逐条记，此处兜住 handler 直塞 ctx.proposals 的旁路
+    cur = jobs.get(job.id) or job
+    merged = list(dict.fromkeys([*cur.proposal_ids, *(p.id for p in ctx.proposals)]))
+    if merged != cur.proposal_ids:
+        jobs.update(cur, proposal_ids=merged)
     for prop in ctx.proposals:
         if prop.kind == "comment":
             await proposals.apply(store, pid, prop.id, who=by, actor=actor)
@@ -386,6 +413,51 @@ async def run_scenario(
         {**extra, "proposals": ids, "usage": ctx.usage.model_dump(), "truncated": ctx.truncated, "calls": ctx.calls},
     )
     return result
+
+
+async def _finish_recovered(ctx: RunContext | PlanContext, recovered: list[Proposal], actor) -> dict:
+    """续跑收尾（Z14）：中断前已落盘的提案不重复生成；其中仍 pending 的 comment 提案补写批注
+    （正常路径在 run_scenario 末尾 apply，中断可能漏掉）；done 帧与结果带 resumed/recovered。"""
+    by = ctx.agent_id
+    for prop in recovered:
+        if prop.kind == "comment" and prop.state == "pending":
+            await proposals.apply(ctx.store, ctx.pid, prop.id, who=by, actor=actor)
+    ids = [p.id for p in recovered]
+    events.emit(
+        "ai.sent",
+        pid=ctx.pid,
+        actor=actor,
+        data={
+            "job_id": ctx.job.id,
+            "scenario": ctx.scenario,
+            "resumed": True,
+            "calls": 0,
+            "chars": 0,
+            "model": ctx.last_model,
+            "usage": ctx.usage.model_dump(),
+            "truncated": False,
+        },
+    )
+    ctx.jobs.add_step(
+        ctx.job.id,
+        "done",
+        {
+            "proposals": ids,
+            "resumed": True,
+            "recovered": len(ids),
+            "usage": ctx.usage.model_dump(),
+            "truncated": False,
+            "calls": 0,
+        },
+    )
+    return {
+        "scenario": ctx.scenario,
+        "proposals": ids,
+        "resumed": True,
+        "usage": ctx.usage.model_dump(),
+        "truncated": False,
+        "checks": [c.model_dump() for c in ctx.checks],
+    }
 
 
 # ---------------------------------------------------------------- 缺省计划 ----

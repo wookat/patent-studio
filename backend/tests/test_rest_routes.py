@@ -314,10 +314,10 @@ def test_rest_case_and_work_item_lists_are_scoped(on):
     assert [row["id"] for row in cases.json()] == [case["id"]]
     items = owner.get("/api/v1/work-items")
     assert items.status_code == 200
-    assert [row["id"] for row in items.json()] == [work_item["id"]]
+    assert [row["id"] for row in items.json()["items"]] == [work_item["id"]]
 
     assert outsider.get("/api/v1/cases").json() == []
-    assert outsider.get("/api/v1/work-items").json() == []
+    assert outsider.get("/api/v1/work-items").json()["items"] == []
     assert outsider.get("/api/v1/approvals").json() == []
 
 

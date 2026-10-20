@@ -123,11 +123,14 @@ export function DeliverPage({ pid }: { pid: string }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [tab, setTab] = useState<'checks' | 'exports' | 'info' | 'releases'>('exports')
   // M3：pid→平台案（case_key=目录名）。null ⇒ 纯旧案——发布包/平台体检入口整块不渲染，页面行为不变
-  const [pcase, setPcase] = useState<PlatformCase | null>(null)
+  const [platformResolution, setPlatformResolution] = useState<{ pid: typeof pid; caseItem: PlatformCase | null } | null>(null)
+  const pcase = platformResolution?.pid === pid ? platformResolution.caseItem : null
   useEffect(() => {
     let on = true
     void getPlatformCase(pid).then((c) => {
-      if (on) setPcase(c)
+      if (on) setPlatformResolution({ pid, caseItem: c })
+    }).catch(() => {
+      if (on) setPlatformResolution({ pid, caseItem: null })
     })
     return () => {
       on = false

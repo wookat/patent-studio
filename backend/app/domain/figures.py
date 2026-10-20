@@ -745,23 +745,24 @@ def promote_figure_sources(store, pid):
         oi = 0
         for pos in range(1, max(claimed) + len(others) + 1):
             fname = claimed.get(pos)
+            # 图号 = 收录行序：声明位超出实际行数时按落位后的真实序号写 alt，
+            # 否则 fig9-x 之类疏号会把「图9」标签贴到第 3 行（图源改名实案）
             if fname is not None:
                 old = by_file.get(fname)
-                # alt 按新位重写——沿用旧 Figure 会把错位的旧图号带进新位（实案留图6-9标签在图1-5位）
+                n = len(rebuilt) + 1
                 rebuilt.append(
                     figures_md.Figure(
                         file=fname,
                         width=(old.width if old is not None else DEFAULT_WIDTH),
-                        alt=f"图{pos} {caps[pos]}" if caps.get(pos) else f"图{pos}",
+                        alt=f"图{n} {caps[n]}" if caps.get(n) else f"图{n}",
                     )
                 )
             elif oi < len(others):
                 f = others[oi]
                 oi += 1
+                n = len(rebuilt) + 1
                 rebuilt.append(
-                    figures_md.Figure(
-                        file=f.file, width=f.width, alt=f"图{pos} {caps[pos]}" if caps.get(pos) else f"图{pos}"
-                    )
+                    figures_md.Figure(file=f.file, width=f.width, alt=f"图{n} {caps[n]}" if caps.get(n) else f"图{n}")
                 )
         doc.spec = rebuilt
     for fname in appended:

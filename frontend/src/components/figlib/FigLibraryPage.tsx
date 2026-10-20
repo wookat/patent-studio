@@ -1,7 +1,10 @@
 import { ChevronLeft, ChevronRight, Search, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { UserMenu } from '@/components/auth/UserMenu'
 import { OrgShell } from '@/components/dashboard/OrgShell'
+import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
+import { useIsDesktop } from '@/hooks/useMisc'
 import { req } from '@/lib/api/net'
 import { cn } from '@/lib/utils'
 
@@ -26,13 +29,15 @@ interface Manifest {
 
 const imgUrl = (f: LibFig) => `/api/figlib/img/${f.file.split('/').map(encodeURIComponent).join('/')}`
 
-/** 附图图库页 #/figlib：真实专利附图分类浏览（1021 张逐张扒取标注）。 */
+/** 附图图库页 #/figlib：真实专利附图分类浏览（1021 张逐张扒取标注）。390：顶栏搜索开关 + 横向分类 chips 替代 w-44 侧栏。 */
 export function FigLibraryPage() {
+  const desktop = useIsDesktop()
   const [manifest, setManifest] = useState<Manifest | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [kind, setKind] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [open, setOpen] = useState<number | null>(null)
+  const [mobileSearch, setMobileSearch] = useState(false)
 
   useEffect(() => {
     req<Manifest>('/api/figlib')
@@ -63,6 +68,116 @@ export function FigLibraryPage() {
     ? `${manifest.patents.length} 篇专利 · ${manifest.figures.length} 张附图 · ${kinds.length} 类`
     : '加载中…'
 
+  const searchInput = (
+    <div className="relative min-w-0 flex-1">
+      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="搜题注 / 专利号 / 图号"
+        aria-label="搜索图库"
+        className={cn(
+          'rounded-md border border-border bg-panel pl-8 pr-2 text-sm text-fg-strong outline-none focus:border-fg-strong',
+          desktop ? 'h-8 w-56' : 'h-9 w-full',
+        )}
+      />
+    </div>
+  )
+
+  const grid = (
+    <div className={cn('min-w-0 flex-1 overflow-y-auto', desktop ? 'p-4' : 'p-3')} data-testid="figlib-grid-wrap">
+      {error && <p className="text-sm text-red-600">图库加载失败：{error}</p>}
+      {!error && shown.length === 0 && manifest && <p className="text-sm text-fg-muted">无匹配附图</p>}
+      <div className={cn('grid', desktop ? 'grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3' : 'grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2')} data-testid="figlib-grid">
+        {shown.map((f, i) => (
+          <button
+            key={f.file}
+            onClick={() => setOpen(i)}
+            className="group overflow-hidden rounded-md border border-border bg-panel text-left hover:border-fg-strong"
+            title={f.caption}
+          >
+            <div className={cn('flex items-center justify-center bg-white', desktop ? 'h-36' : 'h-28')}>
+              <img
+                src={imgUrl(f)}
+                alt={f.caption || `${f.patent} 图${f.fig}`}
+                loading="lazy"
+                className="max-h-full max-w-full object-contain"
+              />
+            </div>
+            <div className="border-t border-border px-2 py-1.5">
+              <p className="line-clamp-2 text-2xs leading-snug text-fg-strong">{f.caption || '（未配题注）'}</p>
+              <p className="mt-0.5 text-2xs text-fg-muted">
+                {f.patent} · 图{f.fig} · {f.kind}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+
+  const lightbox =
+    open !== null && shown[open] ? (
+      <Lightbox key={shown[open].file} fig={shown[open]} index={open} total={shown.length} onNav={(d) => setOpen((v) => (v === null ? null : v + d))} onClose={() => setOpen(null)} />
+    ) : null
+
+  if (!desktop) {
+    return (
+      <OrgShell
+        name="figlib"
+        title="附图图库"
+        current="figlib"
+        mobile
+        mobileTopbar={
+          mobileSearch ? (
+            <>
+              {searchInput}
+              <Button variant="ghost" size="icon-xl" aria-label="关闭搜索" title="关闭搜索" onClick={() => { setMobileSearch(false); setQ('') }}>
+                <X aria-hidden />
+              </Button>
+            </>
+          ) : (
+            <>
+              <UserMenu />
+              <h1 className="min-w-0 flex-1 truncate px-1 text-base font-semibold text-fg-strong">附图图库</h1>
+              <Button variant="ghost" size="icon-md" aria-label="搜索图库" title="搜索图库" onClick={() => setMobileSearch(true)} data-testid="figlib-search-toggle">
+                <Search aria-hidden />
+              </Button>
+            </>
+          )
+        }
+      >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-panel">
+          <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-border px-2 py-1.5" aria-label="图型分类">
+            <button
+              onClick={() => setKind(null)}
+              className={cn(
+                'flex min-h-touch shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border px-3 text-xs',
+                kind === null ? 'border-fg-strong bg-accent font-medium text-fg-strong' : 'text-fg-muted',
+              )}
+            >
+              全部<span className="text-2xs tabular-nums text-fg-muted">{manifest?.figures.length ?? ''}</span>
+            </button>
+            {kinds.map(([k, n]) => (
+              <button
+                key={k}
+                onClick={() => setKind(k)}
+                className={cn(
+                  'flex min-h-touch shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border px-3 text-xs',
+                  kind === k ? 'border-fg-strong bg-accent font-medium text-fg-strong' : 'text-fg-muted',
+                )}
+              >
+                {k}<span className="text-2xs tabular-nums text-fg-muted">{n}</span>
+              </button>
+            ))}
+          </div>
+          {grid}
+        </div>
+        {lightbox}
+      </OrgShell>
+    )
+  }
+
   return (
     <OrgShell name="figlib" title="附图图库" current="figlib" mobile={false}>
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-panel" aria-label="附图图库">
@@ -71,18 +186,7 @@ export function FigLibraryPage() {
           title="附图图库"
           description={`真实 CN 专利附图分类参考库——${summary}`}
           className="bg-panel py-4 md:py-4"
-          actions={
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-fg-muted" aria-hidden />
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="搜题注 / 专利号 / 图号"
-                aria-label="搜索图库"
-                className="h-8 w-56 rounded-md border border-border bg-panel pl-8 pr-2 text-sm text-fg-strong outline-none focus:border-fg-strong"
-              />
-            </div>
-          }
+          actions={searchInput}
         />
         <div className="flex min-h-0 flex-1">
           <aside className="w-44 shrink-0 overflow-y-auto border-r border-border px-2 py-2" aria-label="图型分类">
@@ -110,40 +214,10 @@ export function FigLibraryPage() {
               </button>
             ))}
           </aside>
-          <div className="min-w-0 flex-1 overflow-y-auto p-4" data-testid="figlib-grid-wrap">
-            {error && <p className="text-sm text-red-600">图库加载失败：{error}</p>}
-            {!error && shown.length === 0 && manifest && <p className="text-sm text-fg-muted">无匹配附图</p>}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3" data-testid="figlib-grid">
-              {shown.map((f, i) => (
-                <button
-                  key={f.file}
-                  onClick={() => setOpen(i)}
-                  className="group overflow-hidden rounded-md border border-border bg-panel text-left hover:border-fg-strong"
-                  title={f.caption}
-                >
-                  <div className="flex h-36 items-center justify-center bg-white">
-                    <img
-                      src={imgUrl(f)}
-                      alt={f.caption || `${f.patent} 图${f.fig}`}
-                      loading="lazy"
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-                  <div className="border-t border-border px-2 py-1.5">
-                    <p className="line-clamp-2 text-2xs leading-snug text-fg-strong">{f.caption || '（未配题注）'}</p>
-                    <p className="mt-0.5 text-2xs text-fg-muted">
-                      {f.patent} · 图{f.fig} · {f.kind}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+          {grid}
         </div>
       </main>
-      {open !== null && shown[open] && (
-        <Lightbox key={shown[open].file} fig={shown[open]} index={open} total={shown.length} onNav={(d) => setOpen((v) => (v === null ? null : v + d))} onClose={() => setOpen(null)} />
-      )}
+      {lightbox}
     </OrgShell>
   )
 }

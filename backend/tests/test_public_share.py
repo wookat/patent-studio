@@ -22,6 +22,7 @@ def _write_pdf(projects, pid="method", pages=2):
     """造一份「最新构建」的 out.pdf（LibreOffice 产物的替身：测试只关心水印叠加与响应头）。"""
     d = projects / pid / ".studio" / "builds" / "20260906-000000"
     d.mkdir(parents=True)
+    (d / "content.md").write_text((projects / pid / "content.md").read_text(encoding="utf-8"), encoding="utf-8")
     w = PdfWriter()
     for _ in range(pages):
         w.add_blank_page(595, 842)
@@ -48,6 +49,15 @@ def _events(kind):
     got = []
     events.subscribe(kind, lambda ev: got.append(ev))
     return got
+
+
+def _reviewed(client, token):
+    meta = client.get(f"/api/public/{token}/meta").json()
+    return {
+        "expected_version": meta.get("version", 0),
+        "expected_sha": meta.get("sha", ""),
+        "expected_content_sha": meta.get("content_sha", "0" * 64),
+    }
 
 
 # ---------------- off ----------------
@@ -261,7 +271,12 @@ def test_expired_410_unknown_404(on):
     for path in ("meta", "pdf", "layout-ast", "comments"):
         r = anon.get(f"/api/public/{link['token']}/{path}")
         assert r.status_code == 410 and r.json()["detail"]["kind"] == "share.expired", path
-    assert anon.post(f"/api/public/{link['token']}/confirm", json={"name": "王总"}).status_code == 410
+    assert (
+        anon.post(
+            f"/api/public/{link['token']}/confirm", json={"name": "王总", **_reviewed(anon, link["token"])}
+        ).status_code
+        == 410
+    )
     assert anon.get("/api/public/does-not-exist/meta").status_code == 404
     # 永不过期
     forever = _link(su, ttl_days=None)
@@ -291,7 +306,10 @@ def test_client_comment_and_scope(on, tmp_path):
     assert [x["id"] for x in su.get("/api/projects/method/comments?source=client").json()] == [c["id"]]
     assert su.get("/api/projects/method/comments?source=human").json() == []
     # comment 链接不能确认；read 链接不能批注
-    assert anon.post(f"/api/public/{tok}/confirm", json={"name": "王总"}).json()["detail"]["kind"] == "share.scope"
+    assert (
+        anon.post(f"/api/public/{tok}/confirm", json={"name": "王总", **_reviewed(anon, tok)}).json()["detail"]["kind"]
+        == "share.scope"
+    )
     ro = _link(su, scope="read")["token"]
     r = anon.post(
         f"/api/public/{ro}/comments", json={"name": "王总", "anchor": {"block_id": "claims/1", "line": 9}, "body": "x"}
@@ -312,7 +330,7 @@ def test_confirm_appends_case_and_timeline_and_emits(on, tmp_path):
 
     r = anon.post(
         f"/api/public/{tok}/confirm",
-        json={"name": "王总", "note": "同意定稿"},
+        json={"name": "王总", "note": "同意定稿", **_reviewed(anon, tok)},
         headers={"User-Agent": "client-ua", "X-Forwarded-For": "203.0.113.9, 10.0.0.1"},
     )
     assert r.status_code == 200, r.text
@@ -338,26 +356,69 @@ def test_confirm_appends_case_and_timeline_and_emits(on, tmp_path):
     assert anon.get(f"/api/public/{tok}/meta").json()["confirmation"]["name"] == "王总"
 
     # W12 R17-02：同链同人同版本重复提交幂等——不重复落账 / 不发第二个事件 / 不加时间线
-    r = anon.post(f"/api/public/{tok}/confirm", json={"name": "王总", "note": "同意定稿"})
+    r = anon.post(f"/api/public/{tok}/confirm", json={"name": "王总", "note": "同意定稿", **_reviewed(anon, tok)})
     assert r.status_code == 200 and r.json()["sha"] == out["sha"]
     case = cases.load_case(str(projects / "method"))
     assert len(case.confirmations) == 1 and len(confirmed) == 1
     items = su.get("/api/projects/method/timeline").json()["items"]
     assert len(items) == before + 1
     # 不同姓名 / 新版本仍各自落账
-    r = anon.post(f"/api/public/{tok}/confirm", json={"name": "李秘书"})
+    r = anon.post(f"/api/public/{tok}/confirm", json={"name": "李秘书", **_reviewed(anon, tok)})
     assert r.status_code == 200
     assert len(cases.load_case(str(projects / "method")).confirmations) == 2
     # 新版本（正文真改动 → commit）后同名再确认仍落账
     doc = projects / "method" / "docs" / "abstract.md"
     doc.write_text(doc.read_text(encoding="utf-8") + "\n追加一句。", encoding="utf-8")
     assert history.commit(str(projects / "method"), "v2") is not None
-    r = anon.post(f"/api/public/{tok}/confirm", json={"name": "王总"})
+    r = anon.post(f"/api/public/{tok}/confirm", json={"name": "王总", **_reviewed(anon, tok)})
     assert r.status_code == 200 and r.json()["version"] == out["version"] + 1
     assert len(cases.load_case(str(projects / "method")).confirmations) == 3
 
 
 # ---------------- 纯函数 ----------------
+
+
+def test_confirmation_rejects_unread_revision_and_requires_snapshot(on, tmp_path):
+    anon, su = _team(on)
+    tok = _link(su)["token"]
+    projects = tmp_path / "projects"
+    history.commit(str(projects / "method"), "v1")
+    reviewed = _reviewed(anon, tok)
+    confirmed = _events("share.confirmed")
+    content = su.get("/api/projects/method/content").json()["content"]
+    assert su.put("/api/projects/method/content", json={"content": content + "\n新版本内容。\n"}).status_code == 200
+
+    r = anon.post(f"/api/public/{tok}/confirm", json={"name": "客户A", **reviewed})
+    assert r.status_code == 409 and r.json()["detail"]["kind"] == "conflict"
+    assert not cases.load_case(str(projects / "method")).confirmations
+    assert confirmed == []
+    for endpoint in ("ast", "layout-ast", "pdf"):
+        r = anon.get(f"/api/public/{tok}/{endpoint}", params=reviewed)
+        assert r.status_code == 409, (endpoint, r.text)
+
+    assert anon.post(f"/api/public/{tok}/confirm", json={"name": "客户A"}).status_code == 422
+    current = _reviewed(anon, tok)
+    assert anon.get(f"/api/public/{tok}/ast", params=current).status_code == 200
+    body = {"name": "客户A", **current}
+    first = anon.post(f"/api/public/{tok}/confirm", json=body)
+    second = anon.post(f"/api/public/{tok}/confirm", json=body)
+    assert first.status_code == second.status_code == 200 and first.json() == second.json()
+    assert first.json()["content_sha"] == current["expected_content_sha"]
+    assert len(confirmed) == 1
+
+
+def test_confirmation_rejects_changed_source_without_new_history_commit(on, tmp_path):
+    anon, su = _team(on)
+    tok = _link(su)["token"]
+    directory = tmp_path / "projects" / "method"
+    history.commit(str(directory), "v1")
+    reviewed = _reviewed(anon, tok)
+    source = directory / "content.md"
+    source.write_text(source.read_text(encoding="utf-8") + "\n未提交的改动。\n", encoding="utf-8")
+    assert public_share.version_of(str(directory)) == (reviewed["expected_version"], reviewed["expected_sha"])
+    r = anon.post(f"/api/public/{tok}/confirm", json={"name": "客户A", **reviewed})
+    assert r.status_code == 409
+    assert not cases.load_case(str(directory)).confirmations
 
 
 def test_watermark_text_and_stamp():

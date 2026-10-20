@@ -390,3 +390,27 @@ describe('OaPanel · 生成答复 → 编辑要点 → 权项 CriticMarkup 写�
     expect(q('[data-testid="oa-detail"]')).not.toBeNull()
   })
 })
+
+describe('OaPanel · Z23 逐条证据链状态与导出提示', () => {
+  it('status 字段驱动 待答/已答复/已交付 徽标；未答复条数提示显示在导出行', async () => {
+    const items: OaItem[] = [
+      { ...ITEMS[0], status: 'delivered', round_id: '1' },
+      { ...ITEMS[1], status: 'answered', round_id: '1' },
+      { ...ITEMS[2] },
+    ]
+    vi.spyOn(api, 'oaItems').mockResolvedValue({ items, warnings: [], answers: [ANSWER, { ...ANSWER, item_id: '2' }] })
+    await mount(<OaPanel />)
+    expect(q('[data-testid="oa-item-1-status"]')!.textContent).toBe('已交付')
+    expect(q('[data-testid="oa-item-2-status"]')!.textContent).toBe('已答复')
+    expect(q('[data-testid="oa-item-3-status"]')!.textContent).toBe('待答')
+    expect(q('[data-testid="oa-unanswered"]')!.textContent).toContain('1 条未答复')
+  })
+
+  it('旧后端缺 status 字段时按本地答复推断（向后兼容）', async () => {
+    vi.spyOn(api, 'oaItems').mockResolvedValue({ items: ITEMS, warnings: [], answers: [ANSWER] })
+    await mount(<OaPanel />)
+    expect(q('[data-testid="oa-item-1-status"]')!.textContent).toBe('已答复')
+    expect(q('[data-testid="oa-item-2-status"]')!.textContent).toBe('待答')
+    expect(q('[data-testid="oa-unanswered"]')!.textContent).toContain('2 条未答复')
+  })
+})

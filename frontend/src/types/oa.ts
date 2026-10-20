@@ -12,6 +12,9 @@ export const OA_KIND_LABEL: Record<OaKind, string> = {
   other: '其他',
 }
 
+/** 逐条证据链状态（GET …/oa/items 透出，Z23）：待答 / 已答 / 已交付（所属轮次已登记递交） */
+export type OaItemStatus = 'pending' | 'answered' | 'delivered'
+
 /** POST …/oa/parse 拆出的一条审查意见 */
 export interface OaItem {
   id: string
@@ -19,6 +22,9 @@ export interface OaItem {
   claims: number[]
   kind: OaKind
   text: string
+  /** 拆条挂接的轮次 id（无挂接 ⇒ null / 缺省） */
+  round_id?: string | null
+  status?: OaItemStatus
 }
 
 export interface OaParseResult {

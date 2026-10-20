@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { Check, CornerDownRight, Crosshair, RotateCcw, Trash2 } from 'lucide-react'
-import { useStudio } from '@/store'
+import { Check, CornerDownRight, Crosshair, RotateCcw, Trash2, Wand2 } from 'lucide-react'
+import { useStudio, selectAiEnabled } from '@/store'
 import { canMutateComment, commentSource } from '@/store/comments'
 import { COMMENT_BODY_MAX, type Comment } from '@/lib/types'
 import { FOCUS_RING, cn } from '@/lib/utils'
@@ -10,6 +10,7 @@ import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { fmtMdTime } from '@/lib/format'
 import { MentionTextarea } from './MentionTextarea'
 import { Markdown } from '@/components/ai/Markdown'
+import { gotoAiProposals } from '@/components/ai/aiModel'
 import { DiscardDialog } from '@/components/ui/discard-dialog'
 import { useBeforeUnload } from '@/hooks/useBeforeUnload'
 
@@ -42,6 +43,9 @@ export function CommentCard({ pid, comment: c, active, atCursor, desktop, busy, 
   /** 与后端 _comment_perm 同口径：作者或角色 ≥ need；不满足直接禁按钮（不再裸发 403） */
   const canResolve = useStudio((s) => canMutateComment(s, c, 'reviewer'))
   const canDelete = useStudio((s) => canMutateComment(s, c, 'editor'))
+  const commentToProposal = useStudio((s) => s.commentToProposal)
+  const toast = useStudio((s) => s.toast)
+  const aiEnabled = useStudio(selectAiEnabled)
   // 批70：回复表单存 store——宿主（Tab/Drawer/Rail）卸载不再静默丢稿；key 在 = 开着
   const replying = useStudio((s) => c.id in s.replyBodies)
   const replyBody = useStudio((s) => s.replyBodies[c.id] ?? '')
@@ -180,6 +184,28 @@ export function CommentCard({ pid, comment: c, active, atCursor, desktop, busy, 
           {!collapsed && (
             <Button ref={replyBtn} size={ctlSize} variant="ghost" onClick={() => setReplyBody(c.id, '')} data-testid="review-reply-open">
               <CornerDownRight aria-hidden />回复
+            </Button>
+          )}
+          {/* Z18 批注 → 修改提案：块锚批注 + AI 已开 + reviewer 起；成功跳 AI 面板「建议」 */}
+          {!collapsed && aiEnabled && c.anchor.block_id && (
+            <Button
+              size={ctlSize}
+              variant="ghost"
+              disabled={busy || !pid || !canResolve}
+              title={canResolve ? '按此批注生成一条修订建议（AI），到「建议」面板确认后写入' : '转提案需要审阅者及以上角色'}
+              onClick={() =>
+                pid &&
+                void run(async () => {
+                  const prop = await commentToProposal(pid, c.id)
+                  if (prop) {
+                    toast('已生成修改建议，请在「建议」面板确认', 'success')
+                    gotoAiProposals()
+                  }
+                }, '转修改提案失败')
+              }
+              data-testid={`review-to-proposal-${c.id}`}
+            >
+              <Wand2 aria-hidden />转提案
             </Button>
           )}
           <Button

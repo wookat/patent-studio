@@ -271,6 +271,9 @@ export function OaPanel() {
                 <Download aria-hidden /> 导出意见陈述书 DOCX
               </Button>
             )}
+            {items.length - answered > 0 && (
+              <span className="text-xs text-warn-fg" data-testid="oa-unanswered">还有 {items.length - answered} 条未答复</span>
+            )}
           </div>
 
           <div className="grid min-h-0 flex-1 gap-3 @lg:grid-cols-[minmax(200px,2fr)_minmax(0,3fr)]" data-testid="oa-workspace">

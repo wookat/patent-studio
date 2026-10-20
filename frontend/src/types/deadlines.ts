@@ -39,6 +39,8 @@ export interface DeadlineItem {
   extensions: { months: number; requested_at: string }[]
   /** 当前用户在 pid 案的角色（行级写门槛门控用）；AUTH=off ⇒ null/缺省（视为可写） */
   my_role?: Role | null
+  /** Z22：届满年份的节假日表是否已核对；false ⇒ 届满日只按周末顺延，有不确定性（manual 条目恒 true） */
+  holidays_verified?: boolean
 }
 
 /**

@@ -23,7 +23,8 @@ let host: HTMLElement
 const REC: NoveltyRecord = {
   updated_at: '2026-09-30T10:00:00',
   queries: [{ query: 'transformer AND 时间序列', provider: 'OPS', ran_at: '2026-09-30' }],
-  hits: [{ number: 'CN114519469B', title: '一种预测方法', relevance: 'Y', note: '区别在移位窗口', link: 'https://example.com/x' }],
+  hits: [{ number: 'CN114519469B', title: '一种预测方法', relevance: 'Y', note: '区别在移位窗口', link: 'https://example.com/x', publication_date: '2021-03-02' }],
+  evidence: [],
   conclusion: '具备新颖性初步判断',
 }
 
@@ -104,7 +105,7 @@ describe('NoveltyPage', () => {
   })
 
   it('添加/删除检索式与对比文件行', async () => {
-    vi.spyOn(api, 'getNovelty').mockResolvedValue({ updated_at: null, queries: [], hits: [], conclusion: '' })
+    vi.spyOn(api, 'getNovelty').mockResolvedValue({ updated_at: null, queries: [], hits: [], evidence: [], conclusion: '' })
     const h = await loadPage()
     expect(h.querySelector('[data-testid="queries-empty"]')).not.toBeNull()
     await click(h.querySelector('[data-testid="add-query"]'))
@@ -125,6 +126,78 @@ describe('NoveltyPage', () => {
     expect((h.querySelector('[data-testid="query-text-0"]') as HTMLInputElement).disabled).toBe(true)
     expect(h.querySelector('[data-testid="novelty-save"]')).toBeNull()
     expect(h.querySelector('[data-testid="add-query"]')).toBeNull()
+  })
+
+  it('Z31：证据对照——登记并生成权项批注 → annotate 调用 + 列表追加', async () => {
+    const annotate = vi.spyOn(api, 'annotateEvidence').mockResolvedValue({
+      comment: { id: 'c9', anchor: { block_id: 'claims/2', line: 11, book: 'claims' }, body: 'b', source: 'ai' },
+      evidence: { id: 'ev1', hit: 'CN114519469B', claim: 2, feature: '特征点集合', quote: '对比文件原句', status: 'hit' },
+    })
+    const h = await loadPage()
+    expect(h.querySelector('[data-testid="evidence-section"]')).not.toBeNull()
+    expect(h.querySelector('[data-testid="evidence-empty"]')).not.toBeNull()
+    await change(h.querySelector('[data-testid="evidence-claim"]'), '2')
+    await change(h.querySelector('[data-testid="evidence-feature"]'), '特征点集合')
+    await act(async () => {
+      const t = h.querySelector('[data-testid="evidence-quote"]') as HTMLTextAreaElement
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!
+      setter.call(t, '对比文件原句')
+      t.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const btn = h.querySelector('[data-testid="evidence-annotate"]') as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+    await click(btn)
+    // 默认取首个已登记对比文件
+    expect(annotate).toHaveBeenCalledWith('p1', { hit: 'CN114519469B', claim: 2, feature: '特征点集合', quote: '对比文件原句', status: 'hit' })
+    expect(h.querySelector('[data-testid="evidence-row-ev1"]')).not.toBeNull()
+  })
+
+  it('Z31：已登记证据行渲染状态徽标与原句', async () => {
+    vi.spyOn(api, 'getNovelty').mockResolvedValue({
+      ...REC,
+      evidence: [{ id: 'ev1', hit: 'CN114519469B', claim: 3, feature: '移位窗口', quote: '原句x', status: 'partial' }],
+    })
+    const h = await loadPage()
+    const row = h.querySelector('[data-testid="evidence-row-ev1"]')
+    expect(row).not.toBeNull()
+    expect(row!.textContent).toContain('权3')
+    expect(row!.textContent).toContain('部分命中')
+    expect(row!.textContent).toContain('原句x')
+  })
+
+  it('Z31 复核3：未保存改动时证据登记被阻断并提示先保存（不丢编辑）', async () => {
+    const add = vi.spyOn(api, 'addEvidence').mockResolvedValue({
+      record: REC,
+      evidence: { id: 'ev9', hit: 'CN114519469B', claim: null, feature: '', quote: '', status: 'pending' },
+    })
+    const h = await loadPage()
+    expect(h.querySelector('[data-testid="evidence-add"]')).not.toBeNull()
+    // 改对比文件编号 → dirty → 证据表单换为「先保存」提示，登记按钮不可用
+    await change(h.querySelector('[data-testid="hit-number-0"]'), 'CN114519469A')
+    expect(h.querySelector('[data-testid="evidence-dirty-hint"]')).not.toBeNull()
+    expect(h.querySelector('[data-testid="evidence-add"]')).toBeNull()
+    expect(h.querySelector('[data-testid="evidence-annotate"]')).toBeNull()
+    // 保存后表单恢复可用，且编辑内容没有丢（PUT 拿到了改后的编号）
+    vi.spyOn(api, 'putNovelty').mockResolvedValue({ ...REC, hits: [{ ...REC.hits[0], number: 'CN114519469A' }] })
+    await click(h.querySelector('[data-testid="novelty-save"]'))
+    expect(h.querySelector('[data-testid="evidence-dirty-hint"]')).toBeNull()
+    expect(h.querySelector('[data-testid="evidence-add"]')).not.toBeNull()
+    expect(add).not.toHaveBeenCalled()
+  })
+
+  it('Z31 复核3：换案清空证据表单（不串案）', async () => {
+    const h = await loadPage()
+    await change(h.querySelector('[data-testid="evidence-claim"]'), '3')
+    await change(h.querySelector('[data-testid="evidence-feature"]'), '待核对特征')
+    // 换案 p2：同页不同 pid → 表单字段全部清空
+    useStudio.setState({ pid: 'p2', project: { id: 'p2', title: '另一案', role: 'agent', case: { status: 'intake' } } as never })
+    vi.spyOn(api, 'getNovelty').mockResolvedValue({ ...REC })
+    await act(async () => root!.render(<NoveltyPage pid="p2" />))
+    await act(async () => Promise.resolve())
+    expect(api.getNovelty).toHaveBeenLastCalledWith('p2')
+    expect((h.querySelector('[data-testid="evidence-claim"]') as HTMLInputElement).value).toBe('')
+    expect((h.querySelector('[data-testid="evidence-feature"]') as HTMLInputElement).value).toBe('')
+    expect((h.querySelector('[data-testid="evidence-quote"]') as HTMLTextAreaElement).value).toBe('')
   })
 
   it('GET 失败 → 错误态带重试；重试重拉', async () => {

@@ -16,7 +16,7 @@ SSE 步骤流在 routes_ai `GET /api/ai/jobs/{id}/events`（agent:* 任务走 wa
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.agent import budget, loop, proposals, registry
+from app.agent import budget, loop, metrics, proposals, registry
 from app.agent.types import (
     SCENARIO_BY_ID,
     AgentJobOut,
@@ -65,7 +65,13 @@ async def agent_run(pid: str, body: AgentRunIn, request: Request, user: CurrentU
         budget.check_heavy(p.dir, settings)
     jobs = request.app.state.jobs
     # 同场景重复投递（客户端超时重试 / 双击）→ 409，避免并行双写提案与双倍 AI 消耗（与 convert 同口径）
-    job = jobs.create_unless_busy(job_kind(scenario), pid, queue_key=heavy_queue_key(pid) if heavy else None)
+    # payload 记录续跑入参（Z14）：interrupted 后 POST /api/ai/jobs/{id}/resume 按原参数重进
+    job = jobs.create_unless_busy(
+        job_kind(scenario),
+        pid,
+        queue_key=heavy_queue_key(pid) if heavy else None,
+        payload={"scenario": scenario, "params": dict(body.params)},
+    )
     if job is None:
         raise HTTPException(409, error_detail("job_busy", "本案已有同一场景任务在进行中", detail=UNIT))
     ai = request.app.state.ai
@@ -83,6 +89,18 @@ async def agent_jobs(pid: str, request: Request):
     request.app.state.store.get(pid)
     jobs = request.app.state.jobs.list(pid)
     return AgentJobsResponse(jobs=[_job_out(j) for j in jobs if j.kind.startswith("agent:")])
+
+
+@router.get("/api/projects/{pid}/agent/metrics")
+async def agent_metrics(pid: str, request: Request):
+    """Z32 成果度量（viewer）：jobs 状态去重分桶 + proposals 审态分桶 + usage token；
+    费用/人工改动无证据源 ⇒ 显式 collected=false，不拿调用数当质量。"""
+    store = request.app.state.store
+    p = store.get(pid)
+    jobs = [j.to_dict() for j in request.app.state.jobs.list(pid)]
+    props = [pr.model_dump() for pr in proposals.load(p.dir, pid, None)]
+    rows = read_usage(p.dir)
+    return metrics.case_metrics(jobs, props, rows)
 
 
 @router.get("/api/projects/{pid}/agent/proposals", response_model=ProposalsResponse)

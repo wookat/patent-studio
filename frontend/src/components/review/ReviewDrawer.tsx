@@ -52,7 +52,7 @@ export function ReviewDrawer() {
   if (!pid) return null
 
   // 计数只在 ReviewRail 页签上显示一次；标题区不再重复「修订 N 处」，残障技术走 aria-label
-  const summary = `审阅：修订 ${markCount} 处，未解决批注 ${openCount} 条`
+  const summary = `审阅修订：修订 ${markCount} 处，未解决批注 ${openCount} 条`
 
   // 桌面版面视图：栏已内嵌在版面卡（列 / 其 Sheet），本组件不再另开一份
   if (desktop && embedded) return null
@@ -67,7 +67,7 @@ export function ReviewDrawer() {
           data-testid="review-drawer"
         >
           <SheetHeader className="py-2 pr-12">
-            <SheetTitle className="text-sm" aria-label={summary}>审阅</SheetTitle>
+            <SheetTitle className="text-sm" aria-label={summary}>审阅修订</SheetTitle>
           </SheetHeader>
           <ReviewRail pid={pid} className="min-h-0 flex-1" />
         </SheetContent>
@@ -79,7 +79,7 @@ export function ReviewDrawer() {
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent side="bottom" className="h-[85dvh]" data-testid="review-sheet" aria-describedby={undefined}>
         <SheetHeader className="min-h-touch flex-row items-center gap-2 py-1 pr-12">
-          <SheetTitle className="min-w-0 flex-1 text-base" aria-label={summary}>审阅</SheetTitle>
+          <SheetTitle className="min-w-0 flex-1 text-base" aria-label={summary}>审阅修订</SheetTitle>
         </SheetHeader>
         <ReviewRail pid={pid} className="min-h-0 flex-1" />
       </SheetContent>
@@ -105,7 +105,7 @@ export function ReviewDrawerButton({ className }: { className?: string }) {
   if (!pid) return null
   const toggle = host === 'rail-column' ? () => setRailOpen() : host === 'rail-sheet' ? () => setRailSheetOpen() : toggleDrawer
   const n = openCount + markCount
-  const label = `审阅${n > 0 ? `，${markCount} 处修订、${openCount} 条未解决批注` : '：修订与批注'}`
+  const label = `审阅修订${n > 0 ? `，${markCount} 处修订、${openCount} 条未解决批注` : '：修订与批注'}`
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -120,7 +120,7 @@ export function ReviewDrawerButton({ className }: { className?: string }) {
           data-review-host={host}
         >
           <MessageSquareText aria-hidden />
-          <span className="hidden xl:inline">审阅</span>
+          <span className="hidden xl:inline">审阅修订</span>
           {n > 0 && <Count value={n} tone="brand" className="absolute right-0 top-0" data-testid="topbar-review-badge" aria-hidden />}
         </Button>
       </TooltipTrigger>

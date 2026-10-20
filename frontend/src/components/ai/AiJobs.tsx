@@ -9,7 +9,7 @@ import { diagLocationLabel } from '@/lib/diagLocation'
 import { BOOK_LABELS } from '@/lib/docset'
 import type { Ast, BookName } from '@/types/ast'
 
-const JOB_KIND: Record<AiJob['kind'], string> = { review: 'AI 审阅', convert: '材料转专利', oa_answer: 'OA 答复' }
+const JOB_KIND: Record<AiJob['kind'], string> = { review: 'AI 审阅', convert: '材料转专利', oa_answer: 'OA 答复', rewrite: 'AI 改写', comment2proposal: '批注转提案' }
 const JOB_STATUS: Record<AiJob['status'], string> = { queued: '排队中', running: '进行中', done: '已完成', error: '失败', interrupted: '已中断' }
 const SUG_SOURCE: Record<AiSuggestion['source'], string> = { rewrite: '改写', unify: '术语统一', oa: 'OA 答复' }
 

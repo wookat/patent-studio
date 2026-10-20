@@ -52,6 +52,8 @@ export function OaItemList({ items, answers, activeId, onSelect, className }: Pr
       {items.map((it) => {
         const active = it.id === activeId
         const ans = answers[it.id]
+        /* Z23 证据链状态：后端 status 优先（含轮次已交付），旧后端缺字段时按本地答复推断 */
+        const status = it.status ?? (ans ? 'answered' : 'pending')
         const low = it.confidence === 'low'
         return (
           <li
@@ -91,12 +93,17 @@ export function OaItemList({ items, answers, activeId, onSelect, className }: Pr
                   {low ? '低置信' : '高置信'}
                 </Badge>
               )}
-              {ans && (
-                <span className={cn('ml-auto inline-flex items-center gap-0.5', ans.applied ? 'text-ok-fg' : 'text-info-fg')} data-testid={`oa-item-${it.id}-status`}>
-                  <CheckCircle2 className="size-3" aria-hidden />
-                  {ans.applied ? '已写入' : '已答复'}
-                </span>
-              )}
+              <span
+                className={cn(
+                  'ml-auto inline-flex items-center gap-0.5',
+                  status === 'pending' ? 'text-fg-muted' : ans?.applied ? 'text-ok-fg' : status === 'delivered' ? 'text-ok-fg' : 'text-info-fg',
+                )}
+                data-testid={`oa-item-${it.id}-status`}
+                data-status={status}
+              >
+                {status !== 'pending' && <CheckCircle2 className="size-3" aria-hidden />}
+                {status === 'delivered' ? '已交付' : ans?.applied ? '已写入' : status === 'answered' ? '已答复' : '待答'}
+              </span>
             </div>
             <p className="mt-1 text-fg-muted">{oaItemSummary(it)}</p>
           </li>

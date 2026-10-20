@@ -1,5 +1,6 @@
 import { ApiError, api } from '@/lib/api'
 import { ROLE_RANK, type Comment, type CommentAnchor, type Role } from '@/lib/types'
+import type { Proposal } from '@/types/agent'
 import type { Slice } from './types'
 
 /** 批注来源（R-REV-02 筛选）：AI 审阅 / 客户免登录评论 / 团队成员 */
@@ -33,6 +34,8 @@ export interface CommentsSlice {
   replyComment(pid: string, cid: string, body: string): Promise<void>
   resolveComment(pid: string, cid: string, resolved?: boolean): Promise<void>
   deleteComment(pid: string, cid: string): Promise<void>
+  /** Z18 批注一键转修改提案：提案并入 s.proposals（AI 面板「建议」可见） */
+  commentToProposal(pid: string, cid: string): Promise<Proposal | null>
   setActiveComment(id: string | null): void
   /** 选中并要求面板滚到该批注（通知 / hash ?c= 入口） */
   focusComment(id: string): void
@@ -80,6 +83,12 @@ export const commentsSlice: Slice<CommentsSlice> = (set, get) => {
       await api.deleteComment(pid, cid)
       if (get().pid && get().pid !== pid) return
       set({ comments: get().comments.filter((c) => c.id !== cid) })
+    },
+    commentToProposal: async (pid, cid) => {
+      const { proposal } = await api.commentToProposal(pid, cid)
+      if (get().pid && get().pid !== pid) return proposal
+      set((s) => ({ proposals: s.proposals.some((p) => p.id === proposal.id) ? s.proposals : [...s.proposals, proposal] }))
+      return proposal
     },
     setActiveComment: (id) => {
       if (get().activeCommentId !== id) set({ activeCommentId: id })

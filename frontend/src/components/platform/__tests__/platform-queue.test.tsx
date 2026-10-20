@@ -20,7 +20,10 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 function mockApi(map: Record<string, { body: unknown; status?: number }>) {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     const hit = map[url]
-    return hit ? json(hit.body, hit.status ?? 200) : json({ detail: 'not found' }, 404)
+    if (hit) return json(hit.body, hit.status ?? 200)
+    // 阶段6：work-items 服务端分页信封——不关心内容的用例统一给空态
+    if (url.startsWith('/api/v1/work-items')) return json({ items: [], total: 0, limit: 20, offset: 0 })
+    return json({ detail: 'not found' }, 404)
   }))
 }
 
@@ -72,16 +75,269 @@ describe('M7：#/workbench 退役为 redirect shim', () => {
   })
 })
 
+const ME = { id: 'p1', kind: 'human', display_name: '我' }
+
+const CASE_C1 = { id: 'c1', organization_id: 'o1', case_key: 'method', title: '方法案', kind: 'invention', status: 'drafting' }
+const WI1 = { id: 'w1', case_id: 'c1', type: 'review', title: '复核权项', assignee_principal_id: 'p1', deadline: null, priority: 1, status: 'open', reporter_principal_id: 'p1', case: CASE_C1 }
+
+/** 阶段6：work-items 服务端分页 mock——按 limit/offset/status/q/assignee 查询参数返回信封；
+    extra 里同 key 规则 `{assignee}|{status}|{q}` → 自定义 items/total（默认回全量）。 */
+function mockWorkItems(items: unknown[], extra: Record<string, { items: unknown[]; total?: number }> = {}, urls?: string[]) {
+  return (url: string) => {
+    if (!url.startsWith('/api/v1/work-items')) return null
+    urls?.push(url)
+    const u = new URL(url, 'http://x')
+    const key = `${u.searchParams.get('assignee') ?? ''}|${u.searchParams.get('status') ?? ''}|${u.searchParams.get('q') ?? ''}`
+    const hit = extra[key]
+    const list = hit ? hit.items : items
+    return json({ items: list, total: hit?.total ?? list.length, limit: Number(u.searchParams.get('limit') ?? 20), offset: Number(u.searchParams.get('offset') ?? 0) })
+  }
+}
+
 describe('M6：dashboard 工作项分段（一案双体去重后按 case_key 导航）', () => {
   it('工作项行渲染 + 打开 → #/p/<case_key>', async () => {
-    mockApi({
-      '/api/v1/cases': { body: [{ id: 'c1', organization_id: 'o1', case_key: 'method', title: '方法案', kind: 'invention', status: 'drafting' }] },
-      '/api/v1/work-items': { body: [{ id: 'w1', case_id: 'c1', type: 'review', title: '复核权项', assignee_principal_id: 'p1', deadline: null, priority: 1, status: 'open', reporter_principal_id: 'p1' }] },
-    })
+    const wi = mockWorkItems([WI1])
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url === '/api/v1/principals/me') return json(ME)
+      return wi(url) ?? json({ detail: 'not found' }, 404)
+    }))
     await mount(<PlatformQueue />)
     await vi.waitFor(() => expect(host.querySelector('[data-testid="work-item-w1"]')).not.toBeNull())
-    expect(host.querySelector('[data-testid="work-item-w1"]')?.textContent).toContain('复核权项')
-    await act(async () => (host.querySelector('[data-testid="work-item-w1"] [data-testid], [data-testid="work-item-w1"] button') as HTMLElement)?.click())
+    const row = host.querySelector('[data-testid="work-item-w1"]')!
+    expect(row.textContent).toContain('复核权项')
+    expect(row.textContent).toContain('method')
+    expect(row.textContent).toContain('方法案')
+    await act(async () => (host.querySelector('[data-testid="work-item-open-w1"]') as HTMLElement)?.click())
     await vi.waitFor(() => expect(window.location.hash).toBe('#/p/method'))
+  })
+
+  it('阶段6：队列 0 次无参数 /cases；工作项请求带分页/筛选参数，q 走服务端', async () => {
+    const urls: string[] = []
+    const wi = mockWorkItems([WI1], { 'me||ZZ': { items: [], total: 0 } }, urls)
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      urls.push(url)
+      if (url === '/api/v1/cases') throw new Error('不应再拉全量 /cases')
+      if (url === '/api/v1/principals/me') return json(ME)
+      const page = wi(url)
+      if (page) return page
+      if (url.startsWith('/api/v1/cases/page')) return json({ items: [], total: 0, limit: 20, offset: 0 })
+      return json({ detail: 'not found' }, 404)
+    }))
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="work-item-w1"]')).not.toBeNull())
+    // 初始「我的待办」：assignee=me + limit/offset 进请求
+    const first = urls.find((u) => u.startsWith('/api/v1/work-items'))!
+    const u0 = new URL(first, 'http://x')
+    expect(u0.searchParams.get('assignee')).toBe('me')
+    expect(Number(u0.searchParams.get('limit'))).toBeGreaterThan(0)
+    expect(u0.searchParams.get('offset')).toBe('0')
+    // q 搜索进入服务端参数；无命中由服务端 total=0 驱动空态（非本地只过滤当前页）
+    const input = host.querySelector('#queue-search') as HTMLInputElement
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setter.call(input, 'ZZ')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="queue-empty"]')).not.toBeNull())
+    expect(urls.some((u) => new URL(u, 'http://x').searchParams.get('q') === 'ZZ')).toBe(true)
+    expect(urls.filter((u) => u === '/api/v1/cases')).toEqual([])
+  })
+})
+
+describe('Z06/Z10：角色待办范围与空态', () => {
+  const CASES = [{ id: 'c1', organization_id: 'o1', case_key: 'method', title: '方法案', kind: 'invention', status: 'intake' }]
+  const WI = (id: string, assignee: string | null, extra: Record<string, unknown> = {}) => ({
+    id, case_id: 'c1', type: 'draft', title: `项${id}`, assignee_principal_id: assignee, deadline: null,
+    priority: 2, status: 'open', reporter_principal_id: 'o1', case: CASES[0], ...extra,
+  })
+  const ITEMS = {
+    'me||': { items: [WI('w1', 'p1')], total: 1 },
+    'none||': { items: [WI('w2', null, { type: 'review', title: '复核权项' })], total: 1 },
+    '||': { items: [WI('w1', 'p1'), WI('w2', null), WI('w3', 'other', { type: 'figure', title: '绘图' })], total: 3 },
+  }
+  const mocks = (extra: Record<string, { items: unknown[]; total?: number }> = ITEMS) => {
+    const wi = mockWorkItems([], extra)
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url === '/api/v1/principals/me') return json(ME)
+      return wi(url) ?? json({ detail: 'not found' }, 404)
+    }))
+  }
+
+  it('默认「我的待办」走 assignee=me；切「未分配/全部」换服务端口径', async () => {
+    mocks()
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="work-item-w1"]')).not.toBeNull())
+    expect(host.querySelector('[data-testid="work-item-w2"]')).toBeNull()
+    expect(host.querySelector('[data-testid="work-item-w3"]')).toBeNull()
+    // 我的待办可开始处理
+    expect(host.querySelector('[data-testid="work-item-start-w1"]')).not.toBeNull()
+    await act(async () => (host.querySelector('[data-testid="queue-scope-unassigned"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="work-item-w2"]')).not.toBeNull())
+    expect(host.querySelector('[data-testid="work-item-w2"]')?.textContent).toContain('未分配')
+    await act(async () => (host.querySelector('[data-testid="queue-scope-all"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="work-item-w3"]')).not.toBeNull())
+  })
+
+  it('空态区分：我的待办为空 vs 全部为空', async () => {
+    mocks({ 'me||': { items: [], total: 0 }, '||': { items: [WI('w9', 'other')], total: 1 } })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="queue-empty"]')?.textContent).toContain('没有分派给你的待办'))
+    await act(async () => (host.querySelector('[data-testid="queue-scope-all"]') as HTMLElement).click())
+    // 切到「全部」仍非空（他人工作项）
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="work-item-w9"]')).not.toBeNull())
+    expect(host.querySelector('[data-testid="queue-empty"]')).toBeNull()
+  })
+
+  it('无待办时「全部」空态提示登记新案', async () => {
+    mocks({ 'me||': { items: [], total: 0 }, '||': { items: [], total: 0 } })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="queue-empty"]')?.textContent).toContain('没有分派给你的待办'))
+    await act(async () => (host.querySelector('[data-testid="queue-scope-all"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="queue-empty"]')?.textContent).toContain('暂无待办'))
+  })
+
+  it('翻页拉取下页且类型/状态徽标中文（不外露内部枚举）', async () => {
+    mocks({
+      '||': { items: Array.from({ length: 20 }, (_, i) => WI(`w${i}`, 'other', { type: 'review', status: 'open' })), total: 21 },
+    })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="queue-scope-all"]')).not.toBeNull())
+    await act(async () => (host.querySelector('[data-testid="queue-scope-all"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="work-item-w0"]')).not.toBeNull())
+    expect(host.querySelector('[data-testid="queue-total"]')?.textContent).toContain('共 21 项')
+    expect(host.querySelector('[data-testid="work-item-w0"]')?.textContent).toContain('复核')
+    expect(host.querySelector('[data-testid="work-item-w0"]')?.textContent).toContain('待处理')
+    expect(host.querySelector('[data-testid="work-item-w0"]')?.textContent).not.toContain('review')
+    expect(host.querySelector('[data-testid="queue-pager"]')?.textContent).toContain('第 1 / 2 页')
+    await act(async () => (host.querySelector('[data-testid="queue-pager"] button:last-child') as HTMLElement).click())
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="queue-pager"]')?.textContent).toContain('第 2 / 2 页'))
+  })
+})
+
+describe('Z29：案件台账服务端分页', () => {
+  const CASE = (i: number) => ({ id: `c${i}`, organization_id: 'o1', case_key: `K-${i}`, title: `案 ${i}`, kind: 'invention', status: 'intake' })
+  function mockLedger(pages: Record<string, { items: unknown[]; total: number }>) {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.startsWith('/api/v1/cases/page')) {
+        const u = new URL(url, 'http://x')
+        const k = `${u.searchParams.get('q') ?? ''}|${u.searchParams.get('offset') ?? '0'}`
+        const hit = pages[k] ?? { items: [], total: 0 }
+        return json({ ...hit, limit: 20, offset: Number(u.searchParams.get('offset') ?? 0) })
+      }
+      if (url === '/api/v1/principals/me') return json(ME)
+      if (url === '/api/v1/cases') throw new Error('不应再拉全量 /cases')
+      if (url.startsWith('/api/v1/work-items')) return json({ items: [], total: 0, limit: 20, offset: 0 })
+      return json({ detail: 'not found' }, 404)
+    }))
+  }
+
+  it('台账分页渲染 + 下一页拉取第二页；行「打开」按 case_key 导航', async () => {
+    mockLedger({ '|0': { items: [CASE(1), CASE(2)], total: 3 }, '|20': { items: [CASE(3)], total: 3 } })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ledger-case-c1"]')).not.toBeNull())
+    expect(host.querySelector('[data-testid="ledger-total"]')?.textContent).toContain('共 3 案')
+    expect(host.querySelector('[data-testid="ledger-pager"]')?.textContent).toContain('第 1 / 1 页') // limit=20 ≥ total=3
+    await act(async () => (host.querySelector('[data-testid="ledger-open-c1"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(window.location.hash).toBe('#/p/K-1'))
+  })
+
+  it('台账行类型/状态渲染中文标签，不外露内部枚举；未知枚举显「未知类型/未知状态」', async () => {
+    mockLedger({
+      '|0': {
+        items: [CASE(1), { ...CASE(2), kind: 'future_kind', status: 'future_state' }],
+        total: 2,
+      },
+    })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ledger-case-c1"]')).not.toBeNull())
+    const row1 = host.querySelector('[data-testid="ledger-case-c1"]')!
+    expect(row1.textContent).toContain('发明')
+    expect(row1.textContent).toContain('登记')
+    expect(row1.textContent).not.toContain('invention')
+    expect(row1.textContent).not.toContain('intake')
+    const row2 = host.querySelector('[data-testid="ledger-case-c2"]')!
+    expect(row2.textContent).toContain('未知类型')
+    expect(row2.textContent).toContain('未知状态')
+    expect(row2.textContent).not.toContain('future_kind')
+    expect(row2.textContent).not.toContain('future_state')
+  })
+
+  it('窄屏横向滑动口径：表格 min-w-2xl 保底宽 + 案号/类型/状态/操作列 nowrap + 手机滑动提示', async () => {
+    mockLedger({ '|0': { items: [CASE(1)], total: 1 } })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ledger-case-c1"]')).not.toBeNull())
+    const table = host.querySelector('[data-testid="case-ledger"] table')!
+    expect(table.className).toContain('min-w-2xl')
+    expect(host.querySelector('[data-testid="ledger-scroll-hint"]')?.className).toContain('lg:hidden')
+    // 标题列为唯一可折行列；其余列 nowrap 防竖排
+    const cells = host.querySelectorAll('[data-testid="ledger-case-c1"] td')
+    expect(cells[1].className).not.toContain('whitespace-nowrap')
+    for (const i of [0, 2, 3, 4]) expect(cells[i].className).toContain('whitespace-nowrap')
+  })
+
+  it('q 筛选带上服务端参数；无命中 → 空态', async () => {
+    mockLedger({ '|0': { items: [CASE(1)], total: 1 }, 'ZZ|0': { items: [], total: 0 } })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ledger-case-c1"]')).not.toBeNull())
+    const input = host.querySelector('#ledger-q') as HTMLInputElement
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setter.call(input, 'ZZ')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="ledger-empty"]')).not.toBeNull())
+  })
+})
+
+describe('Z11/Z12：机构工作台登记新案', () => {
+  it('打开登记新案对话框：机构成员列表驱动承办人选项', async () => {
+    mockApi({
+      '/api/v1/principals/me': { body: ME },
+      '/api/v1/organizations': { body: [{ id: 'o1', slug: 'acme', name: '知撰代理', status: 'active' }] },
+      '/api/v1/organizations/o1/memberships': {
+        body: [
+          { organization_id: 'o1', principal_id: 'p1', role: 'owner', status: 'active', display_name: '所长' },
+          { organization_id: 'o1', principal_id: 'p2', role: 'member', status: 'active', display_name: '代理人甲' },
+        ],
+      },
+    })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="intake-open"]')).not.toBeNull())
+    await act(async () => (host.querySelector('[data-testid="intake-open"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(document.querySelector('[data-testid="case-intake-dialog"]')).not.toBeNull())
+    expect(document.querySelector('[data-testid="intake-key"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="intake-title"]')).not.toBeNull()
+    expect(document.querySelector('[data-testid="intake-not-manager"]')).toBeNull()
+    expect((document.querySelector('[data-testid="intake-submit"]') as HTMLButtonElement)?.disabled).toBe(true)
+  })
+
+  it('无机构成员身份 → 空态，不渲染表单', async () => {
+    mockApi({
+      '/api/v1/principals/me': { body: ME },
+      '/api/v1/organizations': { body: [] },
+    })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="intake-open"]')).not.toBeNull())
+    await act(async () => (host.querySelector('[data-testid="intake-open"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(document.querySelector('[data-testid="intake-no-org"]')).not.toBeNull())
+    expect(document.querySelector('[data-testid="intake-key"]')).toBeNull()
+  })
+
+  it('非管理员成员 → 提示无权限且禁用提交', async () => {
+    mockApi({
+      '/api/v1/principals/me': { body: { id: 'p2', kind: 'human', display_name: '代理人甲' } },
+      '/api/v1/organizations': { body: [{ id: 'o1', slug: 'acme', name: '知撰代理', status: 'active' }] },
+      '/api/v1/organizations/o1/memberships': {
+        body: [
+          { organization_id: 'o1', principal_id: 'p1', role: 'owner', status: 'active', display_name: '所长' },
+          { organization_id: 'o1', principal_id: 'p2', role: 'member', status: 'active', display_name: '代理人甲' },
+        ],
+      },
+    })
+    await mount(<PlatformQueue />)
+    await vi.waitFor(() => expect(host.querySelector('[data-testid="intake-open"]')).not.toBeNull())
+    await act(async () => (host.querySelector('[data-testid="intake-open"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(document.querySelector('[data-testid="intake-not-manager"]')).not.toBeNull())
+    expect((document.querySelector('[data-testid="intake-submit"]') as HTMLButtonElement)?.disabled).toBe(true)
   })
 })

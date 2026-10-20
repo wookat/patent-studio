@@ -253,7 +253,8 @@ export function DashboardPage() {
             <>
               <UserMenu />
               <h1 className="min-w-0 flex-1 truncate px-1 text-base font-semibold text-fg-strong">
-                {SCOPE_TITLE[scope]} <span className="font-normal text-fg-muted tabular-nums">{total}</span>
+                {section === 'items' ? '工作项' : SCOPE_TITLE[scope]}{' '}
+                {section === 'cases' && <span className="font-normal text-fg-muted tabular-nums">{total}</span>}
               </h1>
               {/* 06 §2 顶栏图标按钮视觉 md 36（原型 01-home 新建 36），touch-hit 命中 44；两按钮间距 8 使热区不重叠 */}
               <div className="flex shrink-0 items-center gap-2">
@@ -292,10 +293,14 @@ export function DashboardPage() {
           size="md"
           title={
             <>
-              {SCOPE_TITLE[scope]}
-              <span className="ml-2 text-sm font-normal text-fg-muted tabular-nums" data-testid="dashboard-summary">
-                {summary}
-              </span>
+              {/* 阶段6：工作项分段不挂「案件台账 · N 件」旧案卷计数——N 是文件案卷口径，
+                  与本页机构案件台账 total 不同源；本段计数由 QueueView/CaseLedger 各自随数据展示 */}
+              {section === 'items' ? '工作项' : SCOPE_TITLE[scope]}
+              {section === 'cases' && (
+                <span className="ml-2 text-sm font-normal text-fg-muted tabular-nums" data-testid="dashboard-summary">
+                  {summary}
+                </span>
+              )}
             </>
           }
           className="border-b-0 bg-panel py-3 md:py-3"

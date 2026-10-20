@@ -42,7 +42,9 @@ from app.routes.agent import router as agent_router
 from app.routes.ai import router as ai_router
 from app.routes.ast import router as ast_router
 from app.routes.attachments import router as attachments_router
+from app.routes.audit_export import router as audit_export_router
 from app.routes.cases import router as cases_router
+from app.routes.claim_sandbox import router as claim_sandbox_router
 from app.routes.comments import router as comments_router
 from app.routes.convert import router as convert_router
 from app.routes.deadlines import router as deadlines_router
@@ -114,6 +116,7 @@ app.include_router(figures_router)
 app.include_router(figlib_router)  # 附图图库：docs/figure-library 只读浏览
 app.include_router(attachments_router)  # W4-C：/attachments 上传 / 预览 / 删除
 app.include_router(preflight_router)
+app.include_router(claim_sandbox_router)
 app.include_router(patch_router)
 app.include_router(style_router)  # W4-D D1：/style.css（prep 501）
 app.include_router(auth_router)
@@ -133,6 +136,7 @@ app.include_router(import_router)
 app.include_router(templates_router)
 app.include_router(cases_router)
 app.include_router(deliver_router)  # W4-E E1：/deliver 清单 + /deliver/bundle
+app.include_router(audit_export_router)  # Z33：案卷审计轨迹导出 /audit/export
 # W5（docs/plan/21 §7.4.8）：期限 / 通知 / 公开分享 / 时间线 / AI 智能体；各 routes/*.py 内实现，经 events.py 解耦
 app.include_router(deadlines_router)
 app.include_router(notify_router)
@@ -488,7 +492,16 @@ async def put_settings(pid: str, body: SettingsIn):
 async def build(pid: str, body: BuildIn, user: auth.CurrentUser):
     store.get(pid)
     outcome = await asyncio.to_thread(
-        run_build, store, pid, body.content, body.settings, body.pdf, body.mode, tagged=True, author=author_name(user)
+        run_build,
+        store,
+        pid,
+        body.content,
+        body.settings,
+        body.pdf,
+        body.mode,
+        tagged=True,
+        preview=True,
+        author=author_name(user),
     )
     return {**outcome.to_dict(), "mode": body.mode}
 

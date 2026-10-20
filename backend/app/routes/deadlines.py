@@ -115,6 +115,7 @@ def to_item(
         client=case.client or None,
         done=d.done,
         done_at=d.done_at,
+        holidays_verified=d.source == "manual" or compute.holidays_verified(int(d.due[:4])),
     )
 
 

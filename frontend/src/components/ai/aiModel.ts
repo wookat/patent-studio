@@ -82,6 +82,17 @@ export function gotoReview(): void {
   }
 }
 
+/** Z18/Z25：跳到 AI 面板「建议」tab（桌面 Rail · 移动 NavDrawer 与 gotoReview 同口径） */
+export function gotoAiProposals(): void {
+  const s = useStudio.getState()
+  s.setAgentTab('proposals')
+  if (window.matchMedia(DESKTOP_QUERY).matches) {
+    if (s.railTab !== 'ai' || !s.outlineOpen) s.setRailTab('ai')
+  } else {
+    s.openMobileNav('ai')
+  }
+}
+
 // ---- 编辑器选区（Editor → SelectionActionBar 推送；AiPanel 上下文芯片读取） ----
 
 let lastSelection: EditorSelectionInfo | null = null

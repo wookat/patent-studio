@@ -19,6 +19,7 @@ from sqlalchemy.pool import NullPool
 from patent_studio.domain import agents as agent_domain
 from patent_studio.domain import authorization as az
 from patent_studio.domain import documents as docs
+from patent_studio.domain import methods as methods_domain
 from patent_studio.domain.collab import SubmissionBarrierError
 from patent_studio.domain.identity import Principal, User
 from patent_studio.domain.operations import Operation, OutboxEvent, append_outbox_event, transition_operation
@@ -62,6 +63,11 @@ class DomainRoute(APIRoute):
                 else:
                     status, kind = 422, "validation"
                 raise error(status, kind, str(exc)) from exc
+            except methods_domain.MethodLibraryError as exc:
+                # 消息前缀即错误类（"denied: …"/"not_found: …"），不回显输入
+                kind, _, msg = str(exc).partition(": ")
+                status = {"denied": 403, "not_found": 404}.get(kind, 422)
+                raise error(status, kind if status != 422 else "validation", msg or str(exc)) from exc
 
         return mapped
 

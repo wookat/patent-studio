@@ -37,6 +37,7 @@ ROUTE_ROLE = {
     "/api/projects/{pid}/share": "owner",
     "/api/projects/{pid}/share/{token}": "owner",
     "/api/projects/{pid}/critic": "viewer",  # POST 只解析 CriticMarkup（可带未保存正文），不写源码
+    "/api/projects/{pid}/claims/{num}/preview": "viewer",  # Z20：假设图只读推演，不写正文
     "/api/projects/{pid}/comments": "viewer",
     "/api/projects/{pid}/comments/{cid}": "viewer",
     "/api/projects/{pid}/comments/{cid}/replies": "viewer",
@@ -75,6 +76,7 @@ ROUTE_ROLE = {
     # apply 写 content.md ⇒ reviewer 进门 + check_source_write；dismiss reviewer
     "/api/projects/{pid}/agent/run": "viewer",
     "/api/projects/{pid}/agent/jobs": "viewer",
+    "/api/projects/{pid}/agent/metrics": "viewer",  # Z32：聚合计数可读，不含正文/凭证
     "/api/projects/{pid}/agent/proposals": "viewer",
     "/api/projects/{pid}/agent/proposals/{proposal_id}/apply": "reviewer",
     "/api/projects/{pid}/agent/proposals/{proposal_id}/dismiss": "reviewer",

@@ -207,7 +207,7 @@ describe('TopBar（1440）', () => {
     const reviews = document.querySelectorAll<HTMLButtonElement>('[data-testid=topbar-review]')
     expect(reviews.length).toBe(1)
     expect(right.contains(reviews[0])).toBe(true)
-    const reviewText = [...reviews[0].querySelectorAll('span')].find((n) => n.textContent === '审阅')
+    const reviewText = [...reviews[0].querySelectorAll('span')].find((n) => n.textContent === '审阅修订')
     expect(reviewText?.className).toMatch(/\bhidden\b/)
     expect(reviewText?.className).toMatch(/\bxl:inline\b/)
     const ai = q<HTMLButtonElement>('[data-testid=topbar-ai]')!

@@ -83,6 +83,7 @@ HIT = {
     "relevance": "X",
     "note": "权1 新颖性风险",
     "link": "https://x",
+    "publication_date": "",  # Z31：归一化后恒带此键
 }
 QUERY = {"query": "TACD:(数据处理)", "provider": "patsnap", "ran_at": "2026-10-01"}
 
@@ -91,7 +92,7 @@ def test_get_empty_then_put_roundtrip(client):
     c, d = client
     r = c.get("/api/projects/method/novelty")
     assert r.status_code == 200
-    assert r.json() == {"updated_at": None, "queries": [], "hits": [], "conclusion": ""}
+    assert r.json() == {"updated_at": None, "queries": [], "hits": [], "evidence": [], "conclusion": ""}
     assert not os.path.exists(d / ".studio" / "novelty.json"), "GET 不应创建文件"
 
     body = {"queries": [QUERY], "hits": [HIT], "conclusion": "初判可专利，建议独权收窄到步骤二参数。"}

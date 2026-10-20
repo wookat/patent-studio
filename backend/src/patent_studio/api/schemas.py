@@ -49,6 +49,7 @@ class MembershipOut(DTO):
     principal_id: uuid.UUID
     role: str
     status: str
+    display_name: str | None = None
 
 
 class InvitationIn(DTO):
@@ -64,6 +65,7 @@ class InvitationIn(DTO):
         "drafter",
         "reviewer",
         "case_manager",
+        "agent",
         "observer",
     ]
     case_id: uuid.UUID | None = None
@@ -92,10 +94,85 @@ class CaseOut(CaseIn):
     status: str
 
 
+class CasePageOut(DTO):
+    """Z29 规模化台账：服务端分页信封。items 按 (updated_at desc, case_key, id) 稳定排序。"""
+
+    items: list[CaseOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class MethodAssetIn(DTO):
+    """Z30：人工录入的脱敏方法卡（method/expression，非客户发明事实）。source 只收 manual/curated。
+
+    复核项6 元数据（服务端强制）：asset_type 类型、provenance 真实来源说明、
+    authorized_scope 授权使用范围、deidentified_confirmed 人工脱敏声明——必须是字面 True
+    （Literal[True] 之外的值 422；声明≠系统验证过正文，仅录入人负责）。"""
+
+    title: str = Field(min_length=1, max_length=300)
+    body: str = Field(min_length=1)
+    source: Literal["manual", "curated"] = "manual"
+    asset_type: Literal["method", "expression"] = "method"
+    provenance: str = Field(min_length=1, max_length=500)
+    authorized_scope: str = Field(min_length=1, max_length=500)
+    deidentified_confirmed: Literal[True]
+
+
+class MethodAssetConfirmIn(DTO):
+    """复核项6：既有草稿（0015 迁移前创建、元数据缺失）的补登确认载荷。"""
+
+    asset_type: Literal["method", "expression"]
+    provenance: str = Field(min_length=1, max_length=500)
+    authorized_scope: str = Field(min_length=1, max_length=500)
+    deidentified_confirmed: Literal[True]
+
+
+class MethodAssetOut(DTO):
+    id: uuid.UUID
+    organization_id: uuid.UUID
+    title: str
+    body: str
+    source: str
+    status: str
+    asset_type: str
+    provenance: str | None
+    authorized_scope: str | None
+    deidentified_confirmed: bool
+    authorized_by_principal_id: uuid.UUID | None
+    authorized_at: datetime | None
+    created_by_principal_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+
+class MethodAssetUseIn(DTO):
+    case_id: uuid.UUID | None = None
+    note: str | None = Field(default=None, max_length=300)
+
+
+class MethodAssetUseOut(DTO):
+    id: uuid.UUID
+    asset_id: uuid.UUID
+    case_id: uuid.UUID | None
+    principal_id: uuid.UUID
+    note: str | None
+    used_at: datetime
+
+
 class ParticipantIn(DTO):
     principal_id: uuid.UUID
     role: Literal[
-        "client", "inventor", "applicant", "author", "attorney", "drafter", "reviewer", "case_manager", "observer"
+        "client",
+        "inventor",
+        "applicant",
+        "author",
+        "attorney",
+        "drafter",
+        "reviewer",
+        "case_manager",
+        "agent",
+        "observer",
     ]
 
 
@@ -222,6 +299,25 @@ class ProposalOut(DTO):
     accepted_figure_revision_id: uuid.UUID | None
 
 
+class ProposalInboxOut(ProposalOut):
+    """阶段6收口：跨案提案收件箱列表项随附案件元数据（前端不再逐案回拉 /cases/{id}/proposals）。
+
+    仅用于 GET /proposals 列表响应；案件内列表与 mutation 维持 ProposalOut 口径。"""
+
+    case: CaseOut
+
+
+class ProposalPageOut(DTO):
+    """跨案提案服务端分页信封（与 CasePage/WorkItemQueuePage 同款 limit/offset 口径）。
+
+    items 按 (created_at desc, id) 稳定排序。"""
+
+    items: list[ProposalInboxOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class FigureIn(DTO):
     document_id: uuid.UUID | None = None
     figure_no: int | None = Field(default=None, ge=1)
@@ -247,6 +343,8 @@ class ReleaseOut(DTO):
     id: uuid.UUID
     case_id: uuid.UUID
     status: str
+    created_at: datetime
+    sealed_at: datetime | None
 
 
 class ReleaseItemIn(DTO):
@@ -256,10 +354,15 @@ class ReleaseItemIn(DTO):
 
 
 class ReleaseItemOut(DTO):
+    """Z24 冻结版本指纹：revision_id + content_sha256 即该项的不可变快照凭据。"""
+
     id: uuid.UUID
     release_id: uuid.UUID
     ordinal: int
     item_kind: str
+    document_revision_id: uuid.UUID | None
+    figure_revision_id: uuid.UUID | None
+    content_sha256: str
 
 
 class ArtifactOut(DTO):
@@ -344,6 +447,25 @@ class WorkItemOut(WorkItemIn):
     case_id: uuid.UUID
     status: str
     reporter_principal_id: uuid.UUID
+
+
+class WorkItemQueueOut(WorkItemOut):
+    """Z29 收口：跨案队列列表项随附所关联案件元数据（台账页不再回拉全量 /cases）。
+
+    仅用于 GET /work-items 列表响应；mutation 与案件内列表维持 WorkItemOut 口径。"""
+
+    case: CaseOut
+
+
+class WorkItemQueuePageOut(DTO):
+    """阶段6：工作项队列服务端分页信封（与 CasePageOut 同款 items/total/limit/offset）。
+
+    items 按 (deadline ASC NULLS LAST, created_at, id) 稳定排序。"""
+
+    items: list[WorkItemQueueOut]
+    total: int
+    limit: int
+    offset: int
 
 
 class AssignmentIn(DTO):

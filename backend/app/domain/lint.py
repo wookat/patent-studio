@@ -210,6 +210,44 @@ def preflight_diagnostics(
     return out
 
 
+def _figure_source_orphans(figs_dir: str, figures) -> list[Diagnostic]:
+    """figures.source_orphan（warning）——figures.md 收录的派生 PNG（带 mmd_render_version /
+    figspec_version 印记）在 figs-src 中已无同 stem 图源（图源被重命名 / 删除后派生图残留）。
+    图源是唯一真相（domain.figures），残留的派生图会造成图源 ↔ figures.md ↔ 导出三处口径漂移。"""
+    figsrc = os.path.join(os.path.dirname(figs_dir), "figs-src")
+    stems = {os.path.splitext(f)[0] for f in os.listdir(figsrc)} if os.path.isdir(figsrc) else set()
+    listed = [(f"图{i}", f) for i, f in enumerate(figures.spec, 1)]
+    if figures.abstract is not None and all(f.file != figures.abstract.file for _, f in listed):
+        listed.append(("摘要附图", figures.abstract))
+    out: list[Diagnostic] = []
+    for i, (label, fig) in enumerate(listed, 1):
+        if os.path.splitext(fig.file)[0] in stems or not fig.file.lower().endswith(".png"):
+            continue
+        path = os.path.join(figs_dir, fig.file)
+        if not os.path.isfile(path):
+            continue  # 文件缺失由 figures.file_missing 报
+        try:
+            from PIL import Image
+
+            with Image.open(path) as im:
+                derived = "mmd_render_version" in im.info or "figspec_version" in im.info
+        except Exception:  # noqa: BLE001 - 读不出印记按非派生处理（不挡 lint）
+            derived = False
+        if derived:
+            out.append(
+                _d(
+                    f"figures.source_orphan#{i}",
+                    "warning",
+                    f"{label}（{fig.file}）是 figs-src 派生图，但对应图源已不存在（可能已被重命名或删除）",
+                    None,
+                    "说明书附图",
+                    fix="恢复 figs-src 下的同名图源，或从附图书（docs/figures.md）移除该条目",
+                    detail="docs/figures.md",
+                )
+            )
+    return out
+
+
 def lint(
     content: str,
     settings: dict | None = None,
@@ -598,6 +636,8 @@ def lint(
                 figs = os.listdir(figs_dir) if os.path.isdir(figs_dir) else []
             out.extend(preflight_diagnostics(ast, settings, terms, figs, figures=figures))
         out.extend(lint_boundary(ast, content))
+    if figures is not None and figs_dir is not None:
+        out.extend(_figure_source_orphans(figs_dir, figures))
     if terms:
         out.extend(lint_terms(content, terms))
 

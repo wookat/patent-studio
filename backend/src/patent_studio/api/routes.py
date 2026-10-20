@@ -13,7 +13,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Header, Response, UploadFile
 from fastapi.responses import PlainTextResponse, StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from patent_studio.api import schemas as s
 from patent_studio.api.dependencies import Ctx, DomainRoute, case_access, command, error, org_access, row_for
@@ -21,12 +21,13 @@ from patent_studio.domain import authorization as az
 from patent_studio.domain import documents as d
 from patent_studio.domain import figures as f
 from patent_studio.domain import materials as mat
+from patent_studio.domain import methods as meth
 from patent_studio.domain import operations as op
 from patent_studio.domain import proposals as p
 from patent_studio.domain import releases as r
 from patent_studio.domain import runs as run_domain
 from patent_studio.domain import work_items as w
-from patent_studio.domain.identity import Notification
+from patent_studio.domain.identity import Notification, Principal
 from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
 from patent_studio.infra.storage import object_ref, open_store
 from patent_studio.kernel import critic, preflight
@@ -72,14 +73,43 @@ def create_organization(body: s.OrganizationIn, ctx: Ctx, key: Key):
     return command(ctx, key, "organization.create", "organizations", body, s.OrganizationOut, action)
 
 
+@router.get("/organizations", response_model=list[s.OrganizationOut])
+def list_organizations(ctx: Ctx):
+    """当前 Principal 持活跃成员身份的机构（机构工作台登记新案的组织选择）。agent token 带机构范围时收窄。"""
+    query = (
+        select(Organization)
+        .join(OrganizationMembership, OrganizationMembership.organization_id == Organization.id)
+        .where(
+            OrganizationMembership.principal_id == ctx.principal.id,
+            OrganizationMembership.status == "active",
+            Organization.status == "active",
+        )
+        .order_by(Organization.name)
+    )
+    token = ctx.agent_token
+    if token is not None and token.organization_id is not None:
+        query = query.where(Organization.id == token.organization_id)
+    return list(ctx.session.scalars(query))
+
+
 @router.get("/organizations/{organization_id}/memberships", response_model=list[s.MembershipOut])
 def memberships(organization_id: uuid.UUID, ctx: Ctx):
     org_access(ctx, organization_id)
-    return list(
-        ctx.session.scalars(
-            select(OrganizationMembership).where(OrganizationMembership.organization_id == organization_id)
+    rows = ctx.session.execute(
+        select(OrganizationMembership, Principal.display_name)
+        .join(Principal, Principal.id == OrganizationMembership.principal_id)
+        .where(OrganizationMembership.organization_id == organization_id)
+    ).all()
+    return [
+        s.MembershipOut(
+            organization_id=m.organization_id,
+            principal_id=m.principal_id,
+            role=m.role,
+            status=m.status,
+            display_name=name,
         )
-    )
+        for m, name in rows
+    ]
 
 
 @router.post("/organizations/{organization_id}/invitations", response_model=s.InvitationOut, status_code=201)
@@ -162,6 +192,73 @@ def list_cases(ctx: Ctx):
                 | (Case.created_by_principal_id == ctx.principal.id)
             )
             .order_by(Case.updated_at.desc(), Case.case_key)
+        ).all()
+    )
+
+
+def _visible_cases_stmt(ctx):
+    """Z29：与 /cases 相同的可见域谓词（成员机构 ∪ 参与者 ∪ 创建者），抽出供分页/精确查找复用。"""
+    member_orgs = select(OrganizationMembership.organization_id).where(
+        OrganizationMembership.principal_id == ctx.principal.id,
+        OrganizationMembership.status == "active",
+    )
+    participant_cases = select(CaseParticipant.case_id).where(
+        CaseParticipant.principal_id == ctx.principal.id,
+        CaseParticipant.status == "active",
+    )
+    return (
+        (Case.organization_id.in_(member_orgs))
+        | (Case.id.in_(participant_cases))
+        | (Case.created_by_principal_id == ctx.principal.id)
+    )
+
+
+@router.get("/cases/page", response_model=s.CasePageOut)
+def list_cases_page(
+    ctx: Ctx,
+    limit: int = 50,
+    offset: int = 0,
+    q: str | None = None,
+    kind: str | None = None,
+    status: str | None = None,
+    organization_id: uuid.UUID | None = None,
+):
+    """Z29 规模化台账：权限域内服务端分页。稳定排序 (updated_at desc, case_key, id)；
+    q 命中 case_key 前缀或 title 子串（不区分大小写）；total 为过滤后总数供页数计算。"""
+    limit = min(max(limit, 1), 200)
+    offset = max(offset, 0)
+    stmt = select(Case).where(_visible_cases_stmt(ctx))
+    count_stmt = select(func.count(Case.id)).where(_visible_cases_stmt(ctx))
+    if organization_id is not None:
+        stmt = stmt.where(Case.organization_id == organization_id)
+        count_stmt = count_stmt.where(Case.organization_id == organization_id)
+    if kind:
+        stmt = stmt.where(Case.kind == kind)
+        count_stmt = count_stmt.where(Case.kind == kind)
+    if status:
+        stmt = stmt.where(Case.status == status)
+        count_stmt = count_stmt.where(Case.status == status)
+    if q and q.strip():
+        pat = q.strip()
+        filt = (Case.case_key.ilike(f"{pat}%")) | (Case.title.ilike(f"%{pat}%"))
+        stmt = stmt.where(filt)
+        count_stmt = count_stmt.where(filt)
+    total = ctx.session.scalar(count_stmt) or 0
+    items = list(
+        ctx.session.scalars(
+            stmt.order_by(Case.updated_at.desc(), Case.case_key, Case.id).limit(limit).offset(offset)
+        ).all()
+    )
+    return s.CasePageOut(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get("/cases/by-key/{case_key}", response_model=list[s.CaseOut])
+def get_cases_by_key(case_key: str, ctx: Ctx):
+    """Z29：legacy pid → 平台案精确作用域解析。返回权限域内全部同 key 案（0/1/N），
+    前端据此 0=旧案 / 1=直达 / N=歧义阻断，不再拉全库本地匹配。"""
+    return list(
+        ctx.session.scalars(
+            select(Case).where(_visible_cases_stmt(ctx), Case.case_key == case_key).order_by(Case.case_key, Case.id)
         ).all()
     )
 
@@ -427,6 +524,54 @@ def create_proposal(case_id: uuid.UUID, body: s.ProposalIn, ctx: Ctx, key: Key):
 def proposals(case_id: uuid.UUID, ctx: Ctx):
     case_access(ctx, case_id)
     return list(ctx.session.scalars(select(p.Proposal).where(p.Proposal.case_id == case_id)))
+
+
+_PROPOSAL_STATUSES = ("draft", "submitted", "accepted", "rejected", "superseded")
+
+
+@router.get("/proposals", response_model=s.ProposalPageOut)
+def list_all_proposals(
+    ctx: Ctx,
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    q: str | None = None,
+):
+    """跨案提案收件箱：可见案件域内服务端分页（与 /work-items、/cases/page 同款 limit/offset）。
+
+    可见性谓词与逐条 case_access 读路径等价（复用 _visible_case_predicate，不引
+    _visible_cases_stmt 的 created_by 放宽）；case 元数据随 Proposal⨝Case 一次 join
+    取回，禁止逐案回拉。status、q（案件号或案件标题子串，不分大小写）先于分页过滤，
+    total 与筛选口径一致。稳定排序：created_at DESC → id。"""
+    limit = min(max(limit, 1), 200)
+    offset = max(offset, 0)
+    if status is not None and status not in _PROPOSAL_STATUSES:
+        raise error(422, "validation", f"status must be one of {', '.join(_PROPOSAL_STATUSES)}")
+    if not d._active_principal(ctx.session, ctx.principal.id):
+        return s.ProposalPageOut(items=[], total=0, limit=limit, offset=offset)
+    predicate = _visible_case_predicate(ctx)
+    stmt = select(p.Proposal, Case).join(Case, p.Proposal.case_id == Case.id).where(predicate)
+    count_stmt = select(func.count(p.Proposal.id)).join(Case, p.Proposal.case_id == Case.id).where(predicate)
+    if status:
+        stmt = stmt.where(p.Proposal.status == status)
+        count_stmt = count_stmt.where(p.Proposal.status == status)
+    if q and q.strip():
+        pat = q.strip()
+        filt = (Case.case_key.ilike(f"%{pat}%")) | (Case.title.ilike(f"%{pat}%"))
+        stmt = stmt.where(filt)
+        count_stmt = count_stmt.where(filt)
+    total = ctx.session.scalar(count_stmt) or 0
+    rows = ctx.session.execute(
+        stmt.order_by(p.Proposal.created_at.desc(), p.Proposal.id.desc()).limit(limit).offset(offset)
+    ).all()
+    items = [
+        s.ProposalInboxOut(
+            **s.ProposalOut.model_validate(prop).model_dump(),
+            case=s.CaseOut.model_validate(case),
+        )
+        for prop, case in rows
+    ]
+    return s.ProposalPageOut(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("/proposals/{proposal_id}/{decision}", response_model=s.ProposalOut)
@@ -844,18 +989,93 @@ def work_items(case_id: uuid.UUID, ctx: Ctx):
     return list(ctx.session.scalars(select(w.WorkItem).where(w.WorkItem.case_id == case_id)))
 
 
-@router.get("/work-items", response_model=list[s.WorkItemOut])
-def list_all_work_items(ctx: Ctx):
-    """跨案件工作队列查询；每个结果仍经过案件访问关系过滤。"""
-    rows = list(ctx.session.scalars(select(w.WorkItem).order_by(w.WorkItem.deadline, w.WorkItem.created_at)))
-    visible = []
-    for item in rows:
-        try:
-            case_access(ctx, item.case_id)
-        except Exception:
-            continue
-        visible.append(item)
-    return visible
+def _visible_case_predicate(ctx):
+    """跨案读集合（/work-items、/proposals）的可见案件谓词：与逐条 case_access 读路径
+    （write=False/manage=False）等价。
+
+    - 可见域：机构 active 成员 ∪ 案件 active 参与者（与 _ensure_case_access 一致；
+      不含 created_by 放宽——_ensure_case_access 本身也不含，_visible_cases_stmt 才有）。
+    - 机构本身必须 status == 'active'（case_access 对 inactive org 一律 403）。
+    - agent token 作用域收窄：organization_id / case_id 限定（_enforce_token_scope）。
+    - principal 活跃性：human 已由 transaction 校验 User.is_active，agent token 认证期
+      _agent 校验 kind=='agent'；调用处再补一次 _active_principal 兜底，保持完全等价。
+    """
+    member_orgs = select(OrganizationMembership.organization_id).where(
+        OrganizationMembership.principal_id == ctx.principal.id,
+        OrganizationMembership.status == "active",
+    )
+    participant_cases = select(CaseParticipant.case_id).where(
+        CaseParticipant.principal_id == ctx.principal.id,
+        CaseParticipant.status == "active",
+    )
+    predicate = ((Case.organization_id.in_(member_orgs)) | (Case.id.in_(participant_cases))) & (
+        Case.organization_id.in_(select(Organization.id).where(Organization.status == "active"))
+    )
+    token = ctx.agent_token
+    if token is not None:
+        if token.organization_id is not None:
+            predicate = predicate & (Case.organization_id == token.organization_id)
+        if token.case_id is not None:
+            predicate = predicate & (Case.id == token.case_id)
+    return predicate
+
+
+@router.get("/work-items", response_model=s.WorkItemQueuePageOut)
+def list_all_work_items(
+    ctx: Ctx,
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    q: str | None = None,
+    assignee: str | None = None,
+):
+    """跨案件工作队列：可见案件域内服务端分页（与 /cases/page 同款 limit/offset 口径）。
+
+    可见性谓词与逐条 case_access 读路径等价；case 元数据随 items join 一次取回，
+    不再逐行鉴权。assignee=me|none、status、q（标题子串或案件号子串，不分大小写）
+    均先于分页过滤，total 与筛选口径一致。稳定排序：deadline ASC NULLS LAST →
+    created_at → id（原全量口径 deadline 升序在 PG 下本就 NULLS LAST，此处显式声明）。"""
+    limit = min(max(limit, 1), 200)
+    offset = max(offset, 0)
+    if assignee is not None and assignee not in {"me", "none"}:
+        raise error(422, "validation", "assignee must be 'me' or 'none'")
+    if not d._active_principal(ctx.session, ctx.principal.id):
+        # 与逐条 case_access 全数被拒等价：inactive principal 看不到任何工作项
+        return s.WorkItemQueuePageOut(items=[], total=0, limit=limit, offset=offset)
+    predicate = _visible_case_predicate(ctx)
+    stmt = select(w.WorkItem, Case).join(Case, w.WorkItem.case_id == Case.id).where(predicate)
+    count_stmt = select(func.count(w.WorkItem.id)).join(Case, w.WorkItem.case_id == Case.id).where(predicate)
+    if assignee == "me":
+        filt = w.WorkItem.assignee_principal_id == ctx.principal.id
+    elif assignee == "none":
+        filt = w.WorkItem.assignee_principal_id.is_(None)
+    else:
+        filt = None
+    if filt is not None:
+        stmt = stmt.where(filt)
+        count_stmt = count_stmt.where(filt)
+    if status:
+        stmt = stmt.where(w.WorkItem.status == status)
+        count_stmt = count_stmt.where(w.WorkItem.status == status)
+    if q and q.strip():
+        pat = q.strip()
+        filt = (w.WorkItem.title.ilike(f"%{pat}%")) | (Case.case_key.ilike(f"%{pat}%"))
+        stmt = stmt.where(filt)
+        count_stmt = count_stmt.where(filt)
+    total = ctx.session.scalar(count_stmt) or 0
+    rows = ctx.session.execute(
+        stmt.order_by(w.WorkItem.deadline.asc().nulls_last(), w.WorkItem.created_at.asc(), w.WorkItem.id.asc())
+        .limit(limit)
+        .offset(offset)
+    ).all()
+    items = [
+        s.WorkItemQueueOut(
+            **s.WorkItemOut.model_validate(item).model_dump(),
+            case=s.CaseOut.model_validate(case),
+        )
+        for item, case in rows
+    ]
+    return s.WorkItemQueuePageOut(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("/cases/{case_id}/work-items", response_model=s.WorkItemOut, status_code=201)
@@ -916,7 +1136,13 @@ def reschedule(work_item_id: uuid.UUID, body: s.DeadlineIn, ctx: Ctx, key: Key):
 @router.put("/work-items/{work_item_id}/status", response_model=s.WorkItemOut)
 def transition(work_item_id: uuid.UUID, body: s.StatusIn, ctx: Ctx, key: Key):
     item = row_for(ctx, w.WorkItem, work_item_id)
-    case = case_access(ctx, item.case_id, manage=True)
+    if body.status == "in_progress" and item.assignee_principal_id == ctx.principal.id:
+        # Z12：分派到人后只有负责人自己能把工作项推进 in_progress（开始/恢复处理）
+        case = case_access(ctx, item.case_id)
+    else:
+        case = case_access(ctx, item.case_id, manage=True)
+        if body.status == "in_progress" and item.assignee_principal_id is not None:
+            raise error(403, "denied", "Only the assignee may start this work item")
     return _scoped(
         ctx,
         case,
@@ -1243,3 +1469,89 @@ def kernel_mathml(body: s.MathmlIn, ctx: Ctx):
     except Exception as exc:
         raise error(422, "formula", f"公式无法转换：{exc}") from exc
     return {"mathml": mathml}
+
+
+# ------------------------------------------------------- Z30 机构私有方法库 ----
+# 人工录入的脱敏方法卡；仅 authorized 可检索/使用；撤销即不可见；使用落 method_asset_uses。
+# 组织隔离靠 asset.organization_id + org_access/_member；case_id 必须同机构。
+
+
+@router.get("/organizations/{organization_id}/method-assets", response_model=list[s.MethodAssetOut])
+def list_method_assets(organization_id: uuid.UUID, ctx: Ctx, q: str | None = None, all_states: bool = False):
+    """检索视图：默认仅 authorized；?all_states=1 需 owner/admin。"""
+    org_access(ctx, organization_id, manage=all_states)
+    return meth.list_assets(
+        ctx.session, organization_id=organization_id, principal_id=ctx.principal.id, q=q, all_states=all_states
+    )
+
+
+@router.post("/organizations/{organization_id}/method-assets", response_model=s.MethodAssetOut, status_code=201)
+def create_method_asset(organization_id: uuid.UUID, body: s.MethodAssetIn, ctx: Ctx, key: Key):
+    org_access(ctx, organization_id)
+
+    def action():
+        a = meth.create_asset(
+            ctx.session, organization_id=organization_id, principal_id=ctx.principal.id, **body.model_dump()
+        )
+        return a, organization_id, None
+
+    return command(ctx, key, "method_asset.create", str(organization_id), body, s.MethodAssetOut, action)
+
+
+@router.post("/method-assets/{asset_id}/confirm", response_model=s.MethodAssetOut)
+def confirm_method_asset(asset_id: uuid.UUID, body: s.MethodAssetConfirmIn, ctx: Ctx, key: Key):
+    """复核项6：既有草稿补登 asset_type/provenance/authorized_scope + 人工脱敏确认（需 manage）。
+    未确认卡禁止授权（authorize 服务端闸）。"""
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id, manage=True)
+
+    def action():
+        a = meth.confirm_asset(ctx.session, asset_id, ctx.principal.id, **body.model_dump())
+        return a, a.organization_id, None
+
+    return command(ctx, key, "method_asset.confirm", str(asset_id), body, s.MethodAssetOut, action)
+
+
+@router.post("/method-assets/{asset_id}/authorize", response_model=s.MethodAssetOut)
+def authorize_method_asset(asset_id: uuid.UUID, ctx: Ctx, key: Key):
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id, manage=True)
+
+    def action():
+        a = meth.authorize_asset(ctx.session, asset_id, ctx.principal.id)
+        return a, a.organization_id, None
+
+    return command(ctx, key, "method_asset.authorize", str(asset_id), None, s.MethodAssetOut, action)
+
+
+@router.post("/method-assets/{asset_id}/revoke", response_model=s.MethodAssetOut)
+def revoke_method_asset(asset_id: uuid.UUID, ctx: Ctx, key: Key):
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id, manage=True)
+
+    def action():
+        a = meth.revoke_asset(ctx.session, asset_id, ctx.principal.id)
+        return a, a.organization_id, None
+
+    return command(ctx, key, "method_asset.revoke", str(asset_id), None, s.MethodAssetOut, action)
+
+
+@router.post("/method-assets/{asset_id}/use", response_model=s.MethodAssetUseOut, status_code=201)
+def use_method_asset(asset_id: uuid.UUID, body: s.MethodAssetUseIn, ctx: Ctx, key: Key):
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id)
+
+    def action():
+        u = meth.record_use(
+            ctx.session, asset_id=asset_id, principal_id=ctx.principal.id, case_id=body.case_id, note=body.note
+        )
+        return u, asset.organization_id, body.case_id
+
+    return command(ctx, key, "method_asset.use", str(asset_id), body, s.MethodAssetUseOut, action)
+
+
+@router.get("/method-assets/{asset_id}/uses", response_model=list[s.MethodAssetUseOut])
+def list_method_asset_uses(asset_id: uuid.UUID, ctx: Ctx):
+    asset = meth._asset(ctx.session, asset_id)
+    org_access(ctx, asset.organization_id)
+    return meth.list_uses(ctx.session, asset_id=asset_id, principal_id=ctx.principal.id)

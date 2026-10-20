@@ -13,6 +13,7 @@ const meta: PublicShareMeta = {
   status: 'drafting',
   version: 3,
   sha: 'abc123',
+  content_sha: 'd'.repeat(64),
   scope: 'confirm',
   baseline: 'original',
   pending_revisions: 0,
@@ -228,10 +229,10 @@ describe('publicShare · 匿名审阅页', () => {
     expect(add).toHaveBeenCalledWith('tok-pub-1', { anchor: comment.anchor, body: comment.body, guest_name: '张客户' })
     expect(useStudio.getState().publicComments).toEqual([comment])
 
-    const confirmation: Confirmation = { version: 3, sha: 'abc123', name: '张客户', note: null, confirmed_at: 1_757_002_000 }
+    const confirmation: Confirmation = { version: 3, sha: 'abc123', content_sha: meta.content_sha, name: '张客户', note: null, confirmed_at: 1_757_002_000 }
     const confirm = vi.spyOn(api, 'publicConfirm').mockResolvedValue(confirmation)
     expect(await useStudio.getState().confirmPublic()).toBe(true)
-    expect(confirm).toHaveBeenCalledWith('tok-pub-1', { name: '张客户', note: undefined })
+    expect(confirm).toHaveBeenCalledWith('tok-pub-1', { name: '张客户', note: undefined, expected_version: 3, expected_sha: 'abc123', expected_content_sha: meta.content_sha })
     expect(useStudio.getState().publicMeta?.confirmation).toEqual(confirmation)
 
     vi.spyOn(api, 'publicConfirm').mockRejectedValue(kindError(410, 'share.expired', '审阅链接已过期'))
@@ -248,5 +249,14 @@ describe('publicShare · 匿名审阅页', () => {
     expect(s.publicAst).toBeNull()
     expect(s.publicView).toBe('pdf')
     expect(s.guestName).toBe('张客户')
+  })
+
+  it('版本冲突不自动升级到客户没读过的新版本，也不写入确认', async () => {
+    useStudio.setState({ publicToken: 't', publicMeta: meta, publicAst: SYNTH_AST, guestName: '张客户' })
+    vi.spyOn(api, 'publicConfirm').mockRejectedValue(kindError(409, 'conflict', '审阅版本已更新，请重新打开并阅读后再确认。'))
+    expect(await useStudio.getState().confirmPublic()).toBe(false)
+    expect(useStudio.getState().publicMeta).toEqual(meta)
+    expect(useStudio.getState().publicMeta?.confirmation).toBeNull()
+    expect(useStudio.getState().toasts.at(-1)?.text).toContain('重新打开并阅读')
   })
 })

@@ -10,10 +10,13 @@ import { Badge, type BadgeTone } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
+import { Segmented } from '@/components/ui/segmented'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { touchHit } from '@/lib/utils'
 import { useWorkbenchMutations, useWorkbenchQueries, workbenchKeys } from '@/workbench/queries'
 import { workbenchApi } from '@/workbench/api'
-import type { Book, Document, Figure, InvitationRole, ParticipantRole, PlatformCase, Release, Revision, WorkItem, WorkItemStatus } from '@/workbench/types'
+import { workItemStatusText, workItemStatusTone, workItemTypeText } from '@/workbench/labels'
+import type { Book, Document, Figure, InvitationRole, ParticipantRole, PlatformCase, Release, Revision, WorkItemQueueItem, WorkItemStatus } from '@/workbench/types'
 import { WorkingCopyEditor } from './WorkingCopyEditor'
 
 type View = 'queue' | 'case' | 'approvals' | 'notifications'
@@ -25,7 +28,7 @@ const readWorkbenchQuery = () => {
 }
 
 const BOOK_LABEL: Record<Book, string> = { abstract: '摘要', claims: '权利要求书', description: '说明书' }
-const PARTICIPANT_ROLES: ParticipantRole[] = ['client', 'inventor', 'applicant', 'author', 'attorney', 'drafter', 'reviewer', 'case_manager', 'observer']
+const PARTICIPANT_ROLES: ParticipantRole[] = ['client', 'inventor', 'applicant', 'author', 'attorney', 'drafter', 'reviewer', 'case_manager', 'agent', 'observer']
 const ORG_ROLES: InvitationRole[] = ['admin', 'member']
 
 export function ErrorPanel({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
@@ -62,42 +65,172 @@ function LoadingPanel() {
   return <div className="flex min-h-48 items-center justify-center text-fg-muted" role="status"><LoaderCircle className="mr-2 size-5 animate-spin" />正在加载平台数据…</div>
 }
 
-export function QueueView({ cases, items, onOpenCase }: { cases: PlatformCase[]; items: WorkItem[]; onOpenCase: (id: string) => void }) {
+/** Z06/Z10 待办范围：mine = 分派给我（代理人/作者/承办人）；unassigned = 未分配（机构管理者视角）；all = 全部可见 */
+type QueueScope = 'mine' | 'unassigned' | 'all'
+const QUEUE_SCOPE_OPTIONS = [
+  { value: 'mine' as QueueScope, label: '我的待办', 'data-testid': 'queue-scope-mine' },
+  { value: 'unassigned' as QueueScope, label: '未分配', 'data-testid': 'queue-scope-unassigned' },
+  { value: 'all' as QueueScope, label: '全部', 'data-testid': 'queue-scope-all' },
+]
+
+const SCOPE_EMPTY: Record<QueueScope, { title: string; reason: string }> = {
+  mine: { title: '没有分派给你的待办', reason: '机构管理者分派给你的工作项会出现在这里；切换「全部」可看机构内所有工作项。' },
+  unassigned: { title: '没有未分配的工作项', reason: '所有工作项都已有承办人。登记新案或创建工作项时可指定承办人。' },
+  all: { title: '暂无待办', reason: '你可见的机构案件还没有工作项；机构管理者可在「工作项」页登记新案并分派。' },
+}
+
+const QUEUE_PAGE = 20
+
+/** 行/卡共用单元：承办人徽标与期限文本（含逾期态），口径桌面移动一致。 */
+function AssigneeCell({ item, meId }: { item: WorkItemQueueItem; meId: string | null }) {
+  const mine = item.assignee_principal_id != null && item.assignee_principal_id === meId
+  if (item.assignee_principal_id == null) return <Badge tone="warn">未分配</Badge>
+  return <span className="text-sm text-fg-muted">{mine ? '我' : `${item.assignee_principal_id?.slice(0, 8)}…`}</span>
+}
+
+function DeadlineText({ item, now }: { item: WorkItemQueueItem; now: number }) {
+  const overdue = item.deadline ? new Date(item.deadline).getTime() < now && item.status !== 'done' && item.status !== 'canceled' : false
+  return (
+    <span className={overdue ? 'font-medium text-danger-fg' : 'text-fg-muted'}>
+      {item.deadline ? new Date(item.deadline).toLocaleDateString('zh-CN') : '—'}
+      {overdue && <span className="ml-1 text-xs">逾期</span>}
+    </span>
+  )
+}
+
+/**
+ * Z06/Z10 平台工作队列。阶段6：服务端分页 + 筛选（scope→assignee=me|none、状态、q 先
+ * 于分页）；case 元数据随响应而来，不再回拉 /cases。桌面表格 / <lg 卡片，枚举一律走
+ * WORK_ITEM_TYPE_TEXT/WORK_ITEM_STATUS_TEXT 中文映射。
+ */
+export function QueueView({ onOpenCase, meId }: { onOpenCase: (id: string, caseKey?: string) => void; meId: string | null }) {
   const [status, setStatus] = useState<'all' | WorkItemStatus>('all')
+  const [scope, setScope] = useState<QueueScope>('mine')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
   const [now] = useState(() => Date.now())
-  const caseMap = useMemo(() => new Map(cases.map((item) => [item.id, item])), [cases])
-  const visible = items.filter((item) => {
-    const matchStatus = status === 'all' || item.status === status
-    const matchText = !search.trim() || `${item.title} ${caseMap.get(item.case_id)?.case_key ?? ''}`.toLowerCase().includes(search.trim().toLowerCase())
-    return matchStatus && matchText
+  const { setWorkItemStatus } = useWorkbenchMutations()
+  const params = {
+    limit: QUEUE_PAGE,
+    offset: page * QUEUE_PAGE,
+    status: status === 'all' ? '' : status,
+    q: search.trim(),
+    assignee: scope === 'mine' ? 'me' : scope === 'unassigned' ? 'none' : '',
+  }
+  /* 阶段6收口：placeholderData 用 previousQuery 的实际 queryKey 判定——比较筛选参数
+   * （status/q/assignee，忽略 offset/limit），只有同筛选翻页或失效重取才保留旧页；
+   * 跨筛选一律无 placeholder，旧筛选的行不会在新筛选下残留。 */
+  const query = useQuery({
+    queryKey: workbenchKeys.workItemsPage(params),
+    queryFn: ({ signal }) =>
+      workbenchApi.workItems(
+        {
+          limit: params.limit,
+          offset: params.offset,
+          status: params.status || undefined,
+          q: params.q || undefined,
+          assignee: (params.assignee || undefined) as 'me' | 'none' | undefined,
+        },
+        signal,
+      ),
+    retry: false,
+    placeholderData: (prev, prevQuery) => {
+      const p = prevQuery?.queryKey.at(-1) as { status: string; q: string; assignee: string } | undefined
+      return p && p.status === params.status && p.q === params.q && p.assignee === params.assignee ? prev : undefined
+    },
   })
+  const d = query.data
+  const total = d?.total ?? 0
+  const lastPage = Math.max(0, Math.ceil(total / QUEUE_PAGE) - 1)
+  useEffect(() => {
+    /* mutation/权限变化使 total 缩小后，当前 offset 可能越出末页——自动回退最后有效页，
+     * 否则用户看到空页并误以为没有记录。 */
+    if (d && page > lastPage) setPage(lastPage)
+  }, [d, lastPage, page])
+  if (query.isError) return <div className="mt-4"><ErrorPanel error={query.error} onRetry={() => void query.refetch()} /></div>
+  const pages = Math.max(1, Math.ceil(total / QUEUE_PAGE))
+  const filtered = Boolean(params.q) || status !== 'all'
+  const empty = !filtered ? SCOPE_EMPTY[scope] : { title: '没有匹配的工作项', reason: '调整筛选条件，或从案件空间创建新的工作项。' }
+  const openItem = (item: WorkItemQueueItem) => onOpenCase(item.case_id, item.case.case_key)
   return (
     <section aria-labelledby="queue-title" data-testid="workbench-queue">
       <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Segmented aria-label="待办范围" size="sm" options={QUEUE_SCOPE_OPTIONS} value={scope} onValueChange={(v) => { setScope(v); setPage(0) }} />
         <label className="sr-only" htmlFor="queue-search">搜索工作项</label>
-        <Input id="queue-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="搜索工作项或案件号" className="max-w-sm" />
-        <select aria-label="工作项状态" className="h-md-control rounded-md border border-border-strong bg-panel px-2 text-sm" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-          <option value="all">全部状态</option><option value="open">待处理</option><option value="in_progress">进行中</option><option value="blocked">已阻塞</option><option value="in_review">待复核</option><option value="done">已完成</option>
+        <Input id="queue-search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(0) }} placeholder="搜索工作项或案件号" className="max-w-sm" />
+        <select aria-label="工作项状态" className="h-md-control rounded-md border border-border-strong bg-panel px-2 text-sm" value={status} onChange={(e) => { setStatus(e.target.value as typeof status); setPage(0) }}>
+          <option value="all">全部状态</option><option value="open">待处理</option><option value="in_progress">进行中</option><option value="blocked">已阻塞</option><option value="in_review">待复核</option><option value="done">已完成</option><option value="canceled">已取消</option>
         </select>
-        <span className="text-sm text-fg-muted">{visible.length} 项</span>
+        <span className="text-sm text-fg-muted" data-testid="queue-total">共 {total} 项</span>
       </div>
-      {visible.length === 0 ? <EmptyState size="sm" icon={BriefcaseBusiness} title="没有匹配的工作项" reason="调整筛选条件，或从案件空间创建新的工作项。" /> : (
-        <Table>
-          <TableHeader><TableRow><TableHead>工作项</TableHead><TableHead>案件</TableHead><TableHead>状态</TableHead><TableHead>期限</TableHead><TableHead className="w-24">操作</TableHead></TableRow></TableHeader>
-          <TableBody>{visible.map((item) => {
-            const overdue = item.deadline ? new Date(item.deadline).getTime() < now && item.status !== 'done' : false
-            const currentCase = caseMap.get(item.case_id)
-            return <TableRow key={item.id} data-testid={`work-item-${item.id}`}>
-              <TableCell><div className="font-medium text-fg-strong">{item.title}</div><div className="text-xs text-fg-muted">{item.type}</div></TableCell>
-              <TableCell><button className="text-left text-link hover:underline" onClick={() => onOpenCase(item.case_id)}>{currentCase?.case_key ?? '未知案件'}<span className="ml-1 text-fg-muted">{currentCase?.title}</span></button></TableCell>
-              <TableCell><Badge tone={item.status === 'done' ? 'ok' : item.status === 'blocked' ? 'danger' : 'info'}>{item.status}</Badge></TableCell>
-              <TableCell className={overdue ? 'font-medium text-danger-fg' : 'text-fg-muted'}>{item.deadline ? new Date(item.deadline).toLocaleDateString('zh-CN') : '—'}{overdue && <span className="ml-1 text-xs">逾期</span>}</TableCell>
-              <TableCell><Button variant="ghost" size="sm" onClick={() => onOpenCase(item.case_id)}>打开</Button></TableCell>
-            </TableRow>
-          })}</TableBody>
-        </Table>
+      {query.isPlaceholderData && (
+        <div className="mb-2 inline-flex items-center gap-1.5 text-xs text-fg-muted" role="status" data-testid="queue-updating">
+          <LoaderCircle className="size-3.5 animate-spin" />正在更新…
+        </div>
       )}
+      {query.isLoading ? (
+        <div className="flex min-h-24 items-center justify-center text-sm text-fg-muted" role="status"><LoaderCircle className="mr-2 size-4 animate-spin" />正在加载工作项…</div>
+      ) : (d?.items.length ?? 0) === 0 ? (
+        <EmptyState size="sm" icon={BriefcaseBusiness} title={empty.title} reason={empty.reason} data-testid="queue-empty" />
+      ) : (
+        <>
+          {/* 桌面表：<lg 隐藏；手机卡片列：lg 隐藏。同一页数据两种形态，枚举中文映射一致。 */}
+          <div className="hidden lg:block">
+            <Table>
+              <TableHeader><TableRow><TableHead>工作项</TableHead><TableHead>案件</TableHead><TableHead>承办人</TableHead><TableHead>状态</TableHead><TableHead>期限</TableHead><TableHead className="w-28">操作</TableHead></TableRow></TableHeader>
+              <TableBody>{d!.items.map((item) => {
+                const mine = item.assignee_principal_id != null && item.assignee_principal_id === meId
+                return <TableRow key={item.id} data-testid={`work-item-${item.id}`}>
+                  <TableCell><div className="font-medium text-fg-strong">{item.title}</div><div className="text-xs text-fg-muted">{workItemTypeText(item.type)}</div></TableCell>
+                  <TableCell><button className="text-left text-link hover:underline" onClick={() => openItem(item)}>{item.case.case_key}<span className="ml-1 text-fg-muted">{item.case.title}</span></button></TableCell>
+                  <TableCell><AssigneeCell item={item} meId={meId} /></TableCell>
+                  <TableCell><Badge tone={workItemStatusTone(item.status)}>{workItemStatusText(item.status)}</Badge></TableCell>
+                  <TableCell><DeadlineText item={item} now={now} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {mine && item.status === 'open' && <Button variant="secondary" size="sm" disabled={setWorkItemStatus.isPending} onClick={() => setWorkItemStatus.mutate({ workItemId: item.id, status: 'in_progress' })} data-testid={`work-item-start-${item.id}`}>开始处理</Button>}
+                      <Button variant="ghost" size="sm" onClick={() => openItem(item)} data-testid={`work-item-open-${item.id}`}>打开</Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              })}</TableBody>
+            </Table>
+          </div>
+          <ul className="grid gap-2 lg:hidden" data-testid="work-item-cards">
+            {d!.items.map((item) => {
+              const mine = item.assignee_principal_id != null && item.assignee_principal_id === meId
+              return (
+                <li key={item.id} className="rounded-lg border border-border bg-panel p-3" data-testid={`work-item-card-${item.id}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="break-words font-medium text-fg-strong">{item.title}</div>
+                      <div className="mt-0.5 text-xs text-fg-muted">{workItemTypeText(item.type)}</div>
+                    </div>
+                    <Badge tone={workItemStatusTone(item.status)}>{workItemStatusText(item.status)}</Badge>
+                  </div>
+                  <button type="button" className="mt-1.5 block w-full break-words text-left text-sm text-link hover:underline" onClick={() => openItem(item)}>
+                    {item.case.case_key}<span className="ml-1 text-fg-muted">{item.case.title}</span>
+                  </button>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <span className="inline-flex items-center gap-1"><span className="text-fg-muted">承办人</span><AssigneeCell item={item} meId={meId} /></span>
+                    <span className="inline-flex items-center gap-1"><span className="text-fg-muted">期限</span><DeadlineText item={item} now={now} /></span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    {mine && item.status === 'open' && <Button variant="secondary" size="lg" className={touchHit} disabled={setWorkItemStatus.isPending} onClick={() => setWorkItemStatus.mutate({ workItemId: item.id, status: 'in_progress' })} data-testid={`work-item-card-start-${item.id}`}>开始处理</Button>}
+                    <Button variant="secondary" size="lg" className={touchHit} onClick={() => openItem(item)} data-testid={`work-item-card-open-${item.id}`}>打开</Button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+      <div className="mt-2 flex items-center gap-2" data-testid="queue-pager">
+        <Button variant="secondary" size="sm" disabled={page === 0 || query.isFetching} onClick={() => setPage((p) => p - 1)}>上一页</Button>
+        <span className="text-sm text-fg-muted">第 {Math.min(page + 1, pages)} / {pages} 页</span>
+        <Button variant="secondary" size="sm" disabled={page + 1 >= pages || query.isFetching} onClick={() => setPage((p) => p + 1)}>下一页</Button>
+      </div>
+      <FieldError error={setWorkItemStatus.error} />
     </section>
   )
 }
@@ -264,8 +397,8 @@ export function DeadlinesPanel({ caseId, items }: { caseId: string; items: Retur
                 <div className="min-w-0">
                   <div className="font-medium text-fg-strong">{item.title}</div>
                   <div className="mt-0.5 flex items-center gap-2 text-xs text-fg-muted">
-                    <Badge tone="neutral">{item.type}</Badge>
-                    <Badge tone={item.status === 'done' ? 'ok' : item.status === 'blocked' ? 'danger' : 'info'}>{item.status}</Badge>
+                    <Badge tone="neutral">{workItemTypeText(item.type)}</Badge>
+                    <Badge tone={workItemStatusTone(item.status)}>{workItemStatusText(item.status)}</Badge>
                     {item.oa_deadline && <span>OA 答复期限 {new Date(item.oa_deadline).toLocaleDateString('zh-CN')}</span>}
                   </div>
                 </div>
@@ -367,13 +500,30 @@ function ReleaseRow({ release, caseId, documents, figures }: { release: Release;
         <div className="flex items-center gap-2">
           {packable && <Button size="xs" variant="secondary" loading={addReleaseItem.isPending} onClick={() => void pack()} data-testid={`pack-${release.id}`}>组包三书+附图</Button>}
           {packable && <Button size="xs" variant="secondary" loading={sealRelease.isPending} onClick={() => sealRelease.mutate({ releaseId: release.id, caseId })}>封存</Button>}
-          {release.status === 'sealed' && <Button size="xs" variant="secondary" loading={buildRelease.isPending} onClick={() => buildRelease.mutate({ releaseId: release.id, caseId })} data-testid={`build-${release.id}`}>构建 DOCX</Button>}
+          {release.status === 'sealed' && (
+            <>
+              {release.sealed_at && (
+                <span className="text-xs text-fg-muted" data-testid={`sealed-at-${release.id}`}>
+                  冻结于 {new Date(release.sealed_at).toLocaleString('zh-CN', { hour12: false })}
+                </span>
+              )}
+              <Button size="xs" variant="secondary" loading={buildRelease.isPending} onClick={() => buildRelease.mutate({ releaseId: release.id, caseId })} data-testid={`build-${release.id}`}>构建 DOCX</Button>
+            </>
+          )}
         </div>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-fg-muted">
         <span>{items.isLoading ? '组包项加载中…' : `组包项 ${items.data?.length ?? 0} 件`}</span>
+        {release.status === 'sealed' &&
+          (items.data ?? [])
+            .filter((it) => it.content_sha256)
+            .map((it) => (
+              <span key={it.id} className="inline-flex items-center gap-1 font-mono" title={`内容指纹 sha256:${it.content_sha256}`} data-testid={`snapshot-${it.id}`}>
+                {it.item_kind === 'document' ? '文档' : '附图'}·{(it.document_revision_id ?? it.figure_revision_id ?? '').slice(0, 8)}·{(it.content_sha256 ?? '').slice(0, 12)}
+              </span>
+            ))}
         {(artifacts.data ?? []).map((artifact) => (
-          <a key={artifact.id} href={workbenchApi.artifactUrl(artifact.id)} download={artifact.filename} className="inline-flex items-center gap-1 text-link hover:underline" data-testid={`artifact-${artifact.id}`}>
+          <a key={artifact.id} href={workbenchApi.artifactUrl(artifact.id)} download={artifact.filename} title={`sha256:${artifact.content_ref.sha256}`} className="inline-flex items-center gap-1 text-link hover:underline" data-testid={`artifact-${artifact.id}`}>
             <Download aria-hidden className="size-3" />{artifact.filename}
           </a>
         ))}

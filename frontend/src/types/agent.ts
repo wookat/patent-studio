@@ -75,6 +75,15 @@ export type Patch =
   | { blocks: { after_block_id: string; markdown: string; replace_block_id?: string | null }[] }
   | { file: string; content: string }
 
+/** 提案来源（Z18）：comment = 由批注（客户 / 内部）一键转出的修改提案 */
+export interface ProposalSource {
+  kind: 'comment'
+  comment_id: string
+  quote: string
+  author: string
+  body: string
+}
+
 /** 永不直接改 content.md 最终文本：critic → 用户点「写入为修订」；comment → 批注；patch → 用户点「应用」 */
 export interface Proposal {
   id: string
@@ -90,15 +99,20 @@ export interface Proposal {
   usage: Usage
   created_at: number
   state: ProposalState
+  source?: ProposalSource | null
 }
 
 /** W5 扩展的 job（现有 AiJob + steps / queue_key）；kind 增 `agent:<scenario>` */
 export interface AgentJob extends Omit<AiJob, 'kind'> {
-  kind: AiJob['kind'] | 'rewrite' | `agent:${Scenario}`
+  kind: AiJob['kind'] | `agent:${Scenario}`
   /** StepEvent 摘要（不含 gen 全文），供历史回放 */
   steps: StepEvent[]
   /** `${pid}:heavy` → 同 key FIFO 串行；interactive 为 null */
   queue_key: string | null
+  /** 续跑入参（Z14）；null ⇒ 不可续跑 */
+  payload?: { scenario?: Scenario; params?: Record<string, unknown>; scope?: string } | null
+  /** 产出提案 id（Z27 诊断链：任务 → 提案） */
+  proposal_ids?: string[]
 }
 
 export interface AgentRunIn {

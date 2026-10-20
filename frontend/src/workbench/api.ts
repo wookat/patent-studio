@@ -5,7 +5,7 @@ import { handle, netFetch, req } from '@/lib/api/net'
 const v1req = <T>(url: string, init?: Parameters<typeof req>[1]) => req<T>(url, { ...(init ?? {}), expireOn401: false })
 import type { Ast } from '@/types/ast'
 import type { PreflightReport } from '@/types/preflight'
-import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, Notification, Participant, ParticipantRole, PlatformCase, Principal, Proposal, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemStatus, WorkingCopy } from './types'
+import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, MethodAsset, MethodAssetUse, Notification, Participant, ParticipantRole, PlatformCase, PlatformOrg, Principal, Proposal, ProposalsPage, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemQueuePage, WorkItemStatus, WorkingCopy } from './types'
 
 const V1 = '/api/v1'
 
@@ -57,10 +57,56 @@ const write = <T>(url: string, init: RequestInit = {}) =>
 
 export const workbenchApi = {
   me: (signal?: AbortSignal) => v1req<Principal>(`${V1}/principals/me`, { signal }),
-  cases: (signal?: AbortSignal) => v1req<PlatformCase[]>(`${V1}/cases`, { signal }),
+  organizations: (signal?: AbortSignal) => v1req<PlatformOrg[]>(`${V1}/organizations`, { signal }),
+  createCase: (organizationId: string, input: { case_key: string; title: string; kind?: PlatformCase['kind'] }) =>
+    write<PlatformCase>(`${V1}/organizations/${organizationId}/cases`, { body: JSON.stringify(input) }),
+  /** Z29 规模化台账：服务端分页（稳定排序 updated_at desc, case_key, id）；q=case_key 前缀或 title 子串 */
+  casesPage: (params: { limit?: number; offset?: number; q?: string; kind?: string; status?: string; organization_id?: string }, signal?: AbortSignal) => {
+    const sp = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) if (v != null && v !== '') sp.set(k, String(v))
+    return v1req<{ items: PlatformCase[]; total: number; limit: number; offset: number }>(`${V1}/cases/page?${sp}`, { signal })
+  },
+  /** Z29：legacy pid → 平台案精确作用域；返回全部同 key 可见案（0/1/N），不拉全库 */
+  casesByKey: (caseKey: string, signal?: AbortSignal) =>
+    v1req<PlatformCase[]>(`${V1}/cases/by-key/${encodeURIComponent(caseKey)}`, { signal }),
   case: (caseId: string, signal?: AbortSignal) => v1req<PlatformCase>(`${V1}/cases/${caseId}`, { signal }),
-  workItems: (signal?: AbortSignal) => v1req<WorkItem[]>(`${V1}/work-items`, { signal }),
+  /** 阶段6：工作项队列服务端分页（与 /cases/page 同款 limit/offset 口径）。
+      assignee=me|none、status、q（标题/案件号子串）先于分页过滤，total 与筛选口径一致。 */
+  workItems: (params: { limit?: number; offset?: number; status?: string; q?: string; assignee?: 'me' | 'none' }, signal?: AbortSignal) => {
+    const sp = new URLSearchParams()
+    for (const [k, v] of Object.entries(params)) if (v != null && v !== '') sp.set(k, String(v))
+    return v1req<WorkItemQueuePage>(`${V1}/work-items?${sp}`, { signal })
+  },
   caseWorkItems: (caseId: string, signal?: AbortSignal) => v1req<WorkItem[]>(`${V1}/cases/${caseId}/work-items`, { signal }),
+  /* ---- Z30 机构私有方法库：人工录入脱敏方法卡；仅 authorized 可检索；use 留痕 ---- */
+  methodAssets: (orgId: string, q?: string, allStates?: boolean, signal?: AbortSignal) => {
+    const sp = new URLSearchParams()
+    if (q) sp.set('q', q)
+    if (allStates) sp.set('all_states', 'true')
+    return v1req<MethodAsset[]>(`${V1}/organizations/${orgId}/method-assets?${sp}`, { signal })
+  },
+  createMethodAsset: (
+    orgId: string,
+    input: {
+      title: string
+      body: string
+      source?: 'manual' | 'curated'
+      asset_type: 'method' | 'expression'
+      provenance: string
+      authorized_scope: string
+      deidentified_confirmed: boolean
+    },
+  ) => write<MethodAsset>(`${V1}/organizations/${orgId}/method-assets`, { body: JSON.stringify(input) }),
+  confirmMethodAsset: (
+    assetId: string,
+    input: { asset_type: 'method' | 'expression'; provenance: string; authorized_scope: string; deidentified_confirmed: boolean },
+  ) => write<MethodAsset>(`${V1}/method-assets/${assetId}/confirm`, { body: JSON.stringify(input) }),
+  authorizeMethodAsset: (assetId: string) => write<MethodAsset>(`${V1}/method-assets/${assetId}/authorize`),
+  revokeMethodAsset: (assetId: string) => write<MethodAsset>(`${V1}/method-assets/${assetId}/revoke`),
+  useMethodAsset: (assetId: string, input: { case_id?: string; note?: string }) =>
+    write<MethodAssetUse>(`${V1}/method-assets/${assetId}/use`, { body: JSON.stringify(input) }),
+  methodAssetUses: (assetId: string, signal?: AbortSignal) =>
+    v1req<MethodAssetUse[]>(`${V1}/method-assets/${assetId}/uses`, { signal }),
   documents: (caseId: string, signal?: AbortSignal) => v1req<Document[]>(`${V1}/cases/${caseId}/documents`, { signal }),
   createDocument: (caseId: string, book: Book) =>
     write<Document>(`${V1}/cases/${caseId}/documents`, { body: JSON.stringify({ book }) }),
@@ -106,6 +152,14 @@ export const workbenchApi = {
   figureContentUrl: (figure: Figure) =>
     `${V1}/figures/${figure.id}/content?v=${figure.current_revision_id ?? 'empty'}`,
   proposals: (caseId: string, signal?: AbortSignal) => v1req<Proposal[]>(`${V1}/cases/${caseId}/proposals`, { signal }),
+  proposalsPage: (p: { limit: number; offset: number; status?: string; q?: string }, signal?: AbortSignal) => {
+    const u = new URL(`${V1}/proposals`, window.location.origin)
+    u.searchParams.set('limit', String(p.limit))
+    u.searchParams.set('offset', String(p.offset))
+    if (p.status) u.searchParams.set('status', p.status)
+    if (p.q) u.searchParams.set('q', p.q)
+    return v1req<ProposalsPage>(`${u.pathname}${u.search}`, { signal })
+  },
   decideProposal: (proposalId: string, decision: 'submit' | 'accept' | 'reject') =>
     write<Proposal>(`${V1}/proposals/${proposalId}/${decision}`),
   releases: (caseId: string, signal?: AbortSignal) => v1req<Release[]>(`${V1}/cases/${caseId}/releases`, { signal }),
@@ -157,6 +211,9 @@ export const workbenchApi = {
       method: 'PUT',
       body: JSON.stringify({ status }),
     }),
+  /** Z11/Z12：登记新案生成撰写工作项（type='draft'；可随案直接分派承办人） */
+  createWorkItem: (caseId: string, input: { type: WorkItem['type']; title: string; assignee_principal_id?: string | null; deadline?: string | null; priority?: number }) =>
+    write<WorkItem>(`${V1}/cases/${caseId}/work-items`, { body: JSON.stringify(input) }),
   saveWorkingCopy: (workingCopyId: string, expectedVersion: number, contentRef: Ref) =>
     write<WorkingCopy>(`${V1}/working-copies/${workingCopyId}`, {
       method: 'PUT',

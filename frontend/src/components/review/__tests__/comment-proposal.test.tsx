@@ -1,0 +1,112 @@
+// @vitest-environment jsdom
+import { act, type ReactElement } from 'react'
+import { createRoot, type Root } from 'react-dom/client'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { api } from '@/lib/api'
+import { useStudio } from '@/store'
+import type { Comment } from '@/lib/types'
+import type { Proposal } from '@/types/agent'
+import { CommentCard } from '../CommentCard'
+
+declare global {
+  // eslint-disable-next-line no-var
+  var IS_REACT_ACT_ENVIRONMENT: boolean
+}
+
+let root: Root | null = null
+let host: HTMLElement
+
+beforeAll(() => {
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true
+  window.matchMedia ??= (q: string) =>
+    ({ matches: true, media: q, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList
+})
+
+beforeEach(() => {
+  useStudio.setState({
+    pid: 'p1',
+    comments: [],
+    proposals: [],
+    settings: { ai_enabled: true } as never,
+    authStatus: 'off',
+    user: null,
+    agentTab: 'chat',
+    replyBodies: {},
+  })
+})
+
+afterEach(async () => {
+  await act(async () => root?.unmount())
+  root = null
+  host?.remove()
+  vi.restoreAllMocks()
+})
+
+async function mount(el: ReactElement) {
+  host = document.createElement('div')
+  document.body.appendChild(host)
+  root = createRoot(host)
+  await act(async () => root!.render(<TooltipProvider>{el}</TooltipProvider>))
+  return host
+}
+
+const comment = (over: Partial<Comment> = {}): Comment => ({
+  id: 'c1',
+  anchor: { block_id: 'claims/1', line: 9, quote: '其特征在于' },
+  body: '建议改写这句',
+  author: { id: null, name: '客户甲' },
+  created_at: 0,
+  updated_at: 0,
+  resolved: false,
+  replies: [],
+  source: 'client',
+  ...over,
+})
+
+const proposal: Proposal = {
+  id: 'prop_1',
+  job_id: 'job_x',
+  scenario: 's3',
+  kind: 'critic',
+  anchor: { book: 'claims', block_id: 'claims/1', line_start: 9, line_end: 9 },
+  critic_markdown: '{~~其特征在于~>其特征为~~}',
+  comment_body: null,
+  patch: null,
+  checks: [],
+  model: 'mock',
+  usage: { prompt: 1, completion: 1 },
+  created_at: 0,
+  state: 'pending',
+  source: { kind: 'comment', comment_id: 'c1', quote: '其特征在于', author: '客户甲', body: '建议改写这句' },
+}
+
+const run = async (fn: () => Promise<unknown>) => {
+  await fn()
+}
+
+describe('Z18 批注 → 修改提案（前端入口）', () => {
+  it('块锚批注 + AI 已开 → 显示「转提案」，点击调用 API 并把提案并入列表、跳建议 tab', async () => {
+    const spy = vi.spyOn(api, 'commentToProposal').mockResolvedValue({
+      job: { id: 'job_x', kind: 'comment2proposal', pid: 'p1', status: 'done', progress: 1, message: '', result: null, error: null, created_at: 0, updated_at: 0 },
+      proposal,
+    })
+    const el = await mount(
+      <CommentCard pid="p1" comment={comment()} active={false} atCursor={false} desktop busy={false} onLocate={() => {}} run={run} />,
+    )
+    const btn = el.querySelector<HTMLButtonElement>('[data-testid="review-to-proposal-c1"]')!
+    expect(btn).toBeTruthy()
+    await act(async () => btn.click())
+    expect(spy).toHaveBeenCalledWith('p1', 'c1')
+    expect(useStudio.getState().proposals.map((p) => p.id)).toEqual(['prop_1'])
+    expect(useStudio.getState().agentTab).toBe('proposals')
+  })
+
+  it('AI 未开启 → 不显示入口', async () => {
+    useStudio.setState({ settings: { ai_enabled: false } as never })
+    const el = await mount(
+      <CommentCard pid="p1" comment={comment()} active={false} atCursor={false} desktop busy={false} onLocate={() => {}} run={run} />,
+    )
+    expect(el.querySelector('[data-testid="review-to-proposal-c1"]')).toBeNull()
+  })
+})

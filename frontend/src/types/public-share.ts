@@ -41,6 +41,7 @@ export interface PublicShareMeta {
   /** 当前对外版本号（客户看到的 vN）与对应 sha */
   version: number
   sha: string
+  content_sha: string
   scope: PublicShareScope
   baseline: PublicShareBaseline
   /** 当前正文里尚未接受 / 拒绝的修订数；>0 时页首提示本审阅版按 baseline 渲染 */
@@ -60,6 +61,7 @@ export interface PublicShareMeta {
 export interface Confirmation {
   version: number
   sha: string
+  content_sha?: string | null
   name: string
   note: string | null
   confirmed_at: number
@@ -75,6 +77,9 @@ export interface PublicCommentIn {
 export interface PublicConfirmIn {
   name: string
   note?: string
+  expected_version: number
+  expected_sha: string
+  expected_content_sha: string
 }
 
 /** 与后端 schemas 公开端点字段上限一致（双写须同步）：PublicCommentIn.body 4000 /
@@ -84,4 +89,3 @@ export const PUBLIC_CONFIRM_NOTE_MAX = 2000
 export const GUEST_NAME_MAX = 64
 
 export type PublicComment = Comment & { guest?: boolean }
-

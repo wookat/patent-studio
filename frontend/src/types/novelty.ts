@@ -23,11 +23,36 @@ export interface NoveltyHit {
   relevance: NoveltyRelevance
   note: string
   link: string
+  /** Z31：公开日期（YYYY-MM-DD；可空 = 待核对） */
+  publication_date: string
+}
+
+/** Z31 证据对照状态：hit 命中 / partial 部分命中 / missing 未见披露 / pending 待核对（无全文原句） */
+export const EVIDENCE_STATUSES = ['hit', 'partial', 'missing', 'pending'] as const
+export type EvidenceStatus = (typeof EVIDENCE_STATUSES)[number]
+
+export const EVIDENCE_STATUS_LABEL: Record<EvidenceStatus, string> = {
+  hit: '命中（已披露）',
+  partial: '部分命中',
+  missing: '未见披露',
+  pending: '待核对',
+}
+
+export interface NoveltyEvidence {
+  id: string
+  /** 对比文件公开号（无号按标题） */
+  hit: string
+  /** 锚定权项编号；null = 整篇级 */
+  claim: number | null
+  feature: string
+  quote: string
+  status: EvidenceStatus
 }
 
 export interface NoveltyRecord {
   updated_at: string | null
   queries: NoveltyQuery[]
   hits: NoveltyHit[]
+  evidence: NoveltyEvidence[]
   conclusion: string
 }

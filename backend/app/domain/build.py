@@ -54,14 +54,22 @@ _KIND_TO_LINT = {"abstract_limit": "abstract.limit", "content": "spec.unknown_se
 
 
 def safe_lint(store: ProjectStore, project, content: str, settings: dict | None) -> list[dict]:
-    """lint 从不让构建失败：内部异常（含非法 settings）只记日志并返回空列表。"""
+    """检查异常不阻止预览排版，但必须保留一个不可当作通过的错误诊断。"""
     try:
         s = normalize_settings(settings if settings is not None else project.settings, store.list_figs(project.dir))
         figures = None if settings is not None and "spec_figures" in settings else store.load_figures(project.dir)
         return list(lint(content, s, project.figs_dir, with_preflight=True, figures=figures)["diagnostics"])
     except Exception:  # noqa: BLE001
         log.exception("lint failed")
-        return []
+        return [
+            {
+                "id": "checks.unavailable",
+                "severity": "error",
+                "source": "build",
+                "message": "检查未完成，不能判定为无问题。请重试检查后再定稿或交付。",
+                "line": None,
+            }
+        ]
 
 
 def with_build_error(diagnostics: list[dict], error: dict) -> list[dict]:
@@ -124,6 +132,7 @@ def run_build(
     mode: str = "final",
     *,
     tagged: bool = False,
+    preview: bool = False,
     author: str = tracked.DEFAULT_AUTHOR,
 ) -> BuildOutcome:
     """mode（07 §6.3）：final/original 按接受/拒绝后的文本排版；markup 走 Word 原生修订（w:ins/w:del，
@@ -154,6 +163,14 @@ def run_build(
         docx = os.path.join(out_dir, "out.docx")
         timings = {"queue_ms": round((t_lock - t0) * 1000)}
         diagnostics = safe_lint(store, project, critic.accept(raw), settings)
+        if not preview and any(d["id"] == "checks.unavailable" for d in diagnostics):
+            return BuildOutcome(
+                status="error",
+                build_id=build_id,
+                seq=mine,
+                diagnostics=diagnostics,
+                error={"kind": "validation", "message": "检查未完成，已阻止正式构建。请重试检查。"},
+            )
         try:
             # figs-src/*.mmd 自动晋级：缺图只构建出占位图是成品观感硬伤（vit-11 实案）——
             # 构建前把新/更新过的图源渲成 figs/<stem>.png 并收进 figures.md

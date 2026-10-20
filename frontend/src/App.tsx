@@ -37,6 +37,10 @@ const MobileShell = lazy(() => import('@/components/mobile/MobileShell').then((m
 const BoardPage = lazy(() => import('@/components/figure-book/BoardPage').then((m) => ({ default: m.BoardPage })))
 /** W19 批4 查新记录卡页：lazy——只在 #/p/<pid>/novelty 路由才下载 */
 const NoveltyPage = lazy(() => import('@/components/novelty/NoveltyPage').then((m) => ({ default: m.NoveltyPage })))
+/** Z20 权项沙盘页：lazy——只在 #/p/<pid>/claims 路由才下载 */
+const ClaimsSandboxPage = lazy(() => import('@/components/claims/ClaimsSandboxPage').then((m) => ({ default: m.ClaimsSandboxPage })))
+/** Z30：机构私有方法库页 #/org/<orgId>/methods */
+const MethodLibraryPage = lazy(() => import('@/components/platform/MethodLibraryPage').then((m) => ({ default: m.MethodLibraryPage })))
 /** B12 平台文稿编辑器（旧三书 ProseMirror 编辑器接 /api/v1）：lazy——只在 #/edit/<case>/<doc> 下载 */
 const DocEditorPage = lazy(() => import('@/components/workbench/DocEditorPage').then((m) => ({ default: m.DocEditorPage })))
 
@@ -150,6 +154,10 @@ export default function App() {
           <Suspense fallback={<WorkbenchFallback />}>
             <NoveltyPage pid={route.pid} />
           </Suspense>
+        ) : route.kind === 'claims' ? (
+          <Suspense fallback={<WorkbenchFallback />}>
+            <ClaimsSandboxPage pid={route.pid} />
+          </Suspense>
         ) : route.kind === 'account' ? (
           <AccountPage />
         ) : route.kind === 'admin' ? (
@@ -160,6 +168,10 @@ export default function App() {
           <InboxPage />
         ) : route.kind === 'workbench' ? (
           <WorkbenchRedirect />
+        ) : route.kind === 'methods' ? (
+          <Suspense fallback={<WorkbenchFallback />}>
+            <MethodLibraryPage orgId={route.orgId} />
+          </Suspense>
         ) : route.kind === 'edit' ? (
           <Suspense fallback={<WorkbenchFallback />}>
             <DocEditorPage caseId={route.caseId} docId={route.docId} />

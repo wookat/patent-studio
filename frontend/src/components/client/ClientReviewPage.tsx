@@ -12,6 +12,7 @@ import {
   MessageSquarePlus,
   MessageSquareText,
   RefreshCw,
+  Type,
 } from 'lucide-react'
 import { Toasts } from '@/components/shell/Toasts'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ import type { PublicView } from '@/store/publicShare'
 import type { PublicShareMeta } from '@/types/public-share'
 import { anchorForBlock, anchorForQuote, type PublicAnchor } from './anchor'
 import { ClientPdfView } from './ClientPdfView'
+import { ClientTextView } from './ClientTextView'
 import { CommentSheet } from './CommentSheet'
 import { CommentThreads } from './CommentThreads'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -67,6 +69,18 @@ const VIEW_OPTIONS = [
     icon: <LayoutTemplate aria-hidden />,
     'data-testid': 'client-view-layout',
   },
+]
+
+/** 手机多一项「正文」：不按 A4 缩放的连续可读文本流（R-MOB-03） */
+const VIEW_OPTIONS_MOBILE = [
+  VIEW_OPTIONS[0],
+  {
+    value: 'text' as const,
+    label: '正文',
+    icon: <Type aria-hidden />,
+    'data-testid': 'client-view-text',
+  },
+  VIEW_OPTIONS[1],
 ]
 
 const DAY = 86400
@@ -229,17 +243,18 @@ export function ClientReviewPage({ token }: { token: string }) {
     toast('此链接不允许复制内容', 'info')
   }
 
-  const pdfUrl = api.publicPdfUrl(token)
+  const pdfUrl = api.publicPdfUrl(token, meta)
   const canComment = meta != null && meta.scope !== 'read' && meta.allow_comment
   const canConfirm = meta?.scope === 'confirm'
   const confirmedThis = meta?.confirmation != null && meta.confirmation.version === meta.version
+    && meta.confirmation.sha === meta.sha && meta.confirmation.content_sha === meta.content_sha
   const left = daysLeft(meta?.expires_at ?? null)
   const openCount = comments.filter((c) => !c.resolved).length
   const ready = meta != null && ast != null && !expired && !invalid
 
   const viewSwitch = ready && (
     <div data-testid="client-viewbar" className={cn(!desktop && 'flex shrink-0 items-center justify-center bg-app px-page-m py-3')}>
-      <Segmented value={view} onValueChange={setView} options={VIEW_OPTIONS} aria-label="查看方式" size="md" className={cn(!desktop && 'w-full')} />
+      <Segmented value={view} onValueChange={setView} options={desktop ? VIEW_OPTIONS : VIEW_OPTIONS_MOBILE} aria-label="查看方式" size="md" className={cn(!desktop && 'w-full')} />
     </div>
   )
 
@@ -361,6 +376,10 @@ export function ClientReviewPage({ token }: { token: string }) {
                 <div className="mx-auto h-full w-full max-w-page">
                   {view === 'pdf' ? (
                     <ClientPdfView url={pdfUrl} ready={meta.pdf_ready} onPage={onPage} />
+                  ) : view === 'text' ? (
+                    <div className="h-full overflow-y-auto">
+                      <ClientTextView ast={ast} onPickBlock={onPickBlock} pickedId={pickedId} />
+                    </div>
                   ) : (
                     <Suspense fallback={<Skeleton className="mx-auto mt-8 h-[60vh] w-full max-w-page" />}>
                       <ClientLayoutView ast={ast} css={css} onPickBlock={onPickBlock} pickedId={pickedId} subExcept={meta.sub_except} />

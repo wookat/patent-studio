@@ -26,6 +26,6 @@ describe('workbench API boundary', () => {
 
   it('preserves 401 as ApiError for the workbench auth state', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ detail: { kind: 'auth', message: 'login required' } }, { status: 401 }))
-    await expect(workbenchApi.cases()).rejects.toMatchObject({ status: 401 } satisfies Partial<ApiError>)
+    await expect(workbenchApi.me()).rejects.toMatchObject({ status: 401 } satisfies Partial<ApiError>)
   })
 })

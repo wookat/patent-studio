@@ -203,9 +203,14 @@ function ProposalCard({ p, pid, compact, canAct }: { p: Proposal; pid: string | 
       {failed.length > 0 && p.state === 'pending' && (
         <p className="px-3 pb-1 text-xs text-warn-fg">{failed.map((c) => c.why).filter(Boolean).join('；') || '有自检未通过，写入前请核对。'}</p>
       )}
+      {p.source?.kind === 'comment' && (
+        <p className="px-3 pb-1 text-2xs text-fg-subtle" data-testid={`ai-proposal-source-${p.id}`}>
+          来自批注 · {p.source.author || '批注'}{p.source.quote ? `「${p.source.quote}」` : ''}
+        </p>
+      )}
       {p.state !== 'dismissed' && (p.model || p.usage) && (
         <p className="px-3 pb-1 text-2xs text-fg-subtle">
-          为什么：{scenarioLabel(p.scenario)}场景根据{where}生成
+          为什么：{p.source?.kind === 'comment' ? `批注「${p.source.body.slice(0, 40)}${p.source.body.length > 40 ? '…' : ''}」` : `${scenarioLabel(p.scenario)}场景根据${where}生成`}
           {p.usage ? ` · ${p.usage.prompt + p.usage.completion} token` : ''}
         </p>
       )}

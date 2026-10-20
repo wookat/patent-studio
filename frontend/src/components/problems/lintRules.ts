@@ -13,6 +13,7 @@ export const LINT_RULES: { id: string; name: string; desc: string; severity: Dia
   { id: 'spec.unknown_section', name: '无未知章节标题', desc: '## / ### 仅限允许的章节名', severity: 'error' },
   { id: 'figures.ref', name: '附图引用与附图说明一致', desc: '图N 均存在且被提及', severity: 'warning' },
   { id: 'figures.abstract', name: '摘要附图存在', desc: 'abstract_figure 文件可读', severity: 'warning' },
+  { id: 'figures.source_orphan', name: '收录附图有对应图源', desc: 'figs-src 派生图失去同 stem 图源（改名/删除）时提示', severity: 'warning' },
   { id: 'equation.unclosed', name: '行内公式 $$ 成对', desc: '', severity: 'error' },
   { id: 'style.vague', name: '无不确定性用语', desc: '大约/左右/可能等', severity: 'warning' },
   { id: 'style.trademark', name: '无商标符号', desc: '®™©℠', severity: 'warning' },

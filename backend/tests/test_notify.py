@@ -180,7 +180,19 @@ def test_client_comment_and_confirm_notify_staff_without_owner(on):
         assert items[0]["title"] == "客户 王经理（客户） 提交了批注" and items[0]["body"] == "摘要第二句请改为「系统」"
         assert items[0]["href"] == f"#/p/method?c={cid}" and items[0]["pid"] == "method" and items[0]["actor"] is None
 
-        r = anon.post(f"/api/public/{tok}/confirm", json={"name": "王经理", "note": "同意定稿"})
+        content = su_c.get("/api/projects/method/content").json()["content"]
+        assert su_c.put("/api/projects/method/content", json={"content": content}).status_code == 200
+        meta = anon.get(f"/api/public/{tok}/meta").json()
+        r = anon.post(
+            f"/api/public/{tok}/confirm",
+            json={
+                "name": "王经理",
+                "note": "同意定稿",
+                "expected_version": meta["version"],
+                "expected_sha": meta["sha"],
+                "expected_content_sha": meta["content_sha"],
+            },
+        )
         assert r.status_code == 200, r.text
         drain()
         items = su_c.get("/api/notify?unread=1").json()["items"]

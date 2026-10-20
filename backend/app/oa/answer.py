@@ -58,13 +58,37 @@ def load_items_bundle(project_dir: str) -> dict:
     """当前拆条工作集 + 告警 + 已生成答复——OA 面板刷新后重建前端状态。
 
     此前 items.json/答复文件只写不读：POST /parse 的响应是唯一获取途径，页面一刷新
-    oaItems 就只剩轮次行上的条数而没有条目本体（D-OA-1）。"""
+    oaItems 就只剩轮次行上的条数而没有条目本体（D-OA-1）。
+
+    每条意见透出证据链状态（Z23）：pending=未答 / answered=已有答复落盘 /
+    delivered=所属轮次已登记递交（filed_on）；round_id 为拆条挂接的轮次（无则 None），
+    同一 item 出现在多轮时取编号最大的轮次。"""
     raw = _items_raw(project_dir)
+    items = raw.get("items") or []
+    answers = load_answers(project_dir)
+    answered = {a["item_id"] for a in answers}
+    round_of = _item_rounds(project_dir)
+    out = []
+    for it in items:
+        rid, filed = round_of.get(it["id"], (None, None))
+        status = "delivered" if filed else ("answered" if it["id"] in answered else "pending")
+        out.append({**it, "status": status, "round_id": rid})
     return {
-        "items": raw.get("items") or [],
+        "items": out,
         "warnings": raw.get("warnings") or [],
-        "answers": load_answers(project_dir),
+        "answers": answers,
     }
+
+
+def _item_rounds(project_dir: str) -> dict[str, tuple[str, str | None]]:
+    """item_id → (round_id, filed_on)：拆条挂轮次的证据链（rounds.attach_items 写入）。"""
+    from app.oa import rounds as rounds_mod
+
+    out: dict[str, tuple[str, str | None]] = {}
+    for rnd in rounds_mod.list_rounds(project_dir):
+        for it in rnd.get("items") or []:
+            out[it["id"]] = (rnd["id"], rnd.get("filed_on"))
+    return out
 
 
 def save_answer(project_dir: str, ans: dict) -> None:
