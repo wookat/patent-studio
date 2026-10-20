@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, AlertTriangle, Bell, BriefcaseBusiness, CalendarClock, CheckCircle2, CircleX, ClipboardCopy, Download, FileText, Image, Inbox, Info, LoaderCircle, Package, ShieldAlert, Stethoscope, Upload, UserPlus } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/lib/api/net'
@@ -117,6 +117,11 @@ export function QueueView({ onOpenCase, meId }: { onOpenCase: (id: string, caseK
     q: search.trim(),
     assignee: scope === 'mine' ? 'me' : scope === 'unassigned' ? 'none' : '',
   }
+  /* 阶段6收口：placeholder 仅同筛选键保留——筛选变更（scope/status/q）时旧页数据不再
+   * 残留（否则「未分配」会短暂显示上一筛选「我的待办」的行）。筛选键用 ref 记录上一次
+   * 实际渲染的键，翻页不改筛选才走 keepPrevious。 */
+  const filterKey = `${scope}|${status}|${params.q}`
+  const lastFilter = useRef(filterKey)
   const query = useQuery({
     queryKey: workbenchKeys.workItemsPage(params),
     queryFn: ({ signal }) =>
@@ -131,11 +136,18 @@ export function QueueView({ onOpenCase, meId }: { onOpenCase: (id: string, caseK
         signal,
       ),
     retry: false,
-    placeholderData: (prev) => prev,
+    placeholderData: lastFilter.current === filterKey ? (prev) => prev : undefined,
   })
-  if (query.isError) return <div className="mt-4"><ErrorPanel error={query.error} onRetry={() => void query.refetch()} /></div>
   const d = query.data
   const total = d?.total ?? 0
+  const lastPage = Math.max(0, Math.ceil(total / QUEUE_PAGE) - 1)
+  useEffect(() => {
+    lastFilter.current = filterKey
+    /* mutation/权限变化使 total 缩小后，当前 offset 可能越出末页——自动回退最后有效页，
+     * 否则用户看到空页并误以为没有记录。 */
+    if (d && page > lastPage) setPage(lastPage)
+  }, [d, filterKey, lastPage, page])
+  if (query.isError) return <div className="mt-4"><ErrorPanel error={query.error} onRetry={() => void query.refetch()} /></div>
   const pages = Math.max(1, Math.ceil(total / QUEUE_PAGE))
   const filtered = Boolean(params.q) || status !== 'all'
   const empty = !filtered ? SCOPE_EMPTY[scope] : { title: '没有匹配的工作项', reason: '调整筛选条件，或从案件空间创建新的工作项。' }
@@ -151,6 +163,11 @@ export function QueueView({ onOpenCase, meId }: { onOpenCase: (id: string, caseK
         </select>
         <span className="text-sm text-fg-muted" data-testid="queue-total">共 {total} 项</span>
       </div>
+      {query.isPlaceholderData && (
+        <div className="mb-2 inline-flex items-center gap-1.5 text-xs text-fg-muted" role="status" data-testid="queue-updating">
+          <LoaderCircle className="size-3.5 animate-spin" />正在更新…
+        </div>
+      )}
       {query.isLoading ? (
         <div className="flex min-h-24 items-center justify-center text-sm text-fg-muted" role="status"><LoaderCircle className="mr-2 size-4 animate-spin" />正在加载工作项…</div>
       ) : (d?.items.length ?? 0) === 0 ? (

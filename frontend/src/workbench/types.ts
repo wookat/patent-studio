@@ -22,6 +22,15 @@ export type Book = Document['book']
 export type Revision = S['RevisionOut']
 export type WorkingCopy = S['WorkingCopyOut']
 export type Proposal = S['ProposalOut']
+/** 阶段6收口：GET /api/v1/proposals 收件箱项随附案件元数据（openapi.gen 冻结早于该扩展——手写对齐 schemas.ProposalInboxOut） */
+export type ProposalInboxItem = Proposal & { case: PlatformCase }
+/** 阶段6收口：GET /api/v1/proposals 服务端分页信封（手写对齐 schemas.ProposalPageOut） */
+export interface ProposalsPage {
+  items: ProposalInboxItem[]
+  total: number
+  limit: number
+  offset: number
+}
 export type Figure = S['FigureOut']
 /** Z24：schemas.ReleaseOut/ReleaseItemOut 已加冻结指纹字段；openapi.gen 冻结早于该扩展——手写补齐 */
 export type Release = S['ReleaseOut'] & { created_at?: string; sealed_at?: string | null }

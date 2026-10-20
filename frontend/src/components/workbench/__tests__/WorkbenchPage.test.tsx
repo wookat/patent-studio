@@ -86,8 +86,10 @@ describe('workbench queue（阶段6 服务端分页契约）', () => {
       select.value = 'open'
       select.dispatchEvent(new Event('change', { bubbles: true }))
     })
-    await vi.waitFor(() => expect(el.querySelector('[data-testid="work-item-w2"]')).toBeNull())
-    expect(el.querySelector('[data-testid="work-item-w1"]')).not.toBeNull()
+    // 阶段6收口：筛选变更不再保留上一筛选行（placeholder 仅同筛选翻页）——w2 立即消失，
+    // 等 'open' 页数据到达后 w1 渲染
+    await vi.waitFor(() => expect(el.querySelector('[data-testid="work-item-w1"]')).not.toBeNull())
+    expect(el.querySelector('[data-testid="work-item-w2"]')).toBeNull()
     expect(urls.some((u) => new URL(u, 'http://x').searchParams.get('status') === 'open')).toBe(true)
   })
 
@@ -117,5 +119,59 @@ describe('workbench queue（阶段6 服务端分页契约）', () => {
     expect(urls.some((u) => new URL(u, 'http://x').searchParams.get('offset') === '20')).toBe(true)
     await act(async () => (el.querySelector('[data-testid="queue-pager"] button:first-child') as HTMLElement).click())
     await vi.waitFor(() => expect(el.querySelector('[data-testid="work-item-w1"]')).not.toBeNull())
+  })
+
+  it('服务端 total 缩小使当前页越界时自动回退最后有效页（不停在空页）', async () => {
+    let total = 40
+    const all = Array.from({ length: 40 }, (_, i) => ({ ...W1, id: `w${i}`, title: `事项${i}` }))
+    const urls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (!url.startsWith('/api/v1/work-items')) return json({ detail: 'not found' }, 404)
+      urls.push(url)
+      const u = new URL(url, 'http://x')
+      const offset = Number(u.searchParams.get('offset') ?? 0)
+      const limit = Number(u.searchParams.get('limit') ?? 20)
+      return json({ items: all.slice(offset, Math.min(offset + limit, total)), total, limit, offset })
+    }))
+    const el = await mount(
+      <QueryClientProvider client={queryClient}>
+        <QueueView onOpenCase={() => {}} meId="p1" />
+      </QueryClientProvider>,
+    )
+    await vi.waitFor(() => expect(el.querySelector('[data-testid="work-item-w0"]')).not.toBeNull())
+    await act(async () => (el.querySelector('[data-testid="queue-pager"] button:last-child') as HTMLElement).click())
+    await vi.waitFor(() => expect(el.querySelector('[data-testid="work-item-w20"]')).not.toBeNull())
+    expect(el.querySelector('[data-testid="queue-pager"]')?.textContent).toContain('第 2 / 2 页')
+    // mutation/权限变化：total 40→20，offset=20 已越界——失效重取后应自动回第1页
+    total = 20
+    await act(async () => { await queryClient.invalidateQueries() })
+    await vi.waitFor(() => {
+      expect(el.querySelector('[data-testid="queue-pager"]')?.textContent).toContain('第 1 / 1 页')
+      expect(el.querySelector('[data-testid="work-item-w0"]')).not.toBeNull()
+    })
+  })
+
+  it('筛选变更不残留上一筛选的行（placeholder 仅同筛选翻页保留）', async () => {
+    const urls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (!url.startsWith('/api/v1/work-items')) return json({ detail: 'not found' }, 404)
+      urls.push(url)
+      const u = new URL(url, 'http://x')
+      const assignee = u.searchParams.get('assignee') ?? ''
+      // 未分配筛选的响应故意挂起——若 placeholder 跨筛选保留，w1 会在加载中仍可见（回归形态）
+      if (assignee === 'none') return new Promise<Response>(() => {})
+      return json({ items: [W1], total: 1, limit: 20, offset: 0 })
+    }))
+    const el = await mount(
+      <QueryClientProvider client={queryClient}>
+        <QueueView onOpenCase={() => {}} meId="p1" />
+      </QueryClientProvider>,
+    )
+    await vi.waitFor(() => expect(el.querySelector('[data-testid="work-item-w1"]')).not.toBeNull())
+    await act(async () => (el.querySelector('[data-testid="queue-scope-unassigned"]') as HTMLElement).click())
+    await vi.waitFor(() => expect(urls.some((u) => u.includes('assignee=none'))).toBe(true))
+    // 切换瞬间：上一筛选的 w1 立即消失，显示加载态而非「未分配」下的我的待办行
+    expect(el.querySelector('[data-testid="work-item-w1"]')).toBeNull()
+    expect(el.querySelector('[role="status"]')).not.toBeNull()
   })
 })

@@ -28,3 +28,17 @@ export const workItemStatusText = (status: string) => WORK_ITEM_STATUS_TEXT[stat
 /** 队列/期限面板徽标统一色口径：done=ok、blocked=danger，其余进行中态=info，未知=neutral。 */
 export const workItemStatusTone = (status: string): 'ok' | 'danger' | 'info' | 'neutral' =>
   status === 'done' ? 'ok' : status === 'blocked' ? 'danger' : status in WORK_ITEM_STATUS_TEXT ? 'info' : 'neutral'
+
+/** 提案状态中文映射（阶段6收口）：DB CheckConstraint 全集 + 未知值兜底，UI 不渲染原值。 */
+export const PROPOSAL_STATUS_TEXT: Readonly<Record<string, string>> = {
+  draft: '草稿',
+  submitted: '待决',
+  accepted: '已采纳',
+  rejected: '已拒绝',
+  superseded: '已取代',
+}
+
+export const proposalStatusText = (status: string) => PROPOSAL_STATUS_TEXT[status] ?? '未知状态'
+
+export const proposalStatusTone = (status: string): 'ok' | 'info' | 'warn' | 'neutral' =>
+  status === 'accepted' ? 'ok' : status === 'submitted' ? 'info' : status === 'draft' ? 'warn' : 'neutral'

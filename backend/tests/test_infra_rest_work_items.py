@@ -10,12 +10,14 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, select
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from test_infra_rest_org_case import _rest_case, _rest_user
 
 from patent_studio.domain.agents import issue_agent_token, provision_agent
-from patent_studio.domain.organization import CaseParticipant, Organization, OrganizationMembership
+from patent_studio.domain.identity import Principal
+from patent_studio.domain.organization import Case, CaseParticipant, Organization, OrganizationMembership
 from patent_studio.infra.db import database_url
 
 pytest_plugins = ("test_auth",)
@@ -376,6 +378,43 @@ def test_work_items_queue_token_scope_and_org_gating(on, pg_schema):
     assert [i["id"] for i in rows.json()["items"]] == [item_a["id"]]
     assert rows.json()["total"] == 1
 
+    # org-scoped token 跨机构收窄：同一 agent 在第二机构也有成员身份，但 token 限定 org → 只见 org 内行
+    org2 = owner.post(
+        "/api/v1/organizations",
+        headers={"Idempotency-Key": "p6s-org2"},
+        json={"slug": f"p6s2-{uuid.uuid4().hex[:8]}", "name": "Org2"},
+    ).json()
+    case_c = owner.post(
+        f"/api/v1/organizations/{org2['id']}/cases",
+        headers={"Idempotency-Key": "p6sc-case"},
+        json={"case_key": "P6SC-1", "title": "跨机构案", "kind": "invention"},
+    ).json()
+    item_c = _new_item(owner, case_c, "p6sc-item")
+    engine, session = _direct_session(pg_schema)
+    try:
+        with session.begin():
+            agent_pid = session.scalar(select(Principal.id).where(Principal.agent_key == "p6-agent"))
+            session.add(
+                OrganizationMembership(
+                    organization_id=uuid.UUID(org2["id"]), principal_id=agent_pid, role="member", status="active"
+                )
+            )
+            org_token = issue_agent_token(
+                session,
+                principal_id=agent_pid,
+                issuer_principal_id=owner_pid,
+                organization_id=uuid.UUID(org["id"]),
+                case_id=None,
+            )
+    finally:
+        session.close()
+        engine.dispose()
+    rows = agent.get("/api/v1/work-items", headers={"Authorization": f"Bearer {org_token}"})
+    assert rows.status_code == 200, rows.text
+    assert {i["id"] for i in rows.json()["items"]} == {item_a["id"], item_b["id"]}
+    assert item_c["id"] not in [i["id"] for i in rows.json()["items"]]
+    assert rows.json()["total"] == 2
+
     # 参与者可见但非机构成员：撤掉参与者行即消失
     member_only = _rest_user(on, "p6-scope-member")
     member_pid = uuid.UUID(member_only.get("/api/v1/principals/me").json()["id"])
@@ -401,7 +440,7 @@ def test_work_items_queue_token_scope_and_org_gating(on, pg_schema):
         engine.dispose()
     assert member_only.get("/api/v1/work-items").json()["total"] == 0
 
-    # 机构 suspended：case_access 对全机构 403 —— 队列里两件都消失
+    # 机构 suspended：case_access 对全机构 403 —— org 内两件消失，org2 的 item_c 保留
     engine, session = _direct_session(pg_schema)
     try:
         with session.begin():
@@ -410,4 +449,73 @@ def test_work_items_queue_token_scope_and_org_gating(on, pg_schema):
         session.close()
         engine.dispose()
     body = owner.get("/api/v1/work-items").json()
+    assert body["total"] == 1 and [i["id"] for i in body["items"]] == [item_c["id"]]
+
+
+def test_work_items_queue_membership_revoked_and_creator_only(on, pg_schema):
+    """阶段6：membership 撤销后仅 created_by 不再可见（谓词不含 created_by 放宽）。
+    先前用例只覆盖 participant ended；此处实测 membership revoke。"""
+    owner = _rest_user(on, "p6-mem-owner")
+    org, case = _rest_case(owner, "p6m")
+    item = _new_item(owner, case, "p6m-item")
+    member = _rest_user(on, "p6-mem")
+    member_pid = uuid.UUID(member.get("/api/v1/principals/me").json()["id"])
+
+    # 授 member：仅 membership（无参与者行）→ 可见
+    engine, session = _direct_session(pg_schema)
+    try:
+        with session.begin():
+            session.add(
+                OrganizationMembership(
+                    organization_id=uuid.UUID(org["id"]), principal_id=member_pid, role="member", status="active"
+                )
+            )
+    finally:
+        session.close()
+        engine.dispose()
+    assert [i["id"] for i in member.get("/api/v1/work-items").json()["items"]] == [item["id"]]
+
+    # 撤销 membership（约束值 removed）且把 created_by 指向 member → created_by 不扩权，队列为空
+    engine, session = _direct_session(pg_schema)
+    try:
+        with session.begin():
+            session.get(OrganizationMembership, (uuid.UUID(org["id"]), member_pid)).status = "removed"
+            session.get(Case, uuid.UUID(case["id"])).created_by_principal_id = member_pid
+    finally:
+        session.close()
+        engine.dispose()
+    body = member.get("/api/v1/work-items").json()
     assert body["total"] == 0 and body["items"] == []
+
+
+def _count_selects(fn):
+    """统计 fn() 执行期间所有 Engine 的 SELECT 条数（路由每请求自建 engine，类级监听全覆盖）。
+
+    认证/主体加载等固定查询照常计入——断言目标不是绝对数而是「不随页内条数增长」。"""
+    hits = []
+
+    def _listener(_conn, _cursor, statement, _params, _context, _executemany):
+        if statement.lstrip().upper().startswith("SELECT"):
+            hits.append(statement)
+
+    event.listen(Engine, "before_cursor_execute", _listener)
+    try:
+        fn()
+    finally:
+        event.remove(Engine, "before_cursor_execute", _listener)
+    return hits
+
+
+def test_work_items_queue_select_count_is_constant(on, pg_schema):
+    """阶段6：消 N+1 的可回归断言——同一请求 SELECT 数不随页内条数增长。
+
+    若退回逐行 case_access，limit=25 页会多出 ~25 次 SELECT，此断言立即报警。"""
+    owner = _rest_user(on, "p6-n1-owner")
+    _org, case = _rest_case(owner, "p6n")
+    for i in range(25):
+        _new_item(owner, case, f"p6n-item-{i:02d}", title=f"事项{i}")
+
+    small = _count_selects(lambda: owner.get("/api/v1/work-items?limit=2&offset=0").raise_for_status())
+    large = _count_selects(lambda: owner.get("/api/v1/work-items?limit=25&offset=0").raise_for_status())
+    assert len(small) == len(large), f"小页 {len(small)} SELECT vs 大页 {len(large)} SELECT——N+1 回归"
+    assert len(large) <= 8, f"单页固定查询数应 ≤8（认证+谓词+count+page），实际 {len(large)}"

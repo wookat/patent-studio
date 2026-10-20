@@ -5,7 +5,7 @@ import { handle, netFetch, req } from '@/lib/api/net'
 const v1req = <T>(url: string, init?: Parameters<typeof req>[1]) => req<T>(url, { ...(init ?? {}), expireOn401: false })
 import type { Ast } from '@/types/ast'
 import type { PreflightReport } from '@/types/preflight'
-import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, MethodAsset, MethodAssetUse, Notification, Participant, ParticipantRole, PlatformCase, PlatformOrg, Principal, Proposal, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemQueuePage, WorkItemStatus, WorkingCopy } from './types'
+import type { Approval, Book, CaseStatus, Document, Fact, Figure, Invitation, InvitationRole, Material, Membership, MethodAsset, MethodAssetUse, Notification, Participant, ParticipantRole, PlatformCase, PlatformOrg, Principal, Proposal, ProposalsPage, Ref, Release, ReleaseItem, Revision, Run, RunEvent, WorkItem, WorkItemQueuePage, WorkItemStatus, WorkingCopy } from './types'
 
 const V1 = '/api/v1'
 
@@ -152,6 +152,14 @@ export const workbenchApi = {
   figureContentUrl: (figure: Figure) =>
     `${V1}/figures/${figure.id}/content?v=${figure.current_revision_id ?? 'empty'}`,
   proposals: (caseId: string, signal?: AbortSignal) => v1req<Proposal[]>(`${V1}/cases/${caseId}/proposals`, { signal }),
+  proposalsPage: (p: { limit: number; offset: number; status?: string; q?: string }, signal?: AbortSignal) => {
+    const u = new URL(`${V1}/proposals`, window.location.origin)
+    u.searchParams.set('limit', String(p.limit))
+    u.searchParams.set('offset', String(p.offset))
+    if (p.status) u.searchParams.set('status', p.status)
+    if (p.q) u.searchParams.set('q', p.q)
+    return v1req<ProposalsPage>(`${u.pathname}${u.search}`, { signal })
+  },
   decideProposal: (proposalId: string, decision: 'submit' | 'accept' | 'reject') =>
     write<Proposal>(`${V1}/proposals/${proposalId}/${decision}`),
   releases: (caseId: string, signal?: AbortSignal) => v1req<Release[]>(`${V1}/cases/${caseId}/releases`, { signal }),

@@ -21,6 +21,10 @@ export const workbenchKeys = {
   revisions: (documentId: string) => [...workbenchKeys.all, 'revisions', documentId] as const,
   figures: (id: string) => [...workbenchKeys.case(id), 'figures'] as const,
   proposals: (id: string) => [...workbenchKeys.case(id), 'proposals'] as const,
+  /** 跨案提案收件箱前缀（失效用）；分页/筛选参数进 proposalsPage 的 key，mutation 以前缀失效全部页 */
+  proposalsInbox: () => [...workbenchKeys.all, 'proposals-inbox'] as const,
+  proposalsPage: (p: { limit: number; offset: number; status: string; q: string }) =>
+    [...workbenchKeys.proposalsInbox(), p] as const,
   releases: (id: string) => [...workbenchKeys.case(id), 'releases'] as const,
   releaseItems: (releaseId: string) => [...workbenchKeys.all, 'release-items', releaseId] as const,
   releaseArtifacts: (releaseId: string) => [...workbenchKeys.all, 'release-artifacts', releaseId] as const,
@@ -104,6 +108,7 @@ export function useWorkbenchMutations() {
       workbenchApi.decideProposal(proposalId, decision),
     onSuccess: (_data, variables) => {
       void client.invalidateQueries({ queryKey: workbenchKeys.proposals(variables.caseId) })
+      void client.invalidateQueries({ queryKey: workbenchKeys.proposalsInbox() })
       void client.invalidateQueries({ queryKey: workbenchKeys.documents(variables.caseId) })
     },
   })

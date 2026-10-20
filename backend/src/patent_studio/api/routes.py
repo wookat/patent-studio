@@ -526,6 +526,54 @@ def proposals(case_id: uuid.UUID, ctx: Ctx):
     return list(ctx.session.scalars(select(p.Proposal).where(p.Proposal.case_id == case_id)))
 
 
+_PROPOSAL_STATUSES = ("draft", "submitted", "accepted", "rejected", "superseded")
+
+
+@router.get("/proposals", response_model=s.ProposalPageOut)
+def list_all_proposals(
+    ctx: Ctx,
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    q: str | None = None,
+):
+    """跨案提案收件箱：可见案件域内服务端分页（与 /work-items、/cases/page 同款 limit/offset）。
+
+    可见性谓词与逐条 case_access 读路径等价（复用 _visible_case_predicate，不引
+    _visible_cases_stmt 的 created_by 放宽）；case 元数据随 Proposal⨝Case 一次 join
+    取回，禁止逐案回拉。status、q（案件号或案件标题子串，不分大小写）先于分页过滤，
+    total 与筛选口径一致。稳定排序：created_at DESC → id。"""
+    limit = min(max(limit, 1), 200)
+    offset = max(offset, 0)
+    if status is not None and status not in _PROPOSAL_STATUSES:
+        raise error(422, "validation", f"status must be one of {', '.join(_PROPOSAL_STATUSES)}")
+    if not d._active_principal(ctx.session, ctx.principal.id):
+        return s.ProposalPageOut(items=[], total=0, limit=limit, offset=offset)
+    predicate = _visible_case_predicate(ctx)
+    stmt = select(p.Proposal, Case).join(Case, p.Proposal.case_id == Case.id).where(predicate)
+    count_stmt = select(func.count(p.Proposal.id)).join(Case, p.Proposal.case_id == Case.id).where(predicate)
+    if status:
+        stmt = stmt.where(p.Proposal.status == status)
+        count_stmt = count_stmt.where(p.Proposal.status == status)
+    if q and q.strip():
+        pat = q.strip()
+        filt = (Case.case_key.ilike(f"%{pat}%")) | (Case.title.ilike(f"%{pat}%"))
+        stmt = stmt.where(filt)
+        count_stmt = count_stmt.where(filt)
+    total = ctx.session.scalar(count_stmt) or 0
+    rows = ctx.session.execute(
+        stmt.order_by(p.Proposal.created_at.desc(), p.Proposal.id.desc()).limit(limit).offset(offset)
+    ).all()
+    items = [
+        s.ProposalInboxOut(
+            **s.ProposalOut.model_validate(prop).model_dump(),
+            case=s.CaseOut.model_validate(case),
+        )
+        for prop, case in rows
+    ]
+    return s.ProposalPageOut(items=items, total=total, limit=limit, offset=offset)
+
+
 @router.post("/proposals/{proposal_id}/{decision}", response_model=s.ProposalOut)
 def decide_proposal(proposal_id: uuid.UUID, decision: str, ctx: Ctx, key: Key):
     proposal = p.get_proposal(ctx.session, proposal_id, principal_id=ctx.principal.id)
@@ -941,8 +989,9 @@ def work_items(case_id: uuid.UUID, ctx: Ctx):
     return list(ctx.session.scalars(select(w.WorkItem).where(w.WorkItem.case_id == case_id)))
 
 
-def _queue_case_predicate(ctx):
-    """GET /work-items 队列的可见案件谓词：与逐条 case_access 读路径（write=False/manage=False）等价。
+def _visible_case_predicate(ctx):
+    """跨案读集合（/work-items、/proposals）的可见案件谓词：与逐条 case_access 读路径
+    （write=False/manage=False）等价。
 
     - 可见域：机构 active 成员 ∪ 案件 active 参与者（与 _ensure_case_access 一致；
       不含 created_by 放宽——_ensure_case_access 本身也不含，_visible_cases_stmt 才有）。
@@ -993,7 +1042,7 @@ def list_all_work_items(
     if not d._active_principal(ctx.session, ctx.principal.id):
         # 与逐条 case_access 全数被拒等价：inactive principal 看不到任何工作项
         return s.WorkItemQueuePageOut(items=[], total=0, limit=limit, offset=offset)
-    predicate = _queue_case_predicate(ctx)
+    predicate = _visible_case_predicate(ctx)
     stmt = select(w.WorkItem, Case).join(Case, w.WorkItem.case_id == Case.id).where(predicate)
     count_stmt = select(func.count(w.WorkItem.id)).join(Case, w.WorkItem.case_id == Case.id).where(predicate)
     if assignee == "me":

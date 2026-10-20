@@ -299,6 +299,25 @@ class ProposalOut(DTO):
     accepted_figure_revision_id: uuid.UUID | None
 
 
+class ProposalInboxOut(ProposalOut):
+    """阶段6收口：跨案提案收件箱列表项随附案件元数据（前端不再逐案回拉 /cases/{id}/proposals）。
+
+    仅用于 GET /proposals 列表响应；案件内列表与 mutation 维持 ProposalOut 口径。"""
+
+    case: CaseOut
+
+
+class ProposalPageOut(DTO):
+    """跨案提案服务端分页信封（与 CasePage/WorkItemQueuePage 同款 limit/offset 口径）。
+
+    items 按 (created_at desc, id) 稳定排序。"""
+
+    items: list[ProposalInboxOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class FigureIn(DTO):
     document_id: uuid.UUID | None = None
     figure_no: int | None = Field(default=None, ge=1)

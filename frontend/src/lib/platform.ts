@@ -76,25 +76,6 @@ export async function getPlatformCase(pid: string | null | undefined, signal?: A
   return resolveCaseByPid(await listCasesByKey(pid, signal), pid)
 }
 
-const ALL_CASES_PAGE = 200
-/**
- * 阶段6收口：跨案聚合（提案收件箱）确需全量可见案——/cases/page 逐页取尽，
- * 不发无参数 /api/v1/cases；total 驱动循环，任何截断都会暴露而不是默默丢案。
- */
-export async function listAllCases(signal?: AbortSignal): Promise<PlatformCase[]> {
-  const out: PlatformCase[] = []
-  for (let offset = 0; ; offset += ALL_CASES_PAGE) {
-    const page = await workbenchApi.casesPage({ limit: ALL_CASES_PAGE, offset }, signal)
-    out.push(...page.items)
-    if (out.length >= page.total || page.items.length === 0) return out
-  }
-}
-
-/** React：当前主体可见平台案列表（与 WorkbenchPage 共缓存，不自建 key） */
-export function usePlatformCases() {
-  return useQuery({ queryKey: workbenchKeys.cases(), queryFn: ({ signal }) => listAllCases(signal) })
-}
-
 /**
  * React hook：pid → PlatformCase。
  * `data === undefined` 加载中 / 未启用；`data === null` 已确定是纯旧案。
