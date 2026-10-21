@@ -1,6 +1,6 @@
 import { EMPTY_LINT, P, REQ_TIMEOUT_MS, handle, netFetch, req } from './net'
 import type { PutDocInput, PutDocResult } from './net'
-import type { Backup, BuildOutcome, CheckResult, Health, LintReport, ProjectDetail, ProjectSummary, ReviewMode, Settings, Style, XmlExportResult } from '../types'
+import type { Backup, BuildOutcome, CaseContext, CheckResult, Health, LintReport, ProjectDetail, ProjectSummary, ReviewMode, Settings, Style, XmlExportResult } from '../types'
 import type { Ast, BookName } from '@/types/ast'
 import type { CasePatch } from '@/types/case'
 
@@ -11,6 +11,8 @@ export const coreApi = {
   health: () => req<Health>('/api/health'),
   projects: () => req<ProjectSummary[]>('/api/projects'),
   project: (id: string) => req<ProjectDetail>(`/api/projects/${encodeURIComponent(id)}`),
+  /** C0/P01：统一案卷上下文（文件面 + PG 绑定 + 版本），GET /api/projects/{pid}/context */
+  caseContext: (id: string) => req<CaseContext>(`/api/projects/${encodeURIComponent(id)}/context`),
   /** W4-A：新建案卷可附台账字段（案号 / 客户 / 责任人…），直接写入 case.json；
       W19 批7：parentPid ⇒ 建分案，后端自动与母案双向互链 related */
   createProject: (id: string, title: string, caseFields?: CasePatch, parentPid?: string) =>

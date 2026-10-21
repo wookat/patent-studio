@@ -11,6 +11,7 @@ export function StaleBanner() {
   const stale = useStudio(selectStale)
   const hasOk = useStudio((s) => s.lastOk !== null)
   const lastOkAt = useStudio((s) => s.lastOkAt)
+  const okSha = useStudio((s) => s.lastOk?.input?.raw_sha ?? null)
   const phase = useStudio((s) => s.phase)
   const errorCount = useStudio(selectErrorCount)
   const setConsoleTab = useStudio((s) => s.setConsoleTab)
@@ -37,6 +38,7 @@ export function StaleBanner() {
         <span className="hidden lg:inline">显示的是上次成功构建 </span>
         <span className="lg:hidden">上次成功 </span>
         <b className="tabular font-semibold">{time}</b>
+        {okSha ? <span className="tabular text-warn-fg/80">（{okSha.slice(0, 8)}）</span> : null}
         {isError ? (
           <>
             {' '}

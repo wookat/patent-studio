@@ -1,6 +1,7 @@
 import { P, handle, netFetch, qs, req } from './net'
 import type { AgentJob, AgentRunIn, Proposal, ProposalApplyAllResult, ProposalApplyResult, ProposalState } from '@/types/agent'
 import type { AiJob, AiStatus, AiUsageRecord, ChatContext, ChatResume, RewriteRequest, RewriteResult } from '@/types/ai'
+import type { ChatScope } from '@/lib/types'
 
 /** Z32 成果度量（backend app/agent/metrics.case_metrics 同形） */
 export interface AgentMetricsJobItem {
@@ -53,11 +54,11 @@ export interface AgentMetrics {
 export const aiApi = {
   aiStatus: (probe = false) => req<AiStatus>(`/api/ai/status${probe ? '?probe=1' : ''}`),
   /** SSE：返回原始 Response，由 store.ai.sendChat 读 body 流；非 2xx 走 handle 抛 ApiError */
-  aiChat: async (id: string, messages: { role: string; content: string }[], context: ChatContext | null, signal?: AbortSignal, resume?: ChatResume) => {
+  aiChat: async (id: string, messages: { role: string; content: string }[], context: ChatContext | null, signal?: AbortSignal, resume?: ChatResume, scope?: ChatScope | null) => {
     const r = await netFetch(`${P(id)}/ai/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-      body: JSON.stringify({ messages, context, ...(resume ? { resume: resume.resume, approved: resume.approved } : {}) }),
+      body: JSON.stringify({ messages, context, ...(scope ? { scope } : {}), ...(resume ? { resume: resume.resume, approved: resume.approved } : {}) }),
       signal,
     })
     if (!r.ok) await handle<void>(r)

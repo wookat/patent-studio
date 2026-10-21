@@ -2,7 +2,7 @@ import { ChevronLeft, Hammer, Loader2, Menu, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectMenu } from "@/components/shell/ProjectMenu";
 import { cn } from "@/lib/utils";
-import { useStudio, selectDirty } from "@/store";
+import { useStudio, selectBoundSha, selectDirty, selectProposalsPending } from "@/store";
 
 /**
  * 移动顶栏 44（06-w8 §4）：‹ 返回（dirty 守卫）· ≡ 案卷树 · 居中案名 ▾（ProjectMenu compact，状态收进下拉）+ 11px mono 副行「案号 · 已保存/未保存」（视图 / 书不重复：紧跟在下方的两个分段控件已经显示）
@@ -25,7 +25,10 @@ export function MobileTopBar() {
   const openCollab = useStudio((s) => s.openCollabCenter);
   const building = phase === "building" || phase === "queued";
   const showBuild = tab === "edit" || tab === "preview";
-  const sub = [caseNo, dirty ? "未保存" : "已保存"].filter(Boolean).join(" · ");
+  const pending = useStudio(selectProposalsPending);
+  const savedSha = useStudio((s) => selectBoundSha(s).slice(0, 8));
+  /* C1/P07：副行带版本 sha 前缀与待决数——3 秒内可辨「哪案、哪版、多少修改等我决定」 */
+  const sub = [caseNo, savedSha && `稿 ${savedSha}`, pending > 0 && `待决 ${pending}`, dirty ? "未保存" : "已保存"].filter(Boolean).join(" · ");
   return (
     <header
       data-slot="MobileTopBar"

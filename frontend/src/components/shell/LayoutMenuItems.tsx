@@ -16,6 +16,7 @@ export function LayoutMenuItems() {
   const compareLock = useStudio((s) => s.compareLock)
   const activePanelId = useStudio((s) => s.activePanelId)
   const applyPreset = useStudio((s) => s.applyPreset)
+  const openCasework = useStudio((s) => s.openCasework)
   const resetLayout = useStudio((s) => s.resetLayout)
   const setCompareLock = useStudio((s) => s.setCompareLock)
   const openPanel = useStudio((s) => s.openPanel)
@@ -32,7 +33,8 @@ export function LayoutMenuItems() {
       </MenuSubTrigger>
       <MenuSubContent className="min-w-[280px]" aria-label="布局">
         {listPresets().map((p) => (
-          <MenuCheckRow key={p.id} noIcon checked={preset === p.id} onSelect={() => applyPreset(p.id)} sub={p.compareLock ? '对照锁' : undefined} data-testid={`view-preset-${p.id}`}>
+          /* C1/P04：casework 除 dock 预设外还展开左栏与 Agent 伴随栏（三栏一键到位） */
+          <MenuCheckRow key={p.id} noIcon checked={preset === p.id} onSelect={() => (p.id === 'casework' ? openCasework() : applyPreset(p.id))} sub={p.compareLock ? '对照锁' : undefined} data-testid={`view-preset-${p.id}`}>
             {p.label}
           </MenuCheckRow>
         ))}

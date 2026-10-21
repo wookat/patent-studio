@@ -9,17 +9,19 @@ import { AppearanceSection } from './AppearanceSection'
 import { NotifyPrefs } from './NotifyPrefs'
 import { PasswordForm } from './PasswordForm'
 import { PatPanel } from './PatPanel'
+import { OrgEgressPolicyCard } from '@/components/admin/OrgEgressPolicyCard'
 import { ProfileForm } from './ProfileForm'
 import { SubNav, useHashTab, type SubNavItem } from './SubNav'
 
-export type AccountTab = 'profile' | 'security' | 'notify' | 'pat'
-export const ACCOUNT_TABS: readonly AccountTab[] = ['profile', 'security', 'notify', 'pat']
+export type AccountTab = 'profile' | 'security' | 'notify' | 'pat' | 'org'
+export const ACCOUNT_TABS: readonly AccountTab[] = ['profile', 'security', 'notify', 'pat', 'org']
 
 const NAV: readonly SubNavItem<AccountTab>[] = [
   { value: 'profile', label: '资料', icon: <UserRound aria-hidden />, href: '#/account?tab=profile', 'data-testid': 'account-tab-profile' },
   { value: 'security', label: '安全', icon: <ShieldCheck aria-hidden />, href: '#/account?tab=security', 'data-testid': 'account-tab-security' },
   { value: 'notify', label: '通知偏好', icon: <Bell aria-hidden />, href: '#/account?tab=notify', 'data-testid': 'account-tab-notify' },
   { value: 'pat', label: '集成 PAT', icon: <KeyRound aria-hidden />, href: '#/account?tab=pat', 'data-testid': 'account-tab-pat' },
+  { value: 'org', label: '机构外发', icon: <Building2 aria-hidden />, href: '#/account?tab=org', 'data-testid': 'account-tab-org' },
 ]
 
 const TITLE: Record<AccountTab, { h: string; p: string }> = {
@@ -27,6 +29,7 @@ const TITLE: Record<AccountTab, { h: string; p: string }> = {
   security: { h: '安全', p: '修改登录密码；其他设备会被要求重新登录。' },
   notify: { h: '通知偏好', p: '站内与邮件通知的接收方式。' },
   pat: { h: '集成 · 个人访问令牌', p: '供 Codex / Claude Code 等智能体通过 MCP 访问你的案卷。' },
+  org: { h: '机构 AI 外发授权', p: '本机构案卷内容是否允许发往 AI 服务；机构 owner/admin 可修改，普通成员只读。' },
 }
 
 /**
@@ -93,6 +96,8 @@ export function AccountPage() {
             {tab === 'security' && <PasswordForm saving={saving} unavailable={unavailable} onSave={saveMe} />}
             {tab === 'notify' && <NotifyPrefs />}
             {tab === 'pat' && <PatPanel />}
+            {/* 复核5：机构 owner/admin 不必是全局超管——成员可达页签挂策略卡（仅机构设置面，无系统用户列表） */}
+            {tab === 'org' && <OrgEgressPolicyCard platformExpected={status === 'authed'} />}
             {!desktop && user.is_superuser && (
               <a
                 href="#/admin"

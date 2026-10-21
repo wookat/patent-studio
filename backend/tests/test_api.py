@@ -151,7 +151,8 @@ def test_build_error_empty_document(client):
     j = c.post("/api/projects/method/build", json={"pdf": False, "content": ""}).json()
     assert j["status"] == "error"
     assert j["error"]["kind"] == "content" and j["error"]["message"].startswith("文档为空")
-    assert "NoneType" not in j["error"]["message"] and "NoneType" in j["error"]["detail"]
+    # C0/P02 空正文门禁：显式拦截而非落到内部 NoneType 崩溃——detail 不再携带异常串
+    assert "NoneType" not in j["error"]["message"]
 
 
 def test_lint_endpoint_method_zero_error(client):

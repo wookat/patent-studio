@@ -30,6 +30,19 @@ export function useAiRuntime(): AiRuntime {
   const statusLoading = useStudio((s) => s.aiStatusLoading)
   const unavailable = useStudio((s) => s.aiUnavailable)
   const disabledByOrg = useStudio((s) => s.agentDisabledByOrg)
+  const pid = useStudio((s) => s.pid)
+  const caseCtx = useStudio((s) => s.caseContext)
+  const authStatus = useStudio((s) => s.authStatus)
+  /* 本案真实就绪（同 AiPanel.bindingBlocked 口径）：全局 provider ready ≠ 本案 ready——
+     denied/ambiguous/AUTH=on+unavailable/机构策略关/机构非 active 一律不得显示绿色就绪；
+     上下文未取回（authed 而无 caseCtx）同样不得绿灯 */
+  const caseBlocked = !!pid && caseCtx?.pid === pid && (
+    caseCtx.binding === 'denied' || caseCtx.binding === 'ambiguous' ||
+    (caseCtx.binding === 'bound' && caseCtx.egress_policy?.ai_egress === false) ||
+    (caseCtx.auth === 'on' && caseCtx.binding === 'unavailable') ||
+    (caseCtx.binding === 'bound' && !!caseCtx.organization && caseCtx.organization.status !== 'active')
+  )
+  const ctxPending = !!pid && authStatus === 'authed' && (!caseCtx || caseCtx.pid !== pid)
   const runningJobs = useStudio(selectAiRunning)
   const streaming = useStudio((s) => s.chatStreaming)
   const liveJobs = useStudio((s) => s.agentJobs.filter((j) => j.status === 'queued' || j.status === 'running').length)
@@ -38,6 +51,8 @@ export function useAiRuntime(): AiRuntime {
 
   if (unavailable) return { tone: 'warn', label: '接入层未就绪（501）', suffix, busy }
   if (disabledByOrg || status?.org_ai_enabled === false) return { tone: 'warn', label: '机构未许可 AI', suffix, busy }
+  if (caseBlocked) return { tone: 'warn', label: '本案未许可 AI', suffix, busy }
+  if (ctxPending) return { tone: 'info', label: '核验中', suffix, busy }
   if (!enabled) return { tone: 'neutral', label: '本案未开启', suffix, busy }
   if (statusLoading && !status) return { tone: 'info', label: '探测中…', suffix, busy }
   if (status?.reachable === false || status?.error) return { tone: 'danger', label: '中转站不可达', suffix, busy }

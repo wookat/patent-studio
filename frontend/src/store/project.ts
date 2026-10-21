@@ -1,6 +1,6 @@
 import { api, ApiError } from '@/lib/api'
 import { writeHashPid } from '@/lib/hash'
-import type { Backup, Health, ProjectDetail, ProjectSummary, Settings, Style } from '@/lib/types'
+import type { Backup, CaseContext, Health, ProjectDetail, ProjectSummary, Settings, Style } from '@/lib/types'
 import type { CasePatch } from '@/types/case'
 import type { Slice } from './types'
 
@@ -28,6 +28,12 @@ export interface ProjectSlice {
   projectsError: string | null
   /** openProject 已发 GET /api/projects/{pid} 但未返回：角色未知，编辑器先上锁（selectReadonly） */
   projectLoading: boolean
+  /** C0/P01：统一案卷上下文（PG 绑定/能力/版本契约）；off/未取到 ⇒ null，切案即清 */
+  caseContext: CaseContext | null
+  /** 复核10：聚合上下文可重试——加载失败停留 null 时 Ui 可再拉一次（pid 守卫防串案） */
+  loadCaseContext(): void
+  /** C0/P01：已保存正文 sha256（index.ts 订阅在 saved 变化时异步计算；版本显示用，空串=未算/无正文） */
+  savedSha: string
 
   loadProjects(): Promise<void>
   /** 轻量重取案件元（role 等）——不重置各数据 slice；供「成员变更」通知触发的 affordance 收口 */
@@ -55,6 +61,17 @@ export const projectSlice: Slice<ProjectSlice> = (set, get) => ({
   projects: [],
   pid: null,
   project: null,
+  caseContext: null,
+  savedSha: '',
+  loadCaseContext: () => {
+    const pid = get().pid
+    if (!pid) return
+    api.caseContext(pid)
+      .then((ctx) => {
+        if (get().pid === pid) set({ caseContext: ctx })
+      })
+      .catch(() => undefined)
+  },
   settings: null,
   defaults: null,
   defaultSettings: null,
@@ -139,6 +156,7 @@ export const projectSlice: Slice<ProjectSlice> = (set, get) => ({
       /* 时间线备注草稿属案域——翻案即清（批71 store 草稿族）；dupTabOther 同案域（批74 观察器换 pid 重启） */
       timelineNote: null,
       dupTabOther: false,
+      caseContext: null,
     })
     get().resetFigures()
     get().resetFiguresBook()
@@ -183,6 +201,8 @@ export const projectSlice: Slice<ProjectSlice> = (set, get) => ({
       void get().loadAst(pid, { fromDisk: true })
       void get().loadMarks(pid)
       void get().loadCollabStatus(pid)
+      // C0/P01：聚合上下文（PG 绑定 + 版本契约）——失败不阻塞开案（off 模式后端也返回）
+      get().loadCaseContext()
     } catch (e) {
       const msg = e instanceof ApiError && e.status === 404 ? `案卷「${pid}」不存在` : (e as Error).message
       if (get().pid === pid) set({ project: null, projectError: msg, projectLoading: false })

@@ -32,6 +32,7 @@ from app.ai import require_enabled
 from app.ai.client import read_usage
 from app.auth import CurrentUser, forbidden, my_role, require_superuser, role_at_least
 from app.domain import events
+from app.domain import org as org_domain
 from app.domain.org import require_org_ai
 from app.errors import error_detail, kind_error
 
@@ -78,7 +79,18 @@ async def agent_run(pid: str, body: AgentRunIn, request: Request, user: CurrentU
     who, actor = _who(user), events.actor_of(user)
     jobs.run(
         job,
-        lambda: loop.run_scenario(pid, scenario, body.params, job, store=store, jobs=jobs, ai=ai, who=who, actor=actor),
+        lambda: loop.run_scenario(
+            pid,
+            scenario,
+            body.params,
+            job,
+            store=store,
+            jobs=jobs,
+            ai=ai,
+            who=who,
+            actor=actor,
+            guard=org_domain.egress_guard(pid, request=request),
+        ),
     )
     out = _job_out(jobs.get(job.id) or job).model_dump()
     return {**out, "job_id": job.id}

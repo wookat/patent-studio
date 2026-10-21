@@ -7,8 +7,10 @@ CriticMarkup，不落盘）；review 后台任务（JSON → 批注 author=ai，
 """
 
 import asyncio
+import hashlib
 import json
 import logging
+import os
 import re
 import tempfile
 import time
@@ -24,8 +26,9 @@ from app.ai import prompts, require_enabled
 from app.ai.client import MODELS, PROBE_TIMEOUT, AiClient, AiError, ChatResult, read_usage
 from app.ai.jobs import JobStore
 from app.auth import CurrentUser
+from app.domain import attachments, chat_receipt, events
 from app.domain import comments as comments_mod
-from app.domain import events
+from app.domain import org as org_domain
 from app.domain.lint import lint
 from app.domain.org import ai_enabled as _org_ai_enabled
 from app.domain.org import require_org_ai
@@ -40,6 +43,11 @@ from patent_studio.kernel.ast import AstError, parse_ast
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["ai"])
 UNIT = "E1-ai-client"
+
+
+def _content_sha(text: str) -> str:
+    return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
+
 
 BOOKS = ("abstract", "claims", "description")
 BOOK_NAMES = {"abstract": "摘要", "claims": "权利要求书", "description": "说明书"}
@@ -69,6 +77,9 @@ class ChatIn(BaseModel):
     agent: bool = True  # False ⇒ 旧单轮问答（不带工具）
     resume: dict | None = None  # 确认卡回执：{assistant, calls}（首个 call 即被裁决者）
     approved: bool = False  # resume 时该 call 是否被用户批准
+    # P05 显式最小上下文授权（服务端强制）：{source: 允许正文读取, materials: [案内附件名]}
+    # 每请求（含 resume）重校验；未带 = 旧客户端未声明，工具面只钉 pid
+    scope: dict | None = None
 
 
 class RewriteIn(BaseModel):
@@ -189,16 +200,21 @@ def _semantic_part(store, pid: str, ctx: dict) -> list[str]:
     return parts
 
 
-def _chat_context(p, content: str, ctx: dict | None, store=None, pid: str | None = None) -> tuple[str, bool]:
+def _chat_context(
+    p, content: str, ctx: dict | None, store=None, pid: str | None = None, scope: dict | None = None
+) -> tuple[str, bool]:
     """服务端拼装案卷上下文：当前书（≤ 8k 字）或选区 ±60 行；可选体检摘要；前端自带 diagnostics 原样附上；
-    可选 terms / checks / claim_tree。最后统一经 budget.clip（交互 8k），返回 (text, truncated)。"""
+    可选 terms / checks / claim_tree。最后统一经 budget.clip（交互 8k），返回 (text, truncated)。
+    P05/R3：scope 为服务端校验过的授权——source 未授权即剥离 book/selection/diagnostics/语义段，
+    materials 交集 scope.materials——声明边界与实际出站内容一致，不能只拦后续工具。"""
     ctx = ctx or {}
+    src = (scope or {}).get("source") if scope is not None else {"full": True}
     lines = content.split("\n")
     parts: list[str] = []
     sel = ctx.get("selection") if isinstance(ctx.get("selection"), dict) else {}
     ls = ctx.get("line_start") or sel.get("line_start")
     le = ctx.get("line_end") or sel.get("line_end")
-    book = ctx.get("book")
+    book = ctx.get("book") if src else None
     ast = _ast_or_none(content, p.settings) if book in BOOKS else None
     if ast is not None:
         off, length = ast["books"][book]["offset"], ast["books"][book]["length"]
@@ -211,16 +227,41 @@ def _chat_context(p, content: str, ctx: dict | None, store=None, pid: str | None
         else:
             parts.append(f"当前书：{BOOK_NAMES[book]}（全文过长，未附）")
     if ls:
-        parts.append(f"选区：第 {ls}–{le or ls} 行\n{_numbered(lines, int(ls), int(le or ls))}")
-    if ctx.get("include_preflight"):
+        ls_i, le_i = int(ls), int(le or ls)
+        if ls_i < 1 or le_i > len(lines) or ls_i > le_i:
+            raise HTTPException(
+                422, error_detail("context", "选区行区间超出当前正文范围（版本已变化，请重新选择）", detail=UNIT)
+            )
+        parts.append(f"选区：第 {ls_i}–{le_i} 行\n{_numbered(lines, ls_i, le_i)}")
+    if ctx.get("include_preflight") and src:
         rep = lint(critic.accept(content), p.settings, p.figs_dir, with_preflight=True)
         items = [f"L{d.get('line')} [{d['severity']}] {d['message']}" for d in rep["diagnostics"][:30]]
         parts.append("体检摘要：" + json.dumps(rep["counts"], ensure_ascii=False) + "\n" + "\n".join(items))
     diags = ctx.get("diagnostics")
-    if isinstance(diags, list) and diags:
+    if isinstance(diags, list) and diags and src:
         parts.append("前端诊断：\n" + "\n".join(str(d) for d in diags[:30]))
-    if store is not None and pid:
+    if store is not None and pid and src:
         parts.extend(_semantic_part(store, pid, ctx))
+    mats = ctx.get("materials")
+    if scope is not None and isinstance(mats, list):
+        mats = [m for m in mats if str(m) in scope.get("materials", set())]  # 交集服务端授权集
+    if isinstance(mats, list) and mats and store is not None and pid:
+        # P05：案内材料按名引用——服务端自抽文本（不信客户端粘贴），越权/不存在即 422
+        from app.mcp.tools_attachments import read_text
+
+        segs = []
+        for m in mats[:CHAT_ATTACH_MAX_FILES]:
+            try:
+                name = attachments.check_name(str(m))
+            except attachments.AttachmentsError as e:
+                raise HTTPException(e.status, error_detail("attachments", e.args[0], detail=UNIT))
+            try:
+                r = read_text(store, pid, name)
+            except Exception:
+                raise HTTPException(422, error_detail("attachments", f"材料不存在或未经授权：{name}", detail=UNIT))
+            segs.append(f"材料：《{name}》\n{r.text}")
+        if segs:
+            parts.append("案卷材料：\n" + "\n\n".join(segs))
     atts = ctx.get("attachments")
     if isinstance(atts, list):
         segs = [
@@ -289,6 +330,58 @@ async def ai_chat_attach(request: Request, pid: str, user: CurrentUser, files: l
     return {"results": list(results)}
 
 
+def _chat_scope(p, pid: str, scope: dict | None, ctx: dict | None = None) -> dict:
+    """服务端校验+补全本轮上下文授权，返回 {"source": dict|None, "materials": set[str]}。
+    scope 缺省 ⇒ 按已声明 ctx 派生最小授权（旧客户端不默认全权）；materials 未声明 ⇒ 一件都不可读。
+    source 授权粒度：True/{"full":true} ⇒ 整卷；{"book":X} ⇒ 仅该书工具可读；selection ⇒ 不含工具面
+    （选区文本已在 ctx 里，read_book 返回全书会越权）；None ⇒ 无正文授权。"""
+    declared = scope if isinstance(scope, dict) else {}
+    if scope is not None and not isinstance(scope, dict):
+        raise HTTPException(422, error_detail("validation", "scope 必须是对象", detail=UNIT))
+    src = declared.get("source")
+    if src is None and scope is None and isinstance(ctx, dict):
+        book = ctx.get("book")
+        if book:
+            src = {"book": str(book)}
+        else:
+            src = None  # 仅选区/无声明 ⇒ 无正文工具授权（选区文本本身仍在 ctx）
+    source = _norm_source(src)
+    mats = declared.get("materials")
+    if mats is None and scope is None and isinstance(ctx, dict):
+        cm = ctx.get("materials")
+        mats = cm if isinstance(cm, list) else []
+    names: set[str] = set()
+    if mats is not None:
+        if not isinstance(mats, list) or len(mats) > 32:
+            raise HTTPException(422, error_detail("validation", "scope.materials 须为 ≤32 项的附件名列表", detail=UNIT))
+        for m in mats:
+            try:
+                name = attachments.check_name(str(m))
+            except attachments.AttachmentsError as e:
+                raise HTTPException(e.status, error_detail("attachments", e.args[0], detail=UNIT))
+            if not os.path.isfile(os.path.join(p.attachments_dir, name)):
+                raise HTTPException(422, error_detail("attachments", f"材料不存在或未经授权：{name}", detail=UNIT))
+            names.add(name)
+    return {"source": source, "materials": names}
+
+
+def _norm_source(src) -> dict | None:
+    """归一 source 授权：True ⇒ 整卷；dict 提取 book/lines/full；False/其它 ⇒ 无授权。"""
+    if src is True:
+        return {"full": True}
+    if not isinstance(src, dict):
+        return None
+    out: dict = {}
+    if src.get("book"):
+        out["book"] = str(src["book"])
+    lines = src.get("lines")
+    if isinstance(lines, (list, tuple)) and len(lines) == 2:
+        out["lines"] = [int(lines[0]), int(lines[1])]
+    if src.get("full"):
+        out["full"] = True
+    return out or None
+
+
 @router.post("/api/projects/{pid}/ai/chat", dependencies=[Depends(require_org_ai)])
 async def ai_chat(pid: str, body: ChatIn, request: Request, user: CurrentUser):
     store = request.app.state.store
@@ -296,7 +389,15 @@ async def ai_chat(pid: str, body: ChatIn, request: Request, user: CurrentUser):
     require_enabled(store, pid, UNIT)
     p = store.get(pid)
     content = store.read_content(pid)
-    context, truncated = _chat_context(p, content, body.context, store, pid)
+    scope = _chat_scope(p, pid, body.scope, body.context)
+    context, truncated = _chat_context(p, content, body.context, store, pid, scope)
+    guard = org_domain.egress_guard(pid, request=request)  # R2：循环内每次上游调用重查
+    if body.resume:
+        # P05：continuation 须带服务端签名回执——绑定 pid+actor+content_sha+scope+负载；
+        # 伪造/篡改/跨案/缩范围全部 409，且发生在调用模型之前（零上游）。
+        chat_receipt.verify_receipt(store, pid, _who(user), _content_sha(content), scope, body.resume)
+        if not isinstance(body.resume.get("calls"), list) or not body.resume.get("assistant"):
+            raise HTTPException(422, error_detail("validation", "resume 缺少 assistant/calls", detail=UNIT))
     if body.agent and getattr(ai.provider, "complete_tools", None) is not None:
         # 网关支持 tools API ⇒ agent 工具循环；不支持（如 mock）⇒ 落旧单轮流式
         from app.agent import chat_engine
@@ -305,8 +406,13 @@ async def ai_chat(pid: str, body: ChatIn, request: Request, user: CurrentUser):
         if len(msgs) < 2 and not body.resume:
             raise HTTPException(422, error_detail("content", "messages 至少一条 user 消息", detail=UNIT))
 
+        def _sign(payload: dict) -> dict:
+            return chat_receipt.sign_receipt(store, pid, _who(user), _content_sha(content), scope, payload)
+
         async def agent_gen():
-            async for ev in chat_engine.run(ai, p, user, msgs, body.resume, body.approved):
+            async for ev in chat_engine.run(
+                ai, p, user, msgs, body.resume, body.approved, scope, guard=guard, signer=_sign
+            ):
                 if "done" in ev:
                     ev["truncated"] = truncated
                 yield _sse(ev)
@@ -317,7 +423,7 @@ async def ai_chat(pid: str, body: ChatIn, request: Request, user: CurrentUser):
     if len(msgs) < 2:
         raise HTTPException(422, error_detail("content", "messages 至少一条 user 消息", detail=UNIT))
     try:
-        stream = await ai.chat(msgs, "interactive", stream=True, project_dir=p.dir, user=_who(user))
+        stream = await ai.chat(msgs, "interactive", stream=True, project_dir=p.dir, user=_who(user), guard=guard)
     except AiError as e:
         raise _http(e)
 
@@ -602,6 +708,8 @@ async def ai_job_resume(job_id: str, request: Request, user: CurrentUser):
     from app.agent.types import SCENARIO_BY_ID
 
     job = await _job_or_404(request, job_id, user, "viewer")
+    # path 无 pid——Depends(require_org_ai) 只过全局闸门，这里按 job.pid 重查机构策略（P03/R2）
+    await org_domain.require_org_ai_pid(request, job.pid)
     if job.status not in ("interrupted", "error"):
         raise HTTPException(409, error_detail("conflict", "任务未处于中断 / 失败状态，不能续跑", detail=UNIT))
     if not isinstance(job.payload, dict):
@@ -624,7 +732,16 @@ async def ai_job_resume(job_id: str, request: Request, user: CurrentUser):
 
         params = dict(job.payload.get("params") or {})
         factory = lambda: agent_loop.run_scenario(  # noqa: E731
-            job.pid, scenario, params, job, store=store, jobs=jobs, ai=ai, who=who, actor=events.actor_of(user)
+            job.pid,
+            scenario,
+            params,
+            job,
+            store=store,
+            jobs=jobs,
+            ai=ai,
+            who=who,
+            actor=events.actor_of(user),
+            guard=org_domain.egress_guard(job.pid, request=request),
         )
     elif job.kind == "review":
         scope = str(job.payload.get("scope") or "all")

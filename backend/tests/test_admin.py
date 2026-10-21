@@ -7,6 +7,7 @@ W5 notify-audit-backend：/api/admin/settings（ai_enabled / default_collab / sm
 import asyncio
 import json
 import os
+from types import SimpleNamespace
 
 import pytest
 import test_legacy_auth as test_auth
@@ -238,11 +239,12 @@ def test_settings_on_mode_members_read_superuser_writes(on):
 
 def test_require_org_ai_raises_403_when_disabled(client):
     c, tmp = client
-    asyncio.run(org.require_org_ai())  # 默认开
+    req = SimpleNamespace(path_params={})  # 无 pid ⇒ 只走部署全局闸门
+    asyncio.run(org.require_org_ai(req))  # 默认开
     assert c.put("/api/admin/settings", json={"ai_enabled": False}).status_code == 200
     with pytest.raises(HTTPException) as ei:
-        asyncio.run(org.require_org_ai())
+        asyncio.run(org.require_org_ai(req))
     assert ei.value.status_code == 403
     assert ei.value.detail["kind"] == "ai_disabled_by_org" and ei.value.detail["detail"] == "org"
     assert c.put("/api/admin/settings", json={"ai_enabled": True}).status_code == 200
-    asyncio.run(org.require_org_ai())
+    asyncio.run(org.require_org_ai(req))

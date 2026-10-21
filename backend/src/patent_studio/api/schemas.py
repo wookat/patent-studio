@@ -42,6 +42,25 @@ class OrganizationIn(DTO):
 class OrganizationOut(OrganizationIn):
     id: uuid.UUID
     status: str
+    egress_policy: dict | None = None
+
+
+class OrgPolicyIn(DTO):
+    """机构外发授权记录（C0/P03）：ai_egress=本机构案卷内容允许外发 AI 服务；
+    training_consent=独立训练授权（默认关；仅声明本平台立场，不构成对第三方供应商行为的承诺）。"""
+
+    ai_egress: bool | None = None
+    training_consent: bool | None = None
+    note: str | None = Field(default=None, max_length=500)
+
+
+class OrgPolicyOut(DTO):
+    ai_egress: bool = True
+    training_consent: bool = False
+    note: str = ""
+    version: int = 0
+    updated_by: str | None = None
+    updated_at: str | None = None
 
 
 class MembershipOut(DTO):

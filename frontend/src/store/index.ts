@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, subscribeWithSelector } from 'zustand/middleware'
 import { abstractNearThreshold } from '@/lib/abstractLimit'
+import { contentSha } from '@/lib/api'
 import { acceptCritic } from '@/components/layout-view/review/criticParse'
 import { paragraphAtLine } from '@/lib/outline'
 import type { Studio } from './types'
@@ -231,6 +232,10 @@ export const selectCanEditStyle = (s: Pick<Studio, 'project' | 'projectLoading' 
 
 /** 有未保存修改；协同已连接时由服务端去抖写盘，不存在本地脏态；只读角色无脏态 */
 export const selectDirty = (s: Studio) => s.collabStatus === 'off' && !selectReadonly(s) && s.content !== s.saved
+/** AI/版本标识绑定的正文 sha：优先 `savedSha`（最近一次保存/加载的实测值，随 saved 切案重置）；
+   仅其为空（加载中尚未落稿）时回退同案 caseContext 快照——跨案/陈旧 context 一律不用。 */
+export const selectBoundSha = (s: Studio) =>
+  s.savedSha || (s.caseContext && s.caseContext.pid === s.pid ? s.caseContext.content_sha || '' : '')
 
 /** splitBooks 结果按文本记忆化：selector 在每次 store 变更（按键/cursor/toast）都会评估，重复整篇切分浪费；
  * content / saved / serverContent 三路并发，Map 保 4 个最近源（插入序驱逐） */
@@ -326,3 +331,19 @@ export const selectErrorCount = (s: Studio) => s.items.filter((d) => d.severity 
 export const selectWarningCount = (s: Studio) => s.items.filter((d) => d.severity === 'warning').length
 /** 当前案 + 构建结果对应的 PDF URL（预览挂在 lastOk 上，失败不清空） */
 export const selectPdfUrl = (s: Studio) => s.lastOk?.pdf_url ?? null
+
+/* C0/P01：saved → savedSha（状态栏版本段）。crypto.subtle 只有异步接口，放 React effect
+   会踩 set-state-in-effect；改为 store 订阅——saved 变化时异步算 sha，回写前比对最新 saved
+   （快速连续保存只保留最后一次的哈希）。pid 不在状态里比——saved 本身随切案清 ''/重灌。 */
+let _savedShaWatch: string | null = null
+useStudio.subscribe((s) => {
+  if (s.saved === _savedShaWatch) return
+  _savedShaWatch = s.saved
+  if (!s.saved) {
+    if (s.savedSha !== '') useStudio.setState({ savedSha: '' })
+    return
+  }
+  void contentSha(s.saved).then((h) => {
+    if (useStudio.getState().saved === s.saved) useStudio.setState({ savedSha: h ?? '' })
+  })
+})

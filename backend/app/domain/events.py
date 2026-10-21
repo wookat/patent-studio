@@ -60,6 +60,8 @@ EventKind = Literal[
     "export.downloaded",
     "ai.sent",
     "ai.proposal",
+    "ai.egress_toggle",
+    "org.ai_policy",
     "auth.login",
     "member.changed",
     "admin.user",

@@ -13,6 +13,7 @@ from app.agent.types import BlockAnchor, Proposal
 from app.ai.jobs import JobStore
 from app.domain import comments as comments_mod
 from app.domain import events
+from patent_studio.kernel import critic
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -117,6 +118,49 @@ def test_resume_agent_job_with_checkpoint_finalizes_without_duplicates(client):
 
     # 幂等：终态再 resume ⇒ 409
     assert c.post(f"/api/ai/jobs/{job.id}/resume").status_code == 409
+
+
+def test_resume_agent_job_critic_checkpoint_stays_pending(client):
+    """pending critic 断点 ⇒ resume 收尾不自动应用（自动补写仅限 comment）：提案仍 pending、
+    正文逐字节不变、零上游调用；再显式 apply 才进正文。"""
+    c, projects, app = client
+    _enable(c)
+    jobs = app.state.jobs
+    p_dir = str(projects / "method")
+    before = open(os.path.join(p_dir, "content.md"), encoding="utf-8").read()
+    job = jobs.create("agent:s6", "method", payload={"scenario": "s6", "params": {}})
+    prop = Proposal(
+        id=proposals.new_id(),
+        job_id=job.id,
+        scenario="s6",
+        kind="critic",
+        anchor=BlockAnchor(book="abstract", block_id="abstract/p1", line_start=5, line_end=5),
+        critic_markdown="{~~违规使用的风险~>非授权使用的风险~~}",
+        model="mock",
+        created_at=time.time(),
+    )
+    proposals.append(p_dir, "method", prop, by=f"agent:{job.id}")
+    _crash(jobs, job, proposal_ids=[prop.id])
+    _restart(app, projects)
+
+    r = c.post(f"/api/ai/jobs/{job.id}/resume")
+    assert r.status_code == 202, r.text
+    j = _wait_done(c, job.id)
+    assert j["status"] == "done" and j["result"]["resumed"] is True
+    assert j["result"]["proposals"] == [prop.id]
+    # critic 提案恒定待人审：仍 pending、正文逐字节不变、零上游调用
+    props = proposals.load(p_dir, "method", None)
+    assert [q.id for q in props] == [prop.id] and props[0].state == "pending"
+    assert open(os.path.join(p_dir, "content.md"), encoding="utf-8").read() == before
+    assert app.state.ai.provider.calls == []
+    assert c.post(f"/api/ai/jobs/{job.id}/resume").status_code == 409  # 幂等
+
+    # 人审显式 apply 才进正文（真实 apply 管线 + reject 不变量；正文存带标记文本）
+    a = c.post(f"/api/projects/method/agent/proposals/{prop.id}/apply")
+    assert a.status_code == 200 and a.json()["proposal"]["state"] == "applied"
+    after = open(os.path.join(p_dir, "content.md"), encoding="utf-8").read()
+    assert "非授权使用的风险" in critic.accept(after)
+    assert critic.reject(after) == before
 
 
 def test_resume_agent_job_without_checkpoint_reruns(client):

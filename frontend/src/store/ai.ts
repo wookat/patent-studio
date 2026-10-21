@@ -1,6 +1,7 @@
 import { ApiError, api } from '@/lib/api'
 import { readSse } from '@/lib/sse'
 import type { AiJob, AiStatus, AiSuggestion, ChatAttachment, ChatAttachmentMeta, ChatContext, ChatMessage, ChatResume, RewriteAction, RewriteResult } from '@/types/ai'
+import type { ChatScope } from '@/lib/types'
 import type { Slice } from './types'
 
 /**
@@ -36,7 +37,22 @@ export interface AiSlice {
   loadAiStatus(probe?: boolean): Promise<AiStatus | null>
   /** project.saveSettings({...settings, ai_enabled}) 的快捷方式；UI 明示 */
   setAiEnabled(enabled: boolean): void
-  sendChat(text: string, context?: ChatContext | null, attachmentMeta?: ChatAttachmentMeta[]): Promise<void>
+  /** P05：当前声明的上下文授权（chip 态快照；随 /ai/chat 的 scope 字段一起发——服务端按此放行读工具） */
+  aiScope: ChatScope | null
+  /** 本线程已发送过的上下文键（并集）；收窄即触发新对话提示并清空（防旧材料经历史/续跑泄漏） */
+  sentScopeKeys: string[]
+  /** 缩范围后的提示条（发送下一条或再次变化时更新） */
+  chatScopeNote: string | null
+  /** chip 授权开关存 store：面板重挂/桌面↔移动壳切换不得复活已被用户撤销的授权；切案 resetAi 复位 */
+  aiUseBook: boolean
+  aiUseSel: boolean
+  aiPacks: Record<string, boolean>
+  setAiUseBook(v: boolean): void
+  setAiUseSel(v: boolean): void
+  setAiPacks(v: Record<string, boolean>): void
+  setAiScope(scope: ChatScope | null): void
+  setChatScopeNote(note: string | null): void
+  sendChat(text: string, context?: ChatContext | null, attachmentMeta?: ChatAttachmentMeta[], scopeKeys?: string[]): Promise<void>
   /** agent 确认卡裁决：带 resume 续跑到同一 assistant 消息 */
   answerConfirm(msgId: string, approved: boolean): Promise<void>
   /** openProject 成功后调用：从 localStorage 恢复本案对话（chat 空才恢复，防双写） */
@@ -59,6 +75,8 @@ export interface AiSlice {
   addAiChatAttachments(list: ChatAttachment[]): void
   removeAiChatAttachment(name: string): void
   clearAiChatAttachments(): void
+  /** 发送后把附件标记为已授权材料（chip 保留到用户明确移除——撤销即收窄清对话；未发草稿仍触发离开提示） */
+  markAiChatAttachmentsSent(): void
   resetAi(): void
 }
 
@@ -74,23 +92,34 @@ const CHAT_KEY = (pid: string) => `ps:chat:${pid}`
 const CHAT_CAP = 50
 const chatStorage = () => (typeof localStorage === 'undefined' ? null : localStorage)
 
-export function readPersistedChat(pid: string, storage: Pick<Storage, 'getItem'> | null = chatStorage()): ChatMessage[] {
+/** 持久化载荷 {m: 消息, k: 发送时已声明的授权键并集}——k 缺省（旧版裸数组/篡改）一律不恢复，
+    防旧历史在空 sentKeys 下继续携带已撤销的材料授权（P05）。 */
+export function readPersistedChat(
+  pid: string,
+  storage: Pick<Storage, 'getItem'> | null = chatStorage(),
+): { msgs: ChatMessage[]; keys: string[] } | null {
   try {
     const raw = storage?.getItem(CHAT_KEY(pid))
-    if (!raw) return []
+    if (!raw) return null
     const v = JSON.parse(raw) as unknown
-    if (!Array.isArray(v)) return []
-    return v.filter((m): m is ChatMessage =>
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return null  // 旧格式/异常：不可核验授权，不恢复
+    const rec = v as { m?: unknown; k?: unknown }
+    if (!Array.isArray(rec.k)) return null
+    const msgs = (Array.isArray(rec.m) ? rec.m : []).filter((m): m is ChatMessage =>
       !!m && typeof m === 'object' &&
       ((m as ChatMessage).role === 'user' || (m as ChatMessage).role === 'assistant') &&
       typeof (m as ChatMessage).content === 'string',
     ).slice(-CHAT_CAP)
-  } catch { return [] }
+    return { msgs, keys: (rec.k as unknown[]).filter((k): k is string => typeof k === 'string') }
+  } catch { return null }
 }
 
-function persistChat(pid: string, chat: ChatMessage[]) {
+function persistChat(pid: string, chat: ChatMessage[], keys: string[] = []) {
   try {
-    chatStorage()?.setItem(CHAT_KEY(pid), JSON.stringify(chat.slice(-CHAT_CAP).map((m) => ({ ...m, streaming: undefined }))))
+    chatStorage()?.setItem(CHAT_KEY(pid), JSON.stringify({
+      m: chat.slice(-CHAT_CAP).map((m) => ({ ...m, streaming: undefined })),
+      k: keys,
+    }))
   } catch { /* quota/隐私模式：放弃持久化不打扰 */ }
 }
 
@@ -122,7 +151,7 @@ async function streamInto(
   if (streamError) throw new Error(streamError)
   patch({ streaming: false })
   set({ chatStreaming: false })
-  persistChat(pid, get().chat)
+  persistChat(pid, get().chat, get().sentScopeKeys)
 }
 
 export const aiSlice: Slice<AiSlice> = (set, get) => ({
@@ -132,6 +161,12 @@ export const aiSlice: Slice<AiSlice> = (set, get) => ({
   chat: [],
   chatStreaming: false,
   chatError: null,
+  aiScope: null,
+  sentScopeKeys: [],
+  chatScopeNote: null,
+  aiUseBook: true,
+  aiUseSel: true,
+  aiPacks: {},
   aiChatDraft: '',
   aiChatAttachments: [],
   suggestions: [],
@@ -154,12 +189,14 @@ export const aiSlice: Slice<AiSlice> = (set, get) => ({
     if (!s || (s.ai_enabled ?? false) === enabled) return
     get().saveSettings({ ...s, ai_enabled: enabled })
   },
-  sendChat: async (text, context = null, attachmentMeta) => {
+  sendChat: async (text, context = null, attachmentMeta, scopeKeys) => {
     const { pid, chat, settings } = get()
     if (!pid || !text.trim() || get().chatStreaming || settings?.ai_enabled !== true) return
     const user: ChatMessage = { id: nextId('u'), role: 'user', content: text, attachments: attachmentMeta?.length ? attachmentMeta : undefined, created_at: Date.now() }
     const bot: ChatMessage = { id: nextId('a'), role: 'assistant', content: '', streaming: true, created_at: Date.now() }
-    set({ chat: [...chat, user, bot], chatStreaming: true, chatError: null })
+    const sent = new Set(get().sentScopeKeys)
+    for (const k of scopeKeys ?? []) sent.add(k)
+    set({ chat: [...chat, user, bot], chatStreaming: true, chatError: null, sentScopeKeys: [...sent], chatScopeNote: null })
     chatAbort?.abort()
     const ac = new AbortController()
     chatAbort = ac
@@ -167,7 +204,7 @@ export const aiSlice: Slice<AiSlice> = (set, get) => ({
     try {
       const history = [...chat, user].filter((m) => !m.error && m.content).map((m) => ({ role: m.role, content: m.content }))
       await get().flushSettings()
-      await streamInto(set, get, pid, bot, (extra) => api.aiChat(pid, history, context, ac.signal, extra))
+      await streamInto(set, get, pid, bot, (extra) => api.aiChat(pid, history, context, ac.signal, extra, get().aiScope))
     } catch (e) {
       const aborted = e instanceof DOMException && e.name === 'AbortError'
       const msg = aborted ? '已停止' : e instanceof Error ? e.message : String(e)
@@ -177,7 +214,7 @@ export const aiSlice: Slice<AiSlice> = (set, get) => ({
         chatError: aborted ? null : msg,
         ...(e instanceof ApiError && e.status === 501 ? { aiUnavailable: true } : {}),
       })
-      persistChat(pid, get().chat)
+      persistChat(pid, get().chat, get().sentScopeKeys)
     } finally {
       if (chatAbort === ac) chatAbort = null
     }
@@ -197,7 +234,7 @@ export const aiSlice: Slice<AiSlice> = (set, get) => ({
       const history = chat.filter((m) => m.id !== msgId && !m.error && m.content).map((m) => ({ role: m.role, content: m.content }))
       await get().flushSettings()
       await streamInto(set, get, pid, bot,
-        (extra) => api.aiChat(pid, history, null, ac.signal, extra),
+        (extra) => api.aiChat(pid, history, null, ac.signal, extra, get().aiScope),
         { resume: bot.confirm.resume, approved })
     } catch (e) {
       const aborted = e instanceof DOMException && e.name === 'AbortError'
@@ -208,27 +245,39 @@ export const aiSlice: Slice<AiSlice> = (set, get) => ({
         chatError: aborted ? null : msg,
         ...(e instanceof ApiError && e.status === 501 ? { aiUnavailable: true } : {}),
       })
-      persistChat(pid, get().chat)
+      persistChat(pid, get().chat, get().sentScopeKeys)
     } finally {
       if (chatAbort === ac) chatAbort = null
     }
   },
   hydrateChat: (pid) => {
     const saved = readPersistedChat(pid)
-    if (saved.length && get().chat.length === 0) set({ chat: saved })
+    if (!saved || get().chat.length > 0) return
+    if (!saved.msgs.length) return
+    // 恢复必须带已发送授权键——随后 AiChat 收窄检测会拿当前 chip 授权核验覆盖，
+    // 覆盖不到即清历史；无键旧记录已在 readPersistedChat 拒掉，不在这里放行
+    set({ chat: saved.msgs, sentScopeKeys: saved.keys })
   },
   stopChat: () => {
     chatAbort?.abort()
     chatAbort = null
     set({ chat: get().chat.map((m) => (m.streaming ? { ...m, streaming: false } : m)), chatStreaming: false })
     const pid = get().pid
-    if (pid) persistChat(pid, get().chat)
+    if (pid) persistChat(pid, get().chat, get().sentScopeKeys)
   },
   clearChat: () => {
-    set({ chat: [], chatError: null })
+    /* 撤销路径可复用：清历史必须终止在途流——否则旧 scope 的后台任务继续把结果写回 */
+    chatAbort?.abort()
+    chatAbort = null
+    set({ chat: [], chatError: null, sentScopeKeys: [], chatStreaming: false })
     const pid = get().pid
     if (pid) persistChat(pid, [])
   },
+  setAiUseBook: (v) => set({ aiUseBook: v }),
+  setAiUseSel: (v) => set({ aiUseSel: v }),
+  setAiPacks: (v) => set({ aiPacks: v }),
+  setAiScope: (scope) => set({ aiScope: scope }),
+  setChatScopeNote: (note) => set({ chatScopeNote: note }),
   rewrite: async (action, sel, instruction) => {
     const { pid, content } = get()
     if (!pid) return null
@@ -337,15 +386,16 @@ export const aiSlice: Slice<AiSlice> = (set, get) => ({
     watchers.delete(id)
   },
   setAiChatDraft: (text) => set({ aiChatDraft: text }),
-  addAiChatAttachments: (list) => set({ aiChatAttachments: [...get().aiChatAttachments, ...list.filter((a) => a.text)] }),
+  addAiChatAttachments: (list) => set({ aiChatAttachments: [...get().aiChatAttachments, ...list.filter((a) => a.text).map((a) => ({ ...a, sent: false }))] }),
   removeAiChatAttachment: (name) => set({ aiChatAttachments: get().aiChatAttachments.filter((a) => a.name !== name) }),
   clearAiChatAttachments: () => set({ aiChatAttachments: [] }),
+  markAiChatAttachmentsSent: () => set({ aiChatAttachments: get().aiChatAttachments.map((a) => ({ ...a, sent: true })) }),
   resetAi: () => {
     chatAbort?.abort()
     chatAbort = null
     for (const stop of watchers.values()) stop()
     watchers.clear()
-    set({ aiUnavailable: false, chat: [], chatStreaming: false, chatError: null, aiChatDraft: '', aiChatAttachments: [], suggestions: [], jobs: [], jobsLoading: false })
+    set({ aiUnavailable: false, chat: [], chatStreaming: false, chatError: null, aiChatDraft: '', aiChatAttachments: [], suggestions: [], jobs: [], jobsLoading: false, sentScopeKeys: [], chatScopeNote: null, aiScope: null, aiUseBook: true, aiUseSel: true, aiPacks: {} })
     get().resetAgent()
   },
 })

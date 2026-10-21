@@ -181,7 +181,17 @@ async def get_settings(user: CurrentUser) -> OrgSettings:
 async def put_settings(body: OrgSettingsPatch, user: CurrentUser) -> OrgSettings:
     if config.AUTH_ON:
         _require_superuser(user)
-    return org.apply_settings(body)
+    before = org.load_org()
+    out = org.apply_settings(body)
+    after = org.load_org()
+    if before.ai_enabled != after.ai_enabled:
+        # P03：机构级外发闸门变化是可执行授权记录——落机构审计（actor + 新值）
+        events.emit(
+            "org.ai_policy",
+            actor=events.actor_of(user),
+            data={"ai_enabled": after.ai_enabled, "scope": "deployment"},
+        )
+    return out
 
 
 # ---------------------------------------------------------------- 审计 ----

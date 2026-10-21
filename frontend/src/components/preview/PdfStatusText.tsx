@@ -39,6 +39,9 @@ export function PdfStatusText({ className }: { className?: string }) {
   const pages = useStudio((s) => s.pageInfo?.total ?? 0)
   const errorCount = useStudio(selectErrorCount)
   const openConsole = useStudio((s) => s.openConsole)
+  /* C0/P02：预览版本 = 该次构建的实际输入指纹（raw_sha 前缀），不拿当前案版本冒充 */
+  const okSha = useStudio((s) => s.lastOk?.input?.raw_sha ?? null)
+  const ver = okSha ? okSha.slice(0, 8) : null
 
   let text: string
   let tone: PdfStatusTone
@@ -51,14 +54,14 @@ export function PdfStatusText({ className }: { className?: string }) {
       tone = 'info'
       break
     case 'ok':
-      text = `已更新${pages ? ` · ${pages} 页` : ''} · ${fmtMs(previewMs ?? totalMs)}`
+      text = `已更新${ver ? ` · ${ver}` : ''}${pages ? ` · ${pages} 页` : ''} · ${fmtMs(previewMs ?? totalMs)}`
       tone = 'ok'
       break
     case 'error':
       text = netError
         ? '连接失败'
         : lastOkAt
-          ? `构建失败 · 显示 ${hhmm(lastOkAt)} 的 PDF`
+          ? `构建失败 · 显示 ${ver ?? hhmm(lastOkAt)} 的 PDF`
           : errorCount > 0
             ? `构建失败 · ${errorCount} 个错误`
             : '构建失败'
