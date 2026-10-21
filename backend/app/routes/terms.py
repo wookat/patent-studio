@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from app.ai import prompts, require_enabled
 from app.ai.client import AiError
 from app.domain import terms
+from app.domain.org import require_org_ai
 from app.errors import error_detail
 from app.routes import project_or_404
 from patent_studio.kernel.terms_lint import scan_lines
@@ -74,6 +75,7 @@ async def put_terms(request: Request, pid: str, body: TermsIn):
 
 async def _ai_candidates(request: Request, pid: str, p, content: str) -> list[dict]:
     require_enabled(request.app.state.store, pid, UNIT)
+    await require_org_ai(request)
     known = [t["name"] for t in _load(p)]
     messages = prompts.build("terms_extract", content, "已有术语主名：" + ("、".join(known) if known else "（无）"))
     try:

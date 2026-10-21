@@ -468,7 +468,7 @@ describe('SelectionActionBar（09 §6.2；toolbar a11y）', () => {
   })
 })
 
-  it('对话附件：上传解析→chip→随 context.attachments 发出→发送后清空；assistant markdown 渲染+净化', async () => {
+  it('对话附件：上传解析→chip→随 context.attachments 发出→发送后保留为已授权材料；markdown 渲染净化', async () => {
     enable()
     vi.spyOn(api, 'aiChatAttach').mockResolvedValue({
       results: [
@@ -501,10 +501,13 @@ describe('SelectionActionBar（09 §6.2；toolbar a11y）', () => {
     })
     await click(q('[data-testid="ai-chat-send"]', el)!)
     await flush()
-    // context.attachments 已带文本发出 + 发送后附件清空 + user 消息带 meta
+    // context.attachments 已带文本发出 + 发送后 chip 保留为已授权材料 + user 消息带 meta
     const ctx = chatSpy.mock.calls[0][2] as { attachments?: { name: string; text: string }[] }
     expect(ctx?.attachments?.[0]).toEqual({ name: '交底书.docx', text: '发明点：固态电解质' })
-    expect(useStudio.getState().aiChatAttachments).toEqual([])
+    expect(useStudio.getState().aiChatAttachments).toHaveLength(1)
+    expect(useStudio.getState().aiChatAttachments[0].sent).toBe(true)
+    expect(chips.textContent).toContain('已授权')
+    expect(useStudio.getState().sentScopeKeys).toContain('mat:交底书.docx')
     const um = useStudio.getState().chat.find((m) => m.role === 'user')!
     expect(um.attachments?.[0]?.name).toBe('交底书.docx')
     expect(q('[data-testid="ai-msg-attach"]', el)!.textContent).toContain('交底书.docx')
@@ -521,6 +524,55 @@ describe('SelectionActionBar（09 §6.2；toolbar a11y）', () => {
     expect(am.querySelector('script')).toBeNull()
     expect(am.textContent).not.toContain('<script>')
     expect(q('[data-testid="ai-para-ref-0001"]', el)).not.toBeNull()
+  })
+
+  it('撤销已发送材料授权 → 清对话+收窄提示；授权键含材料名/书身份', async () => {
+    enable()
+    vi.spyOn(api, 'aiChatAttach').mockResolvedValue({
+      results: [{ name: '现有技术.txt', ok: true, text: 'm', chars: 1 }],
+    } as never)
+    const s = sseResponse()
+    vi.spyOn(api, 'aiChat').mockResolvedValue(s.response)
+    const el = await mount(<AiPanel />)
+    const fi = q<HTMLInputElement>('[data-testid="ai-attach-input"]', el)!
+    await act(async () => {
+      Object.defineProperty(fi, 'files', { value: [new File(['x'], '现有技术.txt')], configurable: true })
+      fi.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await flush()
+    const ta = q<HTMLTextAreaElement>('[data-testid="ai-chat-input"]', el)!
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!
+      setter.call(ta, '看材料')
+      ta.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await click(q('[data-testid="ai-chat-send"]', el)!)
+    await flush()
+    expect(useStudio.getState().sentScopeKeys).toContain('mat:现有技术.txt')
+    expect(useStudio.getState().chat.length).toBeGreaterThan(0)
+    /* 用户明确移除已授权材料 → 授权键收窄 → 清历史 + 提示 */
+    await click(q('[data-testid="ai-attach-rm-现有技术.txt"]', el)!)
+    await flush()
+    expect(useStudio.getState().chat).toEqual([])
+    expect(q('[data-testid="ai-scope-note"]', el)!.textContent).toContain('已缩小')
+    el.remove()
+  })
+
+  it('当前书 chip 撤销跨重挂保持（store 态，不随组件重建复活）', async () => {
+    enable()
+    const el = await mount(<AiPanel />)
+    await click(q('[data-testid="ai-chip-book"]', el)!)
+    await flush()
+    expect(useStudio.getState().aiUseBook).toBe(false)
+    el.remove()
+    const el2 = await mount(<AiPanel />)
+    await flush()
+    /* 重挂不恢复——book chip 仍 off，scope 降级为选区/无授权，不含整书 book 授权 */
+    expect(useStudio.getState().aiUseBook).toBe(false)
+    expect(q<HTMLElement>('[data-testid="ai-chip-book"]', el2)!.getAttribute('aria-pressed')).toBe('false')
+    const src = useStudio.getState().aiScope?.source
+    expect(src === undefined || Array.isArray(src.lines)).toBe(true)
+    el2.remove()
   })
 
   it('md 精修：代码高亮 / KaTeX 数学式 / GFM 勾选框', async () => {
@@ -646,6 +698,37 @@ describe('agent 工具循环（批2：step 小票 + confirm 卡 + resume 续跑�
     expect(q('[data-testid="ai-confirm-approve"]', el)!.textContent).toBe('按计划执行')
     await p
   })
+
+  it('P05：aiScope 随 /ai/chat 显式发出（chat 与 confirm-resume 同绑）；切案清空 scope', async () => {
+    enable()
+    // 附件 chip 决定 scope.materials（AiChat 快照效应覆盖手工 aiScope——断言派生态而非手工值）
+    useStudio.setState({ aiChatAttachments: [{ name: '交底书.pdf', chars: 10 }] as never })
+    const s1 = sseResponse()
+    const s2 = sseResponse()
+    const spy = vi.spyOn(api, 'aiChat').mockResolvedValueOnce(s1.response).mockResolvedValueOnce(s2.response)
+    const el = await mount(<AiPanel />)
+    await flush()  // 等快照效应落 aiScope
+    const p = streamChat('查权1', null)
+    await flush()
+    await act(async () => {
+      s1.push('data: {"confirm":{"id":"c1","tool":"patch_block","args":{},"danger":false,"resume":' + JSON.stringify(RESUME) + '}}\n\n')
+      s1.close()
+    })
+    expect(spy.mock.calls[0][5]?.materials).toEqual(['交底书.pdf'])
+    expect(spy.mock.calls[0][5]?.source).toBeTruthy()
+    await click(q('[data-testid="ai-confirm-approve"]', el)!)
+    await flush()
+    expect(spy.mock.calls[1][5]?.materials).toEqual(['交底书.pdf'])
+    await act(async () => s2.close())
+    await p
+    // 切案：pid 复位清 scope/已发键/提示（防跨案残留）
+    useStudio.setState({ sentScopeKeys: ['book:claims'], chatScopeNote: 'x' })
+    useStudio.getState().resetAi()
+    const st = useStudio.getState()
+    expect(st.aiScope).toBeNull()
+    expect(st.sentScopeKeys).toEqual([])
+    expect(st.chatScopeNote).toBeNull()
+  })
 })
 
 describe('对话持久化（批3-A：ps:chat:<pid> 刷新不丢）', () => {
@@ -661,10 +744,11 @@ describe('对话持久化（批3-A：ps:chat:<pid> 刷新不丢）', () => {
     await p
     const raw = localStorage.getItem('ps:chat:method')
     expect(raw).toBeTruthy()
-    const saved = JSON.parse(raw!) as { role: string; content: string; streaming?: boolean }[]
-    expect(saved.map((m) => m.role)).toEqual(['user', 'assistant'])
-    expect(saved[1].content).toBe('旧话')
-    expect(saved.every((m) => m.streaming === undefined)).toBe(true)
+    const saved = JSON.parse(raw!) as { m: { role: string; content: string; streaming?: boolean }[]; k: string[] }
+    expect(saved.m.map((m) => m.role)).toEqual(['user', 'assistant'])
+    expect(saved.m[1].content).toBe('旧话')
+    expect(saved.m.every((m) => m.streaming === undefined)).toBe(true)
+    expect(Array.isArray(saved.k)).toBe(true)
     /* 模拟刷新重开：内存清空 → hydrate 恢复 */
     useStudio.setState({ chat: [] })
     useStudio.getState().hydrateChat('method')
@@ -690,17 +774,88 @@ describe('对话持久化（批3-A：ps:chat:<pid> 刷新不丢）', () => {
     await p
     expect(localStorage.getItem('ps:chat:method')).toBeTruthy()
     useStudio.getState().clearChat()
-    expect(JSON.parse(localStorage.getItem('ps:chat:method')!)).toEqual([])
+    expect(JSON.parse(localStorage.getItem('ps:chat:method')!)).toEqual({ m: [], k: [] })
     useStudio.getState().hydrateChat('method')
     expect(useStudio.getState().chat).toEqual([])
     localStorage.setItem('ps:chat:method', '{腐坏')
     useStudio.getState().hydrateChat('method')
     expect(useStudio.getState().chat).toEqual([])
-    /* 60 条 → 只留尾 50 */
-    const many = Array.from({ length: 60 }, (_, i) => ({ id: `m${i}`, role: 'user' as const, content: `第${i}条`, created_at: i }))
-    localStorage.setItem('ps:chat:method', JSON.stringify(many))
+    /* P05：无授权键的旧格式（裸数组）不可核验——不恢复历史 */
+    const legacy = Array.from({ length: 60 }, (_, i) => ({ id: `m${i}`, role: 'user' as const, content: `第${i}条`, created_at: i }))
+    localStorage.setItem('ps:chat:method', JSON.stringify(legacy))
+    useStudio.getState().hydrateChat('method')
+    expect(useStudio.getState().chat).toEqual([])
+    /* 新格式带授权键 → 恢复消息+键，交由收窄检测核验 */
+    localStorage.setItem('ps:chat:method', JSON.stringify({ m: legacy.slice(0, 60), k: ['book:claims'] }))
     useStudio.getState().hydrateChat('method')
     expect(useStudio.getState().chat).toHaveLength(50)
     expect(useStudio.getState().chat[0].content).toBe('第10条')
+    expect(useStudio.getState().sentScopeKeys).toEqual(['book:claims'])
+  })
+})
+
+describe('VersionTag：绑定版本标识（P05 修正——savedSha 优先，跨案 context 不兜底）', () => {
+  /* savedSha 由 store 订阅按 saved 实测异步重算——断言真 sha（sha256(CONTENT)=2e473673…），
+     ctx 的 f411ba00… 充当「提案应用前的旧快照」 */
+  const CTX = (pid: string, sha: string) => ({
+    pid,
+    case_no: null,
+    binding: 'bound' as const,
+    case_id: 'c1',
+    organization: null,
+    file_role: 'editor' as const,
+    auth: 'off',
+    capabilities: [],
+    content_sha: sha,
+    revision: null,
+    ai_enabled: true,
+  })
+
+  it('缓存 context 旧 sha + 新 savedSha → 显示新（提案应用/保存后不再误导）', async () => {
+    enable()
+    useStudio.setState({
+      caseContext: CTX('method', 'f411ba00' + '0'.repeat(56)),
+      saved: CONTENT,
+      content: CONTENT,
+    })
+    const el = await mount(<AiPanel />)
+    await flush() // savedSha 订阅异步落值
+    const tag = q('[data-testid="ai-scope-version"]', el)!
+    expect(tag).not.toBeNull()
+    expect(tag.textContent).toBe('method@2e473673')
+    expect(tag.getAttribute('title')).toContain('2e473673')
+    expect(tag.getAttribute('title')).not.toContain('f411ba00')
+  })
+
+  it('savedSha 为空且同案 context → 回退 context 快照（加载中唯一真值源）', async () => {
+    enable()
+    useStudio.setState({ savedSha: '', caseContext: CTX('method', 'a1b2c3d4' + '0'.repeat(56)), saved: '', content: '' })
+    const el = await mount(<AiPanel />)
+    expect(q('[data-testid="ai-scope-version"]', el)!.textContent).toBe('method@a1b2c3d4')
+  })
+
+  it('savedSha 为空且 context 属别的案 → 不显示（跨案旧快照不得冒充本案版本）', async () => {
+    enable()
+    useStudio.setState({ savedSha: '', caseContext: CTX('system', 'deadbeef' + '0'.repeat(56)), saved: '', content: '' })
+    const el = await mount(<AiPanel />)
+    expect(q('[data-testid="ai-scope-version"]', el)).toBeNull()
+  })
+
+  it('本地未保存修改 → 标注「·未存」且 title 明示绑定的是服务端已存版本', async () => {
+    enable()
+    useStudio.setState({
+      caseContext: CTX('method', 'f411ba00' + '0'.repeat(56)),
+      saved: CONTENT,
+      content: CONTENT + '\n本地新增一句。\n',
+      collabStatus: 'off',
+    })
+    const el = await mount(<AiPanel />)
+    await flush()
+    const tag = q('[data-testid="ai-scope-version"]', el)!
+    expect(tag.textContent).toBe('method@2e473673·未存')
+    expect(tag.getAttribute('title')).toContain('未保存修改不在上下文内')
+    // 保存（saved=content）后标注消失（sha 随之重算为新值，断言未存标记消失即可）
+    await act(async () => useStudio.setState({ saved: useStudio.getState().content }))
+    expect(q('[data-testid="ai-scope-version"]', el)!.textContent).not.toContain('未存')
   })
 })

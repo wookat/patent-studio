@@ -13,10 +13,13 @@ import { useStudio } from '@/store'
 import type { Org } from '@/types/account'
 import type { OrgSettings } from '@/types/org'
 import { OrgForm } from './OrgForm'
+import { OrgEgressPolicyCard } from './OrgEgressPolicyCard'
 
 export interface OrgPanelProps {
   org: Org | null
   orgUnavailable: boolean
+  /** authed 模式才预期有平台机构；off（本地文件模式）→ 策略卡显示「不适用」而非静默隐藏 */
+  platformExpected: boolean
   onSaveName(name: string): Promise<boolean>
 }
 
@@ -31,7 +34,7 @@ const HOLIDAY_TEXT: Record<HolidayStatus, { label: string; tone: 'default' | 'ok
  * 机构 tab（21 §4.6 / R-ADM-02）：机构名称（org.json）· 新建案卷默认协作（OrgSettings.default_collab）· 节假日表状态只读。
  * default_collab 契约当前只有 editor_mode / allow_viewer_comment（types/org.ts）；下载 / 复制 / 链接 TTL 见 integration_requests，不在此臆造。
  */
-export function OrgPanel({ org, orgUnavailable, onSaveName }: OrgPanelProps) {
+export function OrgPanel({ org, orgUnavailable, platformExpected, onSaveName }: OrgPanelProps) {
   const settings = useStudio((s) => s.orgSettings)
   const unavailable = useStudio((s) => s.orgSettingsUnavailable)
   const saving = useStudio((s) => s.orgSettingsSaving)
@@ -110,6 +113,8 @@ export function OrgPanel({ org, orgUnavailable, onSaveName }: OrgPanelProps) {
           </form>
         )}
       </section>
+
+      <OrgEgressPolicyCard platformExpected={platformExpected} />
 
       <section aria-labelledby="admin-holiday-h" className="grid gap-2">
         <h3 id="admin-holiday-h" className="text-sm font-semibold">节假日数据</h3>

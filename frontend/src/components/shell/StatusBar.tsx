@@ -183,6 +183,8 @@ export function StatusBar({ showPage = true }: { showPage?: boolean }) {
   const status = useBuildStatus()
   /* 批74：另一页签也在编辑此案（观察器在 shell/DupTabWatch 全局挂） */
   const dupTabOther = useStudio((s) => s.dupTabOther)
+  const savedSha = useStudio((s) => s.savedSha)
+  const caseContext = useStudio((s) => s.caseContext)
 
   const section = useMemo(() => sectionPath(outline, content, cursor.line), [outline, content, cursor.line])
   const absLine = useMemo(() => abstractLine(outline, content), [outline, content])
@@ -310,6 +312,26 @@ export function StatusBar({ showPage = true }: { showPage?: boolean }) {
           </span>
         )}
       </Seg>
+      {pid && savedSha && (
+        <Seg
+          testId="status-version"
+          className="hidden md:inline-flex"
+          title={
+            caseContext?.binding === 'bound'
+              ? `稿件内容版本（sha256 前缀）；已绑定平台案 ${caseContext.case_id}（${caseContext.organization?.name ?? ''}）`
+              : caseContext?.binding === 'ambiguous'
+                ? `稿件内容版本；案号在平台命中 ${caseContext.candidates ?? '多'} 个机构同号案——已按歧义拒绝绑定`
+                : caseContext?.binding === 'denied'
+                  ? '稿件内容版本；平台绑定被拒绝（当前身份无权访问该案）'
+                  : '稿件内容版本（sha256 前缀）；本地案卷，未绑定平台案'
+          }
+        >
+          {caseContext?.binding === 'bound' && <span className="hidden xl:inline text-fg-subtle">平台·</span>}
+          {caseContext?.binding === 'ambiguous' && <span className="text-warn-fg" data-testid="status-binding-ambiguous">歧义·</span>}
+          {caseContext?.binding === 'denied' && <span className="text-danger-fg" data-testid="status-binding-denied">拒·</span>}
+          <span className="font-mono">稿 {savedSha.slice(0, 8)}</span>
+        </Seg>
+      )}
       <Seg testId="status-right">
         {pid && readonly && !roleKnown ? (
           <span data-testid="status-loading">加载中…</span>

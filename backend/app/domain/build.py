@@ -9,6 +9,7 @@ import glob
 import logging
 import os
 import shutil
+import sys
 import threading
 import time
 import uuid
@@ -44,6 +45,8 @@ class BuildOutcome:
     diagnostics: list[dict] = field(default_factory=list)
     # 21 §5.2：预览构建经 unoserver 产出 tagged PDF ⇒ True（前端走 struct 配对）；CLI 回退 / 未要 PDF ⇒ False
     pdf_tagged: bool = False
+    # C0/P02：本次构建的完整输入指纹（与 manifest.input 一致）——前端据此标注预览对应版本
+    input: dict | None = None
 
     def to_dict(self):
         return asdict(self)
@@ -153,6 +156,19 @@ def run_build(
             content = store.read_content(pid)
         raw = content
         content = critic.resolve(raw, mode)
+        # C0/P02 空正文门禁：非空预期的案卷不应构建出空产物（导出空 DOCX/PDF 是静默错误）
+        if not critic.accept(raw).strip():
+            return BuildOutcome(
+                status="error",
+                seq=mine,
+                timings={"queue_ms": round((time.perf_counter() - t0) * 1000)},
+                error={
+                    "kind": "content",
+                    "message": "文档为空：请以「# 标题」开始，并包含 ## 摘要 / ## 权利要求书 / ## 说明书 章节",
+                    "line": None,
+                    "detail": None,
+                },
+            )
         builds_dir = os.path.join(project.studio_dir, "builds")
         build_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
         out_dir = os.path.join(builds_dir, build_id)
@@ -224,12 +240,29 @@ def run_build(
             _prune_builds(builds_dir, config.KEEP_BUILDS)
         timings["total_ms"] = round((time.perf_counter() - t0) * 1000)
         log.info("build %s/%s %s", pid, build_id, " ".join(f"{k}={v}" for k, v in timings.items()))
+        eff_settings = settings if settings is not None else project.settings
+        fp = input_fingerprint(raw, content, eff_settings, project, mode)
+        pdf_meta = False
+        if want_pdf and os.path.isfile(os.path.join(out_dir, "out.pdf")):
+            pdf_meta = _embed_pdf_meta(os.path.join(out_dir, "out.pdf"), build_id, fp)
+        merr = _write_manifest(out_dir, pid, build_id, fp, content, timings, want_pdf, {"pdf_meta": pdf_meta})
+        if merr is not None:
+            # fail-closed：清单不可信的构建不当成功返回（陈旧产物校验无从谈起）
+            return BuildOutcome(
+                status="error",
+                build_id=build_id,
+                seq=mine,
+                timings=timings,
+                error=merr,
+                diagnostics=with_build_error(diagnostics, merr),
+            )
         base = f"/api/projects/{pid}/builds/{build_id}"
         return BuildOutcome(
             status="ok",
             build_id=build_id,
             seq=mine,
             timings=timings,
+            input=fp,
             summary={
                 "title": res.title,
                 "abstract_chars": res.abstract_chars,
@@ -242,6 +275,179 @@ def run_build(
             diagnostics=diagnostics,
             pdf_tagged=pdf_tagged,
         )
+
+
+def _sha256(text: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _file_sha(path: str) -> str | None:
+    import hashlib
+
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return None
+
+
+def _lib_ver(name: str) -> str | None:
+    """可检测的库版本（renderer 指纹）；不可得 ⇒ None，如实记未知不冒充。"""
+    try:
+        import importlib.metadata
+
+        return importlib.metadata.version(name)
+    except Exception:
+        return None
+
+
+def _figs_sha(project) -> str | None:
+    """图资源输入指纹：figs/ 已渲染产物 + figs-src/ 图源（文件名+内容逐文件）。
+    目录不存在（无图案）⇒ 空表 hash；任一文件读失败 ⇒ None——宁可使指纹不可用也不漏判。"""
+    import hashlib
+
+    h = hashlib.sha256()
+    for d in (project.figs_dir, project.figsrc_dir):
+        if not os.path.isdir(d):
+            continue
+        try:
+            names = sorted(os.listdir(d))
+        except OSError:
+            return None
+        for n in names:
+            fp = os.path.join(d, n)
+            if not os.path.isfile(fp):
+                continue
+            s = _file_sha(fp)
+            if s is None:
+                return None
+            h.update(n.encode())
+            h.update(s.encode())
+    return h.hexdigest()
+
+
+def input_fingerprint(raw: str, content: str, settings, project, mode: str) -> dict:
+    """C0/P02 完整输入指纹：正文 raw/resolved + settings + mode + 图资源内容 + 可检测
+    renderer 库版本。settings 用构建实际生效值（传入或 project.settings），保证导出侧
+    同式复算。figs_sha 为 None（图读取失败）的指纹在 matching_artifact_dir 被判不可信。"""
+    import json
+
+    return {
+        "raw_sha": _sha256(raw),
+        "content_sha": _sha256(content),
+        "settings_sha": _sha256(json.dumps(settings or {}, ensure_ascii=False, sort_keys=True)),
+        "figs_sha": _figs_sha(project),
+        "mode": mode,
+        # R5/复核3：renderer 版本参与匹配——库升级不复用旧产物；检测不到 ⇒ None（判不可信复用）
+        "renderer": {
+            "python-docx": _lib_ver("python-docx"),
+            "matplotlib": _lib_ver("matplotlib"),
+            "pypdf": _lib_ver("pypdf"),
+            "fonttools": _lib_ver("fonttools"),
+        },
+    }
+
+
+def _embed_pdf_meta(pdf_path: str, build_id: str, fp: dict) -> bool:
+    """产物内嵌版本信息（pypdf）：build_id + 输入指纹前缀写进文档元数据。
+    clone_from 克隆整文档（含 /Root 的 StructTreeRoot/MarkInfo/Outlines）——逐页 add_page
+    重建会丢 tagged/书签结构，损坏既有可访问预览。失败不挡构建——manifest/文件名仍是
+    权威版本标注；返回是否写入。"""
+    try:
+        from pypdf import PdfWriter
+
+        writer = PdfWriter(clone_from=pdf_path)
+        writer.add_metadata(
+            {
+                "/Title": f"知撰构建 {build_id}",
+                "/Keywords": (
+                    f"build_id={build_id}; input={fp.get('raw_sha', '')[:12]}/{fp.get('settings_sha', '')[:12]}"
+                ),
+            }
+        )
+        tmp = pdf_path + ".meta.tmp"
+        with open(tmp, "wb") as f:
+            writer.write(f)
+        os.replace(tmp, pdf_path)
+        return True
+    except Exception:
+        log.warning("embed pdf metadata failed for %s", pdf_path, exc_info=True)
+        return False
+
+
+def _write_manifest(out_dir, pid, build_id, fp, content, timings, want_pdf, renderer_extra=None) -> dict | None:
+    """C0/P02 构建清单：完整输入指纹 + 输出 hash + renderer。产物 hash 读不出 ⇒ 返回错误
+    （None 放行会让陈旧产物不可校验——fail-closed 不当成功）。"""
+    import json
+
+    docx_sha = _file_sha(os.path.join(out_dir, "out.docx"))
+    pdf_sha = _file_sha(os.path.join(out_dir, "out.pdf")) if want_pdf else None
+    if docx_sha is None or (want_pdf and pdf_sha is None):
+        return {"kind": "internal", "message": "构建产物 hash 校验失败——产物未标记为可信", "detail": "output_hash"}
+    manifest = {
+        "build_id": build_id,
+        "pid": pid,
+        "created_at": time.time(),
+        "input": fp,
+        "output": {"docx_sha": docx_sha, "pdf_sha": pdf_sha},
+        "renderer": {
+            "pdf_backend": timings.get("pdf_backend"),
+            "python": sys.version.split()[0],
+            "python-docx": _lib_ver("python-docx"),
+            "matplotlib": _lib_ver("matplotlib"),
+            "pypdf": _lib_ver("pypdf"),
+            **(renderer_extra or {}),
+        },
+        "timings": timings,
+    }
+    try:
+        with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=1)
+    except OSError:
+        log.warning("manifest write failed for %s/%s", pid, build_id, exc_info=True)
+        return {"kind": "internal", "message": "构建清单写入失败——产物未标记为可信", "detail": "manifest"}
+    return None
+
+
+def matching_artifact_dir(store, project, fmt: str, fp: dict) -> str | None:
+    """复用最近一次构建目录：manifest 存在 + 输入指纹全等 + 产物 hash 与盘文一致。
+    无 manifest / 指纹不符 / hash 不符 ⇒ None（不信任，交给重建）。"""
+    dirs = sorted(glob.glob(os.path.join(project.studio_dir, "builds", "*")), key=os.path.getmtime, reverse=True)
+    key = "pdf_sha" if fmt == "pdf" else "docx_sha"
+    for d in dirs:
+        if not os.path.isfile(os.path.join(d, f"out.{fmt}")):
+            continue
+        m = build_manifest(d)
+        if m is None:
+            continue  # 无清单 ⇒ 不可信——不沿用旧兼容
+        inp = m.get("input") or {}
+        # R5/复核3：指纹含 None（图读取失败/版本检测不到）⇒ 视为不可信，不复用——
+        # None==None 的假匹配会让坏环境下的陈旧产物被当成同输入命中
+        if any(v is None for v in fp.values()) or any(v is None for v in (fp.get("renderer") or {}).values()):
+            continue
+        if any(inp.get(k) != v for k, v in fp.items()):
+            continue
+        want = (m.get("output") or {}).get(key)
+        if not want or _file_sha(os.path.join(d, f"out.{fmt}")) != want:
+            continue
+        return d
+    return None
+
+
+def build_manifest(build_dir: str) -> dict | None:
+    """构建目录的 manifest.json（缺 ⇒ None——旧构建没有清单）。"""
+    import json
+
+    try:
+        with open(os.path.join(build_dir, "manifest.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
 
 
 def artifact_path(store: ProjectStore, pid: str, build_id: str, name: str):

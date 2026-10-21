@@ -10,6 +10,10 @@ import { useStudio } from '@/store'
 // PdfCard → PreviewPane → pdfjs 需要 DOMMatrix，jsdom 没有；这里只测注册表，不渲染 PDF
 vi.mock('@/components/preview/PreviewPane', () => ({ PreviewPane: () => null }))
 
+// openCasework → openCompanion → isNarrowDesktop 读 matchMedia+innerWidth（jsdom innerWidth=1024 会误判窄桌面挤掉侧栏）
+window.matchMedia ??= (q: string) => ({ matches: q.includes('min-width'), media: q, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList
+if (window.innerWidth <= 1279) Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true })
+
 describe('panel id（08 §4）', () => {
   it('kind[:book] 往返；非法 kind / book → null', () => {
     expect(parsePanelId('source:claims')).toEqual({ kind: 'source', book: 'claims' })
@@ -287,5 +291,18 @@ describe('store.layout slice（08 §5）', () => {
     expect(useStudio.getState().editorView).toBe('source')
     s.setActivePanel('pdf')
     expect(useStudio.getState().editorView).toBe('source')
+  })
+
+  it('复核11：openCasework 强制展开左侧材料入口（侧栏开 + files 块不折叠 + rail 落大纲）', () => {
+    const s = useStudio.getState()
+    s.registerDock(handle)
+    useStudio.setState({ sideOpen: false, sideFilesCollapsed: true, railTab: 'search' as never })
+    s.openCasework()
+    const st = useStudio.getState()
+    expect(st.sideOpen).toBe(true)
+    expect(st.sideFilesCollapsed).toBe(false) // 持久化的折叠态不能挡住材料入口
+    expect(st.railTab).toBe('outline')
+    expect(st.layoutPreset).toBe('casework')
+    expect(calls).toContain('preset:casework')
   })
 })

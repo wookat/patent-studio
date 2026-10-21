@@ -121,7 +121,7 @@ describe('#/account 二级导航', () => {
     await mount(<AccountPage />)
     const nav = q('[data-testid="subnav-desktop"]')!
     expect(nav.className).toContain('w-side-min')
-    expect(qa('[data-testid^="account-tab-"]', nav).map((a) => a.textContent?.trim())).toEqual(['资料', '安全', '通知偏好', '集成 PAT'])
+    expect(qa('[data-testid^="account-tab-"]', nav).map((a) => a.textContent?.trim())).toEqual(['资料', '安全', '通知偏好', '集成 PAT', '机构外发'])
     expect(q('[data-testid="account-tab-profile"]')?.getAttribute('aria-current')).toBe('page')
     expect(q('[data-testid="profile-form"]')?.className).toContain('max-w-form')
     await goTab('#/account?tab=security')

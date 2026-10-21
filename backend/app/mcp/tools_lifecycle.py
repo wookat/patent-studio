@@ -25,9 +25,11 @@ from app.agent import loop as agent_loop
 from app.agent import prior_art
 from app.agent import proposals as agent_proposals
 from app.agent import registry as agent_registry
+from app.agent.types import SCENARIO_BY_ID
 from app.ai import client as ai_client
+from app.ai import require_enabled
 from app.ai.jobs import JOBS_DIR, JobStore
-from app.domain import cases, comments, events, history, public_share, templates, timeline
+from app.domain import cases, comments, events, history, org, public_share, templates, timeline
 from app.domain.cases import CasePatch
 from app.domain.importer import import_project
 from app.mcp import audit
@@ -72,6 +74,44 @@ def _author_of(who):
 def register(server, store):
     run = functools.partial(run_audited, store)
     open_project = functools.partial(open_project_for, store)
+
+    async def _require_egress(pid: str) -> None:
+        """P03 统一外发门禁（MCP 面）：案级 ai_enabled（require_enabled）+ 部署全局 org.ai_enabled
+        + PG 机构 egress_policy（fail-closed）。Actor.user_id（PAT 身份）→ PG Principal 走与
+        require_org_ai 同一绑定解析；无法关联主体或绑定非 bound 在平台生效时拒——不拿
+        「无 cookie」当放行理由。仅未配置 PG 且 AUTH=off 的本地模式落回全局闸门。"""
+        from fastapi import HTTPException
+
+        from app.domain import context as ctx_domain
+
+        try:
+            require_enabled(store, pid, "agent")
+        except HTTPException as e:
+            d = e.detail if isinstance(e.detail, dict) else {}
+            raise _err(d.get("kind", "ai_disabled"), d.get("message", "本案未允许外发"), detail=d.get("detail"))
+        if not org.ai_enabled():
+            raise _err("ai_disabled_by_org", "机构已关闭 AI 助手，请联系机构管理员", detail="org")
+        if not ctx_domain.platform_configured():
+            return  # 明确本地模式：无 PG 机构面可执行
+        b = await asyncio.to_thread(ctx_domain.resolve_binding_for_user, pid, actor().user_id)
+        binding = b.get("binding")
+        if binding == "unbound":
+            return  # PG 全局无同 key 案：纯文件案卷，机构策略不适用
+        if binding != "bound":
+            raise _err(
+                "ai_disabled_by_org",
+                f"机构外发授权未决（{binding}），按 fail-closed 拒绝——请确认案卷绑定与身份",
+                detail=str(binding),
+            )
+        if (b.get("organization") or {}).get("status") != "active":
+            raise _err("ai_disabled_by_org", "本机构不可用（非 active），AI 外发已停用", detail="org_status")
+        pol = b.get("egress_policy") or {}
+        if pol.get("ai_egress") is False:
+            raise _err(
+                "ai_disabled_by_org",
+                f"本机构已关闭 AI 外发（策略 v{pol.get('version') or '?'}）",
+                detail="org_policy",
+            )
 
     async def _editor(pid, tool, args):
         try:
@@ -208,6 +248,8 @@ def register(server, store):
         """先行技术检索（s8 同款 provider 链：PatSnap/EPO OPS/OpenAlex）。
         返回每条检索式的命中表（公开号/标题/日期/链接）与 source 标记。
         检索完成后应把检索式与命中经 record_novelty 归档进查新记录卡（相关度默认 A，X/Y 判定留给人）。"""
+        # P03：外发检索属真实上游调用——案级 ai_enabled + 机构闸门双校验（此前裸跑是真漏洞）
+        await _require_egress(pid)
         await open_project(pid)
 
         def body():
@@ -607,11 +649,14 @@ def register(server, store):
         """发起 s1–s10 场景任务（同 POST /agent/run）。
         注意：本进程内执行并阻塞到完成；任务与提案落盘（.studio/ai-jobs/、proposals.jsonl），
         web 面板可见产出。步骤流仅本进程上下文可见。"""
-        await open_project(pid)
+        # P03：与 POST /agent/run 同一门禁——案级 ai_enabled + 机构闸门 + scenario.min_role
+        await _require_egress(pid)
         try:
             scenario = agent_registry.validate_scenario(scenario)
-        except ValueError as e:
+            info = SCENARIO_BY_ID[scenario]
+        except (ValueError, KeyError) as e:
             raise _err("validation", str(e), detail=scenario)
+        await open_project(pid, info.min_role)
         who = actor()
 
         async def work():

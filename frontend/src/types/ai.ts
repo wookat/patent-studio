@@ -86,6 +86,8 @@ export interface ChatAttachment {
   text: string
   chars: number
   truncated?: boolean | null
+  /** 已随某次发送授权过的材料（chip 保留到用户明确移除）；false/缺省 = 未发送草稿 */
+  sent?: boolean
 }
 export type ChatAttachmentMeta = Pick<ChatAttachment, 'name' | 'chars' | 'truncated'>
 /** POST …/ai/chat/attach 响应 per-file */

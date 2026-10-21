@@ -6,11 +6,11 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Textarea } from '@/components/ui/textarea'
 import { FOCUS_RING, TRANSITION_COLOR, cn, touchHit } from '@/lib/utils'
-import { selectAiEnabled, useStudio } from '@/store'
+import { selectAiEnabled, selectBoundSha, selectDirty, useStudio } from '@/store'
 import { api } from '@/lib/api'
 import type { ChatAttachmentMeta, ChatMessage } from '@/types/ai'
 import { Markdown } from './Markdown'
-import { BOOK_LABELS } from '@/lib/docset'
+import { BOOK_LABELS, splitBooks } from '@/lib/docset'
 import {
   MAX_CONTEXT_ITEMS, PARA_REF_RE, bookAtLine, claimTreePack, clearSelection, focusParaNo, selectionLabel, streamChat, stopStreaming, termsPack,
   useLastChatMeta, useLastSelection, type ChatContextPacks,
@@ -56,13 +56,18 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
   const attachments = useStudio((s) => s.aiChatAttachments)
   const addAttachments = useStudio((s) => s.addAiChatAttachments)
   const removeAttachment = useStudio((s) => s.removeAiChatAttachment)
-  const clearAttachments = useStudio((s) => s.clearAiChatAttachments)
+  const markAttachmentsSent = useStudio((s) => s.markAiChatAttachmentsSent)
   const toast = useStudio((s) => s.toast)
-  /* 批76：store 草稿保重挂不保刷新（批73 口径）——输入稿在手时关页签走浏览器确认 */
-  useBeforeUnload(() => text.trim() !== '' || attachments.length > 0)
-  const [useBook, setUseBook] = useState(true)
-  const [useSel, setUseSel] = useState(true)
-  const [packs, setPacks] = useState<Record<ContextPack, boolean>>({ terms: false, health: false, claims: false })
+  /* 批76：store 草稿保重挂不保刷新（批73 口径）——输入稿/未发送材料在手时关页签走浏览器确认；
+     已发送材料 chip 是上下文授权记录，不算未保存草稿 */
+  useBeforeUnload(() => text.trim() !== '' || attachments.some((a) => !a.sent))
+  /* P05：授权 chip 态存 store——面板重挂/桌面↔移动壳切换不得复活用户已撤销的授权；切案 resetAi 复位 */
+  const useBook = useStudio((s) => s.aiUseBook)
+  const useSel = useStudio((s) => s.aiUseSel)
+  const packs = useStudio((s) => s.aiPacks)
+  const setUseBook = useStudio((s) => s.setAiUseBook)
+  const setUseSel = useStudio((s) => s.setAiUseSel)
+  const setPacks = useStudio((s) => s.setAiPacks)
   const claimTree = claimTreePack(ast)
   const packCount: Record<ContextPack, number> = { terms: terms.length, health: issues.length, claims: claimTree.length }
   const listRef = useRef<HTMLDivElement>(null)
@@ -91,6 +96,41 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
   }
 
   const book = bookAtLine(ast, content, cursorLine)
+  const sentScopeKeys = useStudio((s) => s.sentScopeKeys)
+  const scopeNote = useStudio((s) => s.chatScopeNote)
+  const setAiScope = useStudio((s) => s.setAiScope)
+  const setScopeNote = useStudio((s) => s.setChatScopeNote)
+
+  /** 当前 chip 态声明的授权键与 scope 体——keys 携带真实身份（书/选区区间/材料名/pack），
+      发送过的键收窄即清对话；scope 随请求发送，服务端按同名身份校验 */
+  const scopeSnapshot = () => {
+    const keys: string[] = []
+    if (useBook) keys.push(`book:${book}`)
+    /* 选区键用选区自己落在的书（bookAtLine 按行号定位）——不能用当前光标 book 给旧选区贴标签 */
+    const selBook = sel ? bookAtLine(ast, content, sel.lineStart) : book
+    if (useSel && sel) keys.push(`sel:${selBook}:${sel.lineStart}-${sel.lineEnd}`)
+    for (const [k, v] of Object.entries(packs)) if (v) keys.push(`pack:${k}`)
+    for (const a of attachments) keys.push(`mat:${a.name}`)
+    const scope = {
+      source: useBook ? { book } : useSel && sel ? { book: selBook, lines: [sel.lineStart, sel.lineEnd] } : undefined,
+      materials: attachments.map((a) => a.name),
+    }
+    return { keys, scope }
+  }
+
+  /* P05：授权快照入 store（send/resume 共用同一声明）；已发键收窄（含撤销材料/换书/改选区）→ 清对话
+     + 提示新对话，防旧材料经历史消息/续跑回执泄漏（服务端 scope⊆ 回执校验为第二道） */
+  useEffect(() => {
+    const { keys, scope } = scopeSnapshot()
+    setAiScope(scope)
+    const sent = useStudio.getState().sentScopeKeys
+    const chat = useStudio.getState().chat
+    if (chat.length > 0 && sent.some((k) => !keys.includes(k))) {
+      useStudio.getState().clearChat()
+      setScopeNote('上下文范围已缩小：已清除可能含旧内容的对话与待续跑任务，请开始新对话。')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- book/sel/attachments/packs 变化均经 scopeSnapshot 覆盖
+  }, [useBook, useSel, sel, book, packs, attachments, sentScopeKeys, setAiScope, setScopeNote])
 
   useEffect(() => {
     const el = listRef.current
@@ -114,9 +154,11 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
     const ctx: ChatContextPacks = buildContext() ?? {}
     const meta: ChatAttachmentMeta[] = attachments.map((a) => ({ name: a.name, chars: a.chars, truncated: a.truncated }))
     if (attachments.length) ctx.attachments = attachments.map((a) => ({ name: a.name, text: a.text }))
+    const { keys } = scopeSnapshot()
     setText('')
-    clearAttachments()
-    void streamChat(t, Object.keys(ctx).length ? ctx : null, meta)
+    /* 材料 chip 发送后保留为已授权上下文（sent 标记）——用户明确移除才撤销授权并触发收窄清对话 */
+    markAttachmentsSent()
+    void streamChat(t, Object.keys(ctx).length ? ctx : null, meta, keys)
     inputRef.current?.focus()
   }
 
@@ -140,29 +182,36 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
       <div className="flex flex-wrap items-center gap-1" data-testid="ai-context-chips" aria-label="随对话发送的案卷上下文" role="group">
         <Chip pressed={useBook} onClick={() => setUseBook(!useBook)} testId="ai-chip-book">
           当前书：{BOOK_LABELS[book]}
+          <span className="ml-1 text-fg-muted">≈{splitBooks(content).books[book]?.text.length ?? 0}字</span>
         </Chip>
         {sel && (
           <Chip pressed={useSel} onClick={() => setUseSel(!useSel)} testId="ai-chip-selection" onRemove={clearSelection}>
-            选区 · {selectionLabel(sel, ast, content)}
+            选区 · {selectionLabel(sel, ast, content)} · {sel.text.length}字
             <span className="ml-1 max-w-36 truncate text-fg-muted" aria-hidden>
               {sel.text.replace(/\s+/g, ' ').trim().slice(0, 24)}
             </span>
           </Chip>
         )}
+        <VersionTag />
       </div>
+      {scopeNote && (
+        <p role="status" className="rounded-sm bg-warn-bg px-2 py-1 text-2xs text-warn-fg" data-testid="ai-scope-note">
+          {scopeNote}
+        </p>
+      )}
       {attachments.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1" data-testid="ai-attach-chips" aria-label="待发送附件">
+        <div className="flex flex-wrap items-center gap-1" data-testid="ai-attach-chips" aria-label="上下文材料（发送后即授权范围）">
           {attachments.map((a) => (
             <span key={a.name} className="inline-flex items-stretch">
               <span className="inline-flex h-xs-control max-w-56 items-center gap-1 rounded-l-full border border-brand-300 bg-selected px-2.5 text-2xs text-fg-strong">
                 <FileText className="size-3 shrink-0" aria-hidden />
                 <span className="truncate" title={a.name}>{a.name}</span>
-                <span className="shrink-0 text-fg-muted">{a.chars}字{a.truncated ? '·截断' : ''}</span>
+                <span className="shrink-0 text-fg-muted">{a.chars}字{a.truncated ? '·截断' : ''}{a.sent ? '·已授权' : ''}</span>
               </span>
               <button
                 type="button"
                 onClick={() => removeAttachment(a.name)}
-                aria-label={`移除附件 ${a.name}`} title={`移除附件 ${a.name}`}
+                aria-label={`移除附件 ${a.name}`} title={`移除附件 ${a.name}（已授权的会撤销授权并清空对话）`}
                 className={cn(touchHit, 'inline-flex size-xs-control items-center justify-center rounded-r-full border border-l-0 border-border text-fg-muted hover:text-fg', FOCUS_RING)}
                 data-testid={`ai-attach-rm-${a.name}`}
               >
@@ -186,7 +235,7 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
                 id={id}
                 checked={packs[p.key]}
                 disabled={n === 0}
-                onCheckedChange={(v) => setPacks((prev) => ({ ...prev, [p.key]: v }))}
+                onCheckedChange={(v) => setPacks({ ...packs, [p.key]: v === true })}
                 aria-describedby={n === 0 ? `${id}-empty` : undefined}
                 data-testid={id}
               />
@@ -566,6 +615,31 @@ function Chip({
           <X className="size-3" aria-hidden />
         </button>
       )}
+    </span>
+  )
+}
+
+/** P05：发送范围绑定的版本标识——内容 sha 短 8 位 + 案卷 pid。
+   真值 = 服务端已存正文（ai_chat 按 read_content 盖章）：优先本地已验证 savedSha
+   （随 saved 切案重置），空时仅回退同案 context 快照；本地未保存修改另行标注。 */
+function VersionTag() {
+  const sha = useStudio(selectBoundSha)
+  const pid = useStudio((s) => s.pid)
+  const dirty = useStudio(selectDirty)
+  const v = sha.slice(0, 8)
+  if (!pid || !v) return null
+  return (
+    <span
+      className="ml-auto inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 font-mono text-2xs text-fg-subtle"
+      title={
+        dirty
+          ? `本轮上下文绑定案卷 ${pid} · 服务端已存版本 ${v}（本地未保存修改不在上下文内）`
+          : `本轮上下文绑定案卷 ${pid} · 版本 ${v}`
+      }
+      data-testid="ai-scope-version"
+    >
+      {pid}@{v}
+      {dirty ? '·未存' : ''}
     </span>
   )
 }

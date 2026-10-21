@@ -32,7 +32,7 @@ export const BOOK_VIEWS: readonly BookView[] = ['abstract', 'claims', 'descripti
 export type PanelId = string
 
 /** 预置布局（layout/presets.ts）：默认「源码 | PDF」/ 三书对照 / 权利要求书 ↔ 说明书 / 结构 | PDF / 审阅（全文源码 | PDF，审阅面板在伴随栏）/ AI 辅助 */
-export const LAYOUT_PRESET_IDS = ['default', 'three-books', 'claims-description', 'layout-pdf', 'review', 'ai-assist'] as const
+export const LAYOUT_PRESET_IDS = ['casework', 'default', 'three-books', 'claims-description', 'layout-pdf', 'review', 'ai-assist'] as const
 export type LayoutPresetId = (typeof LAYOUT_PRESET_IDS)[number]
 
 export interface OpenPanelOptions {
@@ -103,6 +103,8 @@ export interface LayoutSlice {
   focusNextPanel(dir: 1 | -1): void
   toggleMaximize(id?: PanelId): void
   applyPreset(id: LayoutPresetId): void
+  /** C1/P04：案卷工作区一键三栏（dock 预设 + 左栏 + Agent 伴随栏）；布局不支持时 applyPreset 自身 fail-soft */
+  openCasework(): void
   resetLayout(): void
   setCompareLock(on?: boolean): void
   setActiveBook(book: BookView): void
@@ -195,6 +197,14 @@ export const layoutSlice: Slice<LayoutSlice> = (set, get) => ({
     set({ layoutPreset: 'ai-assist', compareLock: false })
     get().dockHandle?.resetLayout()
     get().bumpDockRevision()
+  },
+  openCasework: () => {
+    /* C1/P04：案卷协作三栏——dock 中正文满列（PDF 按需），左栏文件/材料 + 右栏 Agent 伴随栏同上下文展开。
+       复核11：sideFilesCollapsed 持久态可能收着案卷文件块——显式展开保证材料入口真实可见可达。 */
+    get().applyPreset('casework')
+    if (!get().sideOpen) get().toggleSide(true)
+    set({ sideFilesCollapsed: false, railTab: 'outline' })
+    get().openCompanion('ai')
   },
   setCompareLock: (on) => set((s) => ({ compareLock: on ?? !s.compareLock })),
   setRightRailOpen: (on) => {

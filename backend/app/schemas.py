@@ -260,6 +260,8 @@ OrgAuditKind = Literal[
     "share.confirmed",
     "export.downloaded",
     "ai.sent",
+    "ai.egress_toggle",
+    "org.ai_policy",
     "deliver.filed",
     "oa.round",
     "deadline.done",

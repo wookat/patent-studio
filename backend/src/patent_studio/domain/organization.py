@@ -23,6 +23,7 @@ from sqlalchemy import (
     Uuid,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from patent_studio.infra.db import Base
@@ -44,6 +45,9 @@ class Organization(Base):
     slug: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active", server_default="active")
+    # C0/P03 机构外发授权记录：{ai_egress, training_consent, note, version, updated_by, updated_at}
+    # NULL = 未配置（不禁止）
+    egress_policy: Mapped[dict | None] = mapped_column(JSONB(), nullable=True)
     created_by_principal_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("principals.id", ondelete="RESTRICT"), nullable=False
     )

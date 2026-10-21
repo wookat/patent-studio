@@ -357,16 +357,18 @@ class AiClient:
         temperature: float = 0.0,
         job_id: str | None = None,
         user: str | None = None,
+        guard=None,
     ):
         """async with _SEM → 主模型 → 重试 1 次（仅 retryable）→ swe-2-high → AiError。
-        stream=False 返回 ChatResult；stream=True 返回 ChatStream（AsyncIterator[str]，全程持有 _SEM）。"""
+        stream=False 返回 ChatResult；stream=True 返回 ChatStream（AsyncIterator[str]，全程持有 _SEM）。
+        guard：机构外发运行中门（P03/R2）——每次真实上游调用前重查，撤销即零新上游。"""
         if not self.key_present:
             raise AiError("no_key", "未配置 PATENT_STUDIO_AI_KEY，无法调用 AI 中转站", 503)
         if stream:
             cs = ChatStream(None)
-            cs._agen = self._stream(cs, messages, purpose, project_dir, max_tokens, temperature, job_id, user)
+            cs._agen = self._stream(cs, messages, purpose, project_dir, max_tokens, temperature, job_id, user, guard)
             return cs
-        return await self._complete(messages, purpose, project_dir, max_tokens, temperature, job_id, user)
+        return await self._complete(messages, purpose, project_dir, max_tokens, temperature, job_id, user, guard)
 
     def _meta(self, messages, purpose, project_dir, stream, job_id, user):
         return {
@@ -379,7 +381,9 @@ class AiClient:
             "user": user,
         }
 
-    async def _complete(self, messages, purpose, project_dir, max_tokens, temperature, job_id, user) -> ChatResult:
+    async def _complete(
+        self, messages, purpose, project_dir, max_tokens, temperature, job_id, user, guard=None
+    ) -> ChatResult:
         meta = self._meta(messages, purpose, project_dir, False, job_id, user)
         timeout = TIMEOUTS[purpose]
         async with _SEM:
@@ -393,6 +397,8 @@ class AiClient:
                 if last is not None and not fallback:
                     await self._backoff(retries)
                     retries += 1
+                if guard is not None:
+                    await guard()  # 重试链上每次新上游前重查机构外发门
                 t0 = time.monotonic()
                 try:
                     text, usage = await self.provider.complete(
@@ -420,7 +426,9 @@ class AiClient:
             assert last is not None
             raise last
 
-    async def _stream(self, cs: ChatStream, messages, purpose, project_dir, max_tokens, temperature, job_id, user):
+    async def _stream(
+        self, cs: ChatStream, messages, purpose, project_dir, max_tokens, temperature, job_id, user, guard=None
+    ):
         meta = self._meta(messages, purpose, project_dir, True, job_id, user)
         timeout = TIMEOUTS[purpose]
         async with _SEM:
@@ -434,6 +442,8 @@ class AiClient:
                 if last is not None and not fallback:
                     await self._backoff(retries)
                     retries += 1
+                if guard is not None:
+                    await guard()  # 同上：stream 重试链每次新上游前重查
                 t0 = time.monotonic()
                 parts: list[str] = []
                 usage = Usage()
@@ -483,13 +493,20 @@ class AiClient:
         max_tokens: int | None = None,
         temperature: float = 0.0,
         user: str | None = None,
+        guard=None,
     ) -> "ToolResult":
         """tool-loop 单轮：与 _complete 同链（主模型→重试→fallback），返回 assistant message 原样
         （content + 可选 tool_calls）。provider 不支持 tools（如 mock）⇒ 退化为纯文本轮。"""
         fn = getattr(self.provider, "complete_tools", None)
         if fn is None:
             r = await self.chat(
-                messages, purpose, project_dir=project_dir, max_tokens=max_tokens, temperature=temperature, user=user
+                messages,
+                purpose,
+                project_dir=project_dir,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                user=user,
+                guard=guard,
             )
             return ToolResult(
                 message={"role": "assistant", "content": r.text},
@@ -513,6 +530,8 @@ class AiClient:
                 if last is not None and not fallback:
                     await self._backoff(retries)
                     retries += 1
+                if guard is not None:
+                    await guard()  # tool-loop 重试链每次新上游前重查
                 t0 = time.monotonic()
                 try:
                     msg, usage = await fn(
