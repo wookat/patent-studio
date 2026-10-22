@@ -165,10 +165,11 @@ export function OaPanel() {
     if (isDesktop) s.setRailTab('review')
     else s.openMobileNav('review')
   }
+  /** 与 CommentCard「转提案」同一路径：伴随栏 / 底栏 AI 页签 */
   const openAiPanel = () => {
     const s = useStudio.getState()
-    if (isDesktop) s.setRailTab('ai')
-    else s.openMobileNav('ai')
+    if (isDesktop) s.openCompanion('ai')
+    else s.setMobileTab('ai')
   }
 
   /** W5 R-OA-03：S7 争辩稿 → Proposal；成功后切到 AI 面板「建议」tab（任务进行中时在「任务与历史」可见） */

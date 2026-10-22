@@ -8,6 +8,7 @@ import { useStudio } from '@/store'
 import type { Comment } from '@/lib/types'
 import type { Proposal } from '@/types/agent'
 import { CommentCard } from '../CommentCard'
+import { AiProposals } from '@/components/ai/AiProposals'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -32,6 +33,10 @@ beforeEach(() => {
     authStatus: 'off',
     user: null,
     agentTab: 'chat',
+    companion: null,
+    mobileTab: 'edit',
+    reviewDrawerOpen: false,
+    pendingProposalId: null,
     replyBodies: {},
   })
 })
@@ -100,6 +105,60 @@ describe('Z18 批注 → 修改提案（前端入口）', () => {
     expect(spy).toHaveBeenCalledWith('p1', 'c1')
     expect(useStudio.getState().proposals.map((p) => p.id)).toEqual(['prop_1'])
     expect(useStudio.getState().agentTab).toBe('proposals')
+    // T1：桌面开 AI 伴随栏（不再走已映射回大纲的 railTab('ai')），并标记待定位提案
+    expect(useStudio.getState().companion).toBe('ai')
+    expect(useStudio.getState().pendingProposalId).toBe('prop_1')
+  })
+
+  it('移动端（matchMedia 不匹配桌面）：转提案 → 底栏切 AI 页签，审阅 Sheet / 抽屉不再盖在上面', async () => {
+    const mm = vi.spyOn(window, 'matchMedia').mockImplementation((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList)
+    useStudio.setState({ reviewDrawerOpen: true, mobileNav: { open: true, tab: 'outline' }, moreOpen: true })
+    const spy = vi.spyOn(api, 'commentToProposal').mockResolvedValue({
+      job: { id: 'job_x', kind: 'comment2proposal', pid: 'p1', status: 'done', progress: 1, message: '', result: null, error: null, created_at: 0, updated_at: 0 },
+      proposal,
+    })
+    const el = await mount(
+      <CommentCard pid="p1" comment={comment()} active={false} atCursor={false} desktop={false} busy={false} onLocate={() => {}} run={run} />,
+    )
+    await act(async () => el.querySelector<HTMLButtonElement>('[data-testid="review-to-proposal-c1"]')!.click())
+    expect(spy).toHaveBeenCalled()
+    const s = useStudio.getState()
+    expect(s.mobileTab).toBe('ai')
+    expect(s.agentTab).toBe('proposals')
+    expect(s.reviewDrawerOpen).toBe(false)
+    expect(s.mobileNav.open).toBe(false)
+    expect(s.moreOpen).toBe(false)
+    expect(s.pendingProposalId).toBe('prop_1')
+    mm.mockRestore()
+  })
+
+  it('已有关联提案的批注显示「查看建议」回链，点击定位到同一条提案', async () => {
+    useStudio.setState({ proposals: [proposal] })
+    const el = await mount(
+      <CommentCard pid="p1" comment={comment()} active={false} atCursor={false} desktop busy={false} onLocate={() => {}} run={run} />,
+    )
+    const backlink = el.querySelector<HTMLButtonElement>('[data-testid="review-goto-proposal-c1"]')!
+    expect(backlink).toBeTruthy()
+    await act(async () => backlink.click())
+    const s = useStudio.getState()
+    expect(s.companion).toBe('ai')
+    expect(s.agentTab).toBe('proposals')
+    expect(s.pendingProposalId).toBe('prop_1')
+  })
+
+  it('pendingProposalId 落到建议 tab：消费标记并给目标卡短暂高亮（data-flash）', async () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    useStudio.setState({ proposals: [proposal], pendingProposalId: 'prop_1' })
+    const el = await mount(<AiProposals pid="p1" compact={false} canAct />)
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 60))
+    })
+    const card = el.querySelector('[data-testid="ai-proposal-prop_1"]')!
+    expect(card).toBeTruthy()
+    expect(scroll).toHaveBeenCalled()
+    expect(card.getAttribute('data-flash')).toBe('true')
+    expect(useStudio.getState().pendingProposalId).toBeNull()
   })
 
   it('AI 未开启 → 不显示入口', async () => {

@@ -82,14 +82,18 @@ export function gotoReview(): void {
   }
 }
 
-/** Z18/Z25：跳到 AI 面板「建议」tab（桌面 Rail · 移动 NavDrawer 与 gotoReview 同口径） */
+/** Z18/Z25：跳到 AI 面板「建议」tab——桌面开伴随栏 ai，移动切底栏 AI 页签并放下盖在上面的层（审阅 Sheet / 导航抽屉 / 更多） */
 export function gotoAiProposals(): void {
   const s = useStudio.getState()
   s.setAgentTab('proposals')
   if (window.matchMedia(DESKTOP_QUERY).matches) {
-    if (s.railTab !== 'ai' || !s.outlineOpen) s.setRailTab('ai')
+    s.openCompanion('ai')
   } else {
-    s.openMobileNav('ai')
+    if (s.reviewDrawerOpen) s.setReviewDrawerOpen(false)
+    if (s.rightRailSheetOpen) s.setRightRailSheetOpen(false)
+    if (s.mobileNav.open) s.closeMobileNav()
+    if (s.moreOpen) s.toggleMore(false)
+    s.setMobileTab('ai')
   }
 }
 

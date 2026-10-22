@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Check, CornerDownRight, Crosshair, RotateCcw, Trash2, Wand2 } from 'lucide-react'
+import { Check, CornerDownRight, Crosshair, RotateCcw, Sparkles, Trash2, Wand2 } from 'lucide-react'
 import { useStudio, selectAiEnabled } from '@/store'
 import { canMutateComment, commentSource } from '@/store/comments'
 import { COMMENT_BODY_MAX, type Comment } from '@/lib/types'
@@ -44,6 +44,9 @@ export function CommentCard({ pid, comment: c, active, atCursor, desktop, busy, 
   const canResolve = useStudio((s) => canMutateComment(s, c, 'reviewer'))
   const canDelete = useStudio((s) => canMutateComment(s, c, 'editor'))
   const commentToProposal = useStudio((s) => s.commentToProposal)
+  const focusProposal = useStudio((s) => s.focusProposal)
+  // 这条批注已生成的提案（既有 source.comment_id 关联，不建新模型）→ 「查看建议」回链
+  const linkedProposalId = useStudio((s) => s.proposals.find((p) => p.source?.kind === 'comment' && p.source.comment_id === c.id)?.id ?? null)
   const toast = useStudio((s) => s.toast)
   const aiEnabled = useStudio(selectAiEnabled)
   // 批70：回复表单存 store——宿主（Tab/Drawer/Rail）卸载不再静默丢稿；key 在 = 开着
@@ -198,14 +201,29 @@ export function CommentCard({ pid, comment: c, active, atCursor, desktop, busy, 
                 void run(async () => {
                   const prop = await commentToProposal(pid, c.id)
                   if (prop) {
-                    toast('已生成修改建议，请在「建议」面板确认', 'success')
+                    focusProposal(prop.id)
                     gotoAiProposals()
+                    toast('已生成修改建议——已在「建议」面板定位到它', 'success')
                   }
                 }, '转修改提案失败')
               }
               data-testid={`review-to-proposal-${c.id}`}
             >
               <Wand2 aria-hidden />转提案
+            </Button>
+          )}
+          {!collapsed && linkedProposalId && (
+            <Button
+              size={ctlSize}
+              variant="ghost"
+              title="打开「建议」面板并定位到由本批注生成的提案"
+              onClick={() => {
+                focusProposal(linkedProposalId)
+                gotoAiProposals()
+              }}
+              data-testid={`review-goto-proposal-${c.id}`}
+            >
+              <Sparkles aria-hidden />查看建议
             </Button>
           )}
           <Button
