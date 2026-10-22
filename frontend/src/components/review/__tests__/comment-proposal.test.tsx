@@ -161,6 +161,21 @@ describe('Z18 批注 → 修改提案（前端入口）', () => {
     expect(useStudio.getState().pendingProposalId).toBeNull()
   })
 
+  it('五操作全在时行允许换行（flex-wrap），且每个按钮有可访问名称——窄栏（~300px）不再溢出截断', async () => {
+    useStudio.setState({ proposals: [proposal] })
+    const el = await mount(
+      <CommentCard pid="p1" comment={comment()} active={false} atCursor={false} desktop busy={false} onLocate={() => {}} run={run} />,
+    )
+    const backlink = el.querySelector<HTMLButtonElement>('[data-testid="review-goto-proposal-c1"]')!
+    const row = backlink.parentElement!
+    expect(row.className).toContain('flex-wrap')
+    // 回复 / 转提案 / 查看建议 / 解决 / 删除 全在该行，每个都有可访问名称（文本或 aria-label）
+    const names = [...row.querySelectorAll('button')].map((b) => b.textContent?.trim() || b.getAttribute('aria-label') || '')
+    expect(names.filter(Boolean).length).toBe(row.querySelectorAll('button').length)
+    expect(names).toContain('删除批注')
+    expect(names.join('')).toContain('查看建议')
+  })
+
   it('AI 未开启 → 不显示入口', async () => {
     useStudio.setState({ settings: { ai_enabled: false } as never })
     const el = await mount(

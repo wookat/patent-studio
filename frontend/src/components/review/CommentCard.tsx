@@ -183,7 +183,7 @@ export function CommentCard({ pid, comment: c, active, atCursor, desktop, busy, 
           </div>
         </form>
       ) : (
-        <div className="flex items-center gap-0.5">
+        <div className="flex flex-wrap items-center gap-0.5">
           {!collapsed && (
             <Button ref={replyBtn} size={ctlSize} variant="ghost" onClick={() => setReplyBody(c.id, '')} data-testid="review-reply-open">
               <CornerDownRight aria-hidden />回复
