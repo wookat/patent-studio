@@ -5,7 +5,7 @@ import { OaPanel } from '@/components/oa/OaPanel'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown'
 import { api } from '@/lib/api'
 import { FOCUS_RING, cn, touchHit } from '@/lib/utils'
-import { useStudio } from '@/store'
+import { selectDevUser, useStudio } from '@/store'
 import { ConsoleEntry } from './ConsoleEntry'
 import { ConsoleSummary } from './ConsoleSummary'
 import { ConsoleTabs } from './ConsoleTabs'
@@ -152,6 +152,7 @@ export function ConsoleFooter({ variant = 'desktop' }: { variant?: 'desktop' | '
   const xml = useStudio((s) => s.xmlResult)
   const phase = useStudio((s) => s.phase)
   const resetBuild = useStudio((s) => s.resetBuild)
+  const devUser = useStudio(selectDevUser)
   const enqueue = useStudio((s) => s.enqueue)
   const toast = useStudio((s) => s.toast)
   const buildId = lastOk?.build_id ?? null
@@ -166,20 +167,22 @@ export function ConsoleFooter({ variant = 'desktop' }: { variant?: 'desktop' | '
 
   return (
     <div className={cn('flex shrink-0 items-center justify-end gap-2 border-t border-border px-2 text-xs', mobile ? 'h-13' : 'h-panel-header')} data-testid="console-footer">
-      <button
-        type="button"
-        className={cn(
-          'inline-flex items-center gap-1 rounded-sm border border-border text-danger-fg hover:bg-danger-bg disabled:opacity-50',
-          FOCUS_RING,
-          btnSize,
-        )}
-        onClick={clearCache}
-        disabled={!pid || busy}
-        title="丢弃缓存的 DOCX / PDF 并重新构建"
-        data-testid="console-clear-cache"
-      >
-        <Trash2 className="size-3" aria-hidden /> 清除构建缓存
-      </button>
+      {devUser && (
+        <button
+          type="button"
+          className={cn(
+            'inline-flex items-center gap-1 rounded-sm border border-border text-danger-fg hover:bg-danger-bg disabled:opacity-50',
+            FOCUS_RING,
+            btnSize,
+          )}
+          onClick={clearCache}
+          disabled={!pid || busy}
+          title="丢弃缓存的 DOCX / PDF 并重新构建（维护向）"
+          data-testid="console-clear-cache"
+        >
+          <Trash2 className="size-3" aria-hidden /> 清除构建缓存
+        </button>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button

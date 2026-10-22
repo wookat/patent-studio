@@ -115,6 +115,8 @@ export interface ChatContext {
   diagnostics?: string[]
   /** 随消息附带的资料文本（后端拼进 context 尾部，截断先裁它） */
   attachments?: { name: string; text: string }[]
+  /** 案内材料按名引用——服务端自抽文本（不信客户端）；实际放行由 scope.materials 白名单收窄 */
+  materials?: string[]
 }
 
 /** /ai/chat resume 续跑体（确认卡裁决后透传 resume + approved） */

@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useStudio } from '@/store'
 import { queryClient } from '@/lib/query'
-import { MaterialsCompanionBody, ProposalsCompanionBody } from '../PlatformCompanion'
+import { MaterialsCompanionBody, ProposalsCompanionBody, RunsCompanionBody } from '../PlatformCompanion'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -26,7 +26,7 @@ const FACTS = [
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-function mockApi(opts: { cases?: unknown; casesStatus?: number } = {}) {
+function mockApi(opts: { cases?: unknown; casesStatus?: number; runs?: unknown } = {}) {
   const calls: string[] = []
   vi.stubGlobal(
     'fetch',
@@ -38,6 +38,7 @@ function mockApi(opts: { cases?: unknown; casesStatus?: number } = {}) {
       if (url === '/api/v1/cases/c1/proposals') return json(PROPOSALS)
       if (url === '/api/v1/cases/c1/materials') return json(MATERIALS)
       if (url === '/api/v1/cases/c1/facts') return json(FACTS)
+      if (url === '/api/v1/cases/c1/runs') return json(opts.runs ?? [])
       return json({ detail: 'not found' }, 404)
     }),
   )
@@ -46,6 +47,7 @@ function mockApi(opts: { cases?: unknown; casesStatus?: number } = {}) {
 
 beforeAll(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
+  window.matchMedia = (q: string) => ({ matches: true, media: q, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList
 })
 
 beforeEach(() => {
@@ -91,6 +93,17 @@ describe('M4 工作台伴随栏：平台案件作用域', () => {
     // 已确认事实无操作按钮
     expect(q('[data-testid="fact-confirm-f2"]')).toBeNull()
     expect(q('[data-testid="fact-f2"]')?.textContent).toContain('已确认')
+  })
+
+  it('T9：runs 空态说明「运行 vs AI 任务」区别并给跳链；点击 → AI 面板任务页', async () => {
+    mockApi({ runs: [] })
+    await mount(<RunsCompanionBody />)
+    await vi.waitFor(() => expect(q('[data-testid="runs-empty"]')).not.toBeNull())
+    expect(q('[data-testid="runs-empty"]')?.textContent).toContain('平台运行')
+    expect(q('[data-testid="runs-empty"]')?.textContent).toContain('任务')
+    await act(async () => (q('[data-testid="runs-goto-agent-jobs"]') as HTMLElement).click())
+    expect(useStudio.getState().agentTab).toBe('jobs')
+    expect(useStudio.getState().companion).toBe('ai')
   })
 
   it('纯旧案（cases 里无同 key）→ 未迁移空态，不报错', async () => {

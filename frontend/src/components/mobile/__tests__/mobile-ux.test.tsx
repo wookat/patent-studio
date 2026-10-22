@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccountPage } from '@/components/account/AccountPage'
 import { AiPanel } from '@/components/ai/AiPanel'
+import { clearSelection, publishSelection } from '@/components/ai/aiModel'
 import { ConsoleEntry } from '@/components/console/ConsoleEntry'
 import { ConsolePanel } from '@/components/console/ConsolePanel'
 import { DashboardPage } from '@/components/dashboard/DashboardPage'
@@ -154,12 +155,9 @@ describe('ux-01 / ux-02 移动控制台', () => {
       expect(b.className).toContain('in-data-[density=touch]:h-sm-control')
       expect(b.className).not.toMatch(/h-touch/)
     }
-    // 列表主行（标题区定位）保持 44；右侧圆形定位图标 sm 32 + touch-hit
+    // 列表主行（标题区定位）保持 44——每条仅此一个定位入口（T2：重复的右侧圆形定位钮已删）
     expect(q('[data-testid="console-entry-locate"]', el)!.className).toContain('in-data-[variant=mobile]:min-h-touch')
-    const goto = q('[data-testid="console-entry-goto"]', el)!
-    expect(goto.className).toContain('touch-hit')
-    expect(goto.className).toContain('in-data-[variant=mobile]:size-sm-control')
-    expect(goto.className).not.toMatch(/size-touch/)
+    expect(q('[data-testid="console-entry-goto"]', el)).toBeNull()
   })
 })
 
@@ -193,6 +191,8 @@ describe('桌面（≥md）视觉不变：qa-06 / qa-07 / qa-08', () => {
   it('qa-07 AI 快捷动作 桌面：flex-wrap gap-1 容器（非 ScrollRow）+ chip flex-1，无 rounded-full / disabled:bg-transparent；触控才是 ScrollRow 胶囊', async () => {
     desktop = true
     useStudio.setState({ aiRuntime: { enabled: true, provider: 'mock', reachable: true }, aiEnabled: true, selection: null } as never)
+    // T6：改写钮仅在存在选区时渲染
+    publishSelection({ from: 0, to: 5, lineStart: 1, lineEnd: 2, text: '一种装置。', rect: null })
     let el = await mount(<AiPanel />)
     let row = q('[data-testid="ai-quick-row"]', el)!
     expect(row.getAttribute('data-slot')).toBeNull()
@@ -215,6 +215,7 @@ describe('桌面（≥md）视觉不变：qa-06 / qa-07 / qa-08', () => {
       expect(c.className).toContain('rounded-full')
       expect(c.className).not.toContain('flex-1')
     }
+    clearSelection()
   })
 
   it('qa-08 CriticHint 桌面 leading-5 / 触控 leading-7；W9 ux-09 不含 CriticMarkup 语法', async () => {

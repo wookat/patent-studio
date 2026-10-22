@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { fmtTokens } from '@/lib/format'
 import { api, ApiError } from '@/lib/api'
 import type { AgentMetrics } from '@/lib/api/ai'
-import { AlertTriangle, CheckCircle2, ChevronRight, ClipboardList, FileText, ListTodo, RotateCcw, Scissors, Wrench, XCircle, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, FileText, ListTodo, RotateCcw, Scissors, Wrench, XCircle, type LucideIcon } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { EmptyState , NOT_IMPLEMENTED_TITLE } from '@/components/ui/empty-state'
 import { Progress } from '@/components/ui/progress'
 import { FOCUS_RING, cn } from '@/lib/utils'
@@ -69,8 +70,22 @@ export function AiJobsTab({ pid, compact }: { pid: string | null; compact: boole
 
   return (
     <div className="flex flex-col gap-3" data-testid="ai-jobs-tab">
-      <BudgetBar pid={pid} />
-      <MetricsCard pid={pid} refreshKey={jobs.length + ':' + jobs.filter((j) => j.status === 'done' || j.status === 'error' || j.status === 'interrupted').length} />
+      {/* 用量/成果度量降为默认折叠的详情区（数据保留，展开才拉取），任务列表是主体 */}
+      <Collapsible defaultOpen={false} data-testid="ai-usage-stats">
+        <CollapsibleTrigger
+          className={cn('inline-flex h-xs-control items-center gap-1 self-start rounded-xs text-2xs text-fg-subtle hover:text-fg [&[aria-expanded=true]>svg]:rotate-180', FOCUS_RING)}
+          data-testid="ai-usage-toggle"
+        >
+          <ChevronDown className="size-3 transition-transform duration-(--dur-fast)" aria-hidden />
+          用量与度量
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="flex flex-col gap-3 pt-2">
+            <BudgetBar pid={pid} />
+            <MetricsCard pid={pid} refreshKey={jobs.length + ':' + jobs.filter((j) => j.status === 'done' || j.status === 'error' || j.status === 'interrupted').length} />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
       {unavailable ? (
         <EmptyState size="sm" icon={ListTodo} title={NOT_IMPLEMENTED_TITLE} reason="智能体任务接口尚未落地。" data-testid="ai-jobs-unavailable" />
       ) : jobs.length === 0 && !loading ? (

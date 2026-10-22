@@ -24,6 +24,8 @@ export interface AgentSlice {
   agentTab: AgentTab
   /** 用户本轮案域内显式点过 AI 页签——置位后 loadAgent 不再自动跳「建议」（C1/P07） */
   agentTabTouched: boolean
+  /** 待定位高亮的提案 id（批注转提案 / 批注卡「查看建议」）；AiProposals 消费后置 null */
+  pendingProposalId: string | null
   agentJobs: AgentJob[]
   /** 任务 tab 当前选中（时间线展示）的 job */
   agentActiveJobId: string | null
@@ -43,6 +45,10 @@ export interface AgentSlice {
   agentBudget: AgentBudget | null
 
   setAgentTab(tab: AgentTab): void
+  /** 标记一条提案待定位：建议 tab 滚动到它并短暂高亮 */
+  focusProposal(id: string): void
+  /** 定位消费完成（已高亮或提案不存在）后清掉标记 */
+  consumePendingProposal(): void
   loadAgent(pid: string): Promise<void>
   loadAgentBudget(pid: string): Promise<void>
   runScenario(pid: string, scenario: Scenario, params?: AgentRunIn['params']): Promise<AgentJob | null>
@@ -65,6 +71,7 @@ export interface AgentSlice {
 const INITIAL = {
   agentTab: 'chat' as AgentTab,
   agentTabTouched: false,
+  pendingProposalId: null as string | null,
   agentJobs: [] as AgentJob[],
   agentActiveJobId: null as string | null,
   agentEvents: {} as Record<string, StepEvent[]>,
@@ -294,6 +301,9 @@ export const agentSlice: Slice<AgentSlice> = (set, get) => {
     ...INITIAL,
 
     setAgentTab: (agentTab) => set({ agentTab, agentTabTouched: true }),
+
+    focusProposal: (id) => set({ pendingProposalId: id }),
+    consumePendingProposal: () => set({ pendingProposalId: null }),
 
     loadAgent: async (pid) => {
       set({ agentLoading: true, agentError: null })

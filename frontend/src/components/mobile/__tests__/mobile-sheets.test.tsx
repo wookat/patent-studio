@@ -3,6 +3,7 @@ import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AiPanel } from '@/components/ai/AiPanel'
+import { clearSelection, publishSelection } from '@/components/ai/aiModel'
 import { MembersSection } from '@/components/collab-center/MembersSection'
 import { BookSwitcher } from '../BookSwitcher'
 import { MobilePreview } from '../MobilePreview'
@@ -169,6 +170,8 @@ describe('工作台移动壳', () => {
 describe('AI Sheet', () => {
   it('状态行单行 nowrap；四 Tab md；快捷动作 sm chip 一行 ScrollRow（disabled 只变前景，不留灰块）；附带上下文一行；发送 icon-md', async () => {
     useStudio.setState({ aiRuntime: { enabled: true, provider: 'mock', reachable: true }, aiEnabled: true, selection: null } as never)
+    // T6：改写钮仅在存在选区时渲染
+    publishSelection({ from: 0, to: 5, lineStart: 1, lineEnd: 2, text: '一种装置。', rect: null })
     const el = await mount(<AiPanel />)
     const status = q('[data-testid="ai-status"]', el)!
     expect(status.firstElementChild!.className).toContain('whitespace-nowrap')
@@ -192,6 +195,7 @@ describe('AI Sheet', () => {
     expect(packs.className).not.toContain('flex-wrap')
     expect(all('[data-slot="checkbox"]', packs).length).toBeGreaterThanOrEqual(3)
     expectCompactHit(q('[data-testid="ai-chat-send"]', el) ?? q('button[aria-label*="发送"]', el), 'md')
+    clearSelection()
   })
 })
 
