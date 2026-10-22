@@ -108,6 +108,12 @@ export function gotoAiChat(): void {
   openAiPanelHost()
 }
 
+/** 「运行」空态回链：跳到 AI 面板「任务」tab */
+export function gotoAiJobs(): void {
+  useStudio.getState().setAgentTab('jobs')
+  openAiPanelHost()
+}
+
 // ---- 编辑器选区（Editor → SelectionActionBar 推送；AiPanel 上下文芯片读取） ----
 
 let lastSelection: EditorSelectionInfo | null = null

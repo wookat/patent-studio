@@ -14,6 +14,7 @@ import { workbenchApi } from '@/workbench/api'
 import { workbenchKeys, useWorkbenchMutations } from '@/workbench/queries'
 import type { PlatformCase } from '@/workbench/types'
 import { ProposalsPanel } from '@/components/workbench/WorkbenchPage'
+import { gotoAiJobs } from '@/components/ai/aiModel'
 
 /**
  * B17 M4：工作台伴随栏平台面板（`?panel=proposals|materials`）。
@@ -191,7 +192,12 @@ function RunsList({ caseItem }: { caseItem: PlatformCase }) {
           ))}
         </ul>
       ) : (
-        <p className="text-sm text-fg-muted" data-testid="runs-empty">本案暂无运行记录</p>
+        <div className="text-sm text-fg-muted" data-testid="runs-empty">
+          <p>本案暂无运行记录。</p>
+          {/* T9：「运行」= 平台侧协作批处理；AI 面板里的对话/改写/审阅任务不在这里 */}
+          <p className="mt-1 text-xs">这里记录本案平台运行（查新、撰写等后台流程）；AI 面板的对话、改写与审阅任务在「任务」页。</p>
+          <Button size="xs" variant="secondary" className="mt-2" onClick={gotoAiJobs} data-testid="runs-goto-agent-jobs">查看 AI 任务</Button>
+        </div>
       )}
     </div>
   )
