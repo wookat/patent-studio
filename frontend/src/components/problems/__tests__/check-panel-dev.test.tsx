@@ -49,7 +49,7 @@ async function mount(el: ReactElement) {
 
 describe('T3 开发维护项默认不出现在办案界面（dev 构建或超管可见）', () => {
   it('非 dev（DEV 关 + 非超管）：CheckPanel 不渲染仓库回归、控制台底脚无清除构建缓存、构建菜单无该项', async () => {
-    vi.stubEnv('DEV', '')
+    vi.stubEnv('DEV', false)
     const el = await mount(
       <>
         <CheckPanel />
@@ -71,7 +71,7 @@ describe('T3 开发维护项默认不出现在办案界面（dev 构建或超管
   })
 
   it('超管（非 dev 构建）：维护项仍可见', async () => {
-    vi.stubEnv('DEV', '')
+    vi.stubEnv('DEV', false)
     useStudio.setState({ user: { is_superuser: true } as never })
     const el = await mount(<CheckPanel />)
     expect(el.querySelector('[data-testid="check-all-section"]')).toBeTruthy()
