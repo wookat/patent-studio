@@ -82,10 +82,9 @@ export function gotoReview(): void {
   }
 }
 
-/** Z18/Z25：跳到 AI 面板「建议」tab——桌面开伴随栏 ai，移动切底栏 AI 页签并放下盖在上面的层（审阅 Sheet / 导航抽屉 / 更多） */
-export function gotoAiProposals(): void {
+/** 打开 AI 面板宿主：桌面开伴随栏 ai；移动切底栏 AI 页签并放下盖在上面的层（审阅 Sheet / 导航抽屉 / 更多） */
+function openAiPanelHost(): void {
   const s = useStudio.getState()
-  s.setAgentTab('proposals')
   if (window.matchMedia(DESKTOP_QUERY).matches) {
     s.openCompanion('ai')
   } else {
@@ -95,6 +94,18 @@ export function gotoAiProposals(): void {
     if (s.moreOpen) s.toggleMore(false)
     s.setMobileTab('ai')
   }
+}
+
+/** Z18/Z25：跳到 AI 面板「建议」tab */
+export function gotoAiProposals(): void {
+  useStudio.getState().setAgentTab('proposals')
+  openAiPanelHost()
+}
+
+/** 附件预览「带入 Agent」：跳到 AI 面板「对话」tab（chip 就在那里） */
+export function gotoAiChat(): void {
+  useStudio.getState().setAgentTab('chat')
+  openAiPanelHost()
 }
 
 // ---- 编辑器选区（Editor → SelectionActionBar 推送；AiPanel 上下文芯片读取） ----
