@@ -7,10 +7,7 @@ import {
   FileStack,
   FileText,
   FolderPlus,
-  History,
-  Image,
   Info,
-  ListTree,
   Mail,
   MessageSquareText,
   PackageCheck,
@@ -19,7 +16,6 @@ import {
   ShieldCheck,
   Sparkles,
   TerminalSquare,
-  Type,
   UserCircle2,
   Users,
   Wrench,
@@ -72,14 +68,13 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 /**
  * 更多 Sheet（05 §3.19 / S10e）：底部 Sheet ≤85dvh，抓手 + 头部（案名 · 案号 · 状态徽章 · 角色 · N 在线）+ 四组：
- * 编辑（源码｜版面 Segmented md）· 面板（大纲 / 审阅 / 版本历史 / 案件时间线 / 问题与检查 Count / 术语 / 附图 / 查找替换 / 控制台）·
+ * 编辑（源码｜版面 Segmented md）· 面板（审阅 / 资料事实 / 案件时间线 / 问题与控制台 Count / OA 答复 / 查找替换——大纲·历史·术语·附图与导航抽屉 Tab 同目标同行为，T8 起不再重复）·
  * 案卷（递交页 / 检查 / 下载 DOCX·PDF / 新标签页 / 排版设置 / 协作者·分享 / 新建 / 导入 Word / 转专利 / 回归检查）· 帮助（命令面板 / 语法 / 关于——桌面菜单栏与 ? 热键的触达补齐）· 外观（主题 · 密度 Segmented md，唯一入口）· 账户。
  * 每项 44（内边距 16）；Esc / 遮罩 / 下滑关闭；构建不在此处（顶栏 primary）。
  */
 export function MoreSheet() {
   const open = useStudio((s) => s.moreOpen)
   const toggleMore = useStudio((s) => s.toggleMore)
-  const openMobileNav = useStudio((s) => s.openMobileNav)
   const openConsole = useStudio((s) => s.openConsole)
   const openCompanion = useStudio((s) => s.openCompanion)
   const toggleTimeline = useStudio((s) => s.toggleTimeline)
@@ -160,10 +155,6 @@ export function MoreSheet() {
         )}
 
         <Group title="面板">
-          <button type="button" className={ITEM} disabled={!pid} onClick={() => openMobileNav('outline')} data-testid="more-outline">
-            <ListTree />
-            大纲
-          </button>
           <button type="button" className={ITEM} disabled={!pid} onClick={go(() => openCompanion('review'))} data-testid="more-review">
             <MessageSquareText />
             审阅修订 · 建议与批注
@@ -171,10 +162,6 @@ export function MoreSheet() {
           <button type="button" className={ITEM} disabled={!pid} onClick={go(() => openCompanion('materials'))} data-testid="more-materials">
             <FileStack />
             资料事实 · 材料与事实确认
-          </button>
-          <button type="button" className={ITEM} disabled={!pid} onClick={() => openMobileNav('history')} data-testid="more-history">
-            <History />
-            版本历史
           </button>
           <button type="button" className={ITEM} disabled={!pid} onClick={go(() => toggleTimeline(true))} data-testid="more-timeline">
             <CalendarClock />
@@ -184,14 +171,6 @@ export function MoreSheet() {
             <TerminalSquare />
             问题与控制台
             <Count value={errors} tone="danger" className="ml-auto" aria-label={`${errors} 个错误`} />
-          </button>
-          <button type="button" className={ITEM} disabled={!pid} onClick={() => openMobileNav('terms')} data-testid="more-terms">
-            <Type />
-            术语
-          </button>
-          <button type="button" className={ITEM} disabled={!pid} onClick={() => openMobileNav('figures')} data-testid="more-figures">
-            <Image />
-            附图
           </button>
           <button type="button" className={ITEM} disabled={!pid} onClick={go(() => openConsole('oa'))} data-testid="more-oa">
             <Mail />
