@@ -154,12 +154,9 @@ describe('ux-01 / ux-02 移动控制台', () => {
       expect(b.className).toContain('in-data-[density=touch]:h-sm-control')
       expect(b.className).not.toMatch(/h-touch/)
     }
-    // 列表主行（标题区定位）保持 44；右侧圆形定位图标 sm 32 + touch-hit
+    // 列表主行（标题区定位）保持 44——每条仅此一个定位入口（T2：重复的右侧圆形定位钮已删）
     expect(q('[data-testid="console-entry-locate"]', el)!.className).toContain('in-data-[variant=mobile]:min-h-touch')
-    const goto = q('[data-testid="console-entry-goto"]', el)!
-    expect(goto.className).toContain('touch-hit')
-    expect(goto.className).toContain('in-data-[variant=mobile]:size-sm-control')
-    expect(goto.className).not.toMatch(/size-touch/)
+    expect(q('[data-testid="console-entry-goto"]', el)).toBeNull()
   })
 })
 
