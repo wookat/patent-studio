@@ -32,7 +32,7 @@ import { StatusDot } from '@/components/ui/status-dot'
 import { api } from '@/lib/api'
 import { goDeliver } from '@/lib/hash'
 import { ROLE_LABEL } from '@/lib/types'
-import { useStudio, selectPdfUrl, selectOnlineCount, selectErrorCount } from '@/store'
+import { useStudio, selectPdfUrl, selectOnlineCount, selectErrorCount, selectDevUser } from '@/store'
 import type { Density, Theme } from '@/store/ui'
 import { FOCUS_RING, TRANSITION_COLOR, cn } from '@/lib/utils'
 import { MobileEditorViewTabs } from './MobileEditorViewTabs'
@@ -102,6 +102,7 @@ export function MoreSheet() {
   const toggleMobileSettings = useStudio((s) => s.toggleMobileSettings)
   const runLint = useStudio((s) => s.runLint)
   const lintRunning = useStudio((s) => s.lintRunning)
+  const devUser = useStudio(selectDevUser)
   const toast = useStudio((s) => s.toast)
   const href = (fmt: 'docx' | 'pdf') => (pid ? api.exportUrl(pid, fmt, buildId) : '#')
   const close = () => toggleMore(false)
@@ -279,10 +280,12 @@ export function MoreSheet() {
             <Sparkles />
             论文 / 交底书转专利…
           </button>
-          <button type="button" className={ITEM} onClick={go(() => openConsole('checks'))} data-testid="open-check">
-            <Wrench />
-            回归检查<span className={HINT}>开发者</span>
-          </button>
+          {devUser && (
+            <button type="button" className={ITEM} onClick={go(() => openConsole('checks'))} data-testid="open-check">
+              <Wrench />
+              回归检查<span className={HINT}>开发者</span>
+            </button>
+          )}
         </Group>
 
         <Group title="帮助">
