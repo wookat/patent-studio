@@ -132,19 +132,21 @@ export function SourceCard({ panelId, book, onSwitchBook }: SourceCardProps) {
                 <Lock className="size-3" aria-hidden="true" />
                 只读
               </span>
-            ) : (
+            ) : dirty ? (
+              // R7：仅未保存改动时出现——selectDirty 在协同（服务端去抖落盘）与只读下恒 false，
+              // 协同里这钮本就永久禁用；⌘S 与文件菜单保存保留
               <button
                 type="button"
                 aria-label={`保存${BOOK_LABELS[book]}`}
                 title={`保存${BOOK_LABELS[book]}（Ctrl+S）`}
-                disabled={!dirty || saving}
+                disabled={saving}
                 onClick={onSave}
                 className={HEADER_BUTTON}
                 data-testid="card-save"
               >
                 <Save aria-hidden="true" />
               </button>
-            )}
+            ) : null}
             <CompareLockButton />
           </>
         }

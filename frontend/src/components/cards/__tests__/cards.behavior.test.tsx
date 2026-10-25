@@ -234,14 +234,14 @@ describe('SourceCard 单书编辑', () => {
     useStudio.setState({ dockHandle: null, focus: null, editorView: 'source' })
   })
 
-  it('Mod-s → saveBook(book)；标题栏保存按钮同源', async () => {
+  it('Mod-s → saveBook(book)；标题栏保存按钮同源（R7：干净时不渲染，脏时才出现）', async () => {
     const saveBook = vi.fn(async () => true)
     useStudio.setState({ saveBook })
     const el = await mount(<SourceCard panelId="source:claims" kind="source" book="claims" active />)
     const claims = viewOf(el, 'card-editor-claims')
-    const btn = el.querySelector<HTMLButtonElement>('[data-testid="card-save"]')!
-    expect(btn.disabled).toBe(true)
+    expect(el.querySelector('[data-testid="card-save"]')).toBeNull()
     await typeAtLine(claims, 1, '!')
+    const btn = el.querySelector<HTMLButtonElement>('[data-testid="card-save"]')!
     expect(btn.disabled).toBe(false)
     await act(async () => {
       claims.contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }))
@@ -301,7 +301,8 @@ describe('FullTextCard 只读镜像', () => {
     // 可访问名 / title 不露内部文件名（content.md / claims.md）
     expect(all.contentDOM.getAttribute('aria-label')).toBe('全文源码（只读镜像）')
     expect(viewOf(el, 'card-editor-claims').contentDOM.getAttribute('aria-label')).toBe('权利要求书源码编辑器')
-    expect(el.querySelector('[data-testid="card-save"]')?.getAttribute('aria-label')).toBe('保存权利要求书')
+    // R7：干净状态下卡头不挂保存钮（协同 / 未改动不常驻）
+    expect(el.querySelector('[data-testid="card-save"]')).toBeNull()
     for (const node of el.querySelectorAll('[aria-label], [title]')) {
       expect(`${node.getAttribute('aria-label')} ${node.getAttribute('title')}`).not.toMatch(/\.md\b/)
     }
