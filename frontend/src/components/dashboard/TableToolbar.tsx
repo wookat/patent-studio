@@ -29,6 +29,9 @@ export interface TableToolbarProps {
   onSortingChange(next: SortingState): void
   columns: VisibilityState
   onColumnsChange(next: VisibilityState): void
+  /** R9：「导出 CSV」并入「列」菜单（看板视图无工具行时由标题行按钮承担入口） */
+  onExportCsv?(): void
+  exportCsvDisabled?: boolean
   className?: string
 }
 
@@ -38,7 +41,7 @@ export interface TableToolbarProps {
  * `排序 ⇅`（Select 列 + 紧贴的升降键成一组，与表头点击同一 sorting）。
  * 右：表格显示设置同处 —— `列`（显隐）· `紧凑`（Toggle：行高 40 → 36，store.dashCompact 持久化）。全部原生按钮 / Radix，键盘可达；不新增功能面。
  */
-export function TableToolbar({ sorting, onSortingChange, columns, onColumnsChange, className }: TableToolbarProps) {
+export function TableToolbar({ sorting, onSortingChange, columns, onColumnsChange, onExportCsv, exportCsvDisabled, className }: TableToolbarProps) {
   const group = useStudio((s) => s.dashGroup)
   const setGroup = useStudio((s) => s.setDashGroup)
   const compact = useStudio((s) => s.dashCompact)
@@ -113,7 +116,7 @@ export function TableToolbar({ sorting, onSortingChange, columns, onColumnsChang
       </div>
 
       <div className="ml-auto inline-flex items-center gap-1" role="group" aria-label="表格显示">
-        <ColumnMenu visibility={columns} onChange={onColumnsChange} />
+        <ColumnMenu visibility={columns} onChange={onColumnsChange} onExportCsv={onExportCsv} exportCsvDisabled={exportCsvDisabled} />
         <Toggle size="sm" pressed={compact} onPressedChange={setCompact} className="text-xs data-[state=on]:bg-primary-soft data-[state=on]:text-link" aria-label="紧凑行高" data-testid="toolbar-compact">
           <Rows3 aria-hidden />
           紧凑

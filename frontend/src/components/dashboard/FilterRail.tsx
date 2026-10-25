@@ -133,7 +133,7 @@ function TagFilters({ tags, onManage, dense }: { tags: Tag[]; onManage?: () => v
   const item = dense ? ITEM_MOBILE : ITEM
   return (
     <div role="group" aria-label="标签" className="flex flex-col gap-0.5">
-      {tags.length === 0 && <p className={PLACEHOLDER}>暂无标签</p>}
+      {/* R11：无标签时不再占「暂无标签」空行，只留下方管理入口 */}
       {tags.map((t) => (
         <label key={t.name} className={cn(item, 'cursor-pointer')}>
           <Checkbox checked={selTags.includes(t.name)} onCheckedChange={() => toggleTag(t.name)} data-testid={`tag-filter-${t.name}`} />

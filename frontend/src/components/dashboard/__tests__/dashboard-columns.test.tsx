@@ -123,8 +123,13 @@ describe('CSV 导出 = 屏幕所见', () => {
   it('行数 = 表格行数（含逗号转义），列 = 可见列且含「最近期限」；隐藏列不导出', async () => {
     const spy = vi.spyOn(csv, 'downloadCsv').mockImplementation(() => {})
     const el = await mount(<DashboardPage />)
+    const clickExport = async () => {
+      // R9：列表视图下导出入口在「列」菜单内
+      await act(async () => (el.querySelector('[data-testid="column-menu"]') as HTMLElement).click())
+      await act(async () => (el.querySelector('[data-testid="export-csv"]') as HTMLButtonElement).click())
+    }
     expect(visibleRows(el)).toBe(3)
-    await act(async () => (el.querySelector('[data-testid="export-csv"]') as HTMLButtonElement).click())
+    await clickExport()
     expect(spy).toHaveBeenCalledTimes(1)
     const [name, text] = spy.mock.calls[0]
     expect(name).toMatch(/^案卷台账-\d{8}\.csv$/)
@@ -140,7 +145,7 @@ describe('CSV 导出 = 屏幕所见', () => {
     await act(async () => useStudio.getState().setDashColumns((v) => ({ ...v, client: false, application_no: true })))
     await act(async () => useStudio.getState().setDashQuery('P-a'))
     expect(visibleRows(el)).toBe(1)
-    await act(async () => (el.querySelector('[data-testid="export-csv"]') as HTMLButtonElement).click())
+    await clickExport()
     const text2 = spy.mock.calls[1][1]
     const lines2 = csvLines(text2)
     expect(lines2.length - 1).toBe(1)
@@ -155,6 +160,8 @@ describe('CSV 导出 = 屏幕所见', () => {
     const spy = vi.spyOn(csv, 'downloadCsv').mockImplementation(() => {})
     const el = await mount(<DashboardPage />)
     expect(visibleRows(el)).toBeLessThan(260)
+    // R9：先开「列」菜单再点导出
+    await act(async () => (el.querySelector('[data-testid="column-menu"]') as HTMLElement).click())
     await act(async () => (el.querySelector('[data-testid="export-csv"]') as HTMLButtonElement).click())
     expect(csvLines(spy.mock.calls[0][1]).length - 1).toBe(260)
   })

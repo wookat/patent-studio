@@ -12,7 +12,7 @@ import { ViewTabs } from './ViewTabs'
  * 编辑器工具栏（07 §2.1 / prototype-c `.etb`，32px）：
  * 撤销 / 重做 ｜ ## / ### ｜ 公式 $$ / 下标 _{} / 表格 / 附图 / 权项引用（opt 组，视口 ≤1279 隐藏）｜ 右：三视图 <ViewTabs/>（源码 / 版面 / PDF）· 查找 · 模式。
  * 所有动作经 ./commands 的模块级 registry 落到当前 CodeMirror 视图；三视图切换由 editor/ViewTabs 统一（docs/plan/16 §7）：
- * 版面态隐藏 ## / ### / 插入组，撤销/重做/查找因 CodeMirror 未挂载（ready=false）禁用。移动端（<1024）编辑页的 源码 / 版面 切换在 MobileEditorViewTabs，这里不显示。
+ * 版面态隐藏 ## / ### / 插入组，撤销/重做/查找因 CodeMirror 未挂载（ready=false）禁用。移动端（<1024）编辑页的 源码 / 版面 切换在 MobileEditChrome 的 ViewSwitch，这里不显示。
  */
 
 const ICON_SIZE = 16
