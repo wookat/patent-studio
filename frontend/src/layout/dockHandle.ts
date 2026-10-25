@@ -1,7 +1,8 @@
 import type { DockviewApi, SerializedDockview } from 'dockview-react'
 import { parsePanelId, useStudio, type DockHandle, type LayoutPresetId, type OpenPanelOptions, type PanelId } from '@/store'
 import { describePanel, type PanelParams } from './registry'
-import { DEFAULT_PRESET, LAYOUT_PRESETS } from './presets'
+import { readHashProjectQuery, writeCompanionHash } from '@/lib/hash'
+import { DEFAULT_PRESET, LAYOUT_PRESETS, type LayoutPreset } from './presets'
 import { LAYOUT_SAVE_DEBOUNCE_MS, clearLayout, loadLayout, saveLayout } from './persistence'
 
 /**
@@ -38,6 +39,17 @@ function addOptions(id: PanelId): BasePanelOptions | null {
   return { id, component: d.kind, params: d.params, title: d.title }
 }
 
+/**
+ * 默认值的伴随栏生效点（无持久化布局 = 用户还没定过自己的样子）：已开伴随栏 / 深链 `?panel=` 不抢。
+ * store 与 `?panel=` 双写——CompanionHost 的 hash 同步按 hash 判真源，只写一边会因挂载顺序被 apply() 回退。
+ */
+function openPresetCompanion(preset: LayoutPreset): void {
+  if (!preset.companion) return
+  if (useStudio.getState().companion || readHashProjectQuery().panel) return
+  writeCompanionHash(preset.companion)
+  useStudio.getState().openCompanion(preset.companion)
+}
+
 function loadPreset(rt: HostRuntime, id: LayoutPresetId): void {
   const preset = LAYOUT_PRESETS[id]
   rt.muted = true
@@ -48,6 +60,7 @@ function loadPreset(rt: HostRuntime, id: LayoutPresetId): void {
     rt.muted = false
   }
   useStudio.setState({ layoutPreset: id, compareLock: preset.compareLock })
+  if (preset.companion) useStudio.getState().openCompanion(preset.companion)
 }
 
 /** loadLayout(pid) ?? 默认预置 → fromJSON；持久化损坏（JSON / 版本 / 含未注册面板）→ 清掉并回默认 */
@@ -63,9 +76,11 @@ export function loadInto(rt: HostRuntime, pid: string | null): void {
       rt.api.clear()
       rt.api.fromJSON(withTitles(LAYOUT_PRESETS[DEFAULT_PRESET].layout))
       useStudio.setState({ layoutPreset: DEFAULT_PRESET, compareLock: false })
+      openPresetCompanion(LAYOUT_PRESETS[DEFAULT_PRESET])
       return
     }
     useStudio.setState({ layoutPreset: stored?.preset ?? DEFAULT_PRESET, compareLock: stored?.compareLock ?? false })
+    if (!stored) openPresetCompanion(LAYOUT_PRESETS[DEFAULT_PRESET])
   } finally {
     rt.muted = false
     rt.loadedPid = pid

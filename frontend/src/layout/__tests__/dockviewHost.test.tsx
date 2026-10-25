@@ -43,7 +43,8 @@ beforeAll(() => {
 
 beforeEach(() => {
   localStorage.clear()
-  useStudio.setState({ pid: 'method', layout: 'split', layoutPreset: 'default', compareLock: false, activePanelId: null })
+  window.location.hash = ''
+  useStudio.setState({ pid: 'method', layout: 'split', layoutPreset: 'default', compareLock: false, activePanelId: null, companion: null })
 })
 
 afterEach(async () => {
@@ -98,7 +99,9 @@ describe('DockviewHost', () => {
     expect(getPanel('source')).toBeDefined()
     expect(getPanel('terms')).toBeDefined()
     expect(dock().panelIds().sort()).toEqual(ids('ai-assist'))
-    expect(tabIds(el)).toEqual(['source:abstract', 'source:claims', 'source:description', 'pdf', 'terms', 'oa'])
+    expect(tabIds(el)).toEqual(['source:abstract', 'source:claims', 'source:description', 'pdf'])
+    // R1：无持久化布局时伴随栏默认开 Agent；术语 / OA 经竖栏可达，不常驻 dock
+    expect(useStudio.getState().companion).toBe('ai')
     const claims = el.querySelector('[data-testid="tab-source:claims"]')!
     expect(claims.querySelector('svg.studio-tab-icon')).not.toBeNull()
     expect(claims.textContent).toContain('权利要求书')
@@ -144,7 +147,7 @@ describe('DockviewHost', () => {
     act(() => api.focusPanel('pdf'))
     expect(useStudio.getState().activePanelId).toBe('pdf')
     act(() => api.focusNext(1))
-    expect(useStudio.getState().activePanelId).toBe('terms')
+    expect(useStudio.getState().activePanelId).toBe('source:abstract')
     act(() => api.focusNext(-1))
     expect(useStudio.getState().activePanelId).toBe('pdf')
     act(() => api.toggleMaximize('source:claims'))
@@ -197,6 +200,22 @@ describe('DockviewHost', () => {
     host.remove()
     await mount()
     expect(dock().panelIds()).toContain('console')
+  })
+
+  it('R1：已有持久化布局 → 不开默认伴随栏（不覆盖用户已存布局）；深链 ?panel= 不被默认 Agent 抢', async () => {
+    saveLayout('method', { preset: 'default', compareLock: false, dock: LAYOUT_PRESETS.default.layout })
+    await mount()
+    expect(dock().panelIds().sort()).toEqual(ids('default'))
+    expect(useStudio.getState().companion).toBeNull()
+    await act(async () => root!.unmount())
+    root = null
+    host.remove()
+
+    window.location.hash = '#/p/method?panel=terms'
+    await mount()
+    // CompanionHost 的 hash 同步负责 openCompanion('terms')；dock 侧不能先写 ai 把它覆盖掉
+    expect(useStudio.getState().companion).toBeNull()
+    expect(window.location.hash).toContain('panel=terms')
   })
 
   it('持久化损坏（非 JSON / 版本不对 / 未注册面板）→ 清掉并回默认', async () => {
@@ -297,7 +316,7 @@ describe('DockviewHost', () => {
     const out = withTitles(LAYOUT_PRESETS.review.layout)
     expect(out.panels['source:all'].title).toBe('全文')
     expect(out.panels['review']).toBeUndefined()
-    expect(withTitles(LAYOUT_PRESETS['ai-assist'].layout).panels['terms'].title).toBe('术语')
+    expect(withTitles(LAYOUT_PRESETS['ai-assist'].layout).panels['pdf'].title).toBe('PDF')
   })
 
   it('axe 冒烟：默认 / 三书对照 / 浮动面板下无违规', async () => {
