@@ -1,13 +1,11 @@
 import { useRef, useState } from 'react'
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Download, Minus, Plus, Scaling, Search, SquareTerminal } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Minus, Plus, Scaling, Search, SquareTerminal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Count } from '@/components/ui/count'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { useIsDesktop } from '@/hooks/useMisc'
-import { api } from '@/lib/api'
-import { downloadFile } from '@/lib/download'
 import { cn } from '@/lib/utils'
 import { useStudio, selectErrorCount, type ZoomFit } from '@/store'
 import { BuildButton } from './BuildButton'
@@ -27,7 +25,7 @@ const NARROW_HIDDEN = '@max-[400px]/pdftb:hidden'
 
 /**
  * PDF 工具条（05 §3.6；原型 `.pdftb`）：h-pdftb 32，bg-app，下 1px 边；控件 24 ghost xs，11/12px 文字。
- * 桌面：左组 = [构建 ▾（桌面唯一构建按钮，顶栏不再重复）] [控制台⁽ᴺ⁾] [下载] [状态：点 + 文字]；中 = [ModeSwitch]；
+ * 桌面：左组 = [构建 ▾（桌面唯一构建按钮，顶栏不再重复）] [控制台⁽ᴺ⁾] [状态：点 + 文字]；中 = [ModeSwitch]；
  *       左组 min-w-0 + overflow-x-clip（窄容器下被裁而不与页码输入重叠），ModeSwitch 与右组 shrink-0 永不被裁（W9 审阅 bug）：
  *       ModeSwitch responsive 容器 < 640 图标分段、< 400 溢出菜单；右组 < 400 时隐藏 ↑↓ / − + / 分隔，只留页码 · 缩放 ▾ · 查找。
  *       右组 = ↑ [8] / 23 ↓ │ − 适宽 ▾ + │ 查找。pdfView==='logs'：右组隐藏，左组末尾「返回预览」。
@@ -63,7 +61,6 @@ export function PdfToolbar({ variant, className }: { variant?: PdfToolbarVariant
       >
         <BuildButton variant={v} />
         <ConsoleButton mobile={mobile} />
-        {!mobile && <DownloadPdf />}
         {!logs && <PdfStatusText className={mobile ? 'ml-auto' : 'ml-2 hidden @[420px]/pdftb:inline-flex'} />}
         {logs && (
           <Button size="xs" variant="secondary" className="ml-1" onClick={() => setPdfView('pdf')} data-testid="back-to-pdf">
@@ -168,34 +165,6 @@ function FindButton({ mobile }: { mobile: boolean }) {
       data-testid="pdf-find-toggle"
     >
       <Search aria-hidden />
-    </Button>
-  )
-}
-
-/* ----------------------------------------------------------------------------------------- */
-
-function DownloadPdf() {
-  const pid = useStudio((s) => s.pid)
-  const buildId = useStudio((s) => s.lastOk?.build_id)
-  const hasOk = useStudio((s) => s.lastOk !== null)
-  const toast = useStudio((s) => s.toast)
-  const [busy, setBusy] = useState(false)
-  const href = pid && hasOk ? api.exportUrl(pid, 'pdf', buildId) : undefined
-  const title = hasOk ? '下载 PDF（上次成功构建）' : '尚无成功构建'
-  const run = async () => {
-    if (!href || busy) return
-    setBusy(true)
-    try {
-      await downloadFile(href)
-    } catch (e) {
-      toast(`下载失败：${e instanceof Error ? e.message : String(e)}`, 'error')
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <Button variant="ghost" size="icon-xs" disabled={!href || busy} onClick={() => void run()} title={title} aria-label="下载 PDF" data-testid="download-pdf" data-href={href}>
-      <Download aria-hidden />
     </Button>
   )
 }
