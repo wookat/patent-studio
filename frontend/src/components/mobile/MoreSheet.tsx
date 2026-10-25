@@ -1,12 +1,9 @@
 import {
   BookOpen,
   CalendarClock,
-  Download,
   ExternalLink,
   FileInput,
   FileStack,
-  FileText,
-  FolderPlus,
   Info,
   Mail,
   MessageSquareText,
@@ -20,18 +17,15 @@ import {
   Users,
   Wrench,
 } from 'lucide-react'
-import { LABEL_NEW_PROJECT } from '@/lib/copy'
 import { Count } from '@/components/ui/count'
 import { Segmented, type SegmentedOption } from '@/components/ui/segmented'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { StatusDot } from '@/components/ui/status-dot'
-import { api } from '@/lib/api'
 import { goDeliver } from '@/lib/hash'
 import { ROLE_LABEL } from '@/lib/types'
 import { useStudio, selectPdfUrl, selectOnlineCount, selectErrorCount, selectDevUser } from '@/store'
-import type { Density, Theme } from '@/store/ui'
+import type { Density } from '@/store/ui'
 import { FOCUS_RING, TRANSITION_COLOR, cn } from '@/lib/utils'
-import { MobileEditorViewTabs } from './MobileEditorViewTabs'
 
 /** 每项 44（06 §Sheet 列表项）：16 图标 · 15 文案 · 右侧 11px 副文案 / Count；Sheet 内边距 16（--pad-sheet-m），行 hover 底 -mx-2 出血 8 但文本仍对齐 16 */
 const ITEM = cn(
@@ -41,11 +35,6 @@ const ITEM = cn(
 )
 const HINT = 'ml-auto text-2xs text-fg-muted'
 
-const THEME_OPTIONS: readonly SegmentedOption<Theme>[] = [
-  { value: 'light', label: '浅色', 'data-testid': 'more-theme-light' },
-  { value: 'dark', label: '深色', 'data-testid': 'more-theme-dark' },
-  { value: 'system', label: '跟随系统', 'data-testid': 'more-theme-system' },
-]
 const DENSITY_OPTIONS: readonly SegmentedOption<Density>[] = [
   { value: 'compact', label: '紧凑', 'data-testid': 'more-density-compact' },
   {
@@ -68,9 +57,11 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 /**
  * 更多 Sheet（05 §3.19 / S10e）：底部 Sheet ≤85dvh，抓手 + 头部（案名 · 案号 · 状态徽章 · 角色 · N 在线）+ 四组：
- * 编辑（源码｜版面 Segmented md）· 面板（审阅 / 资料事实 / 案件时间线 / 问题与控制台 Count / OA 答复 / 查找替换——大纲·历史·术语·附图与导航抽屉 Tab 同目标同行为，T8 起不再重复）·
- * 案卷（递交页 / 检查 / 下载 DOCX·PDF / 新标签页 / 排版设置 / 协作者·分享 / 新建 / 导入 Word / 转专利 / 回归检查）· 帮助（命令面板 / 语法 / 关于——桌面菜单栏与 ? 热键的触达补齐）· 外观（主题 · 密度 Segmented md，唯一入口）· 账户。
+ * 面板（审阅 / 资料事实 / 案件时间线 / 问题与控制台 Count / OA 答复 / 查找替换——大纲·历史·术语·附图与导航抽屉 Tab 同目标同行为，T8 起不再重复）·
+ * 案卷（递交页 / 检查 / 新标签页 / 排版设置 / 协作者·分享 / 导入 Word / 转专利 / 回归检查）· 帮助（命令面板 / 语法 / 关于——桌面菜单栏与 ? 热键的触达补齐）· 外观（密度 Segmented md，手机唯一入口）· 账户。
  * 每项 44（内边距 16）；Esc / 遮罩 / 下滑关闭；构建不在此处（顶栏 primary）。
+ * R10 收敛：源码/版面切换（编辑页 MobileEditChrome ViewSwitch 已有）、下载 DOCX/PDF（递交页）、新建案卷（工作台 +/空态）、主题（手机账户页 account-theme）不再重复；
+ * 导入 Word / 转专利在手机工作台无入口、密度在手机账户页无入口——保留。
  */
 export function MoreSheet() {
   const open = useStudio((s) => s.moreOpen)
@@ -81,7 +72,6 @@ export function MoreSheet() {
   const pid = useStudio((s) => s.pid)
   const project = useStudio((s) => s.project)
   const authed = useStudio((s) => s.authStatus === 'authed')
-  const buildId = useStudio((s) => s.lastOk?.build_id)
   const pdfUrl = useStudio(selectPdfUrl)
   const hasOk = pdfUrl !== null
   const setMobileTab = useStudio((s) => s.setMobileTab)
@@ -90,8 +80,6 @@ export function MoreSheet() {
   const openCollabCenter = useStudio((s) => s.openCollabCenter)
   const online = useStudio(selectOnlineCount)
   const errors = useStudio(selectErrorCount)
-  const theme = useStudio((s) => s.theme)
-  const setTheme = useStudio((s) => s.setTheme)
   const density = useStudio((s) => s.density)
   const setDensity = useStudio((s) => s.setDensity)
   const toggleMobileSettings = useStudio((s) => s.toggleMobileSettings)
@@ -99,7 +87,6 @@ export function MoreSheet() {
   const lintRunning = useStudio((s) => s.lintRunning)
   const devUser = useStudio(selectDevUser)
   const toast = useStudio((s) => s.toast)
-  const href = (fmt: 'docx' | 'pdf') => (pid ? api.exportUrl(pid, fmt, buildId) : '#')
   const close = () => toggleMore(false)
   const go = (fn: () => void) => () => {
     close()
@@ -145,14 +132,6 @@ export function MoreSheet() {
           </div>
           {project?.case?.status && <StatusDot variant="badge" status={project.case.status} size="sm" className="shrink-0" data-testid="more-sheet-status" />}
         </SheetHeader>
-
-        {pid && (
-          <Group title="编辑">
-            <div className="py-1">
-              <MobileEditorViewTabs size="md" className="w-full" />
-            </div>
-          </Group>
-        )}
 
         <Group title="面板">
           <button type="button" className={ITEM} disabled={!pid} onClick={go(() => openCompanion('review'))} data-testid="more-review">
@@ -201,14 +180,6 @@ export function MoreSheet() {
             <ShieldCheck className={cn(lintRunning && 'animate-pulse motion-reduce:animate-none')} />
             运行当前案检查
           </button>
-          <a className={cn(ITEM, !hasOk && 'pointer-events-none text-fg-disabled')} href={href('docx')} download aria-disabled={!hasOk} onClick={close} data-testid="export-docx">
-            <Download />
-            下载 DOCX
-          </a>
-          <a className={cn(ITEM, !hasOk && 'pointer-events-none text-fg-disabled')} href={href('pdf')} download aria-disabled={!hasOk} onClick={close} data-testid="export-pdf">
-            <FileText />
-            下载 PDF
-          </a>
           <a
             className={cn(ITEM, !hasOk && 'pointer-events-none text-fg-disabled')}
             href={pdfUrl ?? '#'}
@@ -236,10 +207,6 @@ export function MoreSheet() {
               )}
             </button>
           )}
-          <button type="button" className={ITEM} onClick={go(() => requestNavigation({ type: 'create-project' }))} data-testid="more-create-project">
-            <FolderPlus />
-            {LABEL_NEW_PROJECT}…
-          </button>
           <button
             type="button"
             className={ITEM}
@@ -283,10 +250,6 @@ export function MoreSheet() {
         </Group>
 
         <Group title="外观">
-          <div className="flex min-h-touch items-center gap-3">
-            <span className="w-8 shrink-0 text-base text-fg">主题</span>
-            <Segmented size="md" options={THEME_OPTIONS} value={theme} onValueChange={setTheme} aria-label="主题" className="min-w-0 flex-1" data-testid="more-theme" />
-          </div>
           <div className="flex min-h-touch items-center gap-3">
             <span className="w-8 shrink-0 text-base text-fg">密度</span>
             <Segmented size="md" options={DENSITY_OPTIONS} value={density} onValueChange={setDensity} aria-label="密度" className="min-w-0 flex-1" data-testid="more-density" />

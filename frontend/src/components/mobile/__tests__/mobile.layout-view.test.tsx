@@ -3,11 +3,11 @@ import axe from 'axe-core'
 import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MobileEditorViewTabs } from '../MobileEditorViewTabs'
 import { MobileLayoutToolbar } from '../MobileLayoutToolbar'
 import { MobileShell } from '../MobileShell'
 import { editorCommands } from '@/components/editor/commands'
 import { layoutHistory } from '@/components/workbench/slots'
+import { switchToView } from '@/components/workbench/ViewSwitch'
 import { useStudio } from '@/store'
 import type { ProjectDetail } from '@/lib/types'
 
@@ -180,25 +180,8 @@ describe('MobileLayoutToolbar（375 版面底部工具栏，16 §8.2）', () => 
   })
 })
 
-describe('MobileEditorViewTabs（375 编辑 Tab：源码 / 版面）', () => {
-  it('共享 Segmented xl 44（radiogroup，住更多 Sheet）、切换写 editorView；axe 无 serious', async () => {
-    const el = await mount(<MobileEditorViewTabs />)
-    const group = q(el, '[data-testid="mobile-editor-view-tabs"]')
-    expect(group.getAttribute('role')).toBe('radiogroup')
-    expect(group.getAttribute('data-slot')).toBe('segmented')
-    expect(Array.from(group.querySelectorAll('button')).map((b) => b.textContent)).toEqual(['源码', '版面'])
-    expect(group.className).toContain('h-touch')
-    await click(el, '[data-testid="mobile-editor-view-tabs-layout"]')
-    expect(useStudio.getState().editorView).toBe('layout')
-    expect(q(el, '[data-testid="mobile-editor-view-tabs-layout"]').getAttribute('aria-checked')).toBe('true')
-    await click(el, '[data-testid="mobile-editor-view-tabs-source"]')
-    expect(useStudio.getState().editorView).toBe('source')
-    expect(await violations(el)).toEqual([])
-  })
-})
-
 describe('MobileShell 编辑 Tab：版面视图 + 底部工具栏接线', () => {
-  it('editorView=layout → <LayoutView/> 与 MobileLayoutToolbar 出现、快捷键盘隐藏、源码编辑器保留但 display:none；切回源码恢复（源码/版面切换住更多 Sheet）', async () => {
+  it('editorView=layout → <LayoutView/> 与 MobileLayoutToolbar 出现、快捷键盘隐藏、源码编辑器保留但 display:none；切回源码恢复（R10 后源码/版面切换由编辑页 ViewSwitch 承担）', async () => {
     useStudio.setState({
       pid: 'p1',
       project: {
@@ -215,9 +198,7 @@ describe('MobileShell 编辑 Tab：版面视图 + 底部工具栏接线', () => 
     expect(el.querySelector('[data-testid="layout-view"]')).toBeNull()
     expect(el.querySelector('[data-testid="mobile-layout-toolbar"]')).toBeNull()
 
-    await act(async () => useStudio.getState().toggleMore(true))
-    await click(document.body, '[data-testid="mobile-editor-view-tabs-layout"]')
-    await act(async () => useStudio.getState().toggleMore(false))
+    await act(async () => switchToView('layout'))
     const lv = el.querySelector('[data-testid="layout-view"]')!
     expect(lv).not.toBeNull()
     expect(lv.getAttribute('data-mode')).toBe('edit')
@@ -230,9 +211,7 @@ describe('MobileShell 编辑 Tab：版面视图 + 底部工具栏接线', () => 
     await act(async () => useStudio.getState().setActiveBook('claims'))
     expect(el.querySelector('[data-testid="layout-view"]')?.querySelectorAll('.ps-paper')).toHaveLength(1)
 
-    await act(async () => useStudio.getState().toggleMore(true))
-    await click(document.body, '[data-testid="mobile-editor-view-tabs-source"]')
-    await act(async () => useStudio.getState().toggleMore(false))
+    await act(async () => switchToView('source'))
     expect(el.querySelector('[data-testid="layout-view"]')).toBeNull()
     expect(el.querySelector('[data-testid="mobile-layout-toolbar"]')).toBeNull()
     await act(async () => useStudio.getState().setActiveBook('all'))
