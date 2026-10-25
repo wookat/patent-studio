@@ -102,6 +102,8 @@ describe('DockviewHost', () => {
     expect(tabIds(el)).toEqual(['source:abstract', 'source:claims', 'source:description', 'pdf'])
     // R1：无持久化布局时伴随栏默认开 Agent；术语 / OA 经竖栏可达，不常驻 dock
     expect(useStudio.getState().companion).toBe('ai')
+    // R6：组标题栏的浮动 / 最大化 + 活动卡头 portal 进来的锁 / 打开为… 都标 card-win-ctrl（hover / focus-within 显示，触屏常驻）
+    expect(el.querySelectorAll('[data-testid="group-actions"] .card-win-ctrl').length).toBe(6)
     const claims = el.querySelector('[data-testid="tab-source:claims"]')!
     expect(claims.querySelector('svg.studio-tab-icon')).not.toBeNull()
     expect(claims.textContent).toContain('权利要求书')

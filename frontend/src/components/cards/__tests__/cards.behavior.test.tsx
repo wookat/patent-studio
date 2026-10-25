@@ -410,6 +410,8 @@ describe('对照滚动锁 usePairedBlock', () => {
     const el = await mount(<SourceCard panelId="source:claims" kind="source" book="claims" active />)
     const btn = el.querySelector<HTMLButtonElement>('[data-testid="card-compare-lock"]')!
     expect(btn.getAttribute('aria-pressed')).toBe('false')
+    // R6：窗口控件标 card-win-ctrl——卡头 hover / focus-within 才显示，触屏常驻
+    expect(btn.className).toContain('card-win-ctrl')
     await act(async () => btn.click())
     expect(useStudio.getState().compareLock).toBe(true)
     expect(btn.getAttribute('aria-pressed')).toBe('true')
@@ -458,6 +460,7 @@ describe('StructureCard / CardHeader', () => {
       </>,
     )
     expect(el.querySelectorAll('[data-testid="card-open-as"]').length).toBe(1)
+    expect(el.querySelector('[data-testid="card-open-as"]')!.className).toContain('card-win-ctrl')
     expect(el.textContent).toContain('b')
     expect(await violations(el)).toEqual([])
   })

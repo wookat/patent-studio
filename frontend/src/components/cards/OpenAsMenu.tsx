@@ -42,7 +42,7 @@ export function OpenAsMenu({ panelId, book, className }: Props) {
         aria-label="打开为…"
         title="打开为…"
         className={cn(
-          'inline-flex size-6 items-center justify-center rounded text-fg-muted outline-none hover:bg-hover hover:text-fg-strong',
+          'card-win-ctrl inline-flex size-6 items-center justify-center rounded text-fg-muted outline-none hover:bg-hover hover:text-fg-strong',
           FOCUS_RING, 'data-[state=open]:bg-active',
           className,
         )}

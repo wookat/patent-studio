@@ -71,7 +71,7 @@ export function CompareLockButton() {
       aria-label="对照滚动锁"
       title={locked ? '对照滚动锁：开（两卡片按块对齐滚动）' : '对照滚动锁：关'}
       onClick={() => toggle()}
-      className={cn(HEADER_BUTTON, locked && 'bg-selected text-fg-strong')}
+      className={cn(HEADER_BUTTON, 'card-win-ctrl', locked && 'bg-selected text-fg-strong')}
       data-testid="card-compare-lock"
     >
       {locked ? <Link2 aria-hidden="true" /> : <Link2Off aria-hidden="true" />}
