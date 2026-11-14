@@ -1,6 +1,6 @@
 import { MenuRow, MenuSeparator } from '@/components/ui/menu-bits'
 import { hotkeyLabel } from '@/lib/hotkeys'
-import { useStudio } from '@/store'
+import { selectDevUser, useStudio } from '@/store'
 import { Switch } from '@/components/ui/switch'
 
 /**
@@ -19,6 +19,7 @@ export function BuildMenuItems() {
   const openCompanion = useStudio((s) => s.openCompanion)
   const setConsoleTab = useStudio((s) => s.setConsoleTab)
   const lintRunning = useStudio((s) => s.lintRunning)
+  const devUser = useStudio(selectDevUser)
   const busy = phase === 'building' || phase === 'queued'
   return (
     <>
@@ -51,19 +52,20 @@ export function BuildMenuItems() {
         停止
       </MenuRow>
       <MenuSeparator />
-      <MenuRow
-        noIcon
-        disabled={!pid}
-        onSelect={() => {
-          resetBuild()
-          enqueue('manual', true)
-        }}
-        sub="重建"
-        data-testid="build-clear"
-      >
-        清除构建缓存
-      </MenuRow>
-      <MenuSeparator />
+      {devUser && (
+        <MenuRow
+          noIcon
+          disabled={!pid}
+          onSelect={() => {
+            resetBuild()
+            enqueue('manual', true)
+          }}
+          sub="重建"
+          data-testid="build-clear"
+        >
+          清除构建缓存
+        </MenuRow>
+      )}
       <MenuRow
         noIcon
         disabled={!pid || lintRunning}

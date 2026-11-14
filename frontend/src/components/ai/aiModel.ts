@@ -82,15 +82,36 @@ export function gotoReview(): void {
   }
 }
 
-/** Z18/Z25：跳到 AI 面板「建议」tab（桌面 Rail · 移动 NavDrawer 与 gotoReview 同口径） */
-export function gotoAiProposals(): void {
+/** 打开 AI 面板宿主：桌面开伴随栏 ai；移动切底栏 AI 页签并放下盖在上面的层（审阅 Sheet / 导航抽屉 / 更多） */
+function openAiPanelHost(): void {
   const s = useStudio.getState()
-  s.setAgentTab('proposals')
   if (window.matchMedia(DESKTOP_QUERY).matches) {
-    if (s.railTab !== 'ai' || !s.outlineOpen) s.setRailTab('ai')
+    s.openCompanion('ai')
   } else {
-    s.openMobileNav('ai')
+    if (s.reviewDrawerOpen) s.setReviewDrawerOpen(false)
+    if (s.rightRailSheetOpen) s.setRightRailSheetOpen(false)
+    if (s.mobileNav.open) s.closeMobileNav()
+    if (s.moreOpen) s.toggleMore(false)
+    s.setMobileTab('ai')
   }
+}
+
+/** Z18/Z25：跳到 AI 面板「建议」tab */
+export function gotoAiProposals(): void {
+  useStudio.getState().setAgentTab('proposals')
+  openAiPanelHost()
+}
+
+/** 附件预览「带入 Agent」：跳到 AI 面板「对话」tab（chip 就在那里） */
+export function gotoAiChat(): void {
+  useStudio.getState().setAgentTab('chat')
+  openAiPanelHost()
+}
+
+/** 「运行」空态回链：跳到 AI 面板「任务」tab */
+export function gotoAiJobs(): void {
+  useStudio.getState().setAgentTab('jobs')
+  openAiPanelHost()
 }
 
 // ---- 编辑器选区（Editor → SelectionActionBar 推送；AiPanel 上下文芯片读取） ----

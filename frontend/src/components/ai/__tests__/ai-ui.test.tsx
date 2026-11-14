@@ -12,7 +12,7 @@ import { AiPanel } from '../AiPanel'
 import { SelectionActionBar, type EditorSelectionInfo } from '../SelectionActionBar'
 import { AiJobList } from '../AiJobs'
 import { aiPanelDefinition, termsPanelDefinition, trackEPanels } from '../index'
-import { applySuggestion, bookAtLine, replaceLines, runRewrite, streamChat, stopStreaming } from '../aiModel'
+import { applySuggestion, bookAtLine, clearSelection, publishSelection, replaceLines, runRewrite, streamChat, stopStreaming } from '../aiModel'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -40,6 +40,7 @@ beforeEach(() => {
   localStorage.clear()
   useStudio.setState({ pid: 'method', dialog: null, toasts: [], items: [], railTab: 'outline', outlineOpen: true, settings: SETTINGS, content: CONTENT, ast: null })
   useStudio.getState().resetAi()
+  clearSelection()
   vi.spyOn(api, 'aiStatus').mockResolvedValue(STATUS)
   vi.spyOn(api, 'aiJobs').mockResolvedValue({ jobs: [] })
   vi.spyOn(api, 'aiUsage').mockResolvedValue({ rows: [], total: { prompt_tokens: 0, completion_tokens: 0, requests: 0 }, today_tokens: 0, budget: 0 })
@@ -273,6 +274,8 @@ describe('aiModel：book 判定 / 行替换 / 建议写入', () => {
 describe('AiPanel（Rail「AI」/ NavDrawer 共用；09 §6.1）', () => {
   it('关闭态：明示开关关、说明 + 开启入口、动作禁用、零 AI 请求；axe 0 critical/serious', async () => {
     const chat = vi.spyOn(api, 'aiChat')
+    // 有选区时改写钮才出现；AI 关闭态应为禁用
+    publishSelection({ from: 0, to: 5, lineStart: 1, lineEnd: 2, text: '一种装置。', rect: null })
     const el = await mount(<AiPanel />)
     expect(q('[data-testid="ai-panel"]', el)!.getAttribute('data-enabled')).toBe('false')
     expect(q('[data-testid="ai-enabled-switch"]', el)!.getAttribute('aria-checked')).toBe('false')
@@ -294,6 +297,18 @@ describe('AiPanel（Rail「AI」/ NavDrawer 共用；09 §6.1）', () => {
     expect(useStudio.getState().settings?.ai_enabled).toBe(true)
     expect(q('[data-testid="ai-panel"]', el)!.getAttribute('data-enabled')).toBe('true')
     expect(q('[data-testid="ai-disabled-notice"]', el)).toBeNull()
+  })
+
+  it('T6：无选区不渲染一排禁用的改写钮，有选区才出现；「AI 审阅全文」常显', async () => {
+    enable()
+    const el = await mount(<AiPanel />)
+    for (const a of ['polish', 'formalize', 'expand', 'explain']) expect(q(`[data-testid="ai-quick-${a}"]`, el)).toBeNull()
+    expect(q('[data-testid="ai-quick-actions"]', el)!.textContent).toContain('在编辑器中选中文字后可用')
+    expect(q('[data-testid="ai-review-button"]', el)).not.toBeNull()
+    await act(async () => publishSelection({ from: 0, to: 5, lineStart: 1, lineEnd: 2, text: '一种装置。', rect: null }))
+    for (const a of ['polish', 'formalize', 'expand', 'explain']) expect((q(`[data-testid="ai-quick-${a}"]`, el) as HTMLButtonElement).disabled).toBe(false)
+    await act(async () => clearSelection())
+    for (const a of ['polish', 'formalize', 'expand', 'explain']) expect(q(`[data-testid="ai-quick-${a}"]`, el)).toBeNull()
   })
 
   it('开启态：上下文芯片、发送 → 流式渲染（role=status → aria-live）、停止/清空；axe 0 critical/serious', async () => {

@@ -428,7 +428,8 @@ function QuickActions({ canAct, runningJobs }: { canAct: boolean; runningJobs: n
         <span className="ml-1 font-normal normal-case tracking-normal">{where ? `对选区 · ${where}` : '在编辑器中选中文字后可用'}</span>
       </h3>
       <Row desktop={desktop}>
-        {REWRITE_ACTIONS.map((a) => (
+        {/* 无选区不摆一排禁用钮（T6）：选中文字后才出现 */}
+        {sel && REWRITE_ACTIONS.map((a) => (
           <Button
             key={a.action}
             size="sm"

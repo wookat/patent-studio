@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { Download, FileArchive, FileText, Loader2 } from 'lucide-react'
+import { Download, FileArchive, FileText, Loader2, Sparkles } from 'lucide-react'
 import { withFetchTimeout } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,8 @@ export interface AttachmentPreviewProps {
   url: string
   /** 下载 URL；缺省 = url */
   downloadUrl?: string
+  /** 提供时头部多一个「带入 Agent」动作（把该材料加入 AI 对话上下文 chip） */
+  onAgent?: () => void
   className?: string
 }
 
@@ -25,12 +27,23 @@ export interface AttachmentPreviewProps {
  * pdf → react-pdf 全部页纵向排列（AttachmentPdf，lazy；与 PdfPreview 同一 pdf.js worker）；image → <img>；text（md / txt）→ 等宽 <pre>；docx / zip → 只给下载。
  * figs/ 里的 svg / png 也走 kind=image；emf 由调用方换成伴生 png / svg 的 URL 再传进来。
  */
-export function AttachmentPreview({ name, kind, url, downloadUrl, className }: AttachmentPreviewProps) {
+export function AttachmentPreview({ name, kind, url, downloadUrl, onAgent, className }: AttachmentPreviewProps) {
   return (
     <div data-slot="AttachmentPreview" data-kind={kind} className={cn('flex h-full min-h-0 flex-col', className)} data-testid="attachment-preview">
       <div className="flex h-8 shrink-0 items-center gap-2 border-b px-2 text-xs">
         <span className="truncate font-medium" title={name}>{name}</span>
-        <a className="ml-auto inline-flex h-6 items-center gap-1 rounded px-1.5 text-fg-muted hover:bg-hover hover:text-fg in-data-[density=touch]:h-touch in-data-[density=touch]:min-w-touch in-data-[density=touch]:justify-center" href={downloadUrl ?? url} download={name} data-testid="attachment-download">
+        {onAgent && (
+          <button
+            type="button"
+            className="ml-auto inline-flex h-6 items-center gap-1 rounded px-1.5 text-fg-muted hover:bg-hover hover:text-fg in-data-[density=touch]:h-touch in-data-[density=touch]:min-w-touch in-data-[density=touch]:justify-center"
+            onClick={onAgent}
+            title="把该材料加入 AI 对话上下文（chip 可撤销，不自动发送）"
+            data-testid="attachment-to-agent"
+          >
+            <Sparkles className="size-3.5" aria-hidden />带入 Agent
+          </button>
+        )}
+        <a className={cn('inline-flex h-6 items-center gap-1 rounded px-1.5 text-fg-muted hover:bg-hover hover:text-fg in-data-[density=touch]:h-touch in-data-[density=touch]:min-w-touch in-data-[density=touch]:justify-center', !onAgent && 'ml-auto')} href={downloadUrl ?? url} download={name} data-testid="attachment-download">
           <Download className="size-3.5" aria-hidden />下载
         </a>
       </div>

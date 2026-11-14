@@ -6,7 +6,7 @@ import { diagLocationLabel } from '@/lib/diagLocation'
 import type { CheckResult, Diagnostic } from '@/lib/types'
 import { FOCUS_RING, cn, touchHit } from '@/lib/utils'
 import { useIsDesktop } from '@/hooks/useMisc'
-import { useStudio } from '@/store'
+import { selectDevUser, useStudio } from '@/store'
 import { LINT_RULES, matchesRule } from './lintRules'
 import { locateSourceLine } from './locateSource'
 
@@ -248,13 +248,14 @@ function CheckAllSection() {
   )
 }
 
-/** 底部面板「检查」tab（03 §3.8 / 02 §5.2）：当前案形式检查 + 仓库回归 */
+/** 底部面板「检查」tab（03 §3.8 / 02 §5.2）：当前案形式检查 + 仓库回归（后者仅开发者/超管可见） */
 export function CheckPanel() {
   const desktop = useIsDesktop()
+  const devUser = useStudio(selectDevUser)
   return (
     <div data-slot="CheckPanel" className={cn('flex flex-col text-sm', desktop ? 'gap-4 p-3' : 'gap-section-m px-sheet-m pb-sheet-m pt-sheet-top-m')} data-testid="check-panel">
       <LintSection />
-      <CheckAllSection />
+      {devUser && <CheckAllSection />}
     </div>
   )
 }

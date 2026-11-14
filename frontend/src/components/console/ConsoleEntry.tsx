@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BookOpen, Check, ChevronDown, Copy, Crosshair, Sparkles, Wand2 } from 'lucide-react'
+import { BookOpen, Check, ChevronDown, Copy, Sparkles, Wand2 } from 'lucide-react'
 import { diagLocationLabel } from '@/lib/diagLocation'
 import type { Diagnostic } from '@/lib/types'
 import { FOCUS_RING, cn, touchHit } from '@/lib/utils'
@@ -24,14 +24,8 @@ const TITLE_COLOR: Record<Diagnostic['severity'], string> = {
  * 条目内次级动作 / 图标视觉 sm 32，touch-hit 伪元素命中区扩到 44；只有列表主行（定位）保持 44。
  */
 const TOUCH = cn(touchHit, 'in-data-[variant=mobile]:size-sm-control in-data-[density=touch]:size-sm-control')
-const MOBILE_ICON = TOUCH
 const MOBILE_ACTION = cn(touchHit, 'in-data-[variant=mobile]:h-sm-control in-data-[variant=mobile]:px-3 in-data-[density=touch]:h-sm-control')
 const MOBILE_INDENT = 'in-data-[variant=mobile]:ml-10'
-const ICON_BTN = cn(
-  'inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-border-strong text-fg-muted hover:bg-hover hover:text-fg-strong',
-  FOCUS_RING,
-  MOBILE_ICON,
-)
 const ACTION = cn(
   'inline-flex h-7 items-center gap-1 rounded px-2.5 text-sm font-medium transition-colors disabled:opacity-50',
   FOCUS_RING,
@@ -40,7 +34,7 @@ const ACTION = cn(
 
 /**
  * 控制台诊断条目（07 §2.1 / prototype-c .entry）：
- *   标题（三色 14px/600）+ 次行位置 `权利要求 6` / `说明书 · 段落 [0012]`（12px，不出现源码行号）+ 右侧 24px 圆形定位；
+ *   标题（三色 14px/600，可点定位）+ 次行位置 `权利要求 6` / `说明书 · 段落 [0012]`（12px，不出现源码行号）；
  *   人话解释（message）；操作行 [改为「Y」| 复制建议]（仅 fix 存在）· [查看规则说明]· [原始日志]（detail，默认折叠）。
  * fix 可解析为「把 X 改为 Y」（或 deriveReplaceFix 能为该诊断推导具体替换）且该行含 X → 绿色「改为「Y」」直接替换（editorCommands.replaceLine 走 CodeMirror 事务，可撤销；
  * 编辑器未挂载时回退 doc.persistMergedContent）；否则按钮如实叫「复制建议」，只把建议文案复制到剪贴板，不冒充自动修复。
@@ -153,18 +147,6 @@ export function ConsoleEntry({ item }: { item: Diagnostic }) {
               {loc}
             </p>
           </div>
-        )}
-        {item.line != null && (
-          <button
-            type="button"
-            className={cn(ICON_BTN, 'ml-auto')}
-            onClick={() => locate(item.line!)}
-            aria-label={`在源码中定位到${where}`}
-            title="在源码中定位"
-            data-testid="console-entry-goto"
-          >
-            <Crosshair className="size-3.5" aria-hidden />
-          </button>
         )}
       </div>
 

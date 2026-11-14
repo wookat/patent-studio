@@ -79,6 +79,9 @@ describe('M3 递交页平台卡（自带 QueryClientProvider，页面裸挂载�
     await mount(<PlatformPreflightCard caseId="c1" />)
     await vi.waitFor(() => expect(q('[data-testid="health-counts"]')?.textContent).toContain('错误 1'))
     expect(q('[data-testid="workbench-health"]')?.textContent).toContain('前引权项未定义')
+    // T10：平台体检明示为诊断参考，不参与递交就绪判定
+    expect(q('[data-testid="deliver-platform-preflight"]')?.textContent).toContain('诊断参考')
+    expect(q('[data-testid="deliver-platform-preflight"]')?.textContent).toContain('不参与递交就绪判定')
   })
 
   it('后端 404/无发布 → 空态而非报错', async () => {

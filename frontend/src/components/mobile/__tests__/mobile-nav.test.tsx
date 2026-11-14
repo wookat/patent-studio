@@ -148,6 +148,13 @@ describe('MoreSheet（R-MOB-05）', () => {
     expect(useStudio.getState().moreOpen).toBe(false)
   })
 
+  it('T8：与导航抽屉同目标同行为的入口不再出现在「更多」（大纲·历史·术语·附图）；独有入口保留', async () => {
+    useStudio.setState({ moreOpen: true })
+    await mount(<MoreSheet />)
+    for (const id of ['more-outline', 'more-history', 'more-terms', 'more-figures']) expect(q(`[data-testid="${id}"]`)).toBeNull()
+    for (const id of ['more-review', 'more-materials', 'more-timeline', 'more-console', 'more-oa', 'more-search']) expect(q(`[data-testid="${id}"]`)).not.toBeNull()
+  })
+
   it('R115-批29：面板组补 OA 答复入口——more-oa → openConsole(oa) 并关 Sheet', async () => {
     useStudio.setState({ moreOpen: true })
     await mount(<MoreSheet />)

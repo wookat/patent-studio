@@ -30,6 +30,8 @@ export interface AiSlice {
   aiChatDraft: string
   /** 待发送附件（同 aiChatDraft 契：卸载存 store 保命；发送/清场即清） */
   aiChatAttachments: ChatAttachment[]
+  /** 带入对话的案内材料名（附件预览「带入 Agent」；scope.materials 白名单 + 服务端自抽文本，客户端不粘贴） */
+  aiChatMaterials: string[]
   suggestions: AiSuggestion[]
   jobs: AiJob[]
   jobsLoading: boolean
@@ -75,6 +77,10 @@ export interface AiSlice {
   addAiChatAttachments(list: ChatAttachment[]): void
   removeAiChatAttachment(name: string): void
   clearAiChatAttachments(): void
+  /** 把案内材料名加入对话上下文（chip 可撤销；去重） */
+  addAiChatMaterial(name: string): void
+  /** 撤销一件案内材料授权（收窄 sentScopeKeys 触发清对话） */
+  removeAiChatMaterial(name: string): void
   /** 发送后把附件标记为已授权材料（chip 保留到用户明确移除——撤销即收窄清对话；未发草稿仍触发离开提示） */
   markAiChatAttachmentsSent(): void
   resetAi(): void
@@ -169,6 +175,7 @@ export const aiSlice: Slice<AiSlice> = (set, get) => ({
   aiPacks: {},
   aiChatDraft: '',
   aiChatAttachments: [],
+  aiChatMaterials: [],
   suggestions: [],
   jobs: [],
   jobsLoading: false,
@@ -390,12 +397,14 @@ export const aiSlice: Slice<AiSlice> = (set, get) => ({
   removeAiChatAttachment: (name) => set({ aiChatAttachments: get().aiChatAttachments.filter((a) => a.name !== name) }),
   clearAiChatAttachments: () => set({ aiChatAttachments: [] }),
   markAiChatAttachmentsSent: () => set({ aiChatAttachments: get().aiChatAttachments.map((a) => ({ ...a, sent: true })) }),
+  addAiChatMaterial: (name) => set({ aiChatMaterials: get().aiChatMaterials.includes(name) ? get().aiChatMaterials : [...get().aiChatMaterials, name] }),
+  removeAiChatMaterial: (name) => set({ aiChatMaterials: get().aiChatMaterials.filter((m) => m !== name) }),
   resetAi: () => {
     chatAbort?.abort()
     chatAbort = null
     for (const stop of watchers.values()) stop()
     watchers.clear()
-    set({ aiUnavailable: false, chat: [], chatStreaming: false, chatError: null, aiChatDraft: '', aiChatAttachments: [], suggestions: [], jobs: [], jobsLoading: false, sentScopeKeys: [], chatScopeNote: null, aiScope: null, aiUseBook: true, aiUseSel: true, aiPacks: {} })
+    set({ aiUnavailable: false, chat: [], chatStreaming: false, chatError: null, aiChatDraft: '', aiChatAttachments: [], aiChatMaterials: [], suggestions: [], jobs: [], jobsLoading: false, sentScopeKeys: [], chatScopeNote: null, aiScope: null, aiUseBook: true, aiUseSel: true, aiPacks: {} })
     get().resetAgent()
   },
 })

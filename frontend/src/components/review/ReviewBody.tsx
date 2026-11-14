@@ -296,7 +296,8 @@ export function ReviewBody({ pid, showAssign = true, sections = ALL_SECTIONS, cl
             <h3 id="review-marks-title" className={headingCls}>
               修订 <span className={cn('font-mono tabular-nums', tabbed && 'sr-only')} data-testid="review-mark-count">{marks.length}</span> <span className={cn(tabbed && 'sr-only')}>处</span>
             </h3>
-            {marks.length > 0 && (
+            {/* T7：单条修订只留逐项决定，≥2 处才出现全部接受/拒绝 */}
+            {marks.length >= 2 && (
               <div className={actionsCls}>
                 <Button size={ctlSize} variant="ghost" className="text-ok-fg" onClick={acceptAll} disabled={readonly} title={readonly ? READONLY_TIP : undefined} data-testid="review-accept-all">
                   <CheckCheck aria-hidden />全部接受

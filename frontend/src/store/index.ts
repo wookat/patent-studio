@@ -232,6 +232,9 @@ export const selectCanEditStyle = (s: Pick<Studio, 'project' | 'projectLoading' 
 
 /** 有未保存修改；协同已连接时由服务端去抖写盘，不存在本地脏态；只读角色无脏态 */
 export const selectDirty = (s: Studio) => s.collabStatus === 'off' && !selectReadonly(s) && s.content !== s.saved
+
+/** 开发/维护 UI（仓库回归 check_all.py、清构建缓存等）：dev 构建或超管可见；普通办案界面不显示。只藏 UI，不删能力 */
+export const selectDevUser = (s: Studio) => import.meta.env.DEV || (s.user?.is_superuser ?? false)
 /** AI/版本标识绑定的正文 sha：优先 `savedSha`（最近一次保存/加载的实测值，随 saved 切案重置）；
    仅其为空（加载中尚未落稿）时回退同案 caseContext 快照——跨案/陈旧 context 一律不用。 */
 export const selectBoundSha = (s: Studio) =>

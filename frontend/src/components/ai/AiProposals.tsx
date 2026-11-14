@@ -1,4 +1,4 @@
-import { useState, type ComponentProps, type ReactNode } from 'react'
+import { useEffect, useState, type ComponentProps, type ReactNode } from 'react'
 import { Check, ChevronDown, Construction, Crosshair, Inbox, Loader2, Sparkles, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,8 +31,34 @@ export function AiProposals({ pid, compact, canAct }: { pid: string | null; comp
   const loading = useStudio((s) => s.agentLoading)
   const unavailable = useStudio((s) => s.agentUnavailable)
   const applyAll = useStudio((s) => s.applyAllProposals)
+  const pendingProposalId = useStudio((s) => s.pendingProposalId)
+  const consumePendingProposal = useStudio((s) => s.consumePendingProposal)
   const [open, setOpen] = useState<Record<ProposalState, boolean>>({ pending: true, applied: false, dismissed: false })
   const [applyAllBusy, setApplyAllBusy] = useState(false)
+  const [flash, setFlash] = useState<string | null>(null)
+
+  // 批注「转提案」/「查看建议」落到这条提案：展开所在组 → 滚动到卡 → 短暂高亮（flash 由卡上 data-flash 驱动样式）
+  useEffect(() => {
+    if (!pendingProposalId) return
+    const p = proposals.find((x) => x.id === pendingProposalId)
+    if (!p) {
+      consumePendingProposal()
+      return
+    }
+    if (!open[p.state]) setOpen((o) => ({ ...o, [p.state]: true }))
+    const t = requestAnimationFrame(() => {
+      document.querySelector(`[data-testid="ai-proposal-${CSS.escape(p.id)}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      setFlash(p.id)
+      consumePendingProposal()
+    })
+    return () => cancelAnimationFrame(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只在待定位标记到达时消费一次
+  }, [pendingProposalId])
+  useEffect(() => {
+    if (!flash) return
+    const t = setTimeout(() => setFlash(null), 1800)
+    return () => clearTimeout(t)
+  }, [flash])
 
   if (unavailable && proposals.length === 0 && suggestions.length === 0) {
     return <EmptyState size="sm" icon={Construction} title={NOT_IMPLEMENTED_TITLE} reason="智能体建议接口尚未落地；选区润色 / 规范化 / 扩写产生的本地建议仍会显示在这里。" data-testid="ai-proposals-unavailable" />
@@ -95,7 +121,7 @@ export function AiProposals({ pid, compact, canAct }: { pid: string | null; comp
                   </li>
                 )}
                 {state === 'pending' && suggestions.map((sug) => <LocalSuggestionCard key={sug.id} sug={sug} compact={compact} />)}
-                {list.map((p) => <ProposalCard key={p.id} p={p} pid={pid} compact={compact} canAct={canAct} />)}
+                {list.map((p) => <ProposalCard key={p.id} p={p} pid={pid} compact={compact} canAct={canAct} flash={flash === p.id} />)}
                 {n === 0 && <li className="px-1 py-1.5 text-xs text-fg-muted">暂无</li>}
               </ul>
             )}
@@ -107,15 +133,17 @@ export function AiProposals({ pid, compact, canAct }: { pid: string | null; comp
 }
 
 /** 卡壳：r8 边 `--bg-panel` `--sh-sm`；已接受左 2px ok-dot；已拒绝 fg-muted */
-function Card({ state, children, ...rest }: ComponentProps<'li'> & { state: ProposalState }) {
+function Card({ state, flash, children, ...rest }: ComponentProps<'li'> & { state: ProposalState; flash?: boolean }) {
   return (
     <li
       className={cn(
         'overflow-hidden rounded-lg border border-border bg-panel text-xs shadow-sm',
         state === 'applied' && 'border-l-2 border-l-ok-dot',
         state === 'dismissed' && 'text-fg-muted',
+        flash && 'ring-2 ring-primary/60',
       )}
       data-state={state}
+      data-flash={flash || undefined}
       {...rest}
     >
       {children}
@@ -134,7 +162,7 @@ function CardHead({ title, loc, children }: { title: string; loc: string; childr
   )
 }
 
-function ProposalCard({ p, pid, compact, canAct }: { p: Proposal; pid: string | null; compact: boolean; canAct: boolean }) {
+function ProposalCard({ p, pid, compact, canAct, flash }: { p: Proposal; pid: string | null; compact: boolean; canAct: boolean; flash?: boolean }) {
   const apply = useStudio((s) => s.applyProposal)
   const dismiss = useStudio((s) => s.dismissProposal)
   const toast = useStudio((s) => s.toast)
@@ -157,7 +185,7 @@ function ProposalCard({ p, pid, compact, canAct }: { p: Proposal; pid: string | 
   }
 
   return (
-    <Card state={p.state} data-testid={`ai-proposal-${p.id}`} data-kind={p.kind}>
+    <Card state={p.state} flash={flash} data-testid={`ai-proposal-${p.id}`} data-kind={p.kind}>
       <CardHead title={scenarioLabel(p.scenario)} loc={where}>
         <Badge tone={p.state === 'dismissed' ? 'neutral' : KIND_TONE[p.kind]}>{PROPOSAL_KIND_LABEL[p.kind]}</Badge>
         {p.state !== 'pending' && <Badge tone={p.state === 'applied' ? 'ok' : 'outline'}>{STATE_LABEL[p.state]}</Badge>}

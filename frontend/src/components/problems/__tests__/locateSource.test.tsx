@@ -183,7 +183,7 @@ const diag = (id: string, line: number | null, message = '诊断'): Diagnostic =
   ({ id, severity: 'warning', message, line, source: 'lint', section: null, fix: null }) as unknown as Diagnostic
 
 describe('Problems 面板条目点击（ConsoleEntry / CheckPanel）', () => {
-  it('ConsoleEntry：标题区与右侧定位钮都可点 → 源码卡片 + focus；无行号的条目不渲染定位控件', async () => {
+  it('ConsoleEntry：每条只保留一个定位入口（标题主行）→ 源码卡片 + focus；无行号的条目不渲染定位控件', async () => {
     const dock = fakeDock(['source:description'])
     useStudio.setState({ dockHandle: dock })
     const el = await mount(
@@ -196,8 +196,7 @@ describe('Problems 面板条目点击（ConsoleEntry / CheckPanel）', () => {
     await act(async () => entries[0].querySelector<HTMLButtonElement>('[data-testid="console-entry-locate"]')!.click())
     expect(dock.openPanel).toHaveBeenLastCalledWith('source:claims', { position: { referencePanel: 'source:description', direction: 'within' } })
     expect(focusOf()).toEqual({ book: 'claims', line: 9, source: 'problems' })
-    await act(async () => entries[0].querySelector<HTMLButtonElement>('[data-testid="console-entry-goto"]')!.click())
-    expect(useStudio.getState().focus?.line).toBe(9)
+    expect(entries[0].querySelector('[data-testid="console-entry-goto"]')).toBeNull()
     expect(entries[1].querySelector('[data-testid="console-entry-locate"]')).toBeNull()
     expect(entries[1].querySelector('[data-testid="console-entry-goto"]')).toBeNull()
   })

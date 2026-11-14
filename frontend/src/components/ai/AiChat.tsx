@@ -57,6 +57,8 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
   const addAttachments = useStudio((s) => s.addAiChatAttachments)
   const removeAttachment = useStudio((s) => s.removeAiChatAttachment)
   const markAttachmentsSent = useStudio((s) => s.markAiChatAttachmentsSent)
+  const materials = useStudio((s) => s.aiChatMaterials)
+  const removeMaterial = useStudio((s) => s.removeAiChatMaterial)
   const toast = useStudio((s) => s.toast)
   /* 批76：store 草稿保重挂不保刷新（批73 口径）——输入稿/未发送材料在手时关页签走浏览器确认；
      已发送材料 chip 是上下文授权记录，不算未保存草稿 */
@@ -111,9 +113,10 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
     if (useSel && sel) keys.push(`sel:${selBook}:${sel.lineStart}-${sel.lineEnd}`)
     for (const [k, v] of Object.entries(packs)) if (v) keys.push(`pack:${k}`)
     for (const a of attachments) keys.push(`mat:${a.name}`)
+    for (const m of materials) keys.push(`mat:${m}`)
     const scope = {
       source: useBook ? { book } : useSel && sel ? { book: selBook, lines: [sel.lineStart, sel.lineEnd] } : undefined,
-      materials: attachments.map((a) => a.name),
+      materials: [...attachments.map((a) => a.name), ...materials],
     }
     return { keys, scope }
   }
@@ -129,8 +132,8 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
       useStudio.getState().clearChat()
       setScopeNote('上下文范围已缩小：已清除可能含旧内容的对话与待续跑任务，请开始新对话。')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- book/sel/attachments/packs 变化均经 scopeSnapshot 覆盖
-  }, [useBook, useSel, sel, book, packs, attachments, sentScopeKeys, setAiScope, setScopeNote])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- book/sel/attachments/materials/packs 变化均经 scopeSnapshot 覆盖
+  }, [useBook, useSel, sel, book, packs, attachments, materials, sentScopeKeys, setAiScope, setScopeNote])
 
   useEffect(() => {
     const el = listRef.current
@@ -144,6 +147,7 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
     if (packs.health && issues.length) ctx.diagnostics = issues.slice(0, MAX_CONTEXT_ITEMS).map((d) => `${d.line ? `L${d.line} ` : ''}[${d.severity}] ${d.message}`)
     if (packs.terms && terms.length) ctx.terms = termsPack(terms)
     if (packs.claims && claimTree.length) ctx.claim_tree = claimTree
+    if (materials.length) ctx.materials = materials
     return Object.keys(ctx).length ? ctx : null
   }
 
@@ -199,8 +203,26 @@ export function AiChat({ enabled, compact }: { enabled: boolean; compact: boolea
           {scopeNote}
         </p>
       )}
-      {attachments.length > 0 && (
+      {(attachments.length > 0 || materials.length > 0) && (
         <div className="flex flex-wrap items-center gap-1" data-testid="ai-attach-chips" aria-label="上下文材料（发送后即授权范围）">
+          {materials.map((m) => (
+            <span key={`mat-${m}`} className="inline-flex items-stretch">
+              <span className="inline-flex h-xs-control max-w-56 items-center gap-1 rounded-l-full border border-brand-300 bg-selected px-2.5 text-2xs text-fg-strong">
+                <FileText className="size-3 shrink-0" aria-hidden />
+                <span className="truncate" title={m}>{m}</span>
+                <span className="shrink-0 text-fg-muted">案卷材料</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => removeMaterial(m)}
+                aria-label={`移除材料 ${m}`} title={`移除材料 ${m}（已授权的会撤销授权并清空对话）`}
+                className={cn(touchHit, 'inline-flex size-xs-control items-center justify-center rounded-r-full border border-l-0 border-border text-fg-muted hover:text-fg', FOCUS_RING)}
+                data-testid={`ai-material-rm-${m}`}
+              >
+                <X className="size-3" aria-hidden />
+              </button>
+            </span>
+          ))}
           {attachments.map((a) => (
             <span key={a.name} className="inline-flex items-stretch">
               <span className="inline-flex h-xs-control max-w-56 items-center gap-1 rounded-l-full border border-brand-300 bg-selected px-2.5 text-2xs text-fg-strong">

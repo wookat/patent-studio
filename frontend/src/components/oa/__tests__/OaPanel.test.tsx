@@ -229,7 +229,8 @@ describe('OaPanel · 生成答复 → 编辑要点 → 权项 CriticMarkup 写�
     expect(q<HTMLButtonElement>('[data-testid="oa-generate-all"]')!.disabled).toBe(true)
     expect(q<HTMLButtonElement>('[data-testid="oa-generate-one"]')!.disabled).toBe(true)
     await click(q('[data-testid="oa-ai-hint"]'))
-    expect(useStudio.getState().railTab).toBe('ai')
+    // T1：桌面 AI 宿主是伴随栏，不再是 rail tab
+    expect(useStudio.getState().companion).toBe('ai')
   })
 
   it('「生成本条」只传该条 id；「生成全部」不传；job 进度条 → done 后 answers 落入 oaAnswers 并渲染答复卡', async () => {

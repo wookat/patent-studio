@@ -305,6 +305,17 @@ describe('ReviewPanel：修订列表 + 批注线程（07 §7.2 / §7.4）', () =
     expect(el.textContent).toContain('无修订标记')
   })
 
+  it('T7：全部接受/拒绝仅在 ≥2 处修订时出现；单条只剩逐项决定', async () => {
+    useStudio.setState({ marks: MARKS.slice(0, 1) })
+    const el = await mount(<ReviewBody pid="p1" />)
+    expect(el.querySelectorAll('[data-testid="review-mark"]')).toHaveLength(1)
+    expect(el.querySelector('[data-testid="review-accept-all"]')).toBeNull()
+    expect(el.querySelector('[data-testid="review-reject-all"]')).toBeNull()
+    await act(async () => useStudio.setState({ marks: MARKS.slice(0, 2) }))
+    expect(el.querySelector('[data-testid="review-accept-all"]')).not.toBeNull()
+    expect(el.querySelector('[data-testid="review-reject-all"]')).not.toBeNull()
+  })
+
   it('R115-批24：全部拒绝两阶确认——首击只 arm，取消不丢，确认才全丢', async () => {
     useStudio.setState({ marks: MARKS })
     const el = await mount(<ReviewBody pid="p1" />)

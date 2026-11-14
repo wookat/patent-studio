@@ -2,8 +2,9 @@ import { FileQuestion } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import type { FigureItem } from '@/types/figures'
-import { useStudio } from '@/store'
+import { selectAiEnabled, useStudio } from '@/store'
 import { figPreviewName } from '@/components/outline/fileTreeUtils'
+import { gotoAiChat } from '@/components/ai/aiModel'
 import { AttachmentPreview } from './AttachmentPreview'
 
 export interface FilePreviewPanelProps {
@@ -24,6 +25,7 @@ export function FilePreviewPanel({ className }: FilePreviewPanelProps) {
   const figures = useStudio((s) => (s.figuresPid === s.pid ? s.figures : NO_FIGURES))
   const figsV = useStudio((s) => s.figsVersion)
   const attItem = useStudio((s) => (att ? s.attachments.find((a) => a.name === att) ?? null : null))
+  const aiEnabled = useStudio(selectAiEnabled)
 
   if (!pid || (!fig && !att)) {
     return (
@@ -47,12 +49,23 @@ export function FilePreviewPanel({ className }: FilePreviewPanelProps) {
     )
   }
 
+  /* 「带入 Agent」：材料名入 aiChatMaterials（显式 chip 授权，scope.materials 白名单 + 服务端自抽文本），
+     打开 AI 对话页签；不自动发送、不扩大授权，chip 可撤销。figs/ 不走此路（scope 只认 attachments 目录） */
+  const bringToAgent = () => {
+    const s = useStudio.getState()
+    const already = s.aiChatMaterials.includes(att!)
+    s.addAiChatMaterial(att!)
+    gotoAiChat()
+    s.toast(already ? `《${att}》已在 AI 对话上下文` : `已把《${att}》带入 AI 对话上下文（可撤销，不自动发送）`, 'info')
+  }
+
   return (
     <AttachmentPreview
       name={att!}
       kind={attItem?.kind ?? 'binary'}
       url={attItem?.url ?? api.attachmentUrl(pid, att!)}
       downloadUrl={api.attachmentUrl(pid, att!, true)}
+      onAgent={aiEnabled ? bringToAgent : undefined}
       className={className}
     />
   )

@@ -291,6 +291,8 @@ export function DeliverPage({ pid }: { pid: string }) {
   const checks = (
     <div className="flex min-h-0 flex-col gap-4" data-testid="deliver-checks">
       <FieldErrors errors={deliverErrors} loading={deliverErrorsLoading} unavailable={deliverErrorsUnavailable} onOpen={(field) => openCaseForm(pid, field)} />
+      {/* T10：两套体检并列时的归属说明——文件真源体检才是就绪/流程条判定源；平台体检为诊断参考 */}
+      <p className="text-xs text-fg-muted" data-testid="deliver-checks-gate-note">本案正文体检（文件真源）——著录校验与本表清零是「递交就绪」与流程条的判定依据。</p>
       <CheckTable
         items={items}
         counts={counts}

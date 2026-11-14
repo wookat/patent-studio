@@ -34,7 +34,7 @@ export function PlatformReleasesCard({ caseItem }: { caseItem: PlatformCase }) {
 function PreflightBody({ caseId }: { caseId: string }) {
   return (
     <SideCard title="平台体检" icon={<Stethoscope aria-hidden />} data-testid="deliver-platform-preflight">
-      <p className="mb-2 text-xs text-fg-muted">对平台库中三书最新修订跑同一套 kernel 规则（与文件真源体检互为对照）。</p>
+      <p className="mb-2 text-xs text-fg-muted">对平台库中三书最新修订跑同一套 kernel 规则——诊断参考，不参与递交就绪判定。</p>
       <HealthPanel caseId={caseId} />
     </SideCard>
   )

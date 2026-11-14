@@ -351,6 +351,9 @@ describe('AiPanel 四 tab（W5 §6.6）', () => {
     const el = await mount(<AiPanel />)
     await goTab('jobs')
     await flush()
+    // T5：预算进度条收进默认折叠的「用量与度量」，展开可见
+    await click(q('[data-testid="ai-usage-toggle"]', el)!)
+    await flush()
     expect(q('[data-testid="ai-budget"]', el)).not.toBeNull()
     expect(q('[data-testid="ai-budget"] [role="progressbar"]', el)).not.toBeNull()
     expect(q('[data-testid="ai-budget"]', el)!.textContent).toMatch(/5\.0 万 \/ 20\.0 万/)

@@ -310,6 +310,8 @@ describe('DeliverPage（路由页）', () => {
     expect(q('[data-testid="deliver-desktop"]')).not.toBeNull()
     expect(q('[data-testid="deliver-mobile"]')).toBeNull()
     expect(q('[data-testid="check-section"]')).not.toBeNull()
+    // T10：文件真源体检标注为递交就绪/流程条的判定依据
+    expect(q('[data-testid="deliver-checks-gate-note"]')?.textContent).toContain('递交就绪')
     expect(q('[data-testid="export-grid"]')).not.toBeNull()
     expect(q('[data-testid="deliver-file"]')).not.toBeNull()
     expect(useStudio.getState().loadManifest).toHaveBeenCalledWith('method')
