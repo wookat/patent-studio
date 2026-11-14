@@ -308,15 +308,18 @@ export function DashboardPage() {
             <>
               {section === 'cases' && <Segmented options={VIEW_OPTIONS} value={view} onValueChange={setView} aria-label="视图" size="sm" />}
               <Segmented options={SECTION_OPTIONS} value={section} onValueChange={setSection} aria-label="区块" size="sm" />
-              <Button variant="ghost" size="sm" onClick={exportCsv} disabled={!rows.length} data-testid="export-csv" aria-label="导出 CSV">
-                <Download aria-hidden />
-                导出 CSV
-              </Button>
+              {/* R9：列表视图下导出并入工具行「列」菜单；看板视图无工具行，标题行保留为唯一入口 */}
+              {view !== 'list' && (
+                <Button variant="ghost" size="sm" onClick={exportCsv} disabled={!rows.length} data-testid="export-csv" aria-label="导出 CSV">
+                  <Download aria-hidden />
+                  导出 CSV
+                </Button>
+              )}
             </>
           }
         />
         <TodaySummaryBar />
-        {view === 'list' && <TableToolbar sorting={sorting} onSortingChange={setSorting} columns={columns} onColumnsChange={setColumns} />}
+        {view === 'list' && <TableToolbar sorting={sorting} onSortingChange={setSorting} columns={columns} onColumnsChange={setColumns} onExportCsv={exportCsv} exportCsvDisabled={!rows.length} />}
         <BulkBar selected={selected} tags={tags} inTrash={scope === 'trash'} onClear={() => setSelected([])} />
         <div ref={bodyWrap} className="flex min-h-0 flex-1 flex-col overflow-auto">{section === 'items' ? <PlatformQueue /> : body}</div>
       </main>

@@ -1,12 +1,11 @@
 import { Fragment } from 'react'
-import { ArrowLeft, Download, Images, Sparkles } from 'lucide-react'
+import { ArrowLeft, Download, Sparkles } from 'lucide-react'
 import { StatusPicker } from '@/components/dashboard/StatusPicker'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuTrigger } from '@/components/ui/dropdown'
 import { MenuContent } from '@/components/ui/menu-bits'
 import { FOCUS_RING, cn } from '@/lib/utils'
 import { useStudio, selectDirty, type CompanionId } from '@/store'
-import { figlibHash } from '@/lib/hash'
 import { ExportMenuItems } from './ExportMenu'
 import { MenuBar } from './MenuBar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -68,22 +67,6 @@ export function TopBar() {
         <TooltipContent>返回案卷面板</TooltipContent>
       </Tooltip>
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="md"
-            className="shrink-0 text-fg-muted"
-            onClick={() => requestNavigation({ type: 'custom', label: '附图图库', run: () => { window.location.hash = figlibHash } })}
-            aria-label="附图图库"
-            data-testid="goto-figlib"
-          >
-            <Images aria-hidden />
-            <span className="hidden xl:inline">图库</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>附图图库——真实专利附图分类参考（可搜索/看全貌）</TooltipContent>
-      </Tooltip>
       <div className="mx-1 h-4 w-px shrink-0 bg-border" aria-hidden />
 
       <MenuBar className="shrink-0" />

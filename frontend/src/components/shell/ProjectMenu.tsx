@@ -1,4 +1,4 @@
-import { ChevronDown, CircleDot, Copy, LayoutGrid, Pencil } from 'lucide-react'
+import { ChevronDown, CircleDot, Copy, Pencil } from 'lucide-react'
 import { StatusDot } from '@/components/ui/status-dot'
 import { DropdownMenu, DropdownMenuGroup, DropdownMenuTrigger } from '@/components/ui/dropdown'
 import { useCaseStatus } from '@/hooks/useCaseStatus'
@@ -51,8 +51,8 @@ function StatusRows() {
 
 /**
  * 顶栏居中的案卷标题下拉（07 §2.1 ProjectTitle / 原型 .top .title）：案名 + ▾（脏时 ●）。
- * 下拉：[状态 ▸（仅 compact）─] 重命名… / 复制… ─ 返回案卷面板。切换 / 新建已移到面板 #/（13 §5.3 入口收敛）；
- * 重命名 / 复制 / 回面板全部经 ui.requestNavigation 守卫。移动端顶栏以 compact 复用。
+ * 下拉：[状态 ▸（仅 compact）─] 重命名… / 复制…。切换 / 新建已移到面板 #/（13 §5.3 入口收敛），
+ * 回面板与左侧「← 案卷」钮重复已撤；重命名 / 复制经 ui.requestNavigation 守卫。移动端顶栏以 compact 复用。
  */
 export function ProjectMenu({ compact }: { compact?: boolean }) {
   const pid = useStudio((s) => s.pid)
@@ -73,7 +73,7 @@ export function ProjectMenu({ compact }: { compact?: boolean }) {
               compact ? 'max-w-[11rem]' : 'max-w-[35rem]',
             )}
             aria-label={`当前案子：${name}${dirty ? '（有未保存修改）' : ''}`}
-            title="重命名 / 复制 / 返回面板"
+            title="重命名 / 复制"
             data-dirty={dirty || undefined}
             data-slot="ProjectMenu"
             data-testid="project-tab"
@@ -100,10 +100,6 @@ export function ProjectMenu({ compact }: { compact?: boolean }) {
             data-testid="duplicate-project"
           >
             复制…
-          </MenuRow>
-          <MenuSeparator />
-          <MenuRow icon={<LayoutGrid />} onSelect={() => requestNavigation({ type: 'dashboard' })} data-testid="goto-dashboard">
-            返回案卷面板
           </MenuRow>
         </MenuContent>
       </DropdownMenu>

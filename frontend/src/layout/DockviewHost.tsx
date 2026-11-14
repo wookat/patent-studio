@@ -146,7 +146,7 @@ function GroupActions(props: IDockviewHeaderActionsProps) {
       {floating ? (
         <button
           type="button"
-          className="dv-default-tab-action"
+          className="dv-default-tab-action card-win-ctrl"
           aria-label={`停靠 ${name}`}
           title="停靠"
           onClick={() => api.moveTo({ position: 'right' })}
@@ -157,7 +157,7 @@ function GroupActions(props: IDockviewHeaderActionsProps) {
         <>
           <button
             type="button"
-            className="dv-default-tab-action"
+            className="dv-default-tab-action card-win-ctrl"
             aria-label={`浮动 ${name}`}
             title="浮动"
             onClick={() => containerApi.addFloatingGroup(group, FLOATING_DEFAULTS)}
@@ -166,7 +166,7 @@ function GroupActions(props: IDockviewHeaderActionsProps) {
           </button>
           <button
             type="button"
-            className="dv-default-tab-action"
+            className="dv-default-tab-action card-win-ctrl"
             aria-label={maximized ? `还原 ${name}` : `最大化 ${name}`}
             title={maximized ? '还原' : '最大化'}
             onClick={() => (maximized ? api.exitMaximized() : api.maximize())}

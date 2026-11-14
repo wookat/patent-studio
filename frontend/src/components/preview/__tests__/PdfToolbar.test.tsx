@@ -63,7 +63,7 @@ describe('PdfToolbar 触控两行（06 §2 预览工具条）', () => {
     expect(q<HTMLButtonElement>('[data-testid="rebuild-menu"]', split)!.dataset.size).toBe('icon-md')
     expect(q<HTMLButtonElement>('[data-testid="console-toggle"]', left)!.dataset.size).toBe('icon-md')
     expect(q('[data-testid="preview-status"]', left)).not.toBeNull()
-    expect(q('[data-testid="download-pdf"]', left)).toBeNull()
+    expect(q('[data-testid="download-pdf"]', left)).toBeNull() // R5：下载 PDF 只留顶栏导出 / 递交页，工具条不再重复
 
     const right = q('[data-testid="pdf-toolbar-right"]', tb)!
     expect(right.className).toContain('h-touch')
@@ -90,9 +90,10 @@ describe('PdfToolbar 触控两行（06 §2 预览工具条）', () => {
     const split = q('[data-testid="rebuild-split"]', tb)!
     expect(split.dataset.variant).not.toBe('mobile')
     expect(q<HTMLButtonElement>('[data-testid="rebuild"]', split)!.className).toContain('h-xs-control')
-    for (const id of ['console-toggle', 'pdf-find-toggle', 'zoom-out', 'zoom-in', 'page-prev', 'page-next', 'download-pdf']) {
+    for (const id of ['console-toggle', 'pdf-find-toggle', 'zoom-out', 'zoom-in', 'page-prev', 'page-next']) {
       expect(q<HTMLButtonElement>(`[data-testid="${id}"]`, tb)!.dataset.size, id).toBe('icon-xs')
     }
+    expect(q('[data-testid="download-pdf"]', tb)).toBeNull()
     expect(q<HTMLInputElement>('[data-testid="page-input"]', tb)!.className).toContain('h-xs-control')
     expect(q('[data-testid="fit-width"]', tb)).toBeNull()
     expect(q('[data-testid="zoom-menu"]', tb)).not.toBeNull()

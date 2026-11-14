@@ -149,7 +149,7 @@ describe('TopBar（1440）', () => {
 
     await pointerOpen(q('[data-testid=project-tab]')!)
     const items = menuItems()
-    expect(items).toEqual(['重命名…', '复制…', '返回案卷面板'])
+    expect(items).toEqual(['重命名…', '复制…'])
     expect(items.join()).not.toMatch(/切换|新建/)
     expect(await serious(document.body)).toEqual([])
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))

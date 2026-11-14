@@ -1,5 +1,6 @@
 import type { Orientation, SerializedDockview } from 'dockview-react'
 import { LAYOUT_PRESET_IDS, parsePanelId, type LayoutPresetId, type PanelId } from '@/store/layout'
+import type { CompanionId } from '@/store/ui'
 
 /**
  * 预置布局（docs/plan/08-r4-dockview-design.md §7.1；「AI 辅助」为波次 3 集成新增）：dockview `fromJSON` 直接可用的序列化布局。
@@ -14,6 +15,8 @@ export interface LayoutPreset {
   hint: string
   /** 应用后是否开对照滚动锁 */
   compareLock: boolean
+  /** 应用预置时顺带打开的伴随栏（AI 辅助 = Agent 开在伴随栏而非 dock 面板）；缺省不动伴随栏 */
+  companion?: CompanionId
   layout: SerializedDockview
 }
 
@@ -132,13 +135,13 @@ export const LAYOUT_PRESETS: Record<LayoutPresetId, LayoutPreset> = {
   'ai-assist': {
     id: 'ai-assist',
     label: 'AI 辅助',
-    hint: '三书源码 tab | 真实 PDF | 右侧 320：术语 / OA 答复 tab 组（AI 智能体与审阅在顶栏伴随栏）',
+    hint: '三书源码 tab | 真实 PDF；AI 智能体开在右侧伴随栏（术语 / OA 经竖栏与命令面板打开）',
     compareLock: false,
+    companion: 'ai',
     layout: columns(
       [
         { id: 'g-source', views: ['source:abstract', 'source:claims', 'source:description'], activeView: 'source:description', size: 460 },
         { id: 'g-pdf', views: ['pdf'], size: 380 },
-        { id: 'g-ai', views: ['terms', 'oa'], size: 320 },
       ],
       'g-source',
     ),
@@ -146,7 +149,7 @@ export const LAYOUT_PRESETS: Record<LayoutPresetId, LayoutPreset> = {
 }
 
 /**
- * 默认预置（W5 21 §5.5 U1 / W6 05 §2.9）：ai-assist —— 源码 | PDF | 右侧 320 术语组；AI 助手不再是 dock 面板，由顶栏伴随栏（CompanionHost 'ai'）承载。
+ * 默认预置（W5 21 §5.5 U1 / W6 05 §2.9）：ai-assist —— 源码 | PDF，右侧 320 让位给 Agent 伴随栏（CompanionHost 'ai'），术语 / OA 不再常驻 dock。
  * 含 `pdf` 卡，旧 ui.layout='preview' 最大化 PDF 仍成立；`resetLayout` 与「基于 X」菜单勾选同用本常量。
  */
 export const DEFAULT_PRESET: LayoutPresetId = 'ai-assist'

@@ -14,7 +14,7 @@ export type ThreeView = EditorView | 'pdf'
 
 export const THREE_VIEWS: readonly ThreeView[] = ['source', 'layout', 'pdf']
 
-/** 三视图显示文案（ViewSwitch / ViewTabs / MobileEditorViewTabs 共源） */
+/** 三视图显示文案（ViewSwitch / ViewTabs 共源） */
 export const VIEW_LABEL: Record<ThreeView, string> = { source: '源码', layout: '版面', pdf: 'PDF' }
 
 export interface ViewSwitchState {

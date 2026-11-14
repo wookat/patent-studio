@@ -119,6 +119,23 @@
   height: 14px;
 }
 
+/* 卡头窗口控件按需出现：浮动 / 最大化（停靠）、对照滚动锁、打开为… 默认收起，
+   悬停或键盘焦点进入卡头（tab 条 / CardHeader）时显示；触屏（hover:none）常驻。
+   用 visibility 不占位移——悬停时布局不跳；visibility:hidden 不可聚焦，先 Tab 到
+   tab 条触发 :focus-within 再聚焦到钮，键盘同样可达。 */
+@media (hover: hover) {
+  .dockview-theme-studio .dv-tabs-and-actions-container .card-win-ctrl,
+  [data-slot='CardHeader'] .card-win-ctrl {
+    visibility: hidden;
+  }
+  .dockview-theme-studio .dv-tabs-and-actions-container:hover .card-win-ctrl,
+  .dockview-theme-studio .dv-tabs-and-actions-container:focus-within .card-win-ctrl,
+  [data-slot='CardHeader']:hover .card-win-ctrl,
+  [data-slot='CardHeader']:focus-within .card-win-ctrl {
+    visibility: visible;
+  }
+}
+
 /* 键盘焦点：与 Rail / 菜单同一 2px ring（dockview 自带 ::after 只用 divider 色，不够醒目） */
 .dockview-theme-studio .dv-tab:focus-visible::after,
 .dockview-theme-studio .dv-tab:has(:focus-visible)::after {

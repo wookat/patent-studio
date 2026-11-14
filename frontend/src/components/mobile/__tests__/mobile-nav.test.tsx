@@ -130,17 +130,21 @@ describe('MoreSheet（R-MOB-05）', () => {
     expect(sheet.className).not.toContain('px-2')
     for (const g of Array.from(sheet.querySelectorAll<HTMLElement>('[role="group"]'))) expect(g.className).not.toContain('gap-px')
     expect(token('--pad-sheet-m')).toBe('16px')
-    for (const id of ['export-docx', 'export-pdf', 'open-deliver-page', 'more-share', 'more-settings', 'more-theme', 'more-density', 'more-console', 'more-review', 'more-palette', 'more-syntax', 'more-about']) {
+    // R10：导入 Word / 转专利（手机工作台无入口）、密度（手机账户页无入口）等无替代入口项保留
+    for (const id of ['open-deliver-page', 'more-share', 'more-settings', 'more-density', 'more-console', 'more-review', 'more-palette', 'more-syntax', 'more-about', 'more-import-docx', 'more-convert', 'more-open-pdf']) {
       expect(sheet.querySelector(`[data-testid="${id}"]`)).not.toBeNull()
     }
-    // 主题 / 密度只在此处：Segmented md 36（选项 touch-hit 命中 44）；行 44
-    for (const id of ['more-theme', 'more-density']) {
-      const seg = q(`[data-testid="${id}"]`, sheet)
+    // R10：有替代入口的重复项不再出现——源码/版面（ViewSwitch）、DOCX/PDF 下载（递交页）、新建（工作台）、主题（账户页）
+    for (const id of ['export-docx', 'export-pdf', 'more-create-project', 'more-theme', 'mobile-editor-view-tabs']) {
+      expect(sheet.querySelector(`[data-testid="${id}"]`)).toBeNull()
+    }
+    // 密度只在此处（手机账户页无入口）：Segmented md 36（选项 touch-hit 命中 44）；行 44
+    {
+      const seg = q('[data-testid="more-density"]', sheet)
       expect(seg.className).toContain('h-md-control')
       expect(seg.className).not.toContain('h-touch')
       expect(seg.parentElement!.className).toContain('min-h-touch')
     }
-    expect(q('[data-testid="mobile-editor-view-tabs"]', sheet).className).toContain('h-md-control')
     expect(sheet.className).toContain('pt-sheet-top-m')
     expect(sheet.className).toContain('pb-[calc(var(--pad-sheet-m)+env(safe-area-inset-bottom))]')
     expect(await violations(sheet)).toEqual([])
@@ -177,17 +181,14 @@ describe('MoreSheet（R-MOB-05）', () => {
     }
   })
 
-  it('密度 / 主题 Segmented 写 store（不关闭 Sheet，便于连续调整）', async () => {
+  it('密度 Segmented 写 store（不关闭 Sheet，便于连续调整；主题已移交手机账户页）', async () => {
     useStudio.setState({
       moreOpen: true,
       density: 'comfortable',
-      theme: 'light',
     })
     await mount(<MoreSheet />)
     await click('[data-testid="more-density-compact"]')
     expect(useStudio.getState().density).toBe('compact')
-    await click('[data-testid="more-theme-dark"]')
-    expect(useStudio.getState().theme).toBe('dark')
     expect(useStudio.getState().moreOpen).toBe(true)
   })
 })

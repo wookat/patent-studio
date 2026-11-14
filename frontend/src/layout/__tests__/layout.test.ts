@@ -112,7 +112,7 @@ describe('presets（08 §7.1）', () => {
     }
   })
 
-  it('默认 = ai-assist（源码 | PDF | 术语组 320，AI 在伴随栏）；权利要求书 ↔ 说明书 开对照锁', () => {
+  it('默认 = ai-assist（源码 | PDF，Agent 在伴随栏 companion=ai；术语 / OA 不再常驻 dock）；权利要求书 ↔ 说明书 开对照锁', () => {
     expect(DEFAULT_PRESET).toBe('ai-assist')
     expect(presetPanelIds(LAYOUT_PRESETS['ai-assist'])).toContain('pdf')
     expect(presetPanelIds(LAYOUT_PRESETS['default'])).toEqual(['source:abstract', 'source:claims', 'source:description', 'pdf'])
@@ -121,7 +121,8 @@ describe('presets（08 §7.1）', () => {
     expect(LAYOUT_PRESETS.default.compareLock).toBe(false)
     expect(presetPanelIds(LAYOUT_PRESETS['layout-pdf'])).toEqual(['layout:all', 'pdf'])
     expect(presetPanelIds(LAYOUT_PRESETS['review'])).toEqual(['source:all', 'pdf'])
-    expect(presetPanelIds(LAYOUT_PRESETS['ai-assist'])).toEqual(expect.arrayContaining(['terms', 'oa']))
+    expect(presetPanelIds(LAYOUT_PRESETS['ai-assist'])).toEqual(['source:abstract', 'source:claims', 'source:description', 'pdf'])
+    expect(LAYOUT_PRESETS['ai-assist'].companion).toBe('ai')
     for (const p of listPresets()) for (const id of presetPanelIds(p)) expect(RETIRED_PANEL_KINDS.has(parsePanelId(id)!.kind)).toBe(false)
   })
 })

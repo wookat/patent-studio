@@ -1,8 +1,7 @@
 import { useCallback, useRef, type KeyboardEvent, type PointerEvent } from 'react'
-import { FilePlus2, ListTree, Settings2 } from 'lucide-react'
+import { ListTree } from 'lucide-react'
 import { useStudio, type RailTab } from '@/store'
 import { cn } from '@/lib/utils'
-import { hotkeyLabel } from '@/lib/hotkeys'
 import { FileTree } from './FileTree'
 import { OutlinePanel } from './OutlinePanel'
 import { HistoryPanel } from './HistoryPanel'
@@ -11,7 +10,6 @@ import { FigureBookView } from '@/components/figure-book/FigureBookView'
 import { ReviewPanel } from '@/components/review/ReviewPanel'
 import { TermsPanel } from '@/components/terms/TermsPanel'
 import { IconButton30, SectionHeader } from './TreeRow'
-import { LABEL_NEW_PROJECT } from '@/lib/copy'
 
 /** 分栏两块各自的最小高度（px，含 28px 标题） */
 export const SIDE_SECTION_MIN = 120
@@ -36,9 +34,6 @@ export function SideSplit() {
   const setRailTab = useStudio((s) => s.setRailTab)
   const openCompanion = useStudio((s) => s.openCompanion)
   const setConsoleTab = useStudio((s) => s.setConsoleTab)
-  const requestNavigation = useStudio((s) => s.requestNavigation)
-  const settingsOpen = useStudio((s) => s.settingsOpen)
-  const toggleSettings = useStudio((s) => s.toggleSettings)
   const ratio = useStudio((s) => s.sideSplitRatio)
   const filesCollapsed = useStudio((s) => s.sideFilesCollapsed)
   const outlineCollapsed = useStudio((s) => s.sideOutlineCollapsed)
@@ -124,16 +119,6 @@ export function SideSplit() {
           onToggle={toggleFiles}
           controls="side-files-body"
           testId="side-files-header"
-          actions={
-            <>
-              <IconButton30 label={LABEL_NEW_PROJECT} onClick={() => requestNavigation({ type: 'create-project' })} testId="side-new-project">
-                <FilePlus2 />
-              </IconButton30>
-              <IconButton30 label={`排版设置（${hotkeyLabel('toggleSettings')}）`} onClick={() => toggleSettings()} pressed={settingsOpen} testId="side-settings">
-                <Settings2 />
-              </IconButton30>
-            </>
-          }
         />
         {!filesCollapsed && (
           <div id="side-files-body" className="min-h-0 flex-1">
