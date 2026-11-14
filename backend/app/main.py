@@ -28,8 +28,8 @@ from app.auth.users_me import router as users_me_router
 from app.collab import rooms as collab_rooms
 from app.collab.routes import router as collab_router
 from app.deadlines import scan as deadline_scan
-from app.domain import cases, events, history, review_meta, terms
-from app.domain.build import artifact_path, latest_artifact_dir, run_build
+from app.domain import cases, events, history, org, review_meta, terms
+from app.domain.build import artifact_path, run_build
 from app.domain.check import run_check_all
 from app.domain.lint import lint
 from app.domain.projects import ProjectError, ProjectStore, default_settings, normalize_settings
@@ -422,15 +422,56 @@ async def create_project(body: ProjectIn, request: Request, user: auth.CurrentUs
     return _project_out(p)
 
 
+def _content_sha(content: str) -> str:
+    return hashlib.sha256(content.encode()).hexdigest()
+
+
 @app.get("/api/projects/{pid}")
 async def get_project(pid: str, user: auth.CurrentUser):
     p = store.get(pid)
     d = _project_out(p)
     d["role"] = await auth.my_role(pid, user)
     d["content"] = store.read_content(pid)
+    d["content_sha"] = _content_sha(d["content"])
+    d["revision"] = history.head(p.dir)
     d["backups"] = store.list_backups(pid)[:20]
     await auth.access_touch(pid, user)
     return d
+
+
+@app.get("/api/projects/{pid}/context")
+async def case_context(pid: str, request: Request, user: auth.CurrentUser):
+    """统一案卷上下文（C0/P01）：文件面身份 + PG 绑定 + 版本一次聚合，viewer 可读。
+    文件 pid 不是机构凭据：bound 时 case_id/organization/binding_capabilities 全部来自 PG 真实
+    谓词（domain/context.resolve_binding）；unbound/ambiguous/unavailable/denied 显式标出，不伪造。"""
+    from app.domain import context as ctx_domain
+
+    p = store.get(pid)
+    case = cases.ensure_case(p.dir)
+    role = await auth.my_role(pid, user)
+    o = org.load_org()
+    b = await ctx_domain.resolve_binding(request, pid)
+    return {
+        "pid": pid,
+        "title": p.title,
+        "case_no": b.get("case_no") or case.case_no,
+        "auth": "on" if config.AUTH_ON else "off",
+        "file_role": role,
+        # auth=on 下 role 缺失（未登录/无 ACL 行）不能放大为 owner——只 auth=off 才给本地全权
+        "capabilities": auth.capabilities_for(role) if (role is not None or not config.AUTH_ON) else [],
+        "binding": b.get("binding"),
+        "candidates": b.get("candidates"),
+        "case_id": b.get("case_id"),
+        "organization": b.get("organization"),
+        "org_role": b.get("org_role"),
+        "participant_roles": b.get("participant_roles") or [],
+        "binding_capabilities": b.get("capabilities"),
+        "egress_policy": b.get("egress_policy"),
+        "revision": history.head(p.dir),
+        "content_sha": _content_sha(store.read_content(pid)),
+        "ai_enabled": bool(p.settings.get("ai_enabled")),
+        "org_ai_enabled": o.ai_enabled,
+    }
 
 
 @app.get("/api/projects/{pid}/content")
@@ -452,7 +493,13 @@ async def put_content(pid: str, body: ContentIn, user: auth.CurrentUser):
         # 批80：save_content 内含 git commit（subprocess 百毫秒级）——同步跑会 stall 单 worker 事件循环
         # （协同心跳同受影响）；contextvars 的 override/author 随 to_thread 继承
         backup = await asyncio.to_thread(store.save_content, pid, body.content)
-    return {"ok": True, "backup": backup, "backups": store.list_backups(pid)[:20]}
+    return {
+        "ok": True,
+        "backup": backup,
+        "backups": store.list_backups(pid)[:20],
+        "content_sha": _content_sha(body.content),
+        "revision": history.head(store.get(pid).dir),
+    }
 
 
 @app.get("/api/projects/{pid}/backups")
@@ -477,7 +524,11 @@ async def get_settings(pid: str):
 
 
 @app.put("/api/projects/{pid}/settings")
-async def put_settings(pid: str, body: SettingsIn):
+async def put_settings(pid: str, body: SettingsIn, request: Request, user: auth.CurrentUser):
+    try:
+        before_ai = store.load_settings(pid).get("ai_enabled")
+    except ProjectError:
+        before_ai = None  # 损坏的 studio.json 由 update_settings 自愈——不在读取侧先炸
     try:
         # 批80：payload 带 FIGURE_KEYS 时内含 save_figures → git commit——offload 防阻塞事件循环
         # 拍板：PUT /settings 改 merge 语义——部分客户端（MCP/脚本）只传改动键，
@@ -485,6 +536,23 @@ async def put_settings(pid: str, body: SettingsIn):
         s = await asyncio.to_thread(store.update_settings, pid, body.model_dump(exclude_none=True))
     except (TypeError, ValueError, KeyError, IndexError) as e:
         raise HTTPException(422, f"settings 不合法：{e}")
+    if before_ai is not None and bool(s.get("ai_enabled")) != bool(before_ai):
+        from app.domain import context as ctx_domain
+
+        b = await ctx_domain.resolve_binding(request, pid)
+        pol = b.get("egress_policy") or {}
+        events.emit(
+            "ai.egress_toggle",
+            pid=pid,
+            actor=events.actor_of(user),
+            data={
+                "enabled": bool(s.get("ai_enabled")),
+                "policy": "deployment+org",
+                "binding": b.get("binding"),
+                "policy_version": pol.get("version"),
+                "organization_id": (b.get("organization") or {}).get("id"),
+            },
+        )
     return {"settings": s, "effective_style": merge_style(s.get("style"))}
 
 
@@ -532,19 +600,34 @@ async def get_artifact(pid: str, build_id: str, name: str):
 
 
 @app.get("/api/projects/{pid}/export")
-async def export(pid: str, user: auth.CurrentUser, fmt: str = "docx", build_id: str | None = None):
+async def export(
+    pid: str, user: auth.CurrentUser, fmt: str = "docx", build_id: str | None = None, expected_sha: str | None = None
+):
     if fmt not in ("docx", "pdf"):
         raise HTTPException(400, "fmt 必须是 docx 或 pdf")
     p = store.get(pid)
     if build_id:
         src = artifact_path(store, pid, build_id, f"out.{fmt}")
     else:
-        latest = latest_artifact_dir(store, pid, f"out.{fmt}")
+        content = store.read_content(pid)
+        # C0/P02：客户端声明的期望版本不符 ⇒ 409——不把陈旧请求静默导成新稿
+        if expected_sha is not None and expected_sha != _content_sha(content):
+            raise HTTPException(409, error_detail("conflict", "正文已变化，请刷新版本后重试导出"))
+        from app.domain.build import input_fingerprint, matching_artifact_dir
+
+        settings = store.load_settings(pid)
+        fp = input_fingerprint(content, critic.resolve(content, "final"), settings, p, "final")
+        latest = matching_artifact_dir(store, p, fmt, fp)
         if not latest:
-            outcome = await asyncio.to_thread(run_build, store, pid, None, None, fmt == "pdf")
+            # R5/复核2：把已校验的正文+设置快照传进构建——run_build(content=None) 会在排队
+            # 后重读盘文，并发 save 会把版本 B 冒充期望的 A 导出。传快照则产物恒为本次验证的版本。
+            outcome = await asyncio.to_thread(run_build, store, pid, content, settings, fmt == "pdf")
             if outcome.status != "ok":
                 raise HTTPException(422, (outcome.error or {}).get("message", "构建失败"))
-            latest = latest_artifact_dir(store, pid, f"out.{fmt}")
+            # 用本次 outcome.build_id 的目录——不再扫 latest，并发请求不会捞到别的构建
+            latest = os.path.join(p.studio_dir, "builds", outcome.build_id or "")
+            if not os.path.isfile(os.path.join(latest, f"out.{fmt}")):
+                raise HTTPException(500, "构建完成但产物缺失")
         src = os.path.join(latest, f"out.{fmt}")
     filename = f"申请文件-{p.title or pid}.{fmt}"
     media = _MEDIA[fmt]

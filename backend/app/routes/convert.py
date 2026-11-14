@@ -17,6 +17,8 @@ from app import auth
 from app.ai import require_enabled
 from app.convert import extract, pipeline, questionnaire
 from app.domain import attachments, cases
+from app.domain import org as org_domain
+from app.domain.org import require_org_ai
 from app.domain.projects import id_slug
 from app.errors import error_detail
 from app.routes import read_bounded
@@ -36,7 +38,7 @@ def new_pid(store, filename: str) -> str:
     return store.unique_pid(id_slug(stem, 40, "convert"))
 
 
-@router.post("/api/projects/convert", status_code=202)
+@router.post("/api/projects/convert", status_code=202, dependencies=[Depends(require_org_ai)])
 async def convert(
     request: Request,
     user: auth.CurrentUser,
@@ -66,6 +68,7 @@ async def convert(
         # target 是表单字段不在路径参数里，project_access 不生效——必须手工校验目标案写权限
         await auth.check_access(request, user, target, "editor")
         require_enabled(store, target, UNIT)
+        await org_domain.require_org_ai_pid(request, target)  # path 无 pid，机构策略按目标案重查
         if jobs.busy(target, "convert"):  # 快速失败；竞态兜底在下方 create_unless_busy（R75-01）
             raise HTTPException(409, error_detail("job_busy", "本案已有转换任务在进行中", detail=UNIT))
     if file is not None:

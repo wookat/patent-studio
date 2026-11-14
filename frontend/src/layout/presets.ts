@@ -50,6 +50,18 @@ function columns(leaves: Leaf[], activeGroup: string): SerializedDockview {
 }
 
 export const LAYOUT_PRESETS: Record<LayoutPresetId, LayoutPreset> = {
+  casework: {
+    id: 'casework',
+    label: '案卷工作区',
+    hint: '左材料/目录 + 中全文正文 + 右 Agent（伴随栏）；PDF 按需经视图切换唤起，不占固定列',
+    compareLock: false,
+    layout: columns(
+      [
+        { id: 'g-source', views: ['source:all'], size: 1000 },
+      ],
+      'g-source',
+    ),
+  },
   default: {
     id: 'default',
     label: '源码 | PDF',

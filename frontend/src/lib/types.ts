@@ -89,6 +89,36 @@ export interface ProjectDetail extends ProjectSummary {
   has_settings_file: boolean
   content: string
   backups: Backup[]
+  /** C0/P01：落盘正文 sha256（乐观并发凭据即此值）；无正文历史时 revision 为 null */
+  content_sha?: string
+  revision?: string | null
+}
+
+/** C0/P01：GET /api/projects/{pid}/context——文件案卷 ↔ PG 案绑定契约；
+ * binding：bound（恰一案）/ unbound（无映射）/ ambiguous（多机构同案号，fail-closed）/
+ * denied（可见但被访问谓词拒）/ unavailable（PG 未配置或无平台身份）。 */
+export interface CaseContext {
+  pid: string
+  case_no: string | null
+  binding: 'bound' | 'unbound' | 'ambiguous' | 'denied' | 'unavailable'
+  case_id: string | null
+  organization: { id: string; name: string; status: string } | null
+  candidates?: number
+  file_role: Role | null
+  auth: string
+  capabilities: string[]
+  binding_capabilities?: { read: boolean; write: boolean; manage: boolean } | null
+  content_sha: string
+  revision: string | null
+  ai_enabled: boolean
+  /** P03：绑定机构的外发策略快照（仅 bound 时非空）；false 的 ai_egress 表示机构已撤销本案 AI 外发 */
+  egress_policy?: { ai_egress?: boolean; training_consent?: boolean; version?: number } | null
+}
+
+/** P05：随 /ai/chat 显式声明的上下文授权——source 可整卷/单书/行段，materials 为材料文件名白名单（服务端仍逐条复核） */
+export interface ChatScope {
+  source?: { full?: boolean; book?: string; lines?: number[] }
+  materials?: string[]
 }
 
 export interface Backup {
@@ -164,6 +194,8 @@ export interface BuildOutcome {
   diagnostics: Diagnostic[]
   /** W5（21 §5.1）：unoserver 路径生成 tagged PDF（文本层可 struct 配对）⇒ true；CLI 路径 / 旧后端缺省 ⇒ false */
   pdf_tagged?: boolean
+  /** C0/P02：本次构建完整输入指纹（与 manifest.input 一致）——预览版本标注，不能拿当前案版本冒充 PDF 版本 */
+  input?: { raw_sha: string; content_sha: string; settings_sha: string; figs_sha: string | null; mode: string } | null
 }
 
 /** 大纲节点（lib/outline.ts 由 F2 实现；此处只定义 store 承载的最小形状） */

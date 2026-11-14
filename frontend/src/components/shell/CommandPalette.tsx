@@ -26,6 +26,7 @@ export function CommandPalette() {
   const superuser = useStudio((s) => s.user?.is_superuser)
   const authOff = useStudio((s) => s.authStatus === 'off')
   const adminVisible = superuser || authOff // AdminPage 允许 AUTH=off 直渲——⌘K 可达性与之一致
+
   const closeDialog = useStudio((s) => s.closeDialog)
   const isDesktop = useIsDesktop()
 
@@ -78,6 +79,8 @@ export function CommandPalette() {
                 </CommandItem>
               )
             })}
+            {/* C1/P06：viewer 能力集含 build/export（服务端允许只读构建）；递交页是查看导航，
+                发起递交由服务端独立鉴权——不按只读粗暴隐藏合法读/预览动作 */}
             <CommandItem value="act:build" keywords={['构建', '重新构建', 'build']} onSelect={run(() => useStudio.getState().enqueue('manual', true))} data-testid="palette-build">
               <Hammer aria-hidden />
               <span>重新构建</span>
@@ -87,6 +90,12 @@ export function CommandPalette() {
               <Send aria-hidden />
               <span>递交页</span>
             </CommandItem>
+            {isDesktop && (
+              <CommandItem value="act:casework" keywords={['案卷工作区', '三栏', 'casework']} onSelect={run(() => useStudio.getState().openCasework())} data-testid="palette-casework">
+                <LayoutGrid aria-hidden />
+                <span>案卷工作区（三栏）</span>
+              </CommandItem>
+            )}
           </CommandGroup>
         )}
         <CommandGroup heading="页面">

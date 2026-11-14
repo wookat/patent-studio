@@ -52,6 +52,8 @@ beforeEach(() => {
     pdfLongPress: null,
     commentDraft: null,
     replyBodies: {},
+    // 复核10：authed+无 caseContext → 核验中门禁；本地文件模式 ctx 显式放行
+    caseContext: { pid: 'p1', case_no: null, binding: 'unavailable', case_id: null, organization: null, file_role: 'owner', auth: 'off', capabilities: ['content_write'], content_sha: 'a'.repeat(64), revision: null, ai_enabled: true },
   } as never)
 })
 

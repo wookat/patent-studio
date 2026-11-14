@@ -87,6 +87,7 @@ class RunContext:
         self.job = job
         self.who = who
         self.actor = actor
+        self.guard = None  # run_scenario 注入：运行中机构外发门（P03/R2，每次上游调用前重查）
         self.project = store.get(pid)
         self.project_dir = self.project.dir
         self.proposals: list[Proposal] = []
@@ -154,7 +155,13 @@ class RunContext:
         self.calls += 1
         if stream:
             cs = await self.ai.chat(
-                messages, purpose, stream=True, project_dir=self.project_dir, job_id=self.job.id, user=self.who
+                messages,
+                purpose,
+                stream=True,
+                project_dir=self.project_dir,
+                job_id=self.job.id,
+                user=self.who,
+                guard=getattr(self, "guard", None),
             )
             try:
                 async for delta in cs:
@@ -163,7 +170,14 @@ class RunContext:
             finally:
                 await cs.aclose()
         else:
-            r = await self.ai.chat(messages, purpose, project_dir=self.project_dir, job_id=self.job.id, user=self.who)
+            r = await self.ai.chat(
+                messages,
+                purpose,
+                project_dir=self.project_dir,
+                job_id=self.job.id,
+                user=self.who,
+                guard=getattr(self, "guard", None),
+            )
         if r.model in FORBIDDEN_MODELS:
             raise RuntimeError(f"禁用模型：{r.model}")
         self.usage = Usage(
@@ -339,6 +353,7 @@ async def run_scenario(
     ai: AiClient,
     who: str | None = None,
     actor: dict | None = None,
+    guard=None,
 ) -> dict:
     handler = registry.get(scenario) or default_handler
     ctx: RunContext | PlanContext
@@ -350,6 +365,7 @@ async def run_scenario(
         ctx = RunContext(
             store=store, jobs=jobs, ai=ai, pid=pid, scenario=scenario, params=params, job=job, who=who, actor=actor
         )
+    ctx.guard = guard
     # Z14 续跑断点：本任务此前已落盘的提案即产出——resume 重进时不再调模型重生成（幂等），直接收尾
     recovered = [p for p in proposals.load(ctx.project_dir, pid) if p.job_id == job.id]
     if recovered:

@@ -92,6 +92,38 @@ def list_organizations(ctx: Ctx):
     return list(ctx.session.scalars(query))
 
 
+@router.get("/organizations/{organization_id}/policy", response_model=s.OrgPolicyOut)
+def get_org_policy(organization_id: uuid.UUID, ctx: Ctx):
+    """C0/P03：查看当前生效的机构外发授权（version/updated_by/updated_at）。机构成员可读。"""
+    org = org_access(ctx, organization_id)
+    cur = dict(org.egress_policy or {})
+    cur.setdefault("ai_egress", True)
+    cur.setdefault("training_consent", False)
+    cur.setdefault("note", "")
+    return cur
+
+
+@router.put("/organizations/{organization_id}/policy", response_model=s.OrgPolicyOut)
+def put_org_policy(organization_id: uuid.UUID, body: s.OrgPolicyIn, ctx: Ctx, key: Key):
+    """C0/P03：机构外发授权记录（目标服务/用途/范围/策略版本）。机构 owner/admin 可写；
+    每次外发请求由文件面 require_org_ai 按绑定案实时重查——撤销后新调用零上游。"""
+    org = org_access(ctx, organization_id, manage=True)
+
+    def action():
+        cur = dict(org.egress_policy or {})
+        cur.update({k: v for k, v in body.model_dump().items() if v is not None})
+        cur.update(
+            version=int(cur.get("version") or 0) + 1,
+            updated_by=str(ctx.principal.id),
+            updated_at=datetime.now(UTC).isoformat(timespec="seconds"),
+        )
+        org.egress_policy = cur
+        ctx.session.flush()
+        return cur, org.id, None
+
+    return command(ctx, key, "organization.policy", "organizations", body, s.OrgPolicyOut, action)
+
+
 @router.get("/organizations/{organization_id}/memberships", response_model=list[s.MembershipOut])
 def memberships(organization_id: uuid.UUID, ctx: Ctx):
     org_access(ctx, organization_id)

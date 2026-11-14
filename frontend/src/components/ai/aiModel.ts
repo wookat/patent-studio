@@ -96,18 +96,22 @@ export function gotoAiProposals(): void {
 // ---- 编辑器选区（Editor → SelectionActionBar 推送；AiPanel 上下文芯片读取） ----
 
 let lastSelection: EditorSelectionInfo | null = null
+let lastSelectionPid: string | null = null
 const selListeners = new Set<() => void>()
 
-/** 记住最近一次非空选区（点面板时编辑器失焦会把 selection 置 null，芯片仍需可用） */
+/** 记住最近一次非空选区（点面板时编辑器失焦会把 selection 置 null，芯片仍需可用）。
+ *  选区按 pid 归属：换案后旧案选区不得渗入新案对话/快捷动作（C0/P01 切案残留）。 */
 export function publishSelection(sel: EditorSelectionInfo | null): void {
   if (sel === null || sel.text.trim() === '') return
   if (lastSelection && lastSelection.from === sel.from && lastSelection.to === sel.to && lastSelection.text === sel.text) return
   lastSelection = sel
+  lastSelectionPid = useStudio.getState().pid
   selListeners.forEach((l) => l())
 }
 export function clearSelection(): void {
   if (!lastSelection) return
   lastSelection = null
+  lastSelectionPid = null
   selListeners.forEach((l) => l())
 }
 /** 选区的用户可读位置：「权利要求 3」/「说明书 · 段落 [0012]」，跨块时 `A – B`；AST 未就位时退到书名 */
@@ -123,13 +127,15 @@ export function selectionLabel(sel: Pick<EditorSelectionInfo, 'lineStart' | 'lin
 }
 
 export function useLastSelection(): EditorSelectionInfo | null {
-  return useSyncExternalStore(
+  const sel = useSyncExternalStore(
     (cb) => {
       selListeners.add(cb)
       return () => selListeners.delete(cb)
     },
     () => lastSelection,
   )
+  const pid = useStudio((s) => s.pid)
+  return sel && lastSelectionPid === pid ? sel : null
 }
 
 // ---- 流式对话（状态机在 store/ai.sendChat：idle → streaming → idle | error） ----
@@ -139,8 +145,8 @@ export function useLastChatMeta(): ChatMeta | null {
   return useStudio((s) => s.chat.at(-1)?.meta ?? null)
 }
 
-export const streamChat = (text: string, context: ChatContext | null, attachmentMeta?: import('@/types/ai').ChatAttachmentMeta[]): Promise<void> =>
-  useStudio.getState().sendChat(text, context, attachmentMeta)
+export const streamChat = (text: string, context: ChatContext | null, attachmentMeta?: import('@/types/ai').ChatAttachmentMeta[], scopeKeys?: string[]): Promise<void> =>
+  useStudio.getState().sendChat(text, context, attachmentMeta, scopeKeys)
 
 /** 停止当前流：中断 fetch；已收到的部分保留在消息里 */
 export const stopStreaming = (): void => useStudio.getState().stopChat()

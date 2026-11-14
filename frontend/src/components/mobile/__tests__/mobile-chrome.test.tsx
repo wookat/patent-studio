@@ -4,6 +4,7 @@ import { act, type ReactElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SYNTH_AST, SYNTH_MD } from '@/lib/__tests__/astFixture'
+import { contentSha } from '@/lib/api/net'
 import type { Diagnostic, ProjectDetail } from '@/lib/types'
 import { useStudio } from '@/store'
 import { GlobalErrorBar } from '../GlobalErrorBar'
@@ -108,14 +109,21 @@ describe('GlobalErrorBar（375 顶部错误条）', () => {
 })
 
 describe('MobileTopBar 副标题', () => {
-  it('只显示 案号 · 保存态，不再重复视图 / 书名', async () => {
+  it('只显示 案号 · 稿 sha · 保存态，不再重复视图 / 书名', async () => {
     useStudio.setState({ saved: SYNTH_MD, view: 'layout' } as never)
+    /* savedSha 由 store 订阅按 saved 异步实测（同 AiChat VersionTag）——期望 sha 独立由
+       contentSha(SYNTH_MD) 算得，不硬编码 digest；mount 的 act 冲刷已让订阅落值。 */
+    const sha = await contentSha(SYNTH_MD)
+    expect(sha).toBeTruthy()
     const el = await mount(<MobileTopBar />)
+    await act(async () => {})
     const sub = q('[data-testid="mobile-topbar-sub"]', el)!
-    expect(sub.textContent).toBe('ZL-2026-001 · 已保存')
+    const v = sha!.slice(0, 8)
+    expect(sub.textContent).toBe(`ZL-2026-001 · 稿 ${v} · 已保存`)
+    expect(useStudio.getState().savedSha).toBe(sha)
     expect(sub.textContent).not.toMatch(/源码|版面|权利要求书/)
     await act(async () => useStudio.setState({ content: SYNTH_MD + '\n改' } as never))
-    expect(sub.textContent).toBe('ZL-2026-001 · 未保存')
+    expect(sub.textContent).toBe(`ZL-2026-001 · 稿 ${v} · 未保存`)
   })
 })
 

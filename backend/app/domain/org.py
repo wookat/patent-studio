@@ -12,6 +12,7 @@ SMTP 不落文件：只从环境变量 PATENT_STUDIO_SMTP_URL 读出「是否配
 import json
 import os
 
+from fastapi import Request
 from pydantic import BaseModel, Field
 
 from app import atomic, config
@@ -73,10 +74,74 @@ def ai_enabled() -> bool:
     return load_org().ai_enabled
 
 
-async def require_org_ai() -> None:
-    """机构级 AI 开关：`dependencies=[Depends(require_org_ai)]` 挂在 /ai/* 与 /agent/* 生成类路由上。"""
+async def require_org_ai(request: Request) -> None:
+    """机构级 AI 外发闸门：`dependencies=[Depends(require_org_ai)]` 挂在 /ai/* 与 /agent/* 生成类路由上。
+    部署全局 org.json ai_enabled 是全局闸门；pid 绑定到 PG 案时按该机构 egress_policy 实时重查。
+    fail-closed：ambiguous / denied / unavailable 在平台生效（PG+AUTH=on）时一律拒——
+    只允许「明确本地文件模式：未配置 PG 且 AUTH=off」落回部署全局闸门。"""
     if not ai_enabled():
         raise kind_error("ai_disabled_by_org", "机构已关闭 AI 助手，请联系机构管理员", detail="org")
+    pid = request.path_params.get("pid")
+    if not pid:
+        return  # 非案域路径（如 /api/ai/jobs/*）——由路由内 require_org_ai_pid 按 job.pid 重查
+    await require_org_ai_pid(request, pid)
+
+
+async def require_org_ai_pid(request: Request, pid: str) -> None:
+    """pid 不在 path_params 时（body 目标案 / job 载荷）执行同一机构外发门。"""
+    from app.domain.context import platform_configured, resolve_binding
+
+    b = await resolve_binding(request, pid)
+    binding = b.get("binding")
+    if binding == "unbound":
+        return  # PG 全局无同 key 案：纯文件案卷，机构策略不适用（部署全局闸门已查）
+    if binding != "bound" and not platform_configured():
+        return  # 明确本地模式：unavailable 只可能是无 PG/无身份，不猜机构
+    _check_egress_binding(b)
+
+
+def _check_egress_binding(b: dict) -> None:
+    """绑定结果的机构外发判定（HTTP 请求面与运行中 guard 共用）。"""
+    binding = b.get("binding")
+    if binding != "bound":
+        raise kind_error(
+            "ai_disabled_by_org",
+            f"机构外发授权未决（{binding}），按 fail-closed 拒绝 AI 外发——请确认案卷绑定与机构成员状态",
+            detail=str(binding),
+        )
+    if (b.get("organization") or {}).get("status") != "active":
+        raise kind_error("ai_disabled_by_org", "本机构不可用（非 active），AI 外发已停用", detail="org_status")
+    policy = b.get("egress_policy") or {}
+    if policy.get("ai_egress") is False:
+        raise kind_error(
+            "ai_disabled_by_org",
+            f"本机构已关闭 AI 外发（策略 v{policy.get('version') or '?'}）",
+            detail="org_policy",
+        )
+
+
+def egress_guard(pid: str, request: Request | None = None, user_id: str | None = None):
+    """运行中机构外发门（R2）：每次真实上游调用前重查——请求入场检查之后的
+    多步工具循环 / 模型重试 / 排队续跑，撤销即零新上游。HTTP 面带 request（cookie/token
+    同一身份口径）；无请求面（MCP/任务线程）按 user_id 走 resolve_binding_for_user。"""
+    import asyncio as _asyncio
+
+    from app.domain.context import platform_configured, resolve_binding, resolve_binding_for_user
+
+    async def check() -> None:
+        if not ai_enabled():
+            raise kind_error("ai_disabled_by_org", "机构已关闭 AI 助手，请联系机构管理员", detail="org")
+        if not platform_configured():
+            return  # 明确本地模式：部署全局闸门已查
+        if request is not None:
+            b = await resolve_binding(request, pid)
+        else:
+            b = await _asyncio.to_thread(resolve_binding_for_user, pid, user_id)
+        if b.get("binding") == "unbound":
+            return  # 真本地案
+        _check_egress_binding(b)
+
+    return check
 
 
 def apply_default_collab(pid: str) -> None:

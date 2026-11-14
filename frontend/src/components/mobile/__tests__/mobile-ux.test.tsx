@@ -49,7 +49,13 @@ beforeAll(() => {
 beforeEach(() => {
   desktop = false
   useStudio.setState(initial, true)
-  useStudio.setState({ pid: 'p1', authStatus: 'authed', user: me })
+  useStudio.setState({
+    pid: 'p1',
+    authStatus: 'authed',
+    user: me,
+    // 复核10：已核验的本地文件模式 ctx——否则 AiPanel 核验中门禁会遮掉 chat/快捷动作
+    caseContext: { pid: 'p1', case_no: null, binding: 'unavailable', case_id: null, organization: null, file_role: 'owner', auth: 'off', capabilities: ['content_write'], content_sha: 'a'.repeat(64), revision: null, ai_enabled: true },
+  })
 })
 
 afterEach(async () => {

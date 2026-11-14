@@ -109,6 +109,55 @@ def role_at_least(have: str | None, need: str) -> bool:
     return have is not None and ROLE_RANK[have] >= ROLE_RANK[need]
 
 
+# 案卷能力集（C0/P01 统一上下文契约）：由 role 派生，语义与 ROUTE_ROLE / 路由内 require_role 对齐。
+# 前端拿这份列表渲染 affordance，不再各自按 role 推断；后端各路由鉴权照旧独立执行。
+_CAP_BY_ROLE: dict[str, tuple[str, ...]] = {
+    "viewer": ("read", "comment", "build", "export", "agent_run"),
+    "reviewer": ("read", "comment", "build", "export", "agent_run", "review_decide"),
+    "editor": (
+        "read",
+        "comment",
+        "build",
+        "export",
+        "agent_run",
+        "review_decide",
+        "content_write",
+        "settings_write",
+    ),
+    "agent": (
+        "read",
+        "comment",
+        "build",
+        "export",
+        "agent_run",
+        "review_decide",
+        "content_write",
+        "settings_write",
+        "case_manage",
+    ),
+    "owner": (
+        "read",
+        "comment",
+        "build",
+        "export",
+        "agent_run",
+        "review_decide",
+        "content_write",
+        "settings_write",
+        "case_manage",
+        "members_manage",
+        "share_manage",
+    ),
+}
+
+
+def capabilities_for(role: str | None) -> list[str]:
+    """GET /context 的能力集：role=None（auth=off，无角色概念）= 本地全权，与 my_role→null「可写」一致。"""
+    if role is None:
+        return list(_CAP_BY_ROLE["owner"])
+    return list(_CAP_BY_ROLE.get(role, ()))
+
+
 def login_required():
     return HTTPException(401, error_detail("auth", "需要登录"))
 

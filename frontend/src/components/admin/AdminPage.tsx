@@ -169,7 +169,7 @@ export function AdminPage() {
               </div>
             )}
 
-            {tab === 'org' && <OrgPanel org={orgShown} orgUnavailable={status === 'authed' && unavailable} onSaveName={saveOrg} />}
+            {tab === 'org' && <OrgPanel org={orgShown} orgUnavailable={status === 'authed' && unavailable} platformExpected={status === 'authed'} onSaveName={saveOrg} />}
             {tab === 'audit' && <AuditPanel />}
             {tab === 'ai' && <AiPanel />}
           </div>

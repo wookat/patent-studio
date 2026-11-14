@@ -55,8 +55,22 @@ export interface Artifact {
 const write = <T>(url: string, init: RequestInit = {}) =>
   v1req<T>(url, { method: 'POST', ...init, headers: { 'Idempotency-Key': key(), ...(init.headers ?? {}) } })
 
+/** C0/P03：GET/PUT /organizations/{id}/policy 返回（对齐 schemas.OrgPolicyOut，openapi.gen 早于该端点故手写）。 */
+export interface OrgPolicy {
+  ai_egress: boolean
+  training_consent: boolean
+  note: string
+  version: number
+  updated_by: string | null
+  updated_at: string | null
+}
+
 export const workbenchApi = {
   me: (signal?: AbortSignal) => v1req<Principal>(`${V1}/principals/me`, { signal }),
+  orgPolicy: (organizationId: string, signal?: AbortSignal) =>
+    v1req<OrgPolicy>(`${V1}/organizations/${organizationId}/policy`, { signal }),
+  putOrgPolicy: (organizationId: string, body: { ai_egress?: boolean; training_consent?: boolean; note?: string }) =>
+    write<OrgPolicy>(`${V1}/organizations/${organizationId}/policy`, { method: 'PUT', body: JSON.stringify(body) }),
   organizations: (signal?: AbortSignal) => v1req<PlatformOrg[]>(`${V1}/organizations`, { signal }),
   createCase: (organizationId: string, input: { case_key: string; title: string; kind?: PlatformCase['kind'] }) =>
     write<PlatformCase>(`${V1}/organizations/${organizationId}/cases`, { body: JSON.stringify(input) }),

@@ -22,6 +22,8 @@ export interface AgentBudget {
 
 export interface AgentSlice {
   agentTab: AgentTab
+  /** 用户本轮案域内显式点过 AI 页签——置位后 loadAgent 不再自动跳「建议」（C1/P07） */
+  agentTabTouched: boolean
   agentJobs: AgentJob[]
   /** 任务 tab 当前选中（时间线展示）的 job */
   agentActiveJobId: string | null
@@ -62,6 +64,7 @@ export interface AgentSlice {
 
 const INITIAL = {
   agentTab: 'chat' as AgentTab,
+  agentTabTouched: false,
   agentJobs: [] as AgentJob[],
   agentActiveJobId: null as string | null,
   agentEvents: {} as Record<string, StepEvent[]>,
@@ -290,7 +293,7 @@ export const agentSlice: Slice<AgentSlice> = (set, get) => {
   return {
     ...INITIAL,
 
-    setAgentTab: (agentTab) => set({ agentTab }),
+    setAgentTab: (agentTab) => set({ agentTab, agentTabTouched: true }),
 
     loadAgent: async (pid) => {
       set({ agentLoading: true, agentError: null })
@@ -305,7 +308,10 @@ export const agentSlice: Slice<AgentSlice> = (set, get) => {
           }
           /* agentDisabledByOrg 的权威源是 /ai/status.org_ai_enabled（loadAiStatus）；agent GETs 不挂
              require_org_ai，本行若回写 false 会把已读到的机构关态抹掉 */
-          return { agentJobs: jobs, proposals, agentEvents, agentUnavailable: false }
+          const next: Partial<AgentSlice> = { agentJobs: jobs, proposals, agentEvents, agentUnavailable: false }
+          /* C1/P07：有待决建议且用户尚未显式选过页签 → 首屏落「建议」（任务与待决定可达） */
+          if (!s.agentTabTouched && s.agentTab === 'chat' && proposals.some((p) => p.state === 'pending')) next.agentTab = 'proposals'
+          return next
         })
       } catch (e) {
         fail(e)
@@ -434,7 +440,7 @@ export const agentSlice: Slice<AgentSlice> = (set, get) => {
     resetAgent: () => {
       for (const stop of watchers.values()) stop()
       watchers.clear()
-      set({ ...INITIAL, agentTab: get().agentTab })
+      set({ ...INITIAL, agentTab: get().agentTab, agentTabTouched: false })
     },
   }
 }

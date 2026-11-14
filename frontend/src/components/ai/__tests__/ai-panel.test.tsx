@@ -474,4 +474,78 @@ describe('AiPanel 四 tab（W5 §6.6）', () => {
     }
     expect(await violations(el)).toEqual([])
   })
+
+  it('P04 概览条：范围/任务/待决定三段渲染 + 直达页签', async () => {
+    vi.spyOn(api, 'proposals').mockResolvedValue({ proposals: [PROPOSAL] })
+    vi.spyOn(api, 'agentJobs').mockResolvedValue({ jobs: [{ ...JOB, status: 'running' }, { ...JOB, id: 'j-i1', status: 'interrupted' }] as never })
+    useStudio.setState({ aiChatAttachments: [{ name: '交底书.pdf', chars: 10 }] as never })
+    const el = await mount(<AiPanel />)
+    await flush()
+    // 桌面顺序：范围 → 任务 → 待决定
+    const cells = qa('[data-testid^="ai-overview-"]:not([data-testid$="-value"])', el).map((c) => c.dataset.testid)
+    expect(cells).toEqual(['ai-overview-scope', 'ai-overview-tasks', 'ai-overview-pending'])
+    expect(q('[data-testid="ai-overview-scope-value"]', el)!.textContent).toContain('摘要') // 默认书
+    expect(q('[data-testid="ai-overview-scope-value"]', el)!.textContent).toContain('1材料')
+    expect(q('[data-testid="ai-overview-tasks-value"]', el)!.textContent).toContain('1 进行中')
+    expect(q('[data-testid="ai-overview-pending-value"]', el)!.textContent).toBe('1 项')
+    await click(q('[data-testid="ai-overview-pending"]', el)!)
+    expect(useStudio.getState().agentTab).toBe('proposals')
+    await click(q('[data-testid="ai-overview-tasks"]', el)!)
+    expect(useStudio.getState().agentTab).toBe('jobs') // 复核9：interrupted 续跑钮在任务页签
+    await click(q('[data-testid="ai-overview-scope"]', el)!)
+    expect(useStudio.getState().agentTab).toBe('chat')
+  })
+
+  it('复核9：待决确认卡计入「待我决定」→ 对话页签；中断任务计数归「任务」→ jobs', async () => {
+    const ij = { ...JOB, id: 'j-i1', status: 'interrupted' }
+    vi.spyOn(api, 'agentJobs').mockResolvedValue({ jobs: [ij] } as never)
+    useStudio.setState({
+      agentJobs: [ij] as never,
+      chat: [{ id: 'm1', role: 'assistant', content: '', created_at: 1, confirm: { id: 'cf1', tool: 'patch_block', args: {}, danger: false, resume: { assistant: null, calls: [] } } }] as never,
+    })
+    const el = await mount(<AiPanel />)
+    await flush()
+    expect(q('[data-testid="ai-overview-pending-value"]', el)!.textContent).toBe('1 项')
+    expect(q('[data-testid="ai-overview-tasks-value"]', el)!.textContent).toContain('1 待恢复')
+    await click(q('[data-testid="ai-overview-pending"]', el)!)
+    expect(useStudio.getState().agentTab).toBe('chat') // 确认卡在对话里裁决
+    await click(q('[data-testid="ai-overview-tasks"]', el)!)
+    expect(useStudio.getState().agentTab).toBe('jobs')
+  })
+
+  it('P07 移动首屏：待决定排最前，触控格 min-h-touch', async () => {
+    desktop = false
+    useStudio.setState({ chat: [{ id: 'm1', role: 'assistant', content: '', created_at: 1, confirm: { id: 'cf1', tool: 'propose_plan', args: {}, danger: false, resume: { assistant: null, calls: [] } } }] as never })
+    const el = await mount(<AiPanel />)
+    await flush()
+    const cells = qa('[data-testid^="ai-overview-"]:not([data-testid$="-value"])', el).map((c) => c.dataset.testid)
+    expect(cells[0]).toBe('ai-overview-pending')
+    expect(cells[1]).toBe('ai-overview-tasks')
+    expect(q('[data-testid="ai-overview-pending-value"]', el)!.textContent).toBe('1 项') // 确认卡计入待决定
+    for (const c of cells) expect(q(`[data-testid="${c}"]`, el)!.className).toContain('min-h-touch')
+  })
+
+  it('P03 绑定阻塞：denied/ambiguous/机构策略关 → 禁用页原因如实，不再绿灯', async () => {
+    const base = { pid: 'method', case_no: 'CN1', case_id: 'uuid-1', file_role: 'editor', auth: 'on', capabilities: [], binding_capabilities: { read: true, write: true, manage: false }, content_sha: 'ab', revision: 'r1', ai_enabled: true }
+    for (const [binding, egress, want] of [
+      ['denied', undefined, '没有访问权限'],
+      ['ambiguous', { ai_egress: true }, '多个机构'],
+      ['bound', { ai_egress: false }, '机构已撤销本案 AI 外发'],
+    ] as const) {
+      useStudio.setState({ caseContext: { ...base, binding, organization: { id: 'o1', name: 'X', status: 'active' }, egress_policy: egress } as never })
+      const el = await mount(<AiPanel />)
+      await flush()
+      const blocked = q('[data-testid="ai-org-disabled"]', el)
+      expect(blocked).not.toBeNull()
+      expect(blocked!.textContent).toContain(want)
+      expect(q('[data-testid="ai-tab-chat"]', el)).toBeNull()
+      await act(async () => root?.unmount())
+      root = null
+    }
+    // bound 且策略开 → 不阻塞
+    useStudio.setState({ caseContext: { ...base, binding: 'bound', organization: { id: 'o1', name: 'X', status: 'active' }, egress_policy: { ai_egress: true } } as never })
+    const el2 = await mount(<AiPanel />)
+    await flush()
+    expect(q('[data-testid="ai-org-disabled"]', el2)).toBeNull()
+  })
 })

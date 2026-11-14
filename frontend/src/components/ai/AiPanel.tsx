@@ -8,7 +8,9 @@ import { Switch } from '@/components/ui/switch'
 import { ScrollRow } from '@/components/ui/scroll-row'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api, ApiError } from '@/lib/api'
-import { cn } from '@/lib/utils'
+import { BOOK_LABELS } from '@/lib/docset'
+import type { ChatScope } from '@/lib/types'
+import { FOCUS_RING, cn } from '@/lib/utils'
 import { DESKTOP_QUERY, selectAiEnabled, selectAiRunning, selectReadonly, useStudio } from '@/store'
 import type { AgentTab } from '@/store/agent'
 import { useMediaQuery } from '@/hooks/useMisc'
@@ -46,15 +48,31 @@ export function AiPanel() {
   const statusLoading = useStudio((s) => s.aiStatusLoading)
   const unavailable = useStudio((s) => s.aiUnavailable)
   const orgDisabled = useStudio((s) => s.agentDisabledByOrg)
+  const caseCtx = useStudio((s) => s.caseContext)
+  const authStatus = useStudio((s) => s.authStatus)
+  /* P03：真实就绪 = 本案绑定态。AUTH=on 时 denied/ambiguous 服务端必 403；bound 且机构策略关 → 禁用。
+     不能靠 /ai/status 的全局闸门假绿。unbound/unavailable（本地或未映射）不落此判定，服务端仍为最终门。 */
+  const bindingBlocked = !!pid && caseCtx?.pid === pid && (
+    caseCtx.binding === 'denied' || caseCtx.binding === 'ambiguous' ||
+    (caseCtx.binding === 'bound' && caseCtx.egress_policy?.ai_egress === false) ||
+    // 复核10：AUTH=on 下 binding=unavailable（PG 未配置/无平台身份）后端必 403——不误装绿灯；
+    // bound 但机构非 active（suspended/archived）同样 fail-closed。AUTH=off 本地模式（auth==='off'）豁免。
+    (caseCtx.auth === 'on' && caseCtx.binding === 'unavailable') ||
+    (caseCtx.binding === 'bound' && !!caseCtx.organization && caseCtx.organization.status !== 'active')
+  )
+  // 复核10：已认证会话 + 有案卷但上下文未取回（加载中/失败）——不是「已核验」，如实标核验中
+  const ctxPending = !!pid && authStatus === 'authed' && (!caseCtx || caseCtx.pid !== pid)
   const loadAiStatus = useStudio((s) => s.loadAiStatus)
   const loadJobs = useStudio((s) => s.loadJobs)
   const loadAgent = useStudio((s) => s.loadAgent)
   const runningJobs = useStudio(selectAiRunning)
-  const authStatus = useStudio((s) => s.authStatus)
   const tab = useStudio((s) => s.agentTab)
   const setTab = useStudio((s) => s.setAgentTab)
   const pendingCount = useStudio((s) => s.proposals.filter((p) => p.state === 'pending').length + s.suggestions.length)
   const liveJobs = useStudio((s) => s.agentJobs.filter((j) => j.status === 'queued' || j.status === 'running').length)
+  const resumableJobs = useStudio((s) => s.agentJobs.filter((j) => j.status === 'interrupted').length)
+  const pendingConfirms = useStudio((s) => s.chat.filter((m) => m.confirm && !m.confirm.decision).length)
+  const aiScope = useStudio((s) => s.aiScope)
   const desktop = useMediaQuery(DESKTOP_QUERY)
   const [usage, setUsage] = useState<{ calls: number; tokens: number } | null>(null)
 
@@ -113,6 +131,17 @@ export function AiPanel() {
         <p className="text-xs text-fg-muted" data-testid="ai-accept-note">
           接受只写入建议，不直接改源码 — 所有 AI 改动以 CriticMarkup 建议或批注呈现，由你接受或拒绝。
         </p>
+        {pid && (
+          <OverviewStrip
+            desktop={desktop}
+            scope={aiScope}
+            running={liveJobs}
+            resumableJobs={resumableJobs}
+            pending={pendingCount}
+            pendingConfirms={pendingConfirms}
+            onGo={setTab}
+          />
+        )}
         <Collapsible>
           <CollapsibleTrigger className={cn('inline-flex items-center gap-1 rounded-xs text-2xs text-fg-subtle hover:text-fg [&[aria-expanded=true]>svg]:rotate-180', desktop ? 'h-xs-control' : 'min-h-touch min-w-touch px-2')} data-testid="ai-details-toggle">
             <ChevronDown className="size-3 transition-transform duration-(--dur-fast)" aria-hidden />
@@ -150,12 +179,37 @@ export function AiPanel() {
         </Collapsible>
       </div>
 
-      {orgDisabled ? (
+      {ctxPending ? (
+        <EmptyState
+          size="sm"
+          icon={Loader2}
+          title="正在核验本案授权"
+          reason="案卷上下文加载中或加载失败——绑定机构/外发策略核验完成前不假定可用。"
+          className="my-auto"
+          data-testid="ai-ctx-pending"
+          action={
+            <Button size="sm" variant="outline" onClick={() => useStudio.getState().loadCaseContext()} data-testid="ai-ctx-retry">
+              重试
+            </Button>
+          }
+        />
+      ) : orgDisabled || bindingBlocked ? (
         <EmptyState
           size="sm"
           icon={ShieldOff}
-          title="机构已禁用 AI"
-          reason="本机构管理员关闭了 AI 智能体；如需启用，请联系机构管理员在「机构管理 › AI」中开启。"
+          title={
+            caseCtx?.binding === 'bound' && caseCtx.egress_policy?.ai_egress === false ? '机构已撤销本案 AI 外发' :
+            caseCtx?.binding === 'bound' && caseCtx.organization?.status !== 'active' ? '机构已停用' :
+            caseCtx?.binding === 'unavailable' ? '平台绑定不可用' :
+            '机构已禁用 AI'
+          }
+          reason={
+            caseCtx?.binding === 'denied' ? '你对本案绑定的平台机构没有访问权限，服务端会拒绝（403）。' :
+            caseCtx?.binding === 'ambiguous' ? '本案案号在多个机构下命中，未唯一绑定——服务端 fail-closed 拒绝 AI 外发。' :
+            caseCtx?.binding === 'unavailable' ? 'AUTH=on 但平台绑定解析不可用（PG 未配置或身份异常），服务端会拒绝——稍后重试或检查部署配置。' :
+            caseCtx?.binding === 'bound' && caseCtx.organization && caseCtx.organization.status !== 'active' ? `机构状态为 ${caseCtx.organization.status}，服务端 fail-closed 拒绝 AI 外发。` :
+            '本机构管理员关闭了 AI 智能体；如需启用，请联系机构管理员在「机构管理 › AI」中开启。'
+          }
           className="my-auto"
           data-testid="ai-org-disabled"
         />
@@ -206,6 +260,103 @@ export function AiPanel() {
           </TabsContent>
         </Tabs>
       )}
+    </div>
+  )
+}
+
+/** P04/P07 紧凑可操作概览：当前范围 → 执行/待恢复任务 → 待人工决定；每段直达对应页签。
+ *  移动端（非 desktop）待决定/待恢复排最前（375 首屏优先），触控 ≥44px（touchHit）。 */
+function OverviewStrip({
+  desktop,
+  scope,
+  running,
+  resumableJobs,
+  pending,
+  pendingConfirms,
+  onGo,
+}: {
+  desktop: boolean
+  scope: ChatScope | null
+  running: number
+  resumableJobs: number
+  pending: number
+  pendingConfirms: number
+  onGo: (t: AgentTab) => void
+}) {
+  const scopeLabel = (() => {
+    const src = scope?.source
+    const parts: string[] = []
+    if (src?.full) parts.push('整卷')
+    else if (src?.book) parts.push(BOOK_LABELS[src.book as keyof typeof BOOK_LABELS] ?? '当前书')
+    else if (src?.lines) parts.push(`选区L${src.lines[0]}-${src.lines[1]}`)
+    const m = scope?.materials?.length ?? 0
+    if (m) parts.push(`${m}材料`)
+    return parts.length ? parts.join('+') : '仅提问'
+  })()
+  // 复核9：两类入口分开——interrupted 任务续跑钮在「任务」页签；待决确认卡在「对话」页签。
+  const decisions = pending + pendingConfirms
+  const cells: { id: string; label: string; value: string; hint: string; tab: AgentTab; tone: 'warn' | 'brand' | 'default' }[] = [
+    {
+      id: 'pending',
+      label: '待我决定',
+      value: decisions > 0 ? `${decisions} 项` : '无',
+      hint:
+        pendingConfirms > 0 && pending > 0 ? `${pendingConfirms} 个确认卡在对话中等你裁决，另有 ${pending} 条建议` :
+        pendingConfirms > 0 ? '有确认卡在对话中等你批准/拒绝' :
+        pending > 0 ? '有建议/补丁等你接受或拒绝' : '无待决产出',
+      tab: pendingConfirms > 0 ? 'chat' : 'proposals',
+      tone: decisions > 0 ? 'warn' : 'default',
+    },
+    {
+      id: 'tasks',
+      label: '任务',
+      value: running > 0 ? `${running} 进行中` : resumableJobs > 0 ? `${resumableJobs} 待恢复` : '空闲',
+      hint: resumableJobs > 0 ? '有中断任务可在「任务与历史」续跑' : running > 0 ? '后台执行中' : '无进行中任务',
+      tab: 'jobs',
+      tone: running > 0 || resumableJobs > 0 ? 'brand' : 'default',
+    },
+    {
+      id: 'scope',
+      label: '本轮范围',
+      value: scopeLabel,
+      hint: '本论对话授权给 Agent 的上下文范围',
+      tab: 'chat',
+      tone: 'default',
+    },
+  ]
+  const ordered = desktop ? [cells[2], cells[1], cells[0]] : cells
+  return (
+    <div
+      role="group"
+      aria-label="本轮协作概览：范围、任务、待决定"
+      className="grid grid-cols-3 gap-1 rounded-md border border-border bg-sunken p-1"
+      data-testid="ai-overview"
+    >
+      {ordered.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={() => onGo(c.tab)}
+          title={`${c.label}：${c.hint}（点击前往）`}
+          className={cn(
+            'flex min-w-0 flex-col items-start gap-0.5 rounded-sm px-2 py-1 text-left',
+            'hover:bg-panel',
+            FOCUS_RING,
+            !desktop && 'min-h-touch',
+          )}
+          data-testid={`ai-overview-${c.id}`}
+        >
+          <span className="flex w-full items-center gap-1 text-2xs text-fg-muted">
+            {c.tone !== 'default' && (
+              <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', c.tone === 'warn' ? 'bg-warn-dot' : 'bg-brand-500')} />
+            )}
+            {c.label}
+          </span>
+          <span className="w-full truncate text-xs font-medium text-fg-strong" data-testid={`ai-overview-${c.id}-value`}>
+            {c.value}
+          </span>
+        </button>
+      ))}
     </div>
   )
 }

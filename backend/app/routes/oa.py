@@ -23,13 +23,14 @@ DELETE /rounds/{rid}         204；同时删去对应期限
 import asyncio
 import urllib.parse
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, ValidationError
 
 from app import auth
 from app.ai import require_enabled
 from app.domain import events
+from app.domain.org import require_org_ai
 from app.domain.projects import ATTACHMENT_MAX_BYTES
 from app.errors import error_detail, kind_error
 from app.oa import answer as oa_answer_mod
@@ -97,7 +98,7 @@ async def oa_parse(pid: str, request: Request):
     return {"items": items, "warnings": warnings}
 
 
-@router.post("/answer", status_code=202)
+@router.post("/answer", status_code=202, dependencies=[Depends(require_org_ai)])
 async def oa_answer(pid: str, body: OaAnswerIn, request: Request):
     store, ai, jobs = request.app.state.store, request.app.state.ai, request.app.state.jobs
     require_enabled(store, pid, UNIT)
