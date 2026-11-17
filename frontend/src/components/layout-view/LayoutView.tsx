@@ -10,8 +10,7 @@ import { DiscardDialog } from '@/components/ui/discard-dialog'
 import { Block } from '@/components/block-model/blocks'
 import { BlockActionsContext, type BlockActions } from '@/components/block-model/context'
 import { equationLine } from '@/components/block-model/edit/serialize'
-import { focusBlock, openDeleteDialog } from '@/components/block-model/dialogs/state'
-import { deleteDisabledReason } from '@/components/block-model/dialogs/lookup'
+import { focusBlock } from '@/components/block-model/dialogs/state'
 import { TITLE_ID, blockEntries, claimId, diagnosticsByBlock, type BlockDiagnostic } from '@/components/block-model/model'
 import { useBlockTemplates, type InsertAnchor } from '@/components/block-model/toolbar/insert'
 import { useIsDesktop } from '@/hooks/useMisc'
@@ -525,12 +524,6 @@ export function LayoutView({ className, books = BOOK_NAMES, mode, slots }: Layou
     setNoticeDismissed(true)
   }
   const formatBarShown = showFormatTools && isDesktop
-  // 「删除块」工具条入口（docs/plan/06 §5.5）：法定章节 / title / 摘要整块 / 附图由 deleteDisabledReason 禁用并说明
-  const deleteReason = useMemo(() => deleteDisabledReason(ast, activeId), [ast, activeId])
-  const onDeleteBlock = useCallback(() => {
-    const st = useStudio.getState()
-    if (activeId && deleteDisabledReason(st.ast, activeId) == null) openDeleteDialog(activeId)
-  }, [activeId])
   // 插入入口单一：桌面在格式工具条，375 在底部 MobileLayoutToolbar；只有两者都没有时才落到模式条
   const insertInBar = editable && ast != null && !formatBarShown && !mobile
   const barStatus = ast != null && (stale || !!astError)
@@ -610,8 +603,6 @@ export function LayoutView({ className, books = BOOK_NAMES, mode, slots }: Layou
           className="ps-layout-format-bar"
           onInsert={toggleInsert}
           insertOpen={!!slash?.autoFocus}
-          deleteReason={deleteReason}
-          onDeleteBlock={onDeleteBlock}
         />
       )}
       <div

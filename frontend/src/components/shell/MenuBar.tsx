@@ -14,6 +14,8 @@ import { LayoutMenuItems } from './LayoutMenuItems'
 import { BuildMenuItems } from './BuildMenuItems'
 import { LABEL_NEW_PROJECT } from '@/lib/copy'
 import { figlibHash } from '@/lib/hash'
+import { openDeleteDialog } from '@/components/block-model/dialogs/state'
+import { deleteDisabledReason } from '@/components/block-model/dialogs/lookup'
 
 /** 编辑菜单动作失败（编辑器未挂载，如仅预览 / 设置替换了编辑器）时的统一提示 */
 function requireEditor(run: () => boolean) {
@@ -225,6 +227,10 @@ function FileMenu() {
 function EditMenu() {
   const pid = useStudio((s) => s.pid)
   const readonly = useStudio(selectReadonly)
+  const ast = useStudio((s) => s.ast)
+  const deleteId = useStudio((s) => s.activeBlock?.id ?? null)
+  // 「删除当前块」：格式栏（S3 13→4）退出后的去处；禁用原因与块内入口同一口径
+  const deleteTitle = deleteId ? (deleteDisabledReason(ast, deleteId) ?? undefined) : '先在版面中选中一个块'
   return (
     <Menu id="edit" label="编辑">
       <MenuRow noIcon disabled={!pid || readonly} onSelect={() => requireEditor(() => editorCommands.undo())} sub={hotkeyLabel('undo')} data-testid="edit-undo">
@@ -255,6 +261,15 @@ function EditMenu() {
           ))}
         </MenuSubContent>
       </MenuSub>
+      <MenuRow
+        noIcon
+        disabled={!pid || readonly || !deleteId}
+        title={deleteTitle}
+        onSelect={() => deleteId && openDeleteDialog(deleteId)}
+        data-testid="edit-delete-block"
+      >
+        删除当前块
+      </MenuRow>
     </Menu>
   )
 }
