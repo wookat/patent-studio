@@ -34,6 +34,8 @@ const SCOPES: { id: DashScope; label: string; icon: typeof Archive; authOnly?: b
   { id: 'archived', label: '已归档', icon: Archive },
   { id: 'trash', label: '回收站', icon: Trash2 },
 ]
+/** 克制批次 S8：计数为 0 的「已归档 / 回收站」不占左栏位，收进底部「更多」展开；有内容或选中时照常显示 */
+const FOLDABLE_SCOPES = new Set<DashScope>(['archived', 'trash'])
 
 /** 分组栏项 32 r4（05 §3.13）：选中 --bg-selected + --fg-strong；首列（图标 / 复选框 / 折叠箭头）统一 16 宽、间距 8，文字左缘对齐 */
 const ITEM = cn(
@@ -189,6 +191,8 @@ export function FilterRail({ tags, counts, horizontal, showCreate = true, classN
   const [manage, setManage] = useState(false)
   const [drawer, setDrawer] = useState(false)
   const scopes = SCOPES.filter((s) => !(s.authOnly && authOff))
+  const shownScopes = scopes.filter((s) => !FOLDABLE_SCOPES.has(s.id) || (counts?.[s.id] ?? 0) > 0 || scope === s.id)
+  const moreScopes = scopes.filter((s) => FOLDABLE_SCOPES.has(s.id) && (counts?.[s.id] ?? 0) === 0 && scope !== s.id)
   const canManage = authOff || superuser
   const onManage = canManage ? () => setManage(true) : undefined
   const manager = <TagManagerDialog open={manage} onOpenChange={setManage} />
@@ -197,7 +201,7 @@ export function FilterRail({ tags, counts, horizontal, showCreate = true, classN
     return (
       <nav data-slot="FilterRail" data-variant="chips" aria-label="筛选" className={cn('flex min-w-0 flex-col', className)}>
         <ScrollRow data-testid="scope-chips" className="-my-1.5 py-1.5">
-          {scopes.map((s) => (
+          {shownScopes.map((s) => (
             <button key={s.id} type="button" aria-current={scope === s.id || undefined} onClick={() => setScope(s.id)} className={CHIP} data-testid={`scope-${s.id}`}>
               {s.label}
               {counts?.[s.id] != null && <span className="text-xs text-fg-muted tabular-nums">{counts[s.id]}</span>}
@@ -218,6 +222,17 @@ export function FilterRail({ tags, counts, horizontal, showCreate = true, classN
         </ScrollRow>
         <BottomDrawer open={drawer} onOpenChange={setDrawer} title="筛选" description="状态、标签与责任人" snap="full" data-testid="filter-sheet" data-slot="FilterSheet">
           <div className="flex flex-col gap-4 px-2 pb-2">
+            {moreScopes.length > 0 && (
+              <Section title="视图" dense>
+                {moreScopes.map((s) => (
+                  <button key={s.id} type="button" aria-current={scope === s.id || undefined} onClick={() => setScope(s.id)} className={ITEM_MOBILE} data-testid={`scope-${s.id}`}>
+                    <s.icon className="size-4 text-fg-icon" aria-hidden />
+                    <span className="flex-1 text-left">{s.label}</span>
+                    {counts?.[s.id] != null && <span className="text-xs text-fg-muted tabular-nums">{counts[s.id]}</span>}
+                  </button>
+                ))}
+              </Section>
+            )}
             <Section title="状态" count={statuses.length} dense>
               <StatusFilters dense />
             </Section>
@@ -253,7 +268,7 @@ export function FilterRail({ tags, counts, horizontal, showCreate = true, classN
         </Button>
       )}
       <ul className="flex flex-col gap-0.5" aria-label="视图">
-        {scopes.map((s) => (
+        {shownScopes.map((s) => (
           <li key={s.id}>
             <button type="button" aria-current={scope === s.id || undefined} onClick={() => setScope(s.id)} className={ITEM} data-testid={`scope-${s.id}`}>
               <s.icon className="size-4 text-fg-icon" aria-hidden />
@@ -263,6 +278,27 @@ export function FilterRail({ tags, counts, horizontal, showCreate = true, classN
           </li>
         ))}
       </ul>
+      {moreScopes.length > 0 && (
+        <Collapsible>
+          <CollapsibleTrigger className={cn(ITEM, 'text-fg-muted [&[data-state=closed]>svg]:-rotate-90')} data-testid="scope-more">
+            <ChevronDown className="size-4 transition-transform duration-(--dur-fast) motion-reduce:transition-none" aria-hidden />
+            <span className="flex-1 text-left">更多</span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ul className="flex flex-col gap-0.5">
+              {moreScopes.map((s) => (
+                <li key={s.id}>
+                  <button type="button" aria-current={scope === s.id || undefined} onClick={() => setScope(s.id)} className={ITEM} data-testid={`scope-${s.id}`}>
+                    <s.icon className="size-4 text-fg-icon" aria-hidden />
+                    <span className="flex-1 text-left">{s.label}</span>
+                    {counts?.[s.id] != null && <span className="text-xs text-fg-muted tabular-nums">{counts[s.id]}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
       <Section title="按状态" count={statuses.length} testId="filter-status-section">
         <StatusFilters />
       </Section>
