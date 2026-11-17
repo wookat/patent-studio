@@ -158,7 +158,7 @@ export function DataTable<TData>({
                   key={row.id}
                   data-testid={`row-${row.id}`}
                   data-state={row.getIsSelected() ? 'selected' : undefined}
-                  className={cn(onRowClick && 'cursor-pointer')}
+                  className={cn('group/row', onRowClick && 'cursor-pointer')}
                   onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
