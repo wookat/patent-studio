@@ -215,17 +215,18 @@ describe('ux-05 表格工具行 + 今日摘要 chip', () => {
     expect(groupCaseRows(ROWS, 'none')).toEqual([{ key: 'all', label: '全部', rows: ROWS }])
   })
 
-  it('工具行只在列表视图；四个控件都是可聚焦控件（键盘可达）且有 aria-label', async () => {
+  it('工具行只在列表视图；三个控件都是可聚焦控件（键盘可达）且有 aria-label（S7：筛选只留左栏）', async () => {
     const el = await mount(<DashboardPage />)
     const bar = el.querySelector('[data-testid="table-toolbar"]')!
     expect(bar.getAttribute('role')).toBe('toolbar')
-    for (const id of ['toolbar-group', 'toolbar-filter', 'toolbar-sort', 'toolbar-compact']) {
+    for (const id of ['toolbar-group', 'toolbar-sort', 'toolbar-compact']) {
       const c = bar.querySelector(`[data-testid="${id}"]`) as HTMLElement
       expect(c, id).not.toBeNull()
       expect(c.tagName).toBe('BUTTON')
       expect(c.tabIndex).toBe(0)
       expect(c.getAttribute('aria-label')).toBeTruthy()
     }
+    expect(bar.querySelector('[data-testid="toolbar-filter"]')).toBeNull()
     expect((bar.querySelector('[data-testid="toolbar-sort-dir"]') as HTMLButtonElement).disabled).toBe(true)
     await act(async () => useStudio.getState().setDashView('board'))
     expect(el.querySelector('[data-testid="table-toolbar"]')).toBeNull()
@@ -253,16 +254,12 @@ describe('ux-05 表格工具行 + 今日摘要 chip', () => {
     expect(visibleRows(el)).toBe(4)
   })
 
-  it('筛选：工具行「筛选」打开状态勾选，勾「内审中」⇒ 与左栏同一 store.dashStatuses，行数 = 1，徽标 1；清除恢复', async () => {
+  it('筛选：左栏「按状态」勾「内审中」⇒ store.dashStatuses，行数 = 1；取消勾选恢复（S7：唯一筛选入口在左栏）', async () => {
     const el = await mount(<DashboardPage />)
-    await click(el.querySelector('[data-testid="toolbar-filter"]'))
-    const pop = document.querySelector('[data-testid="toolbar-filter-content"]')
-    expect(pop, '筛选 Popover').not.toBeNull()
-    await click(pop!.querySelector('[data-testid="status-filter-review"]'))
+    await click(el.querySelector('[data-testid="status-filter-review"]'))
     expect(useStudio.getState().dashStatuses).toEqual(['review'])
     expect(visibleRows(el)).toBe(1)
-    expect(el.querySelector('[data-testid="toolbar-filter"]')?.getAttribute('aria-label')).toContain('已选 1')
-    await click(document.querySelector('[data-testid="toolbar-filter-clear"]'))
+    await click(el.querySelector('[data-testid="status-filter-review"]'))
     expect(useStudio.getState().dashStatuses).toEqual([])
     expect(visibleRows(el)).toBe(4)
   })

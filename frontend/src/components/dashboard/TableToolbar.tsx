@@ -1,8 +1,6 @@
-import { ArrowDownNarrowWide, ArrowUpNarrowWide, Filter, Rows3, X } from 'lucide-react'
+import { ArrowDownNarrowWide, ArrowUpNarrowWide, Rows3 } from 'lucide-react'
 import type { SortingState, VisibilityState } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
-import { Count } from '@/components/ui/count'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Toggle } from '@/components/ui/toggle'
 import { cn } from '@/lib/utils'
@@ -10,7 +8,6 @@ import { useStudio } from '@/store'
 import { DASH_GROUPS, DASH_GROUP_LABEL, type DashGroup } from '@/store/dashboard'
 import { SORT_KEY, TOGGLEABLE_COLUMNS } from './caseColumns'
 import { ColumnMenu } from './ColumnMenu'
-import { StatusFilters } from './FilterRail'
 
 /** 工具行「排序」可选列 = 有排序键的可见列（与表头点击同一套 SORT_KEY / sorting 状态） */
 export const SORTABLE_COLUMNS = TOGGLEABLE_COLUMNS.filter((c) => c.id in SORT_KEY)
@@ -37,8 +34,9 @@ export interface TableToolbarProps {
 
 /**
  * 台账表格工具行（05 §4 S1；ux-05 最小版）：h 32 一行，全部 ghost 芯片（Linear / Notion 同做法），有值的芯片 soft 底色。
- * 左：`分组`（Select：不分 / 状态 / 责任人 / 客户 → store.dashGroup）· `筛选`（Popover：状态十档勾选，与左栏「按状态」同一 store.dashStatuses；徽标 = 已选数）·
+ * 左：`分组`（Select：不分 / 状态 / 责任人 / 客户 → store.dashGroup）·
  * `排序 ⇅`（Select 列 + 紧贴的升降键成一组，与表头点击同一 sorting）。
+ * 克制批次 S7：筛选只留左栏一处——工具行「筛选」chip 删除（与左栏「按状态」同一 store.dashStatuses 的重复入口）。
  * 右：表格显示设置同处 —— `列`（显隐）· `紧凑`（Toggle：行高 40 → 36，store.dashCompact 持久化）。全部原生按钮 / Radix，键盘可达；不新增功能面。
  */
 export function TableToolbar({ sorting, onSortingChange, columns, onColumnsChange, onExportCsv, exportCsvDisabled, className }: TableToolbarProps) {
@@ -46,8 +44,6 @@ export function TableToolbar({ sorting, onSortingChange, columns, onColumnsChang
   const setGroup = useStudio((s) => s.setDashGroup)
   const compact = useStudio((s) => s.dashCompact)
   const setCompact = useStudio((s) => s.setDashCompact)
-  const statuses = useStudio((s) => s.dashStatuses)
-  const toggleStatus = useStudio((s) => s.toggleDashStatus)
   const sortValue = sortValueOf(sorting)
   const sorted = sortValue !== SORT_NONE
   const desc = sorting[0]?.desc ?? false
@@ -66,25 +62,6 @@ export function TableToolbar({ sorting, onSortingChange, columns, onColumnsChang
           ))}
         </SelectContent>
       </Select>
-
-      <Popover>
-        <PopoverTrigger>
-          <Button variant={statuses.length ? 'soft' : 'ghost'} size="sm" aria-label={statuses.length ? `筛选状态，已选 ${statuses.length} 项` : '筛选状态'} data-testid="toolbar-filter">
-            <Filter aria-hidden />
-            筛选
-            {statuses.length > 0 && <Count value={statuses.length} size="sm" tone="brand" />}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-56 p-2" aria-label="按状态筛选" data-testid="toolbar-filter-content">
-          <StatusFilters />
-          {statuses.length > 0 && (
-            <Button variant="ghost" size="sm" className="mt-1 w-full justify-start text-fg-muted" onClick={() => statuses.forEach(toggleStatus)} data-testid="toolbar-filter-clear">
-              <X aria-hidden />
-              清除状态筛选
-            </Button>
-          )}
-        </PopoverContent>
-      </Popover>
 
       <div className="inline-flex items-center" role="group" aria-label="排序">
         <Select value={sortValue} onValueChange={(v) => onSortingChange(sortingOfValue(v, sorting))}>
