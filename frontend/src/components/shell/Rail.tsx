@@ -1,5 +1,5 @@
 import { Fragment, useRef, type KeyboardEvent, type ReactNode } from 'react'
-import { BookA, CircleHelp, Files, Images, Milestone, Search, Settings2, Stethoscope } from 'lucide-react'
+import { BookA, Files, Images, Search, Stethoscope } from 'lucide-react'
 import { Count } from '@/components/ui/count'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { hotkeyLabel } from '@/lib/hotkeys'
@@ -36,8 +36,10 @@ function Badge({ n, tone }: { n: number; tone: 'danger' | 'brand' }) {
 /**
  * Rail 40px（05 §3.3；原型 s3 .rail）：`--bg-app` 右 1px。
  *   role=tablist（垂直，↑↓ / Home / End 漫游焦点）：案卷（文件树 + 大纲）· 搜索 · 附图 · 术语
- *   ─ 底部：体检（Count danger 当有 error → 伴随栏 console）· 帮助 · 排版设置
+ *   ─ 底部：体检（Count danger 当有 error → 伴随栏 console）
  * 审阅 / AI / 历史 的入口在顶栏伴随栏图标组（05 §3.1），Rail 不重复。
+ * 克制批次 S2：流程 / 提案 / 资料 / 运行 / 帮助 / 排版设置不再常驻——流程经 ⌘K，
+ * 帮助在「帮助」菜单与 ? 键，排版设置在「文件」菜单（⌘,），提案 / 资料 / 运行经 ⌘K 与 MoreSheet。
  * 附图 / 术语 / 体检 → toggleCompanion(id)（正文由 shell/companionBodies 注册）。
  * 「搜索」→ railTab='search'：侧栏下块换为 SearchPanel（编辑器内查找仍是 Mod-F）。
  */
@@ -46,9 +48,6 @@ export function Rail() {
   const outlineOpen = useStudio((s) => s.outlineOpen)
   const setRailTab = useStudio((s) => s.setRailTab)
   const toggleSide = useStudio((s) => s.toggleSide)
-  const settingsOpen = useStudio((s) => s.settingsOpen)
-  const toggleSettings = useStudio((s) => s.toggleSettings)
-  const openDialog = useStudio((s) => s.openDialog)
   const companion = useStudio((s) => s.companion)
   const toggleCompanion = useStudio((s) => s.toggleCompanion)
   const errors = useStudio(selectErrorCount)
@@ -152,7 +151,6 @@ export function Rail() {
             <RailText>搜索</RailText>
           </button>
         </RailTip>
-        {companionTab('lifecycle', '流程：十档阶段指引', <Milestone aria-hidden />, 'rail-lifecycle')}
         {companionTab('figures', '附图：顺序 / 宽度 / 摘要图', <Images aria-hidden />, 'rail-figures')}
         {companionTab(
           'terms',
@@ -174,26 +172,6 @@ export function Rail() {
         errors > 0 ? `体检，${errors} 个错误，打开控制台` : '体检，打开控制台',
         false,
       )}
-      <RailTip label="帮助 / 快捷键（?）">
-        <button type="button" className={RAIL_BTN} aria-label="帮助与快捷键" onClick={() => openDialog('shortcuts')} data-testid="rail-help">
-          <CircleHelp aria-hidden />
-          <RailText>帮助</RailText>
-        </button>
-      </RailTip>
-      <RailTip label={`排版设置（${hotkeyLabel('toggleSettings')}）`}>
-        <button
-          type="button"
-          className={cn(RAIL_BTN, settingsOpen && RAIL_ACTIVE)}
-          aria-label="排版设置"
-          aria-pressed={settingsOpen}
-          onClick={() => toggleSettings()}
-          disabled={!pid}
-          data-testid="settings-toggle"
-        >
-          <Settings2 aria-hidden />
-          <RailText>设置</RailText>
-        </button>
-      </RailTip>
     </nav>
   )
 }

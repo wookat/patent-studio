@@ -463,7 +463,7 @@ describe('受控 Dialog / Sheet 关闭后焦点回入口（W12 R3-03）', () => 
     })
   })
 
-  it('Rail「帮助与快捷键」→ ShortcutsDialog → Escape：焦点回 rail-help', async () => {
+  it('焦点在 Rail 钮上 → ShortcutsDialog（? 键/菜单入口，S2 后 rail-help 已撤）→ Escape：焦点回该钮', async () => {
     useStudio.setState({ dialog: null })
     await mount(
       <TooltipProvider>
@@ -471,15 +471,15 @@ describe('受控 Dialog / Sheet 关闭后焦点回入口（W12 R3-03）', () => 
         <ShortcutsDialog />
       </TooltipProvider>,
     )
-    const help = q<HTMLButtonElement>('[data-testid="rail-help"]')!
-    help.focus()
-    await act(async () => help.click())
+    const anchor = q<HTMLButtonElement>('[data-testid="rail-search"]')!
+    anchor.focus()
+    await act(async () => useStudio.setState({ dialog: 'shortcuts' }))
     expect(useStudio.getState().dialog).toBe('shortcuts')
     const dlg = q('[data-testid="shortcuts-dialog"]')!
     expect(dlg.contains(document.activeElement)).toBe(true)
     await escape()
     expect(useStudio.getState().dialog).toBeNull()
     expect(q('[data-testid="shortcuts-dialog"]')).toBeNull()
-    expect(document.activeElement).toBe(help)
+    expect(document.activeElement).toBe(anchor)
   })
 })
