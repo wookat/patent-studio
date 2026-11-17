@@ -88,25 +88,24 @@ const click = (sel: string) => act(async () => q(sel).click())
 const key = (el: Element, k: string) => act(async () => el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })))
 
 describe('MobileTopBar（21 §1.2 U3：44）', () => {
-  it('高度走 --h-mobile-topbar token 且 token = 44px；返回 / 导航 视觉 sm 32、构建（唯一 primary）md 36，均带 touch-hit 命中 44（W8 分档）；更多不在顶栏', async () => {
+  it('高度走 --h-mobile-topbar token 且 token = 44px；返回 / 导航 视觉 sm 32，均带 touch-hit 命中 44（W8 分档）；构建 / 协作 / 更多不在顶栏（S10：构建在预览页工具行）', async () => {
     useStudio.setState({ pid: 'p1', mobileTab: 'edit' })
     const el = await mount(<MobileTopBar />)
     const bar = q('[data-testid="header"]', el)
     expect(bar.className).toContain('h-mobile-topbar')
     expect(token('--h-mobile-topbar')).toBe('44px')
     expect(token('--h-touch')).toBe('44px')
-    for (const id of ['back-to-dashboard', 'open-nav']) expect(q(`[data-testid="${id}"]`, el).className).toContain('size-sm-control')
-    expect(q('[data-testid="mobile-build"]', el).className).toContain('size-md-control')
-    for (const id of ['back-to-dashboard', 'open-nav', 'mobile-build']) {
+    for (const id of ['back-to-dashboard', 'open-nav']) {
       const cls = q(`[data-testid="${id}"]`, el).className
+      expect(cls).toContain('size-sm-control')
       expect(cls).toContain('touch-hit')
       expect(cls).not.toContain('size-touch')
     }
     expect(bar.className).toContain('px-page-m')
     expect(el.querySelector('[data-testid="more-menu"]')).toBeNull()
-    expect(el.querySelectorAll('[data-slot="button"][data-variant="primary"]').length).toBe(1)
-    await act(async () => useStudio.getState().setMobileTab('ai'))
     expect(el.querySelector('[data-testid="mobile-build"]')).toBeNull()
+    expect(el.querySelector('[data-testid="mobile-collab"]')).toBeNull()
+    expect(el.querySelectorAll('[data-slot="button"][data-variant="primary"]').length).toBe(0)
   })
 })
 

@@ -83,7 +83,7 @@ const expectCompactHit = (el: HTMLElement | null, tier: 'sm' | 'md') => {
 }
 
 describe('工作台移动壳', () => {
-  it('顶栏 44（h-mobile-topbar）页边 16 gap 8；‹ 与 ≡ 之间凑到 12（ml-1，两枚 sm 钮的 44 热区不重叠，docs/plan/28）；返回 / 导航 sm、构建 md，均 touch-hit', async () => {
+  it('顶栏 44（h-mobile-topbar）页边 16 gap 8；‹ 与 ≡ 之间凑到 12（ml-1，两枚 sm 钮的 44 热区不重叠，docs/plan/28）；返回 / 导航 sm，均 touch-hit；构建 / 协作已撤顶栏（S10）', async () => {
     const el = await mount(<MobileTopBar />)
     const bar = q('[data-testid="header"]', el)!
     expect(bar.className).toContain('h-mobile-topbar')
@@ -93,14 +93,12 @@ describe('工作台移动壳', () => {
     expect(q('[data-testid="back-to-dashboard"]', el)!.className).not.toMatch(/(^|\s)m[lr]-/)
     expectCompactHit(q('[data-testid="back-to-dashboard"]', el), 'sm')
     expectCompactHit(q('[data-testid="open-nav"]', el), 'sm')
-    expectCompactHit(q('[data-testid="mobile-build"]', el), 'md')
-    // 未登录：无 👥，构建不需额外间隙
+    expect(q('[data-testid="mobile-build"]', el)).toBeNull()
     expect(q('[data-testid="mobile-collab"]', el)).toBeNull()
-    expect(q('[data-testid="mobile-build"]', el)!.className).not.toMatch(/(^|\s)ml-/)
-    // 登录：👥（sm）↔ 构建（md）需 10 = 8 + ml-0.5
+    // 登录态也不出现构建 / 协作入口
     await act(async () => useStudio.setState({ authStatus: 'authed' } as never))
-    expect(q('[data-testid="mobile-collab"]', el)).not.toBeNull()
-    expect(q('[data-testid="mobile-build"]', el)!.className).toMatch(/(^|\s)ml-0\.5(\s|$)/)
+    expect(q('[data-testid="mobile-build"]', el)).toBeNull()
+    expect(q('[data-testid="mobile-collab"]', el)).toBeNull()
   })
 
   it('书切换：Segmented md（36）套 ScrollRow（纵向出血收到 4，不盖上一行 ViewSwitch 热区，docs/plan/28）；四项 touch-hit；保存 icon-md', async () => {

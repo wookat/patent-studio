@@ -263,9 +263,10 @@ describe('ProjectMenu compact / MobileTopBar（375）', () => {
     const setCaseStatus = vi.spyOn(api, 'setCaseStatus').mockResolvedValue({ ...detail().case!, status: 'review' })
     const el = await mount(<MobileTopBar />)
     expect(q('[data-testid=back-to-dashboard]')?.getAttribute('aria-label')).toBe('返回案卷面板')
-    // W6：「更多」下沉到底部 MobileTabs（more Sheet），顶栏右侧只剩 构建 primary + 协作
+    // W6：「更多」下沉到底部 MobileTabs（more Sheet）；S10：构建 → 预览页工具行、协作 → MoreSheet，顶栏两枚都不在
     expect(q('[data-testid=more-menu]')).toBeNull()
-    expect(q('[data-testid=mobile-build]')).not.toBeNull()
+    expect(q('[data-testid=mobile-build]')).toBeNull()
+    expect(q('[data-testid=mobile-collab]')).toBeNull()
     expect(await serious(el)).toEqual([])
 
     await pointerOpen(q('[data-testid=project-tab]')!)

@@ -128,7 +128,7 @@ describe('MobileTopBar 副标题', () => {
 })
 
 describe('MobileEditChrome', () => {
-  it('固定 44（h-mobile-topbar，无 min-h / py），ViewSwitch md 三段 flex-1', async () => {
+  it('固定 44（h-mobile-topbar，无 min-h / py），ViewSwitch md 两段 flex-1（S10：手机编辑页只留 源码/版面，PDF 在预览页）', async () => {
     const el = await mount(<MobileEditChrome />)
     const row = q('[data-testid="mobile-edit-chrome"]', el)!
     expect(row.className).toContain('h-mobile-topbar')
@@ -137,7 +137,8 @@ describe('MobileEditChrome', () => {
     expect(seg.className).toContain('h-md-control')
     expect(seg.className).not.toContain('h-xl-control')
     expect(seg.className).toContain('[&_[data-slot=segmented-item]]:flex-1')
-    expect(el.querySelectorAll('[data-slot="segmented-item"]')).toHaveLength(3)
+    expect(el.querySelectorAll('[data-slot="segmented-item"]')).toHaveLength(2)
+    expect(el.querySelector('[data-testid="view-switch-pdf"]')).toBeNull()
   })
 })
 
