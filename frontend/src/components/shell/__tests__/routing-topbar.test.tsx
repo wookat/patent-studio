@@ -207,7 +207,7 @@ describe('TopBar（1440）', () => {
     const reviews = document.querySelectorAll<HTMLButtonElement>('[data-testid=topbar-review]')
     expect(reviews.length).toBe(1)
     expect(right.contains(reviews[0])).toBe(true)
-    const reviewText = [...reviews[0].querySelectorAll('span')].find((n) => n.textContent === '审阅修订')
+    const reviewText = [...reviews[0].querySelectorAll('span')].find((n) => n.textContent === '修订与批注')
     expect(reviewText?.className).toMatch(/\bhidden\b/)
     expect(reviewText?.className).toMatch(/\bxl:inline\b/)
     const ai = q<HTMLButtonElement>('[data-testid=topbar-ai]')!
@@ -218,10 +218,11 @@ describe('TopBar（1440）', () => {
     // 常驻纯图标（无可见文字）≤ 2：审阅 + 导出以外全部带字或已撤
     const iconOnly = [...right.querySelectorAll<HTMLButtonElement>('button')].filter((b) => !b.querySelector('span:not([aria-hidden])')?.textContent?.trim())
     expect(iconOnly.length).toBeLessThanOrEqual(2)
-    // 视图菜单仍有 布局 三档 + 控制台（Mod-J）
+    // 视图菜单：S4 撤掉与顶栏 ViewSwitch 重复的双栏/仅编辑/仅预览；布局预设子菜单 + 控制台（Mod-J）仍在
     await pointerOpen(q('[data-testid=menu-view]')!)
     const items = menuItems()
-    expect(items.some((t) => /双栏|并排|分屏/.test(t))).toBe(true)
+    expect(items.some((t) => /双栏|仅编辑|仅预览/.test(t))).toBe(false)
+    expect(q('[data-testid=view-layout-presets]')).not.toBeNull()
     expect(items.some((t) => /控制台/.test(t))).toBe(true)
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
   })
@@ -262,9 +263,10 @@ describe('ProjectMenu compact / MobileTopBar（375）', () => {
     const setCaseStatus = vi.spyOn(api, 'setCaseStatus').mockResolvedValue({ ...detail().case!, status: 'review' })
     const el = await mount(<MobileTopBar />)
     expect(q('[data-testid=back-to-dashboard]')?.getAttribute('aria-label')).toBe('返回案卷面板')
-    // W6：「更多」下沉到底部 MobileTabs（more Sheet），顶栏右侧只剩 构建 primary + 协作
+    // W6：「更多」下沉到底部 MobileTabs（more Sheet）；S10：构建 → 预览页工具行、协作 → MoreSheet，顶栏两枚都不在
     expect(q('[data-testid=more-menu]')).toBeNull()
-    expect(q('[data-testid=mobile-build]')).not.toBeNull()
+    expect(q('[data-testid=mobile-build]')).toBeNull()
+    expect(q('[data-testid=mobile-collab]')).toBeNull()
     expect(await serious(el)).toEqual([])
 
     await pointerOpen(q('[data-testid=project-tab]')!)

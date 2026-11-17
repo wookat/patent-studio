@@ -147,7 +147,8 @@ describe('DashboardPage 1440', () => {
     expect(el.querySelector('tbody [data-slot="status-dot"]')?.textContent).toBe('撰写')
     expect(el.querySelector('[data-testid="nav-cases"]')?.getAttribute('aria-current')).toBe('page')
     expect(el.querySelector('[data-testid="nav-deadlines"]')?.getAttribute('href')).toBe('#/deadlines')
-    expect(el.querySelector('[data-testid="nav-inbox"]')?.getAttribute('href')).toBe('#/inbox')
+    // 克制批次 S6：桌面「通知」页签与顶栏铃铛（topbar-notify，经槽位渲染）同数据——删页签
+    expect(el.querySelector('[data-testid="nav-inbox"]')).toBeNull()
     expect(await serious(el)).toEqual([])
   })
 

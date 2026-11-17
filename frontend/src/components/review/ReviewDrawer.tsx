@@ -105,7 +105,8 @@ export function ReviewDrawerButton({ className }: { className?: string }) {
   if (!pid) return null
   const toggle = host === 'rail-column' ? () => setRailOpen() : host === 'rail-sheet' ? () => setRailSheetOpen() : toggleDrawer
   const n = openCount + markCount
-  const label = `审阅修订${n > 0 ? `，${markCount} 处修订、${openCount} 条未解决批注` : '：修订与批注'}`
+  // 克制批次 S5：气泡与模式开关「审阅修订」同名易混，改名「修订与批注」（面板标题仍为审阅修订）
+  const label = `修订与批注${n > 0 ? `，${markCount} 处修订、${openCount} 条未解决批注` : ''}`
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -120,7 +121,7 @@ export function ReviewDrawerButton({ className }: { className?: string }) {
           data-review-host={host}
         >
           <MessageSquareText aria-hidden />
-          <span className="hidden xl:inline">审阅修订</span>
+          <span className="hidden xl:inline">修订与批注</span>
           {n > 0 && <Count value={n} tone="brand" className="absolute right-0 top-0" data-testid="topbar-review-badge" aria-hidden />}
         </Button>
       </TooltipTrigger>

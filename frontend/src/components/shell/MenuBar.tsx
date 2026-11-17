@@ -9,11 +9,12 @@ import { INSERT_KINDS, INSERT_LABELS, editorCommands } from '@/components/editor
 import { ExportMenuItems } from './ExportMenu'
 import { TemplateMenuItems } from '@/components/templates'
 import { MenuCheckRow, MenuContent, MenuRow, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger } from '@/components/ui/menu-bits'
-import { LAYOUT_MODES, showHistory } from './shellActions'
+import { showHistory } from './shellActions'
 import { LayoutMenuItems } from './LayoutMenuItems'
 import { BuildMenuItems } from './BuildMenuItems'
 import { LABEL_NEW_PROJECT } from '@/lib/copy'
-import { figlibHash } from '@/lib/hash'
+import { openDeleteDialog } from '@/components/block-model/dialogs/state'
+import { deleteDisabledReason } from '@/components/block-model/dialogs/lookup'
 
 /** 编辑菜单动作失败（编辑器未挂载，如仅预览 / 设置替换了编辑器）时的统一提示 */
 function requireEditor(run: () => boolean) {
@@ -225,6 +226,10 @@ function FileMenu() {
 function EditMenu() {
   const pid = useStudio((s) => s.pid)
   const readonly = useStudio(selectReadonly)
+  const ast = useStudio((s) => s.ast)
+  const deleteId = useStudio((s) => s.activeBlock?.id ?? null)
+  // 「删除当前块」：格式栏（S3 13→4）退出后的去处；禁用原因与块内入口同一口径
+  const deleteTitle = deleteId ? (deleteDisabledReason(ast, deleteId) ?? undefined) : '先在版面中选中一个块'
   return (
     <Menu id="edit" label="编辑">
       <MenuRow noIcon disabled={!pid || readonly} onSelect={() => requireEditor(() => editorCommands.undo())} sub={hotkeyLabel('undo')} data-testid="edit-undo">
@@ -255,13 +260,20 @@ function EditMenu() {
           ))}
         </MenuSubContent>
       </MenuSub>
+      <MenuRow
+        noIcon
+        disabled={!pid || readonly || !deleteId}
+        title={deleteTitle}
+        onSelect={() => deleteId && openDeleteDialog(deleteId)}
+        data-testid="edit-delete-block"
+      >
+        删除当前块
+      </MenuRow>
     </Menu>
   )
 }
 
 function ViewMenu() {
-  const layout = useStudio((s) => s.layout)
-  const setLayout = useStudio((s) => s.setLayout)
   const sideOpen = useStudio((s) => s.sideOpen)
   const toggleSide = useStudio((s) => s.toggleSide)
   const consoleOpen = useStudio((s) => s.pdfView === 'logs')
@@ -274,11 +286,6 @@ function ViewMenu() {
         命令面板…
       </MenuRow>
       <MenuSeparator />
-      {LAYOUT_MODES.map((m) => (
-        <MenuCheckRow key={m.id} noIcon checked={layout === m.id} onSelect={() => setLayout(m.id)} sub={m.id === 'split' ? hotkeyLabel('cycleLayout') : undefined} data-testid={`view-layout-${m.id}`}>
-          {m.label}
-        </MenuCheckRow>
-      ))}
       <LayoutMenuItems />
       <MenuSeparator />
       <MenuCheckRow noIcon kind="checkbox" checked={sideOpen} onSelect={() => toggleSide()} sub={hotkeyLabel('toggleOutline')} data-testid="view-side">
@@ -287,14 +294,6 @@ function ViewMenu() {
       <MenuCheckRow noIcon kind="checkbox" checked={consoleOpen} onSelect={() => togglePdfView()} sub={hotkeyLabel('toggleBottom')} data-testid="view-console">
         控制台（替换预览区）
       </MenuCheckRow>
-      <MenuSeparator />
-      <MenuRow
-        noIcon
-        onSelect={() => useStudio.getState().requestNavigation({ type: 'custom', label: '附图图库', run: () => { window.location.hash = figlibHash } })}
-        data-testid="view-figlib"
-      >
-        附图图库
-      </MenuRow>
       <MenuSeparator />
       <MenuCheckRow noIcon kind="checkbox" checked={isDark} onSelect={() => toggleTheme()} data-testid="view-dark">
         深色模式

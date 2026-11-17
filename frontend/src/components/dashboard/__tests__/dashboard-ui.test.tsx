@@ -515,7 +515,10 @@ describe('375', () => {
     expect(scopes.className).toMatch(/(^|\s)-my-1\.5(\s|$)/)
     expect(scopes.className).toMatch(/(^|\s)py-1\.5(\s|$)/)
     expect(scopes.className).not.toMatch(/(^|\s)-?[mp]y-2(\s|$)/)
-    for (const id of ['scope-all', 'scope-mine', 'scope-shared', 'scope-archived', 'filter-sheet-trigger']) {
+    // S8：已归档 / 回收站计数为 0 时不占 chip 位（收进筛选抽屉「视图」段）
+    expect(q('[data-testid="scope-archived"]', scopes)).toBeNull()
+    expect(q('[data-testid="scope-trash"]', scopes)).toBeNull()
+    for (const id of ['scope-all', 'scope-mine', 'scope-shared', 'filter-sheet-trigger']) {
       const chip = q(`[data-testid="${id}"]`, scopes)!
       expect(chip.className).toContain('h-sm-control')
       expect(chip.className).toContain('touch-hit')

@@ -399,21 +399,21 @@ describe('批66 工具条「删除块」入口（D-B66-1：DeleteDialog 接线�
     expect(deleteDisabledReason(method, sec.id)).toBe('法定章节不能删除')
   })
 
-  it('选中普通块 → 删除钮启用 → DeleteDialog → 确认调 deleteBlock', async () => {
+  it('选中普通块 → openDeleteDialog（S3 后入口在 编辑›删除当前块）→ DeleteDialog → 确认调 deleteBlock', async () => {
+    const { openDeleteDialog } = await import('@/components/block-model/dialogs/state')
+    const { deleteDisabledReason } = await import('@/components/block-model/dialogs/lookup')
     const el = await mount(<LayoutView mode="edit" books={['description']} />)
-    const del = () => el.querySelector<HTMLButtonElement>('[data-testid="layout-delete"]')!
-    expect(del().disabled).toBe(true)
-    expect(del().title).toBe('先选中一个块')
+    // 工具条不再有删除钮：克制批次把唯一入口收到 编辑 菜单
+    expect(el.querySelector('[data-testid="layout-delete"]')).toBeNull()
     const sec = method.description.find((b) => b.kind === 'section' && b.part === 'technical-field')!
     await click(block(el, sec.id))
-    expect(del().disabled).toBe(true)
-    expect(del().title).toBe('法定章节不能删除')
+    expect(useStudio.getState().activeBlock?.id).toBe(sec.id)
+    expect(deleteDisabledReason(method, useStudio.getState().activeBlock?.id ?? null)).toBe('法定章节不能删除')
     const para = method.description.find((b) => b.kind === 'paragraph')!
     await click(block(el, para.id))
-    expect(del().disabled).toBe(false)
-    expect(del().title).toBe('')
+    expect(deleteDisabledReason(method, useStudio.getState().activeBlock?.id ?? null)).toBeNull()
     const spy = vi.spyOn(api, 'deleteBlock').mockResolvedValue({ content: content + '\n', ast: method } as never)
-    await click(del())
+    await act(async () => openDeleteDialog(para.id))
     const dlg = document.querySelector<HTMLElement>('[data-testid="delete-dialog"]')!
     expect(dlg).not.toBeNull()
     await click(dlg.querySelector<HTMLElement>('[data-testid="delete-confirm"]')!)

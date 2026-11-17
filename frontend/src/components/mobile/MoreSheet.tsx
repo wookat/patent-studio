@@ -59,7 +59,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
  * 更多 Sheet（05 §3.19 / S10e）：底部 Sheet ≤85dvh，抓手 + 头部（案名 · 案号 · 状态徽章 · 角色 · N 在线）+ 四组：
  * 面板（审阅 / 资料事实 / 案件时间线 / 问题与控制台 Count / OA 答复 / 查找替换——大纲·历史·术语·附图与导航抽屉 Tab 同目标同行为，T8 起不再重复）·
  * 案卷（递交页 / 检查 / 新标签页 / 排版设置 / 协作者·分享 / 导入 Word / 转专利 / 回归检查）· 帮助（命令面板 / 语法 / 关于——桌面菜单栏与 ? 热键的触达补齐）· 外观（密度 Segmented md，手机唯一入口）· 账户。
- * 每项 44（内边距 16）；Esc / 遮罩 / 下滑关闭；构建不在此处（顶栏 primary）。
+ * 每项 44（内边距 16）；Esc / 遮罩 / 下滑关闭；构建不在此处（预览页工具行 primary）。
  * R10 收敛：源码/版面切换（编辑页 MobileEditChrome ViewSwitch 已有）、下载 DOCX/PDF（递交页）、新建案卷（工作台 +/空态）、主题（手机账户页 account-theme）不再重复；
  * 导入 Word / 转专利在手机工作台无入口、密度在手机账户页无入口——保留。
  */

@@ -118,8 +118,16 @@ describe('FormatBar', () => {
     const el = await mount(<FormatBar view={null} />)
     expect(q('[data-testid="format-bar"]', el).getAttribute('role')).toBe('toolbar')
     expect(q<HTMLButtonElement>('[data-testid="format-mark-strong"]', el).disabled).toBe(true)
-    expect(q<HTMLButtonElement>('[data-testid="format-undo"]', el).disabled).toBe(true)
+    expect(q<HTMLButtonElement>('[data-testid="format-insert"]', el).disabled).toBe(true)
     expect(await violations(el)).toEqual([])
+  })
+
+  it('克制批次 S3：13 → 4——栏内只剩 加粗 / 下标 / 上标 / 插入；其余控件移出', async () => {
+    const el = await mount(<FormatBar view={null} />)
+    expect(el.querySelectorAll('button').length).toBe(4)
+    for (const id of ['format-style', 'format-font', 'format-size', 'format-mark-em', 'format-mark-underline', 'format-undo', 'format-redo', 'format-styles', 'layout-delete']) {
+      expect(el.querySelector(`[data-testid="${id}"]`), id).toBeNull()
+    }
   })
 
   it('批40：块模板加载失败 → 插入钮可用 + 菜单错误行带重试（不静默假空禁用）', async () => {
@@ -148,9 +156,6 @@ describe('FormatBar', () => {
     await click(b)
     expect(fromBookDoc(v.state.doc)).toBe('\n选中**两个**字\n\n')
     expect(b.getAttribute('aria-pressed')).toBe('true')
-    expect(q<HTMLButtonElement>('[data-testid="format-undo"]', el).disabled).toBe(false)
-    await click(q('[data-testid="format-undo"]', el))
-    expect(fromBookDoc(v.state.doc)).toBe('\n选中两个字\n\n')
   })
 
   it('Ctrl+B 键盘（FORMAT_KEYS keymap）与按钮同一命令路径', () => {
@@ -159,76 +164,22 @@ describe('FormatBar', () => {
     expect(fromBookDoc(v.state.doc)).toBe('\n选中**两个**字\n\n')
   })
 
-  it('段落样式下拉显示当前样式名；字号选择弹确认，确认后写 style.sizes.body 并 bumpStyleCss', async () => {
-    const bump = vi.fn()
-    useStudio.setState({ bumpStyleCss: bump })
+  it('reviewer：样式控件已移出本栏，选区级 mark 仍不受角色限制（reviewer 走 toCritic）', async () => {
+    useStudio.setState({ project: { id: 'p1', role: 'reviewer' } as unknown as Studio['project'] })
     const v = makeView(stateOf('正文', 2))
     const el = await mount(<FormatBar view={v} />)
-    expect(q('[data-testid="format-style"]', el).textContent).toContain('正文')
-    expect(q('[data-testid="format-size"]', el).textContent).toContain('10.5')
-    const size = q<HTMLButtonElement>('[data-testid="format-size"]', el)
-    await act(async () => size.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, ctrlKey: false, pointerType: 'mouse' } as PointerEventInit)))
-    const hint = document.body.textContent ?? ''
-    expect(hint).toContain('应用于全文所有正文段落')
-    const opt = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.includes('12 pt'))!
-    await act(async () => {
-      opt.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse' } as PointerEventInit))
-      opt.click()
-    })
-    expect(q('[data-testid="format-confirm"]').textContent).toContain('应用于全文所有正文段落')
-    await click(q('[data-testid="format-confirm-apply"]'))
-    expect(useStudio.getState().settings?.style).toEqual({ sizes: { body: 12 } })
-    expect(bump).toHaveBeenCalledTimes(1)
-  })
-
-  it('W9 domain-04/qa-03/ux-03：reviewer 字体 / 字号 / 「样式…」禁用并 title 说明，不弹确认框；owner 可用；保存失败不再报「请先打开案子」', async () => {
-    const toast = vi.fn()
-    useStudio.setState({ toast, project: { id: 'p1', role: 'reviewer' } as unknown as Studio['project'] })
-    const v = makeView(stateOf('正文', 2))
-    let el = await mount(<FormatBar view={v} />)
-    const font = q<HTMLButtonElement>('[data-testid="format-font"]', el)
-    const size = q<HTMLButtonElement>('[data-testid="format-size"]', el)
-    const styles = q<HTMLButtonElement>('[data-testid="format-styles"]', el)
-    expect(font.disabled && size.disabled && styles.disabled).toBe(true)
-    expect(font.title).toContain('审阅者不可改样式')
-    expect(font.dataset.denied).toBe('')
-    // 加粗等选区级格式不受角色限制（reviewer 走 toCritic）
     expect(q<HTMLButtonElement>('[data-testid="format-mark-strong"]', el).disabled).toBe(false)
-    await act(async () => size.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' } as PointerEventInit)))
-    expect(document.querySelector('[role="option"]')).toBeNull()
-    expect(document.querySelector('[data-testid="format-confirm"]')).toBeNull()
     expect(await violations(el)).toEqual([])
-    await act(async () => root?.unmount())
-    host?.remove()
-
-    useStudio.setState({ project: { id: 'p1', role: 'owner' } as unknown as Studio['project'] })
-    el = await mount(<FormatBar view={v} />)
-    expect(q<HTMLButtonElement>('[data-testid="format-font"]', el).disabled).toBe(false)
-    expect(q<HTMLButtonElement>('[data-testid="format-styles"]', el).disabled).toBe(false)
-    expect(q<HTMLButtonElement>('[data-testid="format-font"]', el).dataset.denied).toBeUndefined()
-    expect(q('[data-testid="format-bar"]', el).textContent).not.toContain('studio.json')
-
-    // 服务端 403：saveSettings 回滚（settings 引用不变）并自己 toast；FormatBar 不再叠加「请先打开案子」
-    useStudio.setState({ saveSettings: () => toast('设置保存失败：权限不足', 'error') })
-    expect(await useStyleEdit.getState().commitParagraphStyle('paragraph', { size: 12 })).toBe(false)
-    const s = q<HTMLButtonElement>('[data-testid="format-size"]', el)
-    await act(async () => s.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' } as PointerEventInit)))
-    const opt = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.includes('12 pt'))!
-    await act(async () => {
-      opt.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'mouse' } as PointerEventInit))
-      opt.click()
-    })
-    expect(q('[data-testid="format-confirm"]').textContent).not.toContain('studio.json')
-    await click(q('[data-testid="format-confirm-apply"]'))
-    expect(toast.mock.calls.map((c) => c[0])).not.toContainEqual(expect.stringContaining('请先打开案子'))
-    expect(q('[data-testid="format-size"]', el).textContent).toContain('10.5')
   })
 
-  it('「样式…」打开标题样式面板（光标在小节标题 → subsection）', async () => {
-    const v = makeView(stateOf('正文', 2))
-    const el = await mount(<FormatBar view={v} />)
-    await click(q('[data-testid="format-styles"]', el))
-    expect(useStyleEdit.getState()).toMatchObject({ panelOpen: true, panelLevel: 'section' })
+  it('服务端 403：saveSettings 回滚（settings 引用不变）并自己 toast——useStyleEdit.commitParagraphStyle 仍保留同一行为', async () => {
+    const toast = vi.fn()
+    useStudio.setState({ toast, saveSettings: () => toast('设置保存失败：权限不足', 'error') })
+    expect(await useStyleEdit.getState().commitParagraphStyle('paragraph', { size: 12 })).toBe(false)
+    expect(toast.mock.calls.map((c) => c[0])).not.toContainEqual(expect.stringContaining('请先打开案子'))
+  })
+
+  it('styleNameOf：table 无段落样式名，claim → claim', () => {
     expect(styleNameOf('table')).toBeNull()
     expect(styleNameOf('claim')).toBe('claim')
   })

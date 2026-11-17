@@ -15,8 +15,9 @@ const ITEMS: { key: DashNavKey; label: string; href: string; icon: typeof Bell }
 ]
 
 /**
- * 机构页顶栏一级导航「案卷 · 期限 · 通知」（05 §3.2）：ghost 32 文字 tab，当前页 `--fg-strong` + 底部 2px 指示；
+ * 机构页顶栏一级导航（05 §3.2）：ghost 32 文字 tab，当前页 `--fg-strong` + 底部 2px 指示；
  * 期限带 7 天内到期 `Count`（warn 用 neutral 呈现，danger 只给逾期）、通知带未读 `Count info`。
+ * 克制批次 S6：桌面「通知」页签与顶栏铃铛同数据 → 删页签，留铃铛；手机底栏仍留（移动端没有铃铛）。
  * 375 = `Segmented xl`（44 高）横排。
  */
 export function DashNav({ current, mobile, className }: { current: DashNavKey; mobile?: boolean; className?: string }) {
@@ -56,7 +57,7 @@ export function DashNav({ current, mobile, className }: { current: DashNavKey; m
   }
   return (
     <nav aria-label="首页导航" data-slot="DashNav" className={cn('flex h-full items-stretch', className)}>
-      {ITEMS.map((i) => (
+      {ITEMS.filter((i) => i.key !== 'inbox').map((i) => (
         <a
           key={i.key}
           href={i.href}

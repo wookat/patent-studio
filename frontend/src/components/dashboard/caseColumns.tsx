@@ -191,11 +191,18 @@ function SelectAllHead({ table }: { table: Table<ProjectSummary> }) {
   )
 }
 
+/** 克制批次 S9：行勾选 / ⋯ 默认隐藏，行悬停 / 焦点进入 / 已勾选 / 菜单展开时显示（Linear / Notion 同做法；表头全选仍常显） */
+const HOVER_REVEAL = 'inline-flex opacity-0 transition-opacity duration-(--dur-fast) group-hover/row:opacity-100 focus-within:opacity-100 has-data-[state=checked]:opacity-100 has-data-[state=open]:opacity-100 motion-reduce:transition-none'
+
 /** 行勾选：不可编辑行不渲染（与 StatusCell/ActionsCell 同口径），空格保留列位 */
 function SelectCell({ row }: { row: Row<ProjectSummary> }) {
   const canEdit = useCanEditCase(row.original)
   if (!canEdit) return null
-  return <Checkbox checked={row.getIsSelected()} onCheckedChange={(v) => row.toggleSelected(v)} aria-label={`选择 ${row.original.title || row.original.id}`} data-testid={`select-${row.original.id}`} />
+  return (
+    <span className={HOVER_REVEAL}>
+      <Checkbox checked={row.getIsSelected()} onCheckedChange={(v) => row.toggleSelected(v)} aria-label={`选择 ${row.original.title || row.original.id}`} data-testid={`select-${row.original.id}`} />
+    </span>
+  )
 }
 
 export function caseColumns(tags: Tag[]): ColumnDef<ProjectSummary, unknown>[] {
@@ -373,7 +380,7 @@ export function caseColumns(tags: Tag[]): ColumnDef<ProjectSummary, unknown>[] {
       enableHiding: false,
       header: () => <span className="sr-only">操作</span>,
       cell: ({ row }) => (
-        <span onClick={(e) => e.stopPropagation()} className="flex justify-end">
+        <span onClick={(e) => e.stopPropagation()} className={cn('justify-end', HOVER_REVEAL)}>
           <ActionsCell row={row.original} />
         </span>
       ),
