@@ -218,10 +218,11 @@ describe('TopBar（1440）', () => {
     // 常驻纯图标（无可见文字）≤ 2：审阅 + 导出以外全部带字或已撤
     const iconOnly = [...right.querySelectorAll<HTMLButtonElement>('button')].filter((b) => !b.querySelector('span:not([aria-hidden])')?.textContent?.trim())
     expect(iconOnly.length).toBeLessThanOrEqual(2)
-    // 视图菜单仍有 布局 三档 + 控制台（Mod-J）
+    // 视图菜单：S4 撤掉与顶栏 ViewSwitch 重复的双栏/仅编辑/仅预览；布局预设子菜单 + 控制台（Mod-J）仍在
     await pointerOpen(q('[data-testid=menu-view]')!)
     const items = menuItems()
-    expect(items.some((t) => /双栏|并排|分屏/.test(t))).toBe(true)
+    expect(items.some((t) => /双栏|仅编辑|仅预览/.test(t))).toBe(false)
+    expect(q('[data-testid=view-layout-presets]')).not.toBeNull()
     expect(items.some((t) => /控制台/.test(t))).toBe(true)
     await act(async () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })))
   })

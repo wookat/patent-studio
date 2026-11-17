@@ -9,11 +9,10 @@ import { INSERT_KINDS, INSERT_LABELS, editorCommands } from '@/components/editor
 import { ExportMenuItems } from './ExportMenu'
 import { TemplateMenuItems } from '@/components/templates'
 import { MenuCheckRow, MenuContent, MenuRow, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger } from '@/components/ui/menu-bits'
-import { LAYOUT_MODES, showHistory } from './shellActions'
+import { showHistory } from './shellActions'
 import { LayoutMenuItems } from './LayoutMenuItems'
 import { BuildMenuItems } from './BuildMenuItems'
 import { LABEL_NEW_PROJECT } from '@/lib/copy'
-import { figlibHash } from '@/lib/hash'
 import { openDeleteDialog } from '@/components/block-model/dialogs/state'
 import { deleteDisabledReason } from '@/components/block-model/dialogs/lookup'
 
@@ -275,8 +274,6 @@ function EditMenu() {
 }
 
 function ViewMenu() {
-  const layout = useStudio((s) => s.layout)
-  const setLayout = useStudio((s) => s.setLayout)
   const sideOpen = useStudio((s) => s.sideOpen)
   const toggleSide = useStudio((s) => s.toggleSide)
   const consoleOpen = useStudio((s) => s.pdfView === 'logs')
@@ -289,11 +286,6 @@ function ViewMenu() {
         命令面板…
       </MenuRow>
       <MenuSeparator />
-      {LAYOUT_MODES.map((m) => (
-        <MenuCheckRow key={m.id} noIcon checked={layout === m.id} onSelect={() => setLayout(m.id)} sub={m.id === 'split' ? hotkeyLabel('cycleLayout') : undefined} data-testid={`view-layout-${m.id}`}>
-          {m.label}
-        </MenuCheckRow>
-      ))}
       <LayoutMenuItems />
       <MenuSeparator />
       <MenuCheckRow noIcon kind="checkbox" checked={sideOpen} onSelect={() => toggleSide()} sub={hotkeyLabel('toggleOutline')} data-testid="view-side">
@@ -302,14 +294,6 @@ function ViewMenu() {
       <MenuCheckRow noIcon kind="checkbox" checked={consoleOpen} onSelect={() => togglePdfView()} sub={hotkeyLabel('toggleBottom')} data-testid="view-console">
         控制台（替换预览区）
       </MenuCheckRow>
-      <MenuSeparator />
-      <MenuRow
-        noIcon
-        onSelect={() => useStudio.getState().requestNavigation({ type: 'custom', label: '附图图库', run: () => { window.location.hash = figlibHash } })}
-        data-testid="view-figlib"
-      >
-        附图图库
-      </MenuRow>
       <MenuSeparator />
       <MenuCheckRow noIcon kind="checkbox" checked={isDark} onSelect={() => toggleTheme()} data-testid="view-dark">
         深色模式
